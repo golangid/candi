@@ -1,3 +1,6 @@
 vendor
 backend-microservices
 .env
+
+*.pem
+*.key
