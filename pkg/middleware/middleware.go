@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/agungdwiprasetyo/backend-microservices/config"
+	"github.com/agungdwiprasetyo/backend-microservices/pkg/token"
 	"github.com/labstack/echo"
 	"google.golang.org/grpc"
 )
@@ -17,6 +18,7 @@ type Middleware interface {
 }
 
 type mw struct {
+	tokenUtil          token.Token
 	username, password string
 	grpcAuthKey        string
 }
@@ -24,6 +26,7 @@ type mw struct {
 // NewMiddleware create new middleware instance
 func NewMiddleware(cfg *config.Config) Middleware {
 	return &mw{
+		tokenUtil:   token.NewJWT(cfg.PublicKey, cfg.PrivateKey),
 		username:    config.GlobalEnv.BasicAuthUsername,
 		password:    config.GlobalEnv.BasicAuthPassword,
 		grpcAuthKey: config.GlobalEnv.GRPCAuthKey,

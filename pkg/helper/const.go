@@ -7,6 +7,8 @@ const (
 	TimeZoneAsia = "Asia/Jakarta"
 	// TokenClaimKey const
 	TokenClaimKey = "tokenClaim"
+	// TokenKey const
+	TokenKey = "18608c7d-b319-0xc000165c80-0xc0000da000-11478e4e2650"
 
 	// V1 const
 	V1 = "/v1"
