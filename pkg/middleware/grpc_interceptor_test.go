@@ -31,7 +31,7 @@ func TestMiddleware_GRPCAuth(t *testing.T) {
 			return "user-service", nil
 		}
 
-		mw := &Middleware{
+		mw := &mw{
 			grpcAuthKey: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
 		_, err := mw.GRPCAuth(ctx, "testing", unaryInfo, unaryHandler)
@@ -49,7 +49,7 @@ func TestMiddleware_GRPCAuth(t *testing.T) {
 			return "user-service", nil
 		}
 
-		mw := &Middleware{
+		mw := &mw{
 			grpcAuthKey: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
 		_, err := mw.GRPCAuth(ctx, "testing", unaryInfo, unaryHandler)
@@ -73,7 +73,7 @@ func TestMiddleware_GRPCAuthStream(t *testing.T) {
 			return nil
 		}
 
-		mw := &Middleware{
+		mw := &mw{
 			grpcAuthKey: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
 		err := mw.GRPCAuthStream("test", stream, streamInfo, streamHandler)
@@ -93,7 +93,7 @@ func TestMiddleware_GRPCAuthStream(t *testing.T) {
 			return nil
 		}
 
-		mw := &Middleware{
+		mw := &mw{
 			grpcAuthKey: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
 		err := mw.GRPCAuthStream("test", stream, streamInfo, streamHandler)
@@ -114,7 +114,7 @@ func TestMiddleware_GRPCAuthStream(t *testing.T) {
 			return nil
 		}
 
-		mw := &Middleware{
+		mw := &mw{
 			grpcAuthKey: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
 		err := mw.GRPCAuthStream("test", stream, streamInfo, streamHandler)

@@ -8,5 +8,5 @@ import (
 // ModuleParam base
 type ModuleParam struct {
 	Config     *config.Config
-	Middleware *middleware.Middleware
+	Middleware middleware.Middleware
 }

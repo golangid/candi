@@ -10,13 +10,13 @@ import (
 
 // RestInvitationHandler handler
 type RestInvitationHandler struct {
-	midd *middleware.Middleware
+	mw middleware.Middleware
 }
 
 // NewRestInvitationHandler create new rest handler
-func NewRestInvitationHandler(midd *middleware.Middleware) *RestInvitationHandler {
+func NewRestInvitationHandler(mw middleware.Middleware) *RestInvitationHandler {
 	return &RestInvitationHandler{
-		midd: midd,
+		mw: mw,
 	}
 }
 

@@ -16,7 +16,7 @@ import (
 // GRPCAuth function,
 // or Unary interceptor
 // additional security for our GRPC server
-func (m *Middleware) GRPCAuth(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+func (m *mw) GRPCAuth(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	start := time.Now()
 	defer func() {
 		m.grpcLog(start, err, info.FullMethod, "GRPC")
@@ -32,7 +32,7 @@ func (m *Middleware) GRPCAuth(ctx context.Context, req interface{}, info *grpc.U
 }
 
 // GRPCAuthStream interceptor
-func (m *Middleware) GRPCAuthStream(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+func (m *mw) GRPCAuthStream(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
 	start := time.Now()
 	defer func() {
 		m.grpcLog(start, err, info.FullMethod, "GRPC-STREAM")
@@ -46,7 +46,7 @@ func (m *Middleware) GRPCAuthStream(srv interface{}, stream grpc.ServerStream, i
 }
 
 // validateGrpcAuth auth from incoming context
-func (m *Middleware) validateGrpcAuth(ctx context.Context) error {
+func (m *mw) validateGrpcAuth(ctx context.Context) error {
 	meta, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return grpc.Errorf(codes.Unauthenticated, "missing context metadata")
@@ -66,7 +66,7 @@ func (m *Middleware) validateGrpcAuth(ctx context.Context) error {
 }
 
 // Log incoming grpc request
-func (m *Middleware) grpcLog(startTime time.Time, err error, fullMethod string, reqType string) {
+func (m *mw) grpcLog(startTime time.Time, err error, fullMethod string, reqType string) {
 	end := time.Now()
 	var status = "OK"
 	statusColor := helper.Green

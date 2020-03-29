@@ -10,7 +10,7 @@ import (
 )
 
 // ValidateBearer jwt token middleware
-func (m *Middleware) ValidateBearer() echo.MiddlewareFunc {
+func (m *mw) ValidateBearer() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 

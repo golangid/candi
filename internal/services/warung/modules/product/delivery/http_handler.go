@@ -10,13 +10,13 @@ import (
 
 // RestProductHandler handler
 type RestProductHandler struct {
-	midd *middleware.Middleware
+	mw middleware.Middleware
 }
 
 // NewRestProductHandler create new rest handler
-func NewRestProductHandler(midd *middleware.Middleware) *RestProductHandler {
+func NewRestProductHandler(mw middleware.Middleware) *RestProductHandler {
 	return &RestProductHandler{
-		midd: midd,
+		mw: mw,
 	}
 }
 
