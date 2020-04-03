@@ -2,9 +2,9 @@ package shared
 
 // Filter data
 type Filter struct {
-	Limit   int    `json:"limit" default:"10"`
-	Page    int    `json:"page" default:"1"`
-	Offset  int    `json:"-"`
+	Limit   int32  `json:"limit" default:"10"`
+	Page    int32  `json:"page" default:"1"`
+	Offset  int32  `json:"-"`
 	Search  string `json:"search,omitempty"`
 	OrderBy string `json:"orderBy,omitempty"`
 	Sort    string `json:"sort,omitempty" default:"desc" lower:"true"`

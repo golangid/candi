@@ -1,0 +1,4 @@
+################### Invitation Module Area
+type Invitation {
+    getAll(filter: Filter!): String!
+}

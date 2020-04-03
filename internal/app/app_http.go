@@ -8,11 +8,14 @@ import (
 	"github.com/agungdwiprasetyo/backend-microservices/pkg/helper"
 	"github.com/agungdwiprasetyo/backend-microservices/pkg/wrapper"
 	"github.com/labstack/echo"
+	ew "github.com/labstack/echo/middleware"
 )
 
 // ServeHTTP user service
 func (a *App) ServeHTTP() {
 	a.httpServer.HTTPErrorHandler = wrapper.CustomHTTPErrorHandler
+	a.httpServer.Use(ew.Logger())
+
 	a.httpServer.GET("/", func(c echo.Context) error {
 		return c.String(200, "Service up and running")
 	})
@@ -22,6 +25,10 @@ func (a *App) ServeHTTP() {
 		if h := m.RestHandler(helper.V1); h != nil {
 			h.Mount(v1Group)
 		}
+	}
+
+	if config.GlobalEnv.UseGraphQL {
+		a.httpServer.Any("/graphql", echo.WrapHandler(a.graphqlHandler()))
 	}
 
 	if err := a.httpServer.Start(fmt.Sprintf(":%d", config.GlobalEnv.HTTPPort)); err != nil {

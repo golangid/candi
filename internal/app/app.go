@@ -4,26 +4,29 @@ import (
 	"context"
 	"log"
 
+	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/constant"
+
 	"github.com/agungdwiprasetyo/backend-microservices/config"
 	"github.com/agungdwiprasetyo/backend-microservices/internal/factory"
 	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/base"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/services"
 	"github.com/agungdwiprasetyo/backend-microservices/pkg/helper"
 	"github.com/agungdwiprasetyo/backend-microservices/pkg/middleware"
 	"github.com/labstack/echo"
 	"google.golang.org/grpc"
 )
 
-// App user service
+// App service
 type App struct {
-	config     *config.Config
-	modules    []factory.ModuleFactory
-	httpServer *echo.Echo
-	grpcServer *grpc.Server
+	serviceName constant.Service
+	config      *config.Config
+	modules     []factory.ModuleFactory
+	httpServer  *echo.Echo
+	grpcServer  *grpc.Server
 }
 
-// New user service app
-func New(cfg *config.Config) *App {
+// New service app
+func New(service factory.ServiceFactory) *App {
+	cfg := service.GetConfig()
 
 	mw := middleware.NewMiddleware(cfg)
 	params := &base.ModuleParam{
@@ -31,8 +34,7 @@ func New(cfg *config.Config) *App {
 		Middleware: mw,
 	}
 
-	selectedService := services.InitService(config.GlobalEnv.Service, params)
-	modules := selectedService.Modules()
+	modules := service.Modules(params)
 
 	// init http server
 	echoServer := echo.New()
@@ -45,10 +47,11 @@ func New(cfg *config.Config) *App {
 	)
 
 	return &App{
-		config:     cfg,
-		modules:    modules,
-		httpServer: echoServer,
-		grpcServer: grpcServer,
+		serviceName: service.Name(),
+		config:      cfg,
+		modules:     modules,
+		httpServer:  echoServer,
+		grpcServer:  grpcServer,
 	}
 }
 

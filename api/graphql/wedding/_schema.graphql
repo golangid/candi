@@ -1,0 +1,28 @@
+schema {
+    query: Query
+    mutation: Mutation
+}
+
+type Query {
+    invitation: Invitation
+}
+
+type Mutation {
+    invitation: Invitation
+}
+
+scalar Time
+
+type Meta {
+    page: Int!
+    limit: Int!
+    totalRecords: Int!
+    totalPages: Int!
+}
+
+input Filter {
+    page: Int!
+    limit: Int!
+    sort: String!
+    orderBy: String!
+}

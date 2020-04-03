@@ -1,6 +1,7 @@
 package warung
 
 import (
+	"github.com/agungdwiprasetyo/backend-microservices/config"
 	"github.com/agungdwiprasetyo/backend-microservices/internal/factory"
 	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/base"
 	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/constant"
@@ -15,24 +16,28 @@ const (
 
 // Service model
 type Service struct {
-	modules []factory.ModuleFactory
+	cfg *config.Config
 }
 
 // NewService in this service
-func NewService(params *base.ModuleParam) factory.ServiceFactory {
+func NewService(cfg *config.Config) factory.ServiceFactory {
 	service := &Service{
-		modules: []factory.ModuleFactory{
-			product.NewModule(params),
-			user.NewModule(params),
-		},
+		cfg: cfg,
 	}
-
 	return service
 }
 
+// GetConfig method
+func (s *Service) GetConfig() *config.Config {
+	return s.cfg
+}
+
 // Modules method
-func (s *Service) Modules() []factory.ModuleFactory {
-	return s.modules
+func (s *Service) Modules(params *base.ModuleParam) []factory.ModuleFactory {
+	return []factory.ModuleFactory{
+		product.NewModule(params),
+		user.NewModule(params),
+	}
 }
 
 // Name method

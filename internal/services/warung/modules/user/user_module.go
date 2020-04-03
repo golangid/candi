@@ -42,6 +42,11 @@ func (m *Module) GRPCHandler() interfaces.GRPCDelivery {
 	return nil
 }
 
+// GraphQLHandler method
+func (m *Module) GraphQLHandler() (name string, resolver interface{}) {
+	return "User", nil
+}
+
 // SubscriberHandler method
 func (m *Module) SubscriberHandler(subsType constant.Subscriber) interfaces.SubscriberDelivery {
 	return nil

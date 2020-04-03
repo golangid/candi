@@ -13,7 +13,6 @@ import (
 
 	"github.com/agungdwiprasetyo/backend-microservices/config/database"
 	"github.com/agungdwiprasetyo/backend-microservices/config/key"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/constant"
 	"github.com/gomodule/redigo/redis"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -32,8 +31,8 @@ type Config struct {
 type Env struct {
 	RootApp string
 
-	// Service env
-	Service constant.Service
+	// UseGraphQL env
+	UseGraphQL bool
 
 	// Development env checking, this env for debug purpose
 	Development string
@@ -105,11 +104,11 @@ func loadEnv(rootApp string) {
 	GlobalEnv.RootApp = rootApp
 
 	// ------------------------------------
-	service, ok := os.LookupEnv("SERVICE")
+	useGraphQL, ok := os.LookupEnv("USE_GRAPHQL")
 	if !ok {
-		panic("missing SERVICE environment")
+		panic("missing USE_GRAPHQL environment")
 	}
-	GlobalEnv.Service = constant.Service(service)
+	GlobalEnv.UseGraphQL, _ = strconv.ParseBool(useGraphQL)
 
 	if port, err := strconv.Atoi(os.Getenv("HTTP_PORT")); err != nil {
 		panic("missing HTTP_PORT environment")

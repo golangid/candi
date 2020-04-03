@@ -15,7 +15,8 @@ const (
 
 // Module model
 type Module struct {
-	restHandler *delivery.RestInvitationHandler
+	restHandler    *delivery.RestInvitationHandler
+	graphqlHandler *delivery.GraphQLHandler
 }
 
 // NewModule module constructor
@@ -23,6 +24,7 @@ func NewModule(params *base.ModuleParam) *Module {
 
 	var mod Module
 	mod.restHandler = delivery.NewRestInvitationHandler(params.Middleware)
+	mod.graphqlHandler = delivery.NewGraphQLHandler(params.Middleware)
 	return &mod
 }
 
@@ -40,6 +42,11 @@ func (m *Module) RestHandler(version string) (d interfaces.EchoRestDelivery) {
 // GRPCHandler method
 func (m *Module) GRPCHandler() interfaces.GRPCDelivery {
 	return nil
+}
+
+// GraphQLHandler method
+func (m *Module) GraphQLHandler() (name string, resolver interface{}) {
+	return "Invitation", m.graphqlHandler
 }
 
 // SubscriberHandler method
