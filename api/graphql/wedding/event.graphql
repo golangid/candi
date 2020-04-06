@@ -1,0 +1,15 @@
+################### EventModule Module Area
+type EventModule {
+    getAll(filter: Filter!): String!
+    getByCode(code: String!): Event
+}
+
+type Event {
+    id: String!
+    code: String!
+    date: String!
+    countdown: Int!
+    ceremony: String!
+    reception: String!
+    address: String!
+}

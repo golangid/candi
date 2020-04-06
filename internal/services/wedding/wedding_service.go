@@ -5,6 +5,7 @@ import (
 	"github.com/agungdwiprasetyo/backend-microservices/internal/factory"
 	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/base"
 	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/constant"
+	"github.com/agungdwiprasetyo/backend-microservices/internal/services/wedding/modules/event"
 	"github.com/agungdwiprasetyo/backend-microservices/internal/services/wedding/modules/invitation"
 )
 
@@ -35,6 +36,7 @@ func (s *Service) GetConfig() *config.Config {
 func (s *Service) Modules(params *base.ModuleParam) []factory.ModuleFactory {
 	return []factory.ModuleFactory{
 		invitation.NewModule(params),
+		event.NewModule(params),
 	}
 }
 

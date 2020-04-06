@@ -5,13 +5,17 @@ schema {
 
 type Query {
     invitation: Invitation
+    event: EventModule
 }
 
 type Mutation {
     invitation: Invitation
+    event: EventModule
 }
 
 scalar Time
+scalar ByteArray
+scalar ObjectId
 
 type Meta {
     page: Int!
