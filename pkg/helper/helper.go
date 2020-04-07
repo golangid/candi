@@ -84,3 +84,13 @@ func ParseFromQueryParam(query url.Values, target interface{}) (err error) {
 
 	return
 }
+
+// StringYellow func
+func StringYellow(str string) string {
+	return fmt.Sprintf("\x1b[33;2m%s\x1b[0m", str)
+}
+
+// StringGreen func
+func StringGreen(str string) string {
+	return fmt.Sprintf("\x1b[32;2m%s\x1b[0m", str)
+}

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/constant"
@@ -26,8 +27,9 @@ type App struct {
 
 // New service app
 func New(service factory.ServiceFactory) *App {
-	cfg := service.GetConfig()
+	defer fmt.Printf("Starting %s service\n", service.Name())
 
+	cfg := service.GetConfig()
 	mw := middleware.NewMiddleware(cfg)
 	params := &base.ModuleParam{
 		Config:     cfg,

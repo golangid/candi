@@ -1,5 +1,6 @@
 vendor
 backend-microservices
+bin
 .env
 
 *.pem

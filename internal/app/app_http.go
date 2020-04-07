@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/agungdwiprasetyo/backend-microservices/config"
 	"github.com/agungdwiprasetyo/backend-microservices/pkg/helper"
@@ -30,6 +31,14 @@ func (a *App) ServeHTTP() {
 	if config.GlobalEnv.UseGraphQL {
 		a.httpServer.Any("/graphql", echo.WrapHandler(a.graphqlHandler()))
 	}
+
+	var routes strings.Builder
+	for _, route := range a.httpServer.Routes() {
+		if !strings.Contains(route.Name, "(*Group)") {
+			routes.WriteString(helper.StringGreen(fmt.Sprintf("[ROUTE] %7s %-30s --> %s\n", route.Method, route.Path, route.Name)))
+		}
+	}
+	fmt.Print(routes.String())
 
 	if err := a.httpServer.Start(fmt.Sprintf(":%d", config.GlobalEnv.HTTPPort)); err != nil {
 		log.Println(err)
