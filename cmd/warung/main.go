@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"runtime/debug"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/agungdwiprasetyo/backend-microservices/config"
@@ -37,17 +35,5 @@ func main() {
 	defer cfg.Exit(ctx)
 
 	service := warung.NewService(cfg)
-	app := app.New(service)
-
-	// serve http server
-	go app.ServeHTTP()
-
-	// serve grpc server
-	go app.ServeGRPC()
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-	<-quit
-
-	app.Shutdown(ctx)
+	app.New(service).Run(ctx)
 }

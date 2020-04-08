@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/constant"
 
@@ -55,6 +58,21 @@ func New(service factory.ServiceFactory) *App {
 		httpServer:  echoServer,
 		grpcServer:  grpcServer,
 	}
+}
+
+// Run start app
+func (a *App) Run(ctx context.Context) {
+	// serve http server
+	go a.ServeHTTP()
+
+	// serve grpc server
+	go a.ServeGRPC()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+
+	a.Shutdown(ctx)
 }
 
 // Shutdown graceful shutdown all server, panic if there is still a process running when the request exceed given timeout in context

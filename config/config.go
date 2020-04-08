@@ -33,6 +33,8 @@ type Env struct {
 
 	// UseGraphQL env
 	UseGraphQL bool
+	// UseGRPC env
+	UseGRPC bool
 
 	// Development env checking, this env for debug purpose
 	Development string
@@ -109,6 +111,14 @@ func loadEnv(rootApp string) {
 		panic("missing USE_GRAPHQL environment")
 	}
 	GlobalEnv.UseGraphQL, _ = strconv.ParseBool(useGraphQL)
+
+	useGRPC, ok := os.LookupEnv("USE_GRPC")
+	if !ok {
+		panic("missing USE_GRPC environment")
+	}
+	GlobalEnv.UseGRPC, _ = strconv.ParseBool(useGRPC)
+
+	// ------------------------------------
 
 	if port, err := strconv.Atoi(os.Getenv("HTTP_PORT")); err != nil {
 		panic("missing HTTP_PORT environment")

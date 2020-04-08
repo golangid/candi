@@ -3,22 +3,27 @@ package app
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"strings"
+	"time"
 
 	"github.com/agungdwiprasetyo/backend-microservices/config"
 	"github.com/agungdwiprasetyo/backend-microservices/pkg/helper"
 	"github.com/agungdwiprasetyo/backend-microservices/pkg/wrapper"
 	"github.com/labstack/echo"
-	ew "github.com/labstack/echo/middleware"
+	echoMidd "github.com/labstack/echo/middleware"
 )
 
 // ServeHTTP user service
 func (a *App) ServeHTTP() {
 	a.httpServer.HTTPErrorHandler = wrapper.CustomHTTPErrorHandler
-	a.httpServer.Use(ew.Logger())
+	a.httpServer.Use(echoMidd.Logger())
 
 	a.httpServer.GET("/", func(c echo.Context) error {
-		return c.String(200, "Service up and running")
+		return c.JSON(http.StatusOK, map[string]string{
+			"message":   "Service up and running",
+			"timestamp": time.Now().Format(time.RFC3339Nano),
+		})
 	})
 
 	v1Group := a.httpServer.Group(helper.V1)
@@ -35,7 +40,7 @@ func (a *App) ServeHTTP() {
 	var routes strings.Builder
 	for _, route := range a.httpServer.Routes() {
 		if !strings.Contains(route.Name, "(*Group)") {
-			routes.WriteString(helper.StringGreen(fmt.Sprintf("[ROUTE] %7s %-30s --> %s\n", route.Method, route.Path, route.Name)))
+			routes.WriteString(helper.StringGreen(fmt.Sprintf("[ROUTE] %-7s %-30s --> %s\n", route.Method, route.Path, route.Name)))
 		}
 	}
 	fmt.Print(routes.String())
