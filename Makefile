@@ -2,10 +2,12 @@
 
 SERVICE_NAME := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(eval $(SERVICE_NAME):;@:)
+ifndef SERVICE_NAME
+$(error SERVICE_NAME is not set)
+endif
 
 prepare:
-	if [ -f main.go ]; then rm main.go; fi;
-	ln -s cmd/$(SERVICE_NAME)/main.go main.go
+	ln -sf cmd/$(SERVICE_NAME)/main.go main_service.go
 
 build: prepare
 	go build -o bin

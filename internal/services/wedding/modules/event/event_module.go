@@ -18,6 +18,7 @@ const (
 // Module model
 type Module struct {
 	graphqlHandler *delivery.GraphQLHandler
+	kafkaHandler   *delivery.KafkaHandler
 }
 
 // NewModule module constructor
@@ -27,6 +28,9 @@ func NewModule(params *base.ModuleParam) *Module {
 
 	var mod Module
 	mod.graphqlHandler = delivery.NewGraphQLHandler(params.Middleware, uc)
+	mod.kafkaHandler = delivery.NewKafkaHandler([]string{
+		"coba",
+	})
 	return &mod
 }
 
@@ -53,7 +57,12 @@ func (m *Module) GraphQLHandler() (name string, resolver interface{}) {
 
 // SubscriberHandler method
 func (m *Module) SubscriberHandler(subsType constant.Subscriber) interfaces.SubscriberDelivery {
-	return nil
+	switch subsType {
+	case constant.Kafka:
+		return m.kafkaHandler
+	default:
+		return nil
+	}
 }
 
 // Name get module name

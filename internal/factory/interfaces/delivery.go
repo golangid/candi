@@ -19,5 +19,6 @@ type GRPCDelivery interface {
 
 // SubscriberDelivery delivery factory for all subscriber handler
 type SubscriberDelivery interface {
+	GetTopics() []string
 	ProcessMessage(ctx context.Context, message []byte)
 }

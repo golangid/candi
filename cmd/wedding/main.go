@@ -35,7 +35,5 @@ func main() {
 	defer cfg.Exit(ctx)
 
 	service := wedding.NewService(cfg)
-	app := app.New(service)
-
-	app.Run(ctx)
+	app.New(service).Run(ctx)
 }

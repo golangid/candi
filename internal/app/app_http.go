@@ -33,10 +33,6 @@ func (a *App) ServeHTTP() {
 		}
 	}
 
-	if config.GlobalEnv.UseGraphQL {
-		a.httpServer.Any("/graphql", echo.WrapHandler(a.graphqlHandler()))
-	}
-
 	var routes strings.Builder
 	for _, route := range a.httpServer.Routes() {
 		if !strings.Contains(route.Name, "(*Group)") {
