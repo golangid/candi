@@ -1,6 +1,6 @@
 package delivery
 
-import "github.com/agungdwiprasetyo/backend-microservices/internal/services/wedding/modules/event/domain"
+import "agungdwiprasetyo.com/backend-microservices/internal/services/wedding/modules/event/domain"
 
 type EventResolver struct {
 	e *domain.Event

@@ -1,11 +1,10 @@
-module github.com/agungdwiprasetyo/backend-microservices
+module agungdwiprasetyo.com/backend-microservices
 
 go 1.12
 
 require (
 	github.com/DataDog/zstd v1.4.4 // indirect
 	github.com/Shopify/sarama v1.22.1
-	github.com/agungdwiprasetyo/go-utils v0.0.0-20200107071204-db8421111d33
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible

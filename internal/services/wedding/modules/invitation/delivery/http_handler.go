@@ -2,11 +2,15 @@ package delivery
 
 import (
 	"net/http"
+	"sync"
+	"time"
 
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/middleware"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/wrapper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
+	"agungdwiprasetyo.com/backend-microservices/pkg/wrapper"
 	"github.com/labstack/echo"
 )
+
+var someMap = sync.Map{}
 
 // RestInvitationHandler handler
 type RestInvitationHandler struct {
@@ -28,5 +32,20 @@ func (h *RestInvitationHandler) Mount(root *echo.Group) {
 }
 
 func (h *RestInvitationHandler) getAll(c echo.Context) error {
-	return wrapper.NewHTTPResponse(http.StatusOK, "Sukses mengambil data invitation").JSON(c.Response())
+	id, add := c.QueryParam("id"), c.QueryParam("add")
+	// debug.Println(id, add)
+
+	if _, ok := someMap.Load(id); ok {
+		return wrapper.NewHTTPResponse(http.StatusBadRequest, "Masih kelock yg "+add).JSON(c.Response())
+	}
+
+	someMap.Store(id, true)
+	defer func() {
+		someMap.Delete(id)
+	}()
+
+	// debug.Println("proses yg ", add)
+	time.Sleep(5 * time.Second)
+
+	return wrapper.NewHTTPResponse(http.StatusOK, "Sukses mengambil data invitation "+add).JSON(c.Response())
 }

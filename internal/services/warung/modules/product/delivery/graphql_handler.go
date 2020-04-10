@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/middleware"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/shared"
+	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
+	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 )
 
 // GraphQLHandler model

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/helper"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/shared"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 )
 
 // HTTPResponse format

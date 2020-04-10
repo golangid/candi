@@ -1,11 +1,11 @@
 package product
 
 import (
-	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/base"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/constant"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/interfaces"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/services/warung/modules/product/delivery"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
+	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/internal/factory/interfaces"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/warung/modules/product/delivery"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 )
 
 const (

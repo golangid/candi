@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"github.com/agungdwiprasetyo/backend-microservices/internal/services/wedding/modules/event/repository/interfaces"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/services/wedding/modules/event/repository/mongo"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/wedding/modules/event/repository/interfaces"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/wedding/modules/event/repository/mongo"
 	mgo "go.mongodb.org/mongo-driver/mongo"
 )
 

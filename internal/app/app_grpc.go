@@ -5,8 +5,8 @@ import (
 	"log"
 	"net"
 
-	"github.com/agungdwiprasetyo/backend-microservices/config"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/config"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 )
 
 // ServeGRPC user service

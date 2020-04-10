@@ -1,13 +1,13 @@
 package event
 
 import (
-	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/base"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/constant"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/interfaces"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/services/wedding/modules/event/delivery"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/services/wedding/modules/event/repository"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/services/wedding/modules/event/usecase"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
+	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/internal/factory/interfaces"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/wedding/modules/event/delivery"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/wedding/modules/event/repository"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/wedding/modules/event/usecase"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 )
 
 const (

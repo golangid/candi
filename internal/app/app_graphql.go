@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"reflect"
 
-	graphqlschema "github.com/agungdwiprasetyo/backend-microservices/api/graphql"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/shared"
+	graphqlschema "agungdwiprasetyo.com/backend-microservices/api/graphql"
+	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 	"github.com/graph-gophers/graphql-go"
 )
 

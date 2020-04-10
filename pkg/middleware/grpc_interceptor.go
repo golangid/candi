@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/agungdwiprasetyo/backend-microservices/config"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/config"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"

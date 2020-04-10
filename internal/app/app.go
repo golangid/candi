@@ -7,14 +7,13 @@ import (
 	"os/signal"
 	"syscall"
 
+	"agungdwiprasetyo.com/backend-microservices/config"
+	"agungdwiprasetyo.com/backend-microservices/internal/factory"
+	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
+	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
 	"github.com/Shopify/sarama"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/constant"
-
-	"github.com/agungdwiprasetyo/backend-microservices/config"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/factory"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/base"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/helper"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/middleware"
 	"github.com/labstack/echo"
 	"google.golang.org/grpc"
 )

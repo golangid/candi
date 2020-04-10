@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	"github.com/agungdwiprasetyo/backend-microservices/config/broker"
-	"github.com/agungdwiprasetyo/backend-microservices/config/database"
-	"github.com/agungdwiprasetyo/backend-microservices/config/key"
+	"agungdwiprasetyo.com/backend-microservices/config/broker"
+	"agungdwiprasetyo.com/backend-microservices/config/database"
+	"agungdwiprasetyo.com/backend-microservices/config/key"
 	"github.com/gomodule/redigo/redis"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"

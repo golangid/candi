@@ -3,8 +3,8 @@ package delivery
 import (
 	"net/http"
 
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/middleware"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/wrapper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
+	"agungdwiprasetyo.com/backend-microservices/pkg/wrapper"
 	"github.com/labstack/echo"
 )
 

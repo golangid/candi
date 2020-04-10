@@ -1,12 +1,12 @@
 package wedding
 
 import (
-	"github.com/agungdwiprasetyo/backend-microservices/config"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/factory"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/base"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/constant"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/services/wedding/modules/event"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/services/wedding/modules/invitation"
+	"agungdwiprasetyo.com/backend-microservices/config"
+	"agungdwiprasetyo.com/backend-microservices/internal/factory"
+	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
+	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/wedding/modules/event"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/wedding/modules/invitation"
 )
 
 const (

@@ -1,8 +1,8 @@
 package base
 
 import (
-	"github.com/agungdwiprasetyo/backend-microservices/config"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/middleware"
+	"agungdwiprasetyo.com/backend-microservices/config"
+	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
 )
 
 // ModuleParam base

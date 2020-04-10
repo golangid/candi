@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/agungdwiprasetyo/backend-microservices/config"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/helper"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/wrapper"
+	"agungdwiprasetyo.com/backend-microservices/config"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/wrapper"
 	"github.com/labstack/echo"
 	echoMidd "github.com/labstack/echo/middleware"
 )

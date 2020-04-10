@@ -3,8 +3,8 @@ package usecase
 import (
 	"context"
 
-	"github.com/agungdwiprasetyo/backend-microservices/internal/services/wedding/modules/event/domain"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/services/wedding/modules/event/repository"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/wedding/modules/event/domain"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/wedding/modules/event/repository"
 )
 
 type eventUsecaseImpl struct {

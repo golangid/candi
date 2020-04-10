@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/helper"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/shared"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
 )

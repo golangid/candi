@@ -3,8 +3,8 @@ package middleware
 import (
 	"context"
 
-	"github.com/agungdwiprasetyo/backend-microservices/config"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/token"
+	"agungdwiprasetyo.com/backend-microservices/config"
+	"agungdwiprasetyo.com/backend-microservices/pkg/token"
 	"github.com/labstack/echo"
 	"google.golang.org/grpc"
 )

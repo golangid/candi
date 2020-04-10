@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"github.com/labstack/echo"
 )
 

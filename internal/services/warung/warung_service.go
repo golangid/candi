@@ -1,12 +1,12 @@
 package warung
 
 import (
-	"github.com/agungdwiprasetyo/backend-microservices/config"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/factory"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/base"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/constant"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/services/warung/modules/product"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/services/warung/modules/user"
+	"agungdwiprasetyo.com/backend-microservices/config"
+	"agungdwiprasetyo.com/backend-microservices/internal/factory"
+	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
+	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/warung/modules/product"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/warung/modules/user"
 )
 
 const (

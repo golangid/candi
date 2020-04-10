@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/Shopify/sarama"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/constant"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/factory/interfaces"
+	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/internal/factory/interfaces"
 )
 
 // KafkaConsumer consume data from kafka

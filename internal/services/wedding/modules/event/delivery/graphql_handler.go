@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/agungdwiprasetyo/backend-microservices/internal/services/wedding/modules/event/usecase"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/middleware"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/shared"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/wedding/modules/event/usecase"
+	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
+	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 )
 
 // GraphQLHandler model

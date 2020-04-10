@@ -5,8 +5,8 @@ import (
 	"crypto/rsa"
 	"time"
 
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/helper"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/shared"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 	jwtgo "github.com/dgrijalva/jwt-go"
 )
 

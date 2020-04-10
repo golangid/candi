@@ -3,8 +3,8 @@ package mongo
 import (
 	"context"
 
-	"github.com/agungdwiprasetyo/backend-microservices/internal/services/wedding/modules/event/domain"
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/shared"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/wedding/modules/event/domain"
+	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )

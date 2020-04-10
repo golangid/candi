@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/agungdwiprasetyo/backend-microservices/pkg/shared"
+	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 )
 
 // Token abstraction

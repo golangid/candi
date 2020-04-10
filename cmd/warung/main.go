@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/agungdwiprasetyo/backend-microservices/config"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/app"
-	"github.com/agungdwiprasetyo/backend-microservices/internal/services/warung"
+	"agungdwiprasetyo.com/backend-microservices/config"
+	"agungdwiprasetyo.com/backend-microservices/internal/app"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/warung"
 )
 
 func main() {
