@@ -11,9 +11,11 @@ import (
 
 // ServeGRPC user service
 func (a *App) ServeGRPC() {
+	if a.grpcServer == nil {
+		return
+	}
 
 	grpcPort := fmt.Sprintf(":%d", config.GlobalEnv.GRPCPort)
-
 	listener, err := net.Listen("tcp", grpcPort)
 	if err != nil {
 		panic(err)

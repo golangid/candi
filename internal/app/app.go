@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -77,41 +76,34 @@ func New(service factory.ServiceFactory) *App {
 
 // Run start app
 func (a *App) Run(ctx context.Context) {
-	quitSignal := make(chan os.Signal, 1)
 
 	hasServiceHandlerRunning := a.httpServer != nil || a.grpcServer != nil || a.kafkaConsumer != nil
 	if !hasServiceHandlerRunning {
-		log.Println("No service handler running, shutdown...")
-		goto shutdown
+		panic("No service handler running")
 	}
 
 	// serve http server
-	if a.httpServer != nil {
-		go a.ServeHTTP()
-	}
+	go a.ServeHTTP()
 
 	// serve grpc server
-	if a.grpcServer != nil {
-		go a.ServeGRPC()
-	}
+	go a.ServeGRPC()
 
 	// serve kafka consumer
-	if a.kafkaConsumer != nil {
-		go a.KafkaConsumer()
-	}
+	go a.KafkaConsumer()
 
+	quitSignal := make(chan os.Signal, 1)
 	signal.Notify(quitSignal, os.Interrupt, syscall.SIGTERM)
 	<-quitSignal
 
-shutdown:
 	a.Shutdown(ctx)
 }
 
 // Shutdown graceful shutdown all server, panic if there is still a process running when the request exceed given timeout in context
 func (a *App) Shutdown(ctx context.Context) {
-	fmt.Println()
+	println()
 
 	if a.httpServer != nil {
+		log.Println("Stopping HTTP server...")
 		if err := a.httpServer.Shutdown(ctx); err != nil {
 			panic(err)
 		}

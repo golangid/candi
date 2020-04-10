@@ -13,6 +13,9 @@ import (
 
 // KafkaConsumer consume data from kafka
 func (a *App) KafkaConsumer() {
+	if a.kafkaConsumer == nil {
+		return
+	}
 
 	var consumeTopics []string
 	var handlers = make(map[string][]interfaces.SubscriberDelivery)

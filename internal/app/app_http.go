@@ -16,6 +16,10 @@ import (
 
 // ServeHTTP user service
 func (a *App) ServeHTTP() {
+	if a.httpServer == nil {
+		return
+	}
+
 	a.httpServer.HTTPErrorHandler = wrapper.CustomHTTPErrorHandler
 	a.httpServer.Use(echoMidd.Logger())
 
@@ -36,7 +40,7 @@ func (a *App) ServeHTTP() {
 	var routes strings.Builder
 	for _, route := range a.httpServer.Routes() {
 		if !strings.Contains(route.Name, "(*Group)") {
-			routes.WriteString(helper.StringGreen(fmt.Sprintf("[ROUTE] %-7s %-30s --> %s\n", route.Method, route.Path, route.Name)))
+			routes.WriteString(helper.StringGreen(fmt.Sprintf("[ROUTE] %-8s %-30s --> %s\n", route.Method, route.Path, route.Name)))
 		}
 	}
 	fmt.Print(routes.String())
