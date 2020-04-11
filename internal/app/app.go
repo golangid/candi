@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -39,6 +40,9 @@ func New(service factory.ServiceFactory) *App {
 		Middleware: mw,
 	}
 
+	// load json schema for document validation
+	// jsonschema.Load(string(service.Name()))
+
 	appInstance := new(App)
 	appInstance.serviceName = service.Name()
 	appInstance.config = cfg
@@ -69,6 +73,9 @@ func New(service factory.ServiceFactory) *App {
 		}
 		appInstance.kafkaConsumer = kafkaConsumer
 	}
+
+	pid := os.Getpid()
+	fmt.Println("PID:", pid)
 
 	return appInstance
 }

@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Shopify/sarama"
 	"agungdwiprasetyo.com/backend-microservices/config/broker"
 	"agungdwiprasetyo.com/backend-microservices/config/database"
 	"agungdwiprasetyo.com/backend-microservices/config/key"
+	"github.com/Shopify/sarama"
 	"github.com/gomodule/redigo/redis"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"

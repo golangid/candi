@@ -6,9 +6,9 @@ import (
 	"log"
 	"strings"
 
-	"github.com/Shopify/sarama"
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/interfaces"
+	"github.com/Shopify/sarama"
 )
 
 // KafkaConsumer consume data from kafka
@@ -17,18 +17,21 @@ func (a *App) KafkaConsumer() {
 		return
 	}
 
-	var consumeTopics []string
 	var handlers = make(map[string][]interfaces.SubscriberDelivery)
 	for _, m := range a.modules {
 		if h := m.SubscriberHandler(constant.Kafka); h != nil {
 			for _, topic := range h.GetTopics() {
-				handlers[topic] = append(handlers[topic], h)
+				handlers[topic] = append(handlers[topic], h) // one same topic consumed by multiple module
 			}
-			consumeTopics = append(consumeTopics, h.GetTopics()...)
 		}
 	}
 	consumer := kafkaConsumer{
 		handlers: handlers,
+	}
+
+	var consumeTopics []string
+	for topic := range handlers {
+		consumeTopics = append(consumeTopics, topic)
 	}
 
 	fmt.Printf("[KAFKA-TOPIC] --> [%s]\n", strings.Join(consumeTopics, "; "))
