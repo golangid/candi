@@ -25,6 +25,8 @@ func NewBotUsecase(client *linebot.Client, repo *repository.Repository) BotUseca
 }
 
 func (uc *botUsecaseImpl) ProcessCallback(ctx context.Context, events []*linebot.Event) error {
+	defer func() { recover() }()
+
 	for _, event := range events {
 		var (
 			profile  logdomain.Profile

@@ -31,7 +31,7 @@ func NewModule(params *base.ModuleParam) *Module {
 		panic(err)
 	}
 
-	repo := repository.NewRepository()
+	repo := repository.NewRepository(params.Config.MongoRead, params.Config.MongoWrite)
 	uc := usecase.NewBotUsecase(lineClient, repo)
 
 	var mod Module
