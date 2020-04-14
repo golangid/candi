@@ -1,6 +1,8 @@
 package chatbot
 
 import (
+	"os"
+
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/interfaces"
@@ -24,7 +26,7 @@ type Module struct {
 // NewModule module constructor
 func NewModule(params *base.ModuleParam) *Module {
 
-	lineClient, err := linebot.New("conf.LineChannelSecret", "conf.LineChannelToken")
+	lineClient, err := linebot.New(os.Getenv("LINE_CHANNEL_SECRET"), os.Getenv("LINE_CHANNEL_TOKEN"))
 	if err != nil {
 		panic(err)
 	}
