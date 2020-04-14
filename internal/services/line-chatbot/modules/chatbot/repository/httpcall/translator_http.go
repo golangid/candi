@@ -3,7 +3,7 @@ package httpcall
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -28,25 +28,25 @@ func NewTranslatorHTTP() *TranslatorHTTP {
 }
 
 // Translate method
-func (b *TranslatorHTTP) Translate(ctx context.Context, from, to, text string) (result string) {
-
+func (t *TranslatorHTTP) Translate(ctx context.Context, from, to, text string) (result string) {
 	value := url.Values{}
 	value.Set("key", os.Getenv("TRANSLATOR_KEY"))
 	value.Set("lang", from+"-"+to)
 	value.Add("text", text)
 
-	var url = fmt.Sprintf("%s", b.host)
-	body, err := b.httpReq.Do("TranslatorHTTP-Translate", http.MethodPost, url, strings.NewReader(value.Encode()), nil)
+	resp, err := http.PostForm(os.Getenv("TRANSLATOR_HOST"), value)
 	if err != nil {
-		return ""
+		return
 	}
+	defer resp.Body.Close()
 
+	b, _ := ioutil.ReadAll(resp.Body)
 	var response struct {
 		Code int      `json:"code"`
 		Lang string   `json:"lang"`
 		Text []string `json:"text"`
 	}
 
-	json.Unmarshal(body, &response)
+	json.Unmarshal(b, &response)
 	return strings.Join(response.Text, " ")
 }
