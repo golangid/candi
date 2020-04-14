@@ -12,7 +12,7 @@ import (
 func LoadSchema(serviceName string) string {
 
 	var schema strings.Builder
-	here := fmt.Sprintf("%s/api/graphql/%s/", os.Getenv("APP_PATH"), serviceName)
+	here := fmt.Sprintf("api/graphql/%s/", serviceName)
 
 	filepath.Walk(here, func(p string, info os.FileInfo, err error) error {
 		if err != nil {

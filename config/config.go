@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -108,14 +109,14 @@ func Init(ctx context.Context, rootApp string) *Config {
 	}
 }
 
-func loadEnv(rootApp string) {
-	// load .env
-	err := godotenv.Load(".env")
+func loadEnv(appLocation string) {
+	// load main .env and additional .env in app
+	err := godotenv.Load(".env", appLocation+"/.env")
 	if err != nil {
 		log.Println(err)
-		panic(".env is not loaded properly")
 	}
 
+	rootApp, _ := filepath.Abs(filepath.Dir(os.Args[0]))
 	os.Setenv("APP_PATH", rootApp)
 	GlobalEnv.RootApp = rootApp
 

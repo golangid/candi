@@ -19,12 +19,12 @@ var notShowErrorListType = map[string]bool{
 var jsonSchemaList = map[string]*gojsonschema.Schema{}
 
 // Load all schema from given path
-func Load(serviceName string) {
+func Load(serviceName string) error {
 
-	here := fmt.Sprintf("%s/api/jsonschema/%s/", os.Getenv("APP_PATH"), serviceName)
-	filepath.Walk(here, func(p string, info os.FileInfo, err error) error {
+	here := fmt.Sprintf("api/jsonschema/%s/", serviceName)
+	return filepath.Walk(here, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
-			panic(err)
+			return err
 		}
 		if info.IsDir() {
 			return nil
@@ -34,12 +34,12 @@ func Load(serviceName string) {
 		if strings.HasSuffix(fileName, ".json") {
 			s, err := ioutil.ReadFile(p)
 			if err != nil {
-				panic(fmt.Errorf("%s: %v", fileName, err))
+				return fmt.Errorf("%s: %v", fileName, err)
 			}
 
 			var data map[string]interface{}
 			if err := json.Unmarshal(s, &data); err != nil {
-				panic(fmt.Errorf("%s: %v", fileName, err))
+				return fmt.Errorf("%s: %v", fileName, err)
 			}
 			id, ok := data["$id"].(string)
 			if !ok {
@@ -47,7 +47,7 @@ func Load(serviceName string) {
 			}
 			jsonSchemaList[id], err = gojsonschema.NewSchema(gojsonschema.NewBytesLoader(s))
 			if err != nil {
-				panic(fmt.Errorf("%s: %v", fileName, err))
+				return fmt.Errorf("%s: %v", fileName, err)
 			}
 		}
 		return nil

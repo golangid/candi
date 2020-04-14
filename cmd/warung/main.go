@@ -3,11 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
-	"os"
-	"path/filepath"
 	"runtime/debug"
-	"strings"
 	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/config"
@@ -15,13 +11,11 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/services/warung"
 )
 
-func main() {
-	rootApp, err := filepath.Abs(filepath.Dir(os.Args[0]))
-	if err != nil {
-		log.Fatal(err)
-	}
-	rootApp = strings.TrimSuffix(rootApp, "/cmd/warung") // trim this path location, for cleaning root path
+const (
+	appLocation = "cmd/warung"
+)
 
+func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer func() {
 		cancel()
@@ -31,7 +25,7 @@ func main() {
 		}
 	}()
 
-	cfg := config.Init(ctx, rootApp)
+	cfg := config.Init(ctx, appLocation)
 	defer cfg.Exit(ctx)
 
 	service := warung.NewService(cfg)
