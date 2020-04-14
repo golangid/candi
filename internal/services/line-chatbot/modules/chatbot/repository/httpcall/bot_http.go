@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -30,7 +31,7 @@ func NewBotHTTP() *BotHTTP {
 
 // ProcessText method
 func (b *BotHTTP) ProcessText(ctx context.Context, text string) string {
-	var url = fmt.Sprintf("%s?input=%s", b.host, text)
+	var url = fmt.Sprintf("%s?input=%s", b.host, url.QueryEscape(text))
 	body, err := b.httpReq.Do("Bot-ProcessText", http.MethodGet, url, nil, nil)
 	if err != nil {
 		return ""
