@@ -101,7 +101,7 @@ func (uc *botUsecaseImpl) ProcessCallback(ctx context.Context, events []*linebot
 			}
 		}
 
-		uc.repo.Event.Save(ctx, &eventLog)
+		<-uc.repo.Event.Save(ctx, &eventLog)
 		// uc.repo.Profile.Save(ctx, &profile)
 	}
 
