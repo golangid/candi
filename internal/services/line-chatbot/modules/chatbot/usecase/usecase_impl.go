@@ -3,11 +3,12 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"strings"
 
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/chatbot/domain"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/chatbot/repository"
-	logdomain "agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/log/domain"
+	eventdomain "agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/event/domain"
 	"github.com/line/line-bot-sdk-go/linebot"
 )
 
@@ -25,12 +26,17 @@ func NewBotUsecase(client *linebot.Client, repo *repository.Repository) BotUseca
 }
 
 func (uc *botUsecaseImpl) ProcessCallback(ctx context.Context, events []*linebot.Event) error {
-	defer func() { recover() }()
+	defer func() {
+		if r := recover(); r != nil {
+			debug.PrintStack()
+			fmt.Println(r)
+		}
+	}()
 
 	for _, event := range events {
 		var (
-			profile  logdomain.Profile
-			eventLog logdomain.Event
+			profile  eventdomain.Profile
+			eventLog eventdomain.Event
 		)
 
 		profileResp, err := uc.lineClient.GetProfile(event.Source.UserID).Do()
@@ -45,7 +51,6 @@ func (uc *botUsecaseImpl) ProcessCallback(ctx context.Context, events []*linebot
 			profile.Name = profileResp.DisplayName
 			profile.Avatar = profileResp.PictureURL
 			profile.StatusMessage = profileResp.StatusMessage
-
 		}
 
 		// save event
@@ -97,7 +102,7 @@ func (uc *botUsecaseImpl) ProcessCallback(ctx context.Context, events []*linebot
 		}
 
 		uc.repo.Event.Save(ctx, &eventLog)
-		uc.repo.Profile.Save(ctx, &profile)
+		// uc.repo.Profile.Save(ctx, &profile)
 	}
 
 	return nil

@@ -34,3 +34,18 @@ func NewMeta(page, limit, totalRecords int) *Meta {
 func (m *Meta) CalculatePages() {
 	m.TotalPages = int(math.Ceil(float64(m.TotalRecords) / float64(m.Limit)))
 }
+
+// ToResolver graphql
+func (m *Meta) ToResolver() *MetaResolver {
+	return &MetaResolver{
+		Page: int32(m.Page), Limit: int32(m.Limit), TotalRecords: int32(m.TotalRecords), TotalPages: int32(m.TotalPages),
+	}
+}
+
+// MetaResolver model for graphql resolver
+type MetaResolver struct {
+	Page         int32 `json:"page"`
+	Limit        int32 `json:"limit"`
+	TotalRecords int32 `json:"totalRecords"`
+	TotalPages   int32 `json:"totalPages"`
+}

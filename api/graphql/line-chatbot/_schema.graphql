@@ -1,0 +1,30 @@
+schema {
+    query: Query
+    mutation: Mutation
+}
+
+type Query {
+    event: EventModule
+}
+
+type Mutation {
+    event: EventModule
+}
+
+scalar Time
+scalar ByteArray
+scalar ObjectId
+
+type Meta {
+    page: Int!
+    limit: Int!
+    totalRecords: Int!
+    totalPages: Int!
+}
+
+input Filter {
+    page: Int!
+    limit: Int!
+    sort: String!
+    orderBy: String!
+}

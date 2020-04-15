@@ -1,0 +1,27 @@
+################### EventModule Module Area
+type EventModule {
+    getAll(filter: Filter!): Events
+}
+
+type Events {
+    meta: Meta
+    data: [Event]!
+}
+
+type Event {
+    id: String!
+    replyToken: String!
+    type: String!
+    timestamp: String!
+    sourceId: String!
+    sourceType: String!
+    message: EventMessage
+    error: String
+}
+
+type EventMessage {
+    id: String!
+    type: String!
+    text: String!
+    response: String!
+}

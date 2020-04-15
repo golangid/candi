@@ -6,6 +6,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/chatbot"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/event"
 )
 
 const (
@@ -35,6 +36,7 @@ func (s *Service) GetConfig() *config.Config {
 func (s *Service) Modules(params *base.ModuleParam) []factory.ModuleFactory {
 	return []factory.ModuleFactory{
 		chatbot.NewModule(params),
+		event.NewModule(params),
 	}
 }
 

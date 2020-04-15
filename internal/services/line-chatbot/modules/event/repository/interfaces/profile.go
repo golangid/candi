@@ -3,7 +3,7 @@ package interfaces
 import (
 	"context"
 
-	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/log/domain"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/event/domain"
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 )
 
