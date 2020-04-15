@@ -94,3 +94,13 @@ func StringYellow(str string) string {
 func StringGreen(str string) string {
 	return fmt.Sprintf("\x1b[32;2m%s\x1b[0m", str)
 }
+
+// ToBoolPtr helper
+func ToBoolPtr(b bool) *bool {
+	return &b
+}
+
+// ToStringPtr helper
+func ToStringPtr(str string) *string {
+	return &str
+}

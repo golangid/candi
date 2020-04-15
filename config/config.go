@@ -73,26 +73,29 @@ type Env struct {
 // GlobalEnv global environment
 var GlobalEnv Env
 
+// db connection
+var useSQL, useMongo, useRedis, useRSAKey bool
+
 // Init app config
 func Init(ctx context.Context, rootApp string) *Config {
-	loadEnv(rootApp)
+	loadBaseEnv(rootApp)
 
 	cfgChan := make(chan *Config)
-	errConnect := make(chan interface{})
+	errConnect := make(chan error)
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				errConnect <- r
+				errConnect <- fmt.Errorf("Failed init configuration :=> %v", r)
 			}
 			close(cfgChan)
 			close(errConnect)
 		}()
 
 		var cfg Config
-		cfg.MongoRead, cfg.MongoWrite = database.InitMongoDB(ctx)
-		cfg.RedisReadPool, cfg.RedisWritePool = database.InitRedis()
-		cfg.PrivateKey = key.LoadPrivateKey()
-		cfg.PublicKey = key.LoadPublicKey()
+		cfg.MongoRead, cfg.MongoWrite = database.InitMongoDB(ctx, useMongo)
+		cfg.SQLRead, cfg.SQLWrite = database.InitSQLDatabase(ctx, useSQL)
+		cfg.RedisReadPool, cfg.RedisWritePool = database.InitRedis(useRedis)
+		cfg.PrivateKey, cfg.PublicKey = key.LoadRSAKey(useRSAKey)
 		cfg.KafkaConsumerConfig = broker.InitKafkaConfig()
 
 		cfgChan <- &cfg
@@ -105,14 +108,13 @@ func Init(ctx context.Context, rootApp string) *Config {
 	case <-ctx.Done():
 		panic(fmt.Errorf("Timeout to init configuration: %v", ctx.Err()))
 	case e := <-errConnect:
-		panic(fmt.Errorf("Failed init configuration :=> %v", e))
+		panic(e)
 	}
 }
 
-func loadEnv(appLocation string) {
+func loadBaseEnv(appLocation string) {
 	// load main .env and additional .env in app
-	err := godotenv.Load(".env", appLocation+"/.env")
-	if err != nil {
+	if err := godotenv.Load(".env", appLocation+"/.env"); err != nil {
 		log.Println(err)
 	}
 
@@ -147,6 +149,32 @@ func loadEnv(appLocation string) {
 		panic("missing USE_KAFKA environment")
 	}
 	GlobalEnv.UseKafka, _ = strconv.ParseBool(useKafka)
+
+	// ---------------------------
+	useMongoEnv, ok := os.LookupEnv("USE_MONGO")
+	if !ok {
+		panic("missing USE_MONGO environment")
+	}
+	useMongo, _ = strconv.ParseBool(useMongoEnv)
+
+	useSQLEnv, ok := os.LookupEnv("USE_SQL")
+	if !ok {
+		panic("missing USE_SQL environment")
+	}
+	useSQL, _ = strconv.ParseBool(useSQLEnv)
+
+	useRedisEnv, ok := os.LookupEnv("USE_REDIS")
+	if !ok {
+		panic("missing USE_REDIS environment")
+	}
+	useRedis, _ = strconv.ParseBool(useRedisEnv)
+
+	useRSAEnv, ok := os.LookupEnv("USE_RSA_KEY")
+	if !ok {
+		panic("missing USE_RSA_KEY environment")
+	}
+	useRSAKey, _ = strconv.ParseBool(useRSAEnv)
+	// ---------------------------
 
 	// ------------------------------------
 

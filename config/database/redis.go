@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 
@@ -9,7 +10,11 @@ import (
 )
 
 // InitRedis connection
-func InitRedis() (readPool, writePool *redis.Pool) {
+func InitRedis(isUse bool) (readPool, writePool *redis.Pool) {
+	if !isUse {
+		return
+	}
+
 	hostRead, portRead, passRead := os.Getenv("REDIS_READ_HOST"), os.Getenv("REDIS_READ_PORT"), os.Getenv("REDIS_READ_AUTH")
 	tlsRead, _ := strconv.ParseBool(os.Getenv("REDIS_READ_TLS"))
 	hostWrite, portWrite, passWrite := os.Getenv("REDIS_WRITE_HOST"), os.Getenv("REDIS_WRITE_PORT"), os.Getenv("REDIS_WRITE_AUTH")
@@ -25,7 +30,7 @@ func InitRedis() (readPool, writePool *redis.Pool) {
 	defer pingRead.Close()
 	_, err := pingRead.Do("PING")
 	if err != nil {
-		panic(err)
+		panic("redis read: " + err.Error())
 	}
 
 	writePool = &redis.Pool{
@@ -38,8 +43,9 @@ func InitRedis() (readPool, writePool *redis.Pool) {
 	defer pingWrite.Close()
 	_, err = pingWrite.Do("PING")
 	if err != nil {
-		panic(err)
+		panic("redis write: " + err.Error())
 	}
 
+	log.Println("Success load Redis connection")
 	return
 }

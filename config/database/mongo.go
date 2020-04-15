@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -10,7 +11,11 @@ import (
 )
 
 // InitMongoDB return mongo db read & write instance
-func InitMongoDB(ctx context.Context) (read *mongo.Database, write *mongo.Database) {
+func InitMongoDB(ctx context.Context, isUse bool) (read *mongo.Database, write *mongo.Database) {
+	if !isUse {
+		return
+	}
+
 	// init write mongodb
 	hostWrite := os.Getenv("MONGODB_HOST_WRITE")
 	dbNameWrite := os.Getenv("MONGODB_NAME_WRITE")
@@ -35,5 +40,6 @@ func InitMongoDB(ctx context.Context) (read *mongo.Database, write *mongo.Databa
 	}
 	read = client.Database(dbNameRead)
 
+	log.Println("Success load Mongo connection")
 	return
 }

@@ -3,12 +3,17 @@ package key
 import (
 	"crypto/rsa"
 	"io/ioutil"
+	"log"
 
 	"github.com/dgrijalva/jwt-go"
 )
 
-// LoadPrivateKey load rsa private key
-func LoadPrivateKey() *rsa.PrivateKey {
+// LoadRSAKey load rsa private key
+func LoadRSAKey(isUse bool) (*rsa.PrivateKey, *rsa.PublicKey) {
+	if !isUse {
+		return nil, nil
+	}
+
 	signBytes, err := ioutil.ReadFile("config/key/private.key")
 	if err != nil {
 		panic("Error when load private key. " + err.Error())
@@ -17,11 +22,7 @@ func LoadPrivateKey() *rsa.PrivateKey {
 	if err != nil {
 		panic("Error when load private key. " + err.Error())
 	}
-	return privateKey
-}
 
-// LoadPublicKey load rsa public key
-func LoadPublicKey() *rsa.PublicKey {
 	verifyBytes, err := ioutil.ReadFile("config/key/public.pem")
 	if err != nil {
 		panic("Error when load public key. " + err.Error())
@@ -30,5 +31,7 @@ func LoadPublicKey() *rsa.PublicKey {
 	if err != nil {
 		panic("Error when load public key. " + err.Error())
 	}
-	return publicKey
+
+	log.Println("Success load RSA Key")
+	return privateKey, publicKey
 }
