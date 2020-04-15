@@ -34,11 +34,7 @@ func (r *EventResolver) Message() *EventMessage {
 	return &r.message
 }
 func (r *EventResolver) Error() *string {
-	if r.e.Error != nil {
-		e := r.e.Error.Error()
-		return &e
-	}
-	return nil
+	return r.e.Error
 }
 
 type EventMessage struct {

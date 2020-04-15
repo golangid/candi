@@ -20,5 +20,5 @@ type Event struct {
 		Text     string `bson:"text" json:"text"`
 		Response string `bson:"response" json:"response"`
 	} `bson:"message" json:"message"`
-	Error error `bson:"error" json:"error"`
+	Error *string `bson:"error" json:"error"`
 }

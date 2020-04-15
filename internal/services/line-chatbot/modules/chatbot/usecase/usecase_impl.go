@@ -9,6 +9,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/chatbot/domain"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/chatbot/repository"
 	eventdomain "agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/event/domain"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"github.com/line/line-bot-sdk-go/linebot"
 )
 
@@ -93,11 +94,13 @@ func (uc *botUsecaseImpl) ProcessCallback(ctx context.Context, events []*linebot
 
 				responseText = strings.TrimSpace(responseText)
 				err := uc.ReplyMessage(event, responseText)
+				if err != nil {
+					eventLog.Error = helper.ToStringPtr(err.Error())
+				}
 
 				eventLog.Message.ID = message.ID
 				eventLog.Message.Text = message.Text
 				eventLog.Message.Response = responseText
-				eventLog.Error = err
 			}
 		}
 
