@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -38,7 +39,11 @@ func (a *App) ServeHTTP() {
 	}
 
 	var routes strings.Builder
-	for _, route := range a.httpServer.Routes() {
+	httpRoutes := a.httpServer.Routes()
+	sort.Slice(httpRoutes, func(i, j int) bool {
+		return httpRoutes[i].Path < httpRoutes[j].Path
+	})
+	for _, route := range httpRoutes {
 		if !strings.Contains(route.Name, "(*Group)") {
 			routes.WriteString(helper.StringGreen(fmt.Sprintf("[ROUTE] %-8s %-30s --> %s\n", route.Method, route.Path, route.Name)))
 		}
