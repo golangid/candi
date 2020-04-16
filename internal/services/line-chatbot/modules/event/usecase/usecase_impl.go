@@ -19,6 +19,8 @@ func NewEventUsecase(repo *repository.RepoMongo) EventUsecase {
 }
 
 func (uc *eventUsecaseImpl) FindAll(ctx context.Context, filter *shared.Filter) (events []domain.Event, meta *shared.Meta, err error) {
+	filter.CalculateOffset()
+
 	count := uc.repo.Event.Count(ctx, filter)
 	repoRes := <-uc.repo.Event.FindAll(ctx, filter)
 	if repoRes.Error != nil {
