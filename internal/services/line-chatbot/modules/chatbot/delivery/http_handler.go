@@ -1,9 +1,14 @@
 package delivery
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/chatbot/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
@@ -14,17 +19,15 @@ import (
 
 // RestHandler handler
 type RestHandler struct {
-	mw         middleware.Middleware
-	uc         usecase.BotUsecase
-	lineClient *linebot.Client
+	mw middleware.Middleware
+	uc usecase.BotUsecase
 }
 
 // NewRestHandler create new rest handler
-func NewRestHandler(mw middleware.Middleware, client *linebot.Client, uc usecase.BotUsecase) *RestHandler {
+func NewRestHandler(mw middleware.Middleware, uc usecase.BotUsecase) *RestHandler {
 	return &RestHandler{
-		mw:         mw,
-		lineClient: client,
-		uc:         uc,
+		mw: mw,
+		uc: uc,
 	}
 }
 
@@ -33,25 +36,45 @@ func (h *RestHandler) Mount(root *echo.Group) {
 	bot := root.Group("/bot")
 
 	bot.POST("/callback", h.callback)
-	bot.POST("/pushmessage", h.pushMessage)
+	bot.POST("/pushmessage", h.pushMessage, h.mw.BasicAuth())
 }
 
 func (h *RestHandler) callback(c echo.Context) error {
 
 	req := c.Request()
-	events, err := h.lineClient.ParseRequest(req)
+	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		var code int
-		if err == linebot.ErrInvalidSignature {
-			code = http.StatusBadRequest
-		} else {
-			code = http.StatusInternalServerError
-		}
-
-		return wrapper.NewHTTPResponse(code, err.Error()).JSON(c.Response())
+		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
 
-	h.uc.ProcessCallback(c.Request().Context(), events)
+	signature := req.Header.Get("X-Line-Signature")
+	fmt.Println("signature :==>", signature)
+	decoded, err := base64.StdEncoding.DecodeString(signature)
+	if err != nil {
+		return wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(c.Response())
+	}
+
+	hash := hmac.New(sha256.New, []byte(os.Getenv("LINE_CHANNEL_SECRET")))
+	_, err = hash.Write(body)
+	if err != nil {
+		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
+	}
+
+	if !hmac.Equal(decoded, hash.Sum(nil)) {
+		return wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(c.Response())
+	}
+
+	request := struct {
+		Events []*linebot.Event `json:"events"`
+	}{}
+	if err = json.Unmarshal(body, &request); err != nil {
+		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
+	}
+
+	if err := h.uc.ProcessCallback(c.Request().Context(), request.Events); err != nil {
+		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
+	}
+
 	return wrapper.NewHTTPResponse(http.StatusOK, "ok").JSON(c.Response())
 }
 

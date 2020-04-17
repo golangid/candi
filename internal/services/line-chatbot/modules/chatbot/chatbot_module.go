@@ -35,7 +35,7 @@ func NewModule(params *base.ModuleParam) *Module {
 	uc := usecase.NewBotUsecase(lineClient, repo)
 
 	var mod Module
-	mod.restHandler = delivery.NewRestHandler(params.Middleware, lineClient, uc)
+	mod.restHandler = delivery.NewRestHandler(params.Middleware, uc)
 	return &mod
 }
 
