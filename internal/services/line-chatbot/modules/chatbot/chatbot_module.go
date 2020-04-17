@@ -40,7 +40,7 @@ func NewModule(params *base.ModuleParam) *Module {
 }
 
 // RestHandler method
-func (m *Module) RestHandler(version string) (d interfaces.EchoRestDelivery) {
+func (m *Module) RestHandler(version string) (d interfaces.EchoRestHandler) {
 	switch version {
 	case helper.V1:
 		d = m.restHandler
@@ -51,7 +51,7 @@ func (m *Module) RestHandler(version string) (d interfaces.EchoRestDelivery) {
 }
 
 // GRPCHandler method
-func (m *Module) GRPCHandler() interfaces.GRPCDelivery {
+func (m *Module) GRPCHandler() interfaces.GRPCHandler {
 	return nil
 }
 
@@ -61,7 +61,7 @@ func (m *Module) GraphQLHandler() (name string, resolver interface{}) {
 }
 
 // SubscriberHandler method
-func (m *Module) SubscriberHandler(subsType constant.Subscriber) interfaces.SubscriberDelivery {
+func (m *Module) SubscriberHandler(subsType constant.Subscriber) interfaces.SubscriberHandler {
 	return nil
 }
 

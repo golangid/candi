@@ -17,7 +17,7 @@ func (a *App) KafkaConsumer() {
 		return
 	}
 
-	var handlers = make(map[string][]interfaces.SubscriberDelivery)
+	var handlers = make(map[string][]interfaces.SubscriberHandler)
 	for _, m := range a.modules {
 		if h := m.SubscriberHandler(constant.Kafka); h != nil {
 			for _, topic := range h.GetTopics() {
@@ -46,7 +46,7 @@ func (a *App) KafkaConsumer() {
 
 // kafkaConsumer represents a Sarama consumer group consumer
 type kafkaConsumer struct {
-	handlers map[string][]interfaces.SubscriberDelivery
+	handlers map[string][]interfaces.SubscriberHandler
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim

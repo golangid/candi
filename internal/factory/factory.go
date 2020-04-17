@@ -16,9 +16,9 @@ type ServiceFactory interface {
 
 // ModuleFactory factory
 type ModuleFactory interface {
-	RestHandler(version string) interfaces.EchoRestDelivery
-	GRPCHandler() interfaces.GRPCDelivery
+	RestHandler(version string) interfaces.EchoRestHandler
+	GRPCHandler() interfaces.GRPCHandler
 	GraphQLHandler() (name string, resolver interface{})
-	SubscriberHandler(subsType constant.Subscriber) interfaces.SubscriberDelivery
+	SubscriberHandler(subsType constant.Subscriber) interfaces.SubscriberHandler
 	Name() constant.Module
 }
