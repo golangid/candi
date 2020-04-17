@@ -22,7 +22,7 @@ func (a *App) ServeHTTP() {
 	}
 
 	a.httpServer.HTTPErrorHandler = wrapper.CustomHTTPErrorHandler
-	a.httpServer.Use(echoMidd.Logger())
+	a.httpServer.Use(echoMidd.Logger(), echoMidd.CORS())
 
 	a.httpServer.GET("/", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{

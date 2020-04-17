@@ -49,14 +49,6 @@ type graphqlHandler struct {
 }
 
 func (h *graphqlHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// handle cors
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE")
-	if r.Method == http.MethodOptions {
-		return
-	}
 
 	var params struct {
 		Query         string                 `json:"query"`

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -62,7 +63,9 @@ func New(service factory.ServiceFactory) *App {
 	}
 
 	if config.GlobalEnv.UseGraphQL {
-		appInstance.httpServer.Any("/graphql", echo.WrapHandler(appInstance.graphqlHandler()))
+		gqlHandler := appInstance.graphqlHandler()
+		appInstance.httpServer.Add(http.MethodGet, "/graphql", echo.WrapHandler(gqlHandler))
+		appInstance.httpServer.Add(http.MethodPost, "/graphql", echo.WrapHandler(gqlHandler))
 	}
 
 	if config.GlobalEnv.UseKafka {
