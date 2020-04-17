@@ -12,6 +12,7 @@ type eventUsecaseImpl struct {
 	repo *repository.RepoMongo
 }
 
+// NewEventUsecase constructor
 func NewEventUsecase(repo *repository.RepoMongo) EventUsecase {
 	return &eventUsecaseImpl{
 		repo: repo,

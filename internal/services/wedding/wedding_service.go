@@ -9,20 +9,17 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/services/wedding/modules/invitation"
 )
 
-const (
-	// Wedding service name
-	Wedding constant.Service = "wedding"
-)
-
 // Service model
 type Service struct {
-	cfg *config.Config
+	cfg  *config.Config
+	name constant.Service
 }
 
 // NewService in this service
-func NewService(cfg *config.Config) factory.ServiceFactory {
+func NewService(cfg *config.Config, serviceName string) factory.ServiceFactory {
 	service := &Service{
-		cfg: cfg,
+		cfg:  cfg,
+		name: constant.Service(serviceName),
 	}
 	return service
 }
@@ -42,5 +39,5 @@ func (s *Service) Modules(params *base.ModuleParam) []factory.ModuleFactory {
 
 // Name method
 func (s *Service) Name() constant.Service {
-	return Wedding
+	return s.name
 }

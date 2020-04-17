@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	appLocation = "cmd/wedding"
+	serviceName = "wedding"
 )
 
 func main() {
@@ -20,14 +20,14 @@ func main() {
 	defer func() {
 		cancel()
 		if r := recover(); r != nil {
-			fmt.Println("Failed to start wedding service:", r)
+			fmt.Printf("Failed to start %s service: %v\n", serviceName, r)
 			fmt.Printf("Stack trace: \n%s\n", debug.Stack())
 		}
 	}()
 
-	cfg := config.Init(ctx, appLocation)
+	cfg := config.Init(ctx, "cmd/"+serviceName)
 	defer cfg.Exit(ctx)
 
-	service := wedding.NewService(cfg)
+	service := wedding.NewService(cfg, serviceName)
 	app.New(service).Run(ctx)
 }
