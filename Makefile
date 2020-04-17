@@ -19,7 +19,7 @@ docker: prepare
 	docker build --build-arg SERVICE_NAME=$(SERVICE_NAME) -t $(SERVICE_NAME):latest .
 
 run-container:
-	docker run --name=$(SERVICE_NAME) --network="host" $(SERVICE_NAME)
+	docker run --name=$(SERVICE_NAME) --network="host" -d $(SERVICE_NAME)
 
 clear:
 	if [ -f main.go ]; then echo "ADA"; fi;
