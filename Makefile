@@ -22,5 +22,4 @@ run-container:
 	docker run --name=$(SERVICE_NAME) --network="host" -d $(SERVICE_NAME)
 
 clear:
-	if [ -f main.go ]; then echo "ADA"; fi;
-	rm main.go bin backend-microservices warung wedding
+	rm main_service.go bin backend-microservices warung wedding

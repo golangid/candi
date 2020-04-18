@@ -24,10 +24,12 @@ WORKDIR /root/
 RUN mkdir -p /root/api
 RUN mkdir -p /root/config/key
 RUN mkdir -p /root/cmd/${SERVICE_NAME}
+RUN mkdir -p /root/web
 COPY --from=0 /usr/app/bin .
 COPY --from=0 /usr/app/.env .
 COPY --from=0 /usr/app/api /root/api
 COPY --from=0 /usr/app/cmd/${SERVICE_NAME} /root/cmd/${SERVICE_NAME}
 COPY --from=0 /usr/app/config/key /root/config/key
+COPY --from=0 /usr/app/web /root/web
 
 ENTRYPOINT ["sh", "-c", "./bin"]
