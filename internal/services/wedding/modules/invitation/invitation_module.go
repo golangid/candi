@@ -10,7 +10,7 @@ import (
 
 const (
 	// Invitation service name
-	Invitation constant.Module = iota
+	Invitation constant.Module = "Invitation"
 )
 
 // Module model
@@ -26,7 +26,7 @@ func NewModule(params *base.ModuleParam) *Module {
 	var mod Module
 	mod.restHandler = delivery.NewRestInvitationHandler(params.Middleware)
 	mod.graphqlHandler = delivery.NewGraphQLHandler(params.Middleware)
-	mod.kafkaHandler = delivery.NewKafkaHandler([]string{"test"})
+	mod.kafkaHandler = delivery.NewKafkaHandler([]string{"test", "coba"})
 	return &mod
 }
 
@@ -48,7 +48,7 @@ func (m *Module) GRPCHandler() interfaces.GRPCHandler {
 
 // GraphQLHandler method
 func (m *Module) GraphQLHandler() (name string, resolver interface{}) {
-	return "Invitation", m.graphqlHandler
+	return string(Invitation), m.graphqlHandler
 }
 
 // SubscriberHandler method

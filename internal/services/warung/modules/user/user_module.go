@@ -10,7 +10,7 @@ import (
 
 const (
 	// User service name
-	User constant.Module = iota
+	User constant.Module = "User"
 )
 
 // Module model
@@ -44,7 +44,7 @@ func (m *Module) GRPCHandler() interfaces.GRPCHandler {
 
 // GraphQLHandler method
 func (m *Module) GraphQLHandler() (name string, resolver interface{}) {
-	return "User", nil
+	return string(User), nil
 }
 
 // SubscriberHandler method

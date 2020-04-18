@@ -45,11 +45,12 @@ func (a *App) ServeHTTP() {
 	})
 	for _, route := range httpRoutes {
 		if !strings.Contains(route.Name, "(*Group)") {
-			routes.WriteString(helper.StringGreen(fmt.Sprintf("[ROUTE] %-8s %-30s --> %s\n", route.Method, route.Path, route.Name)))
+			routes.WriteString(helper.StringGreen(fmt.Sprintf("[HTTP-ROUTE] %-8s %-30s --> %s\n", route.Method, route.Path, route.Name)))
 		}
 	}
 	fmt.Print(routes.String())
 
+	a.httpServer.HideBanner = true
 	if err := a.httpServer.Start(fmt.Sprintf(":%d", config.GlobalEnv.HTTPPort)); err != nil {
 		log.Println(err)
 	}

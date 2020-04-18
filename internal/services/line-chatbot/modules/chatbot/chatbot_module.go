@@ -15,7 +15,7 @@ import (
 
 const (
 	// Chatbot service name
-	Chatbot constant.Module = iota
+	Chatbot constant.Module = "Chatbot"
 )
 
 // Module model
@@ -57,7 +57,7 @@ func (m *Module) GRPCHandler() interfaces.GRPCHandler {
 
 // GraphQLHandler method
 func (m *Module) GraphQLHandler() (name string, resolver interface{}) {
-	return "Chatbot", nil
+	return string(Chatbot), nil
 }
 
 // SubscriberHandler method

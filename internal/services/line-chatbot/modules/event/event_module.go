@@ -12,7 +12,7 @@ import (
 
 const (
 	// Event service name
-	Event constant.Module = iota
+	Event constant.Module = "Event"
 )
 
 // Module model
@@ -48,7 +48,7 @@ func (m *Module) GRPCHandler() interfaces.GRPCHandler {
 
 // GraphQLHandler method
 func (m *Module) GraphQLHandler() (name string, resolver interface{}) {
-	return "Event", m.graphqlHandler
+	return string(Event), m.graphqlHandler
 }
 
 // SubscriberHandler method

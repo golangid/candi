@@ -8,6 +8,7 @@ import (
 
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/interfaces"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"github.com/Shopify/sarama"
 )
 
@@ -17,11 +18,13 @@ func (a *App) KafkaConsumer() {
 		return
 	}
 
+	topicInfo := make(map[string][]string)
 	var handlers = make(map[string][]interfaces.SubscriberHandler)
 	for _, m := range a.modules {
 		if h := m.SubscriberHandler(constant.Kafka); h != nil {
 			for _, topic := range h.GetTopics() {
 				handlers[topic] = append(handlers[topic], h) // one same topic consumed by multiple module
+				topicInfo[topic] = append(topicInfo[topic], string(m.Name()))
 			}
 		}
 	}
@@ -29,12 +32,13 @@ func (a *App) KafkaConsumer() {
 		handlers: handlers,
 	}
 
+	println(helper.StringYellow("Kafka consumer is active"))
 	var consumeTopics []string
-	for topic := range handlers {
+	for topic, handlerNames := range topicInfo {
+		print(helper.StringYellow(fmt.Sprintf("[KAFKA-CONSUMER] (topic): %-8s --> (modules): [%s]\n", topic, strings.Join(handlerNames, ", "))))
 		consumeTopics = append(consumeTopics, topic)
 	}
-
-	fmt.Printf("[KAFKA-TOPIC] --> [%s]\n", strings.Join(consumeTopics, "; "))
+	println()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
