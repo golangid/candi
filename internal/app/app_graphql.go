@@ -9,7 +9,9 @@ import (
 
 	graphqlschema "agungdwiprasetyo.com/backend-microservices/api/graphql"
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
+	"agungdwiprasetyo.com/backend-microservices/pkg/wrapper"
 	"github.com/graph-gophers/graphql-go"
+	"github.com/labstack/echo"
 )
 
 // graphQLHandler graphql
@@ -74,4 +76,14 @@ func (h *graphqlHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(responseJSON)
+}
+
+func (h *graphqlHandler) servePlayground(c echo.Context) error {
+	b, err := ioutil.ReadFile("web/graphql_playground.html")
+	if err != nil {
+		return wrapper.NewHTTPResponse(http.StatusNotFound, err.Error()).JSON(c.Response())
+	}
+
+	_, err = c.Response().Write(b)
+	return err
 }

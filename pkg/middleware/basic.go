@@ -13,6 +13,7 @@ import (
 func (m *mw) BasicAuth() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			c.Response().Header().Set("WWW-Authenticate", `Basic realm=""`)
 			authorizations := strings.Split(c.Request().Header.Get("Authorization"), " ")
 			if len(authorizations) != 2 {
 				return wrapper.NewHTTPResponse(http.StatusUnauthorized, "Unauthorized").JSON(c.Response())
