@@ -63,10 +63,10 @@ func New(service factory.ServiceFactory) *App {
 	}
 
 	if config.GlobalEnv.UseGraphQL {
-		gqlHandler := appInstance.graphqlHandler()
+		gqlHandler := appInstance.graphqlHandler(mw)
 		appInstance.httpServer.Add(http.MethodGet, "/graphql", echo.WrapHandler(gqlHandler))
 		appInstance.httpServer.Add(http.MethodPost, "/graphql", echo.WrapHandler(gqlHandler))
-		appInstance.httpServer.GET("/graphql/playground", gqlHandler.servePlayground, mw.BasicAuth())
+		appInstance.httpServer.GET("/graphql/playground", gqlHandler.servePlayground)
 	}
 
 	if config.GlobalEnv.UseKafka {

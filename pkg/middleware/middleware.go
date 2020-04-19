@@ -11,7 +11,7 @@ import (
 
 // Middleware abstraction
 type Middleware interface {
-	BasicAuth() echo.MiddlewareFunc
+	BasicAuth(string) error
 	ValidateBearer() echo.MiddlewareFunc
 	GRPCAuth(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error)
 	GRPCAuthStream(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error)
