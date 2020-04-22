@@ -75,7 +75,7 @@ func (m *mw) grpcLog(startTime time.Time, err error, fullMethod string, reqType 
 		status = "ERROR"
 	}
 
-	fmt.Fprintf(os.Stdout, "%s[USER-SERVICE-%s]%s :%d %v | %s %-5s %s | %13v | %s\n",
+	fmt.Fprintf(os.Stdout, "%s[%s]%s :%d %v | %s %-5s %s | %13v | %s\n",
 		helper.Cyan, reqType, helper.Reset, config.GlobalEnv.GRPCPort,
 		end.Format("2006/01/02 - 15:04:05"),
 		statusColor, status, helper.Reset,

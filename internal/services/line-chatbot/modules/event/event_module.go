@@ -5,6 +5,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/event/delivery/graphqlhandler"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/event/delivery/grpchandler"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/event/repository"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/event/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
@@ -18,6 +19,7 @@ const (
 // Module model
 type Module struct {
 	graphqlHandler *graphqlhandler.GraphQLHandler
+	grpcHandler    *grpchandler.GRPCHandler
 }
 
 // NewModule module constructor
@@ -27,6 +29,7 @@ func NewModule(params *base.ModuleParam) *Module {
 
 	var mod Module
 	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(params.Middleware, uc)
+	mod.grpcHandler = grpchandler.NewGRPCHandler(uc)
 	return &mod
 }
 
@@ -43,7 +46,7 @@ func (m *Module) RestHandler(version string) (d interfaces.EchoRestHandler) {
 
 // GRPCHandler method
 func (m *Module) GRPCHandler() interfaces.GRPCHandler {
-	return nil
+	return m.grpcHandler
 }
 
 // GraphQLHandler method
