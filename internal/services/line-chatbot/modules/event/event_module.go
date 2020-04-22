@@ -4,7 +4,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/interfaces"
-	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/event/delivery"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/event/delivery/graphqlhandler"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/event/repository"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/event/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
@@ -17,7 +17,7 @@ const (
 
 // Module model
 type Module struct {
-	graphqlHandler *delivery.GraphQLHandler
+	graphqlHandler *graphqlhandler.GraphQLHandler
 }
 
 // NewModule module constructor
@@ -26,7 +26,7 @@ func NewModule(params *base.ModuleParam) *Module {
 	uc := usecase.NewEventUsecase(repo)
 
 	var mod Module
-	mod.graphqlHandler = delivery.NewGraphQLHandler(params.Middleware, uc)
+	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(params.Middleware, uc)
 	return &mod
 }
 
