@@ -1,2 +1,4 @@
 syntax="proto3";
 package profile;
+
+option go_package = "api/proto/line-chatbot/profile";
