@@ -19,7 +19,7 @@ build: prepare
 run: build
 	./bin
 
-docker: prepare
+docker:
 	docker build --build-arg SERVICE_NAME=$(SERVICE_NAME) -t $(SERVICE_NAME):latest .
 
 run-container:

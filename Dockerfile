@@ -2,20 +2,22 @@ FROM golang:1.12.7-alpine3.10
 
 ARG SERVICE_NAME
 ARG LOG_DIR=/${SERVICE_NAME}/logs
-ARG BUILD_PACKAGES="git curl make g++ tzdata"
+ARG BUILD_PACKAGES="git curl make g++ tzdata build-base autoconf automake libtool"
 
 RUN mkdir -p ${LOG_DIR}
 
 WORKDIR /usr/app
-
 ENV SRC_DIR=/usr/app/
-
 ENV LOG_FILE_LOCATION=${LOG_DIR}/app.log
 
 COPY . $SRC_DIR
 
+ENV PROTOBUF_TAG=v3.7.1
+RUN /usr/app/scripts/install_protoc.sh
+
 RUN apk update && apk add --no-cache $BUILD_PACKAGES \
   && go mod download \
+  && make prepare ${SERVICE_NAME} \
   && CGO_ENABLED=0 GOOS=linux go build -ldflags '-w -s' -a -o bin .
 
 FROM alpine:latest  
