@@ -12,7 +12,6 @@ ENV LOG_FILE_LOCATION=${LOG_DIR}/app.log
 
 COPY . $SRC_DIR
 
-ENV PROTOBUF_TAG=v3.7.1
 RUN /usr/app/scripts/install_protoc.sh
 
 RUN apk update && apk add --no-cache $BUILD_PACKAGES \
