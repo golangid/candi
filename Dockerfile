@@ -12,10 +12,10 @@ ENV LOG_FILE_LOCATION=${LOG_DIR}/app.log
 
 COPY . $SRC_DIR
 
+RUN apk update && apk add --no-cache $BUILD_PACKAGES
 RUN /usr/app/scripts/install_protoc.sh
-
-RUN apk update && apk add --no-cache $BUILD_PACKAGES \
-  && go mod download \
+RUN go mod download \
+  && go get -u github.com/golang/protobuf/protoc-gen-go \
   && make prepare ${SERVICE_NAME} \
   && CGO_ENABLED=0 GOOS=linux go build -ldflags '-w -s' -a -o bin .
 
