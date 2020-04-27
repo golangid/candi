@@ -13,9 +13,29 @@ ENV LOG_FILE_LOCATION=${LOG_DIR}/app.log
 COPY . $SRC_DIR
 
 RUN apk update && apk add --no-cache $BUILD_PACKAGES
-RUN /usr/app/scripts/install_protoc.sh
+
+# Install protoc
+ENV PROTOBUF_URL https://github.com/google/protobuf/releases/download/v3.7.1/protobuf-cpp-3.7.1.tar.gz
+RUN curl -L -o /tmp/protobuf.tar.gz $PROTOBUF_URL
+WORKDIR /tmp/
+RUN tar xvzf protobuf.tar.gz
+WORKDIR /tmp/protobuf-3.7.1
+RUN mkdir /export
+RUN ./autogen.sh && \
+    ./configure --prefix=/export && \
+    make -j 3 && \
+    make check && \
+    make install
+
+# Install protoc-gen-go
+RUN go get github.com/golang/protobuf/protoc-gen-go
+RUN cp /go/bin/protoc-gen-go /export/bin/
+
+# Export dependencies
+RUN cp /usr/lib/libstdc++* /export/lib/
+RUN cp /usr/lib/libgcc_s* /export/lib/
+
 RUN go mod download \
-  && go get -u github.com/golang/protobuf/protoc-gen-go \
   && make prepare ${SERVICE_NAME} \
   && CGO_ENABLED=0 GOOS=linux go build -ldflags '-w -s' -a -o bin .
 
