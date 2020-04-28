@@ -1,8 +1,6 @@
 syntax="proto3";
 package event;
 
-option go_package = "api/proto/line-chatbot/event";
-
 service EventHandler {
 	rpc FindAll (Filter) returns (ResponseFindAll);
 }
