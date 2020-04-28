@@ -6,6 +6,3 @@ main_service.go
 
 *.pem
 *.key
-
-# proto files
-*.pb.go
