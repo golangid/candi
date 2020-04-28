@@ -8,6 +8,9 @@ endif
 
 PROTO_FILES := $(shell find api/proto/$(SERVICE_NAME) -name '*.proto')
 
+init:
+	sh scripts/create_service.sh $(SERVICE_NAME)
+
 prepare:
 	ln -sf cmd/$(SERVICE_NAME)/main.go main_service.go
 	$(foreach proto_file, $(PROTO_FILES),\
