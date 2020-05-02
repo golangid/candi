@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"reflect"
 
@@ -69,6 +70,14 @@ func (h *graphqlHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.Unmarshal(body, &params); err != nil {
 		params.Query = string(body)
+	}
+
+	if ip := r.Header.Get(echo.HeaderXRealIP); ip == "" {
+		ip = r.Header.Get(echo.HeaderXForwardedFor)
+		if ip == "" {
+			ip, _, _ = net.SplitHostPort(r.RemoteAddr)
+		}
+		r.Header.Set(echo.HeaderXRealIP, ip)
 	}
 
 	ctx := context.WithValue(r.Context(), shared.ContextKey("headers"), r.Header)

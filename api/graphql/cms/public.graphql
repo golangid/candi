@@ -1,0 +1,10 @@
+################### PublicModule Module Area
+type PublicModule {
+    getHomePage(): Homepage
+}
+
+type Homepage {
+    content: String!
+    skills: [String!]!
+    footer: String!
+}
