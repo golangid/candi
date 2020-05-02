@@ -21,3 +21,11 @@ make init {{service_name}}
 ```
 make run {{service_name}}
 ```
+
+## Services
+
+* **[Line Chatbot]**(https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/line-chatbot#line-chatbot-service)
+
+* **Warung Service**
+* **Wedding Service**
+* **CMS** (TODO)
