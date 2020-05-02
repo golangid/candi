@@ -17,7 +17,7 @@ RUN apk update && apk add --no-cache $BUILD_PACKAGES \
   && CGO_ENABLED=0 GOOS=linux go build -ldflags '-w -s' -a -o bin .
 
 FROM alpine:latest  
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /root/
 RUN mkdir -p /root/api
 RUN mkdir -p /root/config/key
