@@ -72,13 +72,14 @@ func (h *graphqlHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		params.Query = string(body)
 	}
 
-	if ip := r.Header.Get(echo.HeaderXRealIP); ip == "" {
-		ip = r.Header.Get(echo.HeaderXForwardedFor)
+	ip := r.Header.Get(echo.HeaderXForwardedFor)
+	if ip == "" {
+		ip = r.Header.Get(echo.HeaderXRealIP)
 		if ip == "" {
 			ip, _, _ = net.SplitHostPort(r.RemoteAddr)
 		}
-		r.Header.Set(echo.HeaderXRealIP, ip)
 	}
+	r.Header.Set(echo.HeaderXRealIP, ip)
 
 	ctx := context.WithValue(r.Context(), shared.ContextKey("headers"), r.Header)
 	response := h.schema.Exec(ctx, params.Query, params.OperationName, params.Variables)
