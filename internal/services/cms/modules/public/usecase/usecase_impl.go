@@ -38,3 +38,19 @@ func (uc *publicUsecaseImpl) GetHomePage(ctx context.Context) *domain.HomePage {
 		Footer: "test",
 	}
 }
+
+func (uc *publicUsecaseImpl) GetAllVisitor(ctx context.Context, filter *shared.Filter) (visitors []domain.Visitor, meta *shared.Meta, err error) {
+	filter.CalculateOffset()
+
+	count := uc.repo.Visitor.Count(ctx, filter)
+	repoRes := <-uc.repo.Visitor.FindAll(ctx, filter)
+	if repoRes.Error != nil {
+		err = repoRes.Error
+		return
+	}
+
+	visitors = repoRes.Data.([]domain.Visitor)
+	meta = shared.NewMeta(int(filter.Page), int(filter.Limit), <-count)
+
+	return
+}

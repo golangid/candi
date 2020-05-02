@@ -37,3 +37,25 @@ func (h *GraphQLHandler) GetHomePage(ctx context.Context) (*HomepageResolver, er
 		Footer:  homepage.Footer,
 	}, nil
 }
+
+// GetAllVisitor handler
+func (h *GraphQLHandler) GetAllVisitor(ctx context.Context, filter struct{ *shared.Filter }) (*VisitorListResolver, error) {
+	h.basicAuth(ctx)
+	visitors, meta, err := h.uc.GetAllVisitor(ctx, filter.Filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var visitorResolvers []*VisitorResolver
+	for _, visitor := range visitors {
+		visitorResolvers = append(visitorResolvers, &VisitorResolver{
+			v: visitor,
+		})
+	}
+
+	resolvers := VisitorListResolver{
+		m:      meta,
+		events: visitorResolvers,
+	}
+	return &resolvers, nil
+}

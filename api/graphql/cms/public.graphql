@@ -1,10 +1,24 @@
 ################### PublicModule Module Area
 type PublicModule {
     getHomePage(): Homepage
+    getAllVisitor(filter: Filter!): Visitors
 }
 
 type Homepage {
     content: String!
     skills: [String!]!
     footer: String!
+}
+
+type Visitors {
+    meta: Meta
+    data: [Visitor]!
+}
+
+type Visitor {
+    id: String!
+    ipAddress: String!
+    userAgent: String!
+    createdAt: String!
+    modifiedAt: String!
 }
