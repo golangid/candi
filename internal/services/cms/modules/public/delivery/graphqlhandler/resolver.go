@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/internal/services/cms/modules/public/domain"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 )
 
@@ -39,8 +40,8 @@ func (r *VisitorResolver) UserAgent() string {
 	return r.v.UserAgent
 }
 func (r *VisitorResolver) CreatedAt() string {
-	return r.v.CreatedAt.Format(time.RFC3339)
+	return r.v.CreatedAt.In(helper.AsiaJakartaLocalTime).Format(time.RFC3339)
 }
 func (r *VisitorResolver) ModifiedAt() string {
-	return r.v.ModifiedAt.Format(time.RFC3339)
+	return r.v.ModifiedAt.In(helper.AsiaJakartaLocalTime).Format(time.RFC3339)
 }

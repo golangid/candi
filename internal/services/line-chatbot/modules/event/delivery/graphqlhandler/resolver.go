@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/event/domain"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 )
 
@@ -22,7 +23,7 @@ func (r *EventResolver) Type() string {
 	return r.e.Type
 }
 func (r *EventResolver) Timestamp() string {
-	return r.e.Timestamp.Format(time.RFC3339)
+	return r.e.Timestamp.In(helper.AsiaJakartaLocalTime).Format(time.RFC3339)
 }
 func (r *EventResolver) SourceId() string {
 	return r.e.SourceID

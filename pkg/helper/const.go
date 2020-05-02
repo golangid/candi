@@ -1,6 +1,9 @@
 package helper
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 const (
 	// TimeZoneAsia constanta
@@ -61,4 +64,11 @@ var (
 	KByte = Byte * 1024
 	// MByte ...
 	MByte = KByte * 1024
+
+	// AsiaJakartaLocalTime location
+	AsiaJakartaLocalTime *time.Location
 )
+
+func init() {
+	AsiaJakartaLocalTime, _ = time.LoadLocation(TimeZoneAsia)
+}
