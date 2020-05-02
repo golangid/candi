@@ -26,6 +26,8 @@ docker: prepare
 	docker build --build-arg SERVICE_NAME=$(SERVICE_NAME) -t $(SERVICE_NAME):latest .
 
 run-container:
+	docker rm -f $(SERVICE_NAME)
+	docker rmi $(docker images | grep "^<none>" | awk "{print $3}")
 	docker run --name=$(SERVICE_NAME) --network="host" -d $(SERVICE_NAME)
 
 clear:
