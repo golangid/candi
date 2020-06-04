@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package upload;
+
+service UploadService {
+    rpc Upload(stream Chunk) returns (UploadStatus) {}
+}
+
+message Chunk {
+    bytes Content = 1;
+    int64 TotalSize = 2;
+    int64 Received = 3;
+}
+
+enum UploadStatusCode {
+    Unknown = 0;
+    Ok = 1;
+    Failed = 2;
+}
+
+message UploadStatus {
+    string Message = 1;
+    string File = 2;
+    int64 Size = 3;
+    UploadStatusCode Code = 4;
+}

@@ -28,3 +28,4 @@ make run {{service_name}}
 * **Warung Service**
 * **Wedding Service**
 * **CMS**
+* **Storage Service**

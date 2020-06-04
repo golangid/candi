@@ -114,7 +114,7 @@ func Init(ctx context.Context, rootApp string) *Config {
 
 func loadBaseEnv(appLocation string) {
 	// load main .env and additional .env in app
-	if err := godotenv.Load(".env", appLocation+"/.env"); err != nil {
+	if err := godotenv.Overload(".env", appLocation+"/.env"); err != nil {
 		log.Println(err)
 	}
 
