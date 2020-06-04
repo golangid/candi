@@ -22,10 +22,16 @@ make init {{service_name}}
 make run {{service_name}}
 ```
 
+
+### Create docker image a service
+```
+make docker {{service_name}}
+```
+
 ## Services
 
 * [**Line Chatbot**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/line-chatbot#line-chatbot-service)
-* **Warung Service**
-* **Wedding Service**
-* **CMS**
-* **Storage Service**
+* [**Warung Service**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/warung)
+* [**Wedding Service**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/wedding)
+* [**CMS**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/cms)
+* [**Storage Service**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/storage-service)
