@@ -8,7 +8,7 @@ import (
 
 	pb "agungdwiprasetyo.com/backend-microservices/api/proto/storage-service"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
-	"agungdwiprasetyo.com/backend-microservices/pkg/shared/logger"
+	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
