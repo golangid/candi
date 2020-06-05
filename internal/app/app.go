@@ -15,6 +15,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
+	_ "agungdwiprasetyo.com/backend-microservices/pkg/shared/logger"
 	"github.com/Shopify/sarama"
 	"github.com/labstack/echo"
 	"google.golang.org/grpc"

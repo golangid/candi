@@ -25,12 +25,10 @@ require (
 	github.com/valyala/fasttemplate v1.1.0 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.mongodb.org/mongo-driver v1.2.1
-	golang.org/x/lint v0.0.0-20190313153728-d0100b6bd8b3 // indirect
-	golang.org/x/net v0.0.0-20190522155817-f3200d17e092
+	go.uber.org/zap v1.15.0
+	golang.org/x/net v0.0.0-20190620200207-3b0461eec859
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
 	golang.org/x/sys v0.0.0-20191228213918-04cbcbbfeed8 // indirect
-	golang.org/x/tools v0.0.0-20190524140312-2c0ae7006135 // indirect
 	google.golang.org/grpc v1.27.0
 	gopkg.in/eapache/go-resiliency.v1 v1.2.0
-	honnef.co/go/tools v0.0.0-20190523083050-ea95bdfd59fc // indirect
 )
