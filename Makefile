@@ -13,14 +13,16 @@ init:
 
 prepare:
 	ln -sf cmd/$(SERVICE_NAME)/main.go main_service.go
-	$(foreach proto_file, $(PROTO_FILES),\
-	protoc -I . $(proto_file) --go_out=plugins=grpc:.;)
 
 build: prepare
 	go build -o bin
 
 run: build
 	./bin
+
+proto:
+	$(foreach proto_file, $(PROTO_FILES),\
+	protoc -I . $(proto_file) --go_out=plugins=grpc:.;)
 
 docker: prepare
 	docker build --build-arg SERVICE_NAME=$(SERVICE_NAME) -t $(SERVICE_NAME):latest .
