@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package upload;
+package storage;
 
-service UploadService {
+service StorageService {
     rpc Upload(stream Chunk) returns (UploadStatus) {}
 }
 
@@ -12,7 +12,7 @@ message Chunk {
     int64 Received = 3;
 }
 
-enum UploadStatusCode {
+enum StatusCode {
     Unknown = 0;
     Ok = 1;
     Failed = 2;
@@ -22,5 +22,5 @@ message UploadStatus {
     string Message = 1;
     string File = 2;
     int64 Size = 3;
-    UploadStatusCode Code = 4;
+    StatusCode Code = 4;
 }

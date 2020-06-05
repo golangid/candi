@@ -28,11 +28,11 @@ func NewGRPCHandler(uc usecase.StorageUsecase) *GRPCHandler {
 
 // Register grpc server
 func (h *GRPCHandler) Register(server *grpc.Server) {
-	pb.RegisterUploadServiceServer(server, h)
+	pb.RegisterStorageServiceServer(server, h)
 }
 
 // Upload method
-func (h *GRPCHandler) Upload(stream pb.UploadService_UploadServer) (err error) {
+func (h *GRPCHandler) Upload(stream pb.StorageService_UploadServer) (err error) {
 
 	ctx := stream.Context()
 	meta, ok := metadata.FromIncomingContext(ctx)
@@ -53,7 +53,7 @@ func (h *GRPCHandler) Upload(stream pb.UploadService_UploadServer) (err error) {
 	folder := fields[0]
 
 	var contentType string
-	if u := meta.Get("content_type"); len(u) > 0 {
+	if u := meta.Get("contentType"); len(u) > 0 {
 		contentType = u[0]
 	}
 
@@ -86,7 +86,7 @@ func (h *GRPCHandler) Upload(stream pb.UploadService_UploadServer) (err error) {
 
 	err = stream.SendAndClose(&pb.UploadStatus{
 		Message: "Stream file success",
-		Code:    pb.UploadStatusCode_Ok,
+		Code:    pb.StatusCode_Ok,
 		File:    "url" + "/" + folder + "/" + fileName,
 		Size:    int64(len(buff)),
 	})
