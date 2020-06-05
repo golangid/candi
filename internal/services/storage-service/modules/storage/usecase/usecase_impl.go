@@ -8,6 +8,7 @@ import (
 
 	"agungdwiprasetyo.com/backend-microservices/internal/services/storage-service/modules/storage/domain"
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
+	"agungdwiprasetyo.com/backend-microservices/pkg/shared/logger"
 	"github.com/minio/minio-go/v6"
 )
 
@@ -40,6 +41,7 @@ func (uc *storageUsecaseImpl) Upload(ctx context.Context, buff []byte, metadata 
 		n, err := uc.minioClient.PutObject("tong", metadata.Filename, bytes.NewReader(buff), -1,
 			minio.PutObjectOptions{ContentType: metadata.ContentType})
 		if err != nil {
+			logger.LogE(err.Error())
 			panic(err)
 		}
 
