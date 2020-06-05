@@ -9,6 +9,7 @@ import (
 	"reflect"
 
 	graphqlschema "agungdwiprasetyo.com/backend-microservices/api/graphql"
+	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 	"agungdwiprasetyo.com/backend-microservices/pkg/wrapper"
@@ -42,8 +43,8 @@ func (a *App) graphqlHandler(mw middleware.Middleware) *graphqlHandler {
 	schema := graphql.MustParseSchema(gqlSchema, resolver,
 		graphql.UseStringDescriptions(),
 		graphql.UseFieldResolvers(),
-		graphql.Logger(&shared.PanicLogger{}),
-		graphql.Tracer(&shared.NoopTracer{}))
+		graphql.Logger(&logger.PanicLogger{}),
+		graphql.Tracer(&logger.NoopTracer{}))
 
 	return &graphqlHandler{
 		schema: schema,
