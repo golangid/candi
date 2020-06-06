@@ -223,8 +223,25 @@ func loadBaseEnv(appLocation string) {
 	}
 }
 
-// Exit release all connection, think as deferred function in main
+// Exit close all connection
 func (c *Config) Exit(ctx context.Context) {
+	if useMongo {
+		// close mongo connection
+		c.MongoRead.Client().Disconnect(ctx)
+		c.MongoWrite.Client().Disconnect(ctx)
+	}
+
+	if useRedis {
+		// close redis connection
+		c.RedisReadPool.Close()
+		c.RedisWritePool.Close()
+	}
+
+	if useSQL {
+		// close sql connection
+		c.SQLRead.Close()
+		c.SQLWrite.Close()
+	}
 
 	log.Println("\x1b[33;1mConfig: Success close all connection\x1b[0m")
 }
