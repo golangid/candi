@@ -206,18 +206,20 @@ func loadBaseEnv(appLocation string) {
 	}
 
 	// kafka environment
-	kafkaBrokers, ok := os.LookupEnv("KAFKA_BROKERS")
-	if !ok {
-		panic("missing KAFKA_BROKERS environment")
-	}
-	GlobalEnv.Kafka.Brokers = strings.Split(kafkaBrokers, ",")
-	GlobalEnv.Kafka.ClientID, ok = os.LookupEnv("KAFKA_CLIENT_ID")
-	if !ok {
-		panic("missing KAFKA_CLIENT_ID environment")
-	}
-	GlobalEnv.Kafka.ConsumerGroup, ok = os.LookupEnv("KAFKA_CONSUMER_GROUP")
-	if !ok {
-		panic("missing KAFKA_CONSUMER_GROUP environment")
+	if GlobalEnv.UseKafka {
+		kafkaBrokers, ok := os.LookupEnv("KAFKA_BROKERS")
+		if !ok {
+			panic("kafka consumer is active, missing KAFKA_BROKERS environment")
+		}
+		GlobalEnv.Kafka.Brokers = strings.Split(kafkaBrokers, ",")
+		GlobalEnv.Kafka.ClientID, ok = os.LookupEnv("KAFKA_CLIENT_ID")
+		if !ok {
+			panic("kafka consumer is active, missing KAFKA_CLIENT_ID environment")
+		}
+		GlobalEnv.Kafka.ConsumerGroup, ok = os.LookupEnv("KAFKA_CONSUMER_GROUP")
+		if !ok {
+			panic("kafka consumer is active, missing KAFKA_CONSUMER_GROUP environment")
+		}
 	}
 }
 
