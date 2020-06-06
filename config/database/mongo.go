@@ -16,9 +16,13 @@ func InitMongoDB(ctx context.Context, isUse bool) (read *mongo.Database, write *
 		return
 	}
 
+	dbName, ok := os.LookupEnv("MONGODB_NAME")
+	if !ok {
+		panic("missing MONGODB_NAME environment")
+	}
+
 	// init write mongodb
 	hostWrite := os.Getenv("MONGODB_HOST_WRITE")
-	dbNameWrite := os.Getenv("MONGODB_NAME_WRITE")
 	client, err := mongo.NewClient(options.Client().ApplyURI(hostWrite))
 	if err != nil {
 		panic(fmt.Errorf("mongo: %v, conn: %s", err, hostWrite))
@@ -26,11 +30,10 @@ func InitMongoDB(ctx context.Context, isUse bool) (read *mongo.Database, write *
 	if err := client.Connect(ctx); err != nil {
 		panic(fmt.Errorf("mongo: %v, conn: %s", err, hostWrite))
 	}
-	write = client.Database(dbNameWrite)
+	write = client.Database(dbName)
 
 	// init read mongodb
 	hostRead := os.Getenv("MONGODB_HOST_READ")
-	dbNameRead := os.Getenv("MONGODB_NAME_READ")
 	client, err = mongo.NewClient(options.Client().ApplyURI(hostRead))
 	if err != nil {
 		panic(fmt.Errorf("mongo: %v, conn: %s", err, hostRead))
@@ -38,7 +41,7 @@ func InitMongoDB(ctx context.Context, isUse bool) (read *mongo.Database, write *
 	if err := client.Connect(ctx); err != nil {
 		panic(fmt.Errorf("mongo: %v, conn: %s", err, hostRead))
 	}
-	read = client.Database(dbNameRead)
+	read = client.Database(dbName)
 
 	log.Println("Success load Mongo connection")
 	return
