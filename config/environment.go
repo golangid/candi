@@ -39,9 +39,6 @@ type Env struct {
 	// BasicAuthPassword config
 	BasicAuthPassword string
 
-	// GRPC auth key
-	GRPCAuthKey string
-
 	// CacheExpired config
 	CacheExpired time.Duration
 
@@ -139,11 +136,6 @@ func loadBaseEnv(appLocation string, targetEnv *Env) {
 	env.BasicAuthPassword, ok = os.LookupEnv("BASIC_AUTH_PASS")
 	if !ok {
 		panic("missing BASIC_AUTH_PASS environment")
-	}
-
-	env.GRPCAuthKey, ok = os.LookupEnv("GRPC_AUTH_KEY")
-	if !ok {
-		panic("missing GRPC_AUTH_KEY environment")
 	}
 
 	// kafka environment

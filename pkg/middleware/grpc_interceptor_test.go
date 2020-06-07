@@ -21,7 +21,7 @@ func (r *recvWrapper) Context() context.Context {
 func TestMiddleware_GRPCAuth(t *testing.T) {
 
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
-		md := metadata.Pairs("authorization", "da1c25d8-37c8-41b1-afe2-42dd4825bfea")
+		md := metadata.Pairs("authorization", "Basic dXNlcjpkYTFjMjVkOC0zN2M4LTQxYjEtYWZlMi00MmRkNDgyNWJmZWE=")
 		ctx := metadata.NewIncomingContext(context.Background(), md)
 
 		unaryInfo := &grpc.UnaryServerInfo{
@@ -32,7 +32,7 @@ func TestMiddleware_GRPCAuth(t *testing.T) {
 		}
 
 		mw := &mw{
-			grpcAuthKey: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
+			username: "user", password: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
 		_, err := mw.GRPCAuth(ctx, "testing", unaryInfo, unaryHandler)
 		assert.NoError(t, err)
@@ -50,7 +50,7 @@ func TestMiddleware_GRPCAuth(t *testing.T) {
 		}
 
 		mw := &mw{
-			grpcAuthKey: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
+			username: "user", password: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
 		_, err := mw.GRPCAuth(ctx, "testing", unaryInfo, unaryHandler)
 		assert.Error(t, err)
@@ -60,7 +60,7 @@ func TestMiddleware_GRPCAuth(t *testing.T) {
 func TestMiddleware_GRPCAuthStream(t *testing.T) {
 
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
-		md := metadata.Pairs("authorization", "da1c25d8-37c8-41b1-afe2-42dd4825bfea")
+		md := metadata.Pairs("authorization", "Basic dXNlcjpkYTFjMjVkOC0zN2M4LTQxYjEtYWZlMi00MmRkNDgyNWJmZWE=")
 		ctx := metadata.NewIncomingContext(context.Background(), md)
 
 		stream := &recvWrapper{
@@ -74,7 +74,7 @@ func TestMiddleware_GRPCAuthStream(t *testing.T) {
 		}
 
 		mw := &mw{
-			grpcAuthKey: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
+			username: "user", password: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
 		err := mw.GRPCAuthStream("test", stream, streamInfo, streamHandler)
 		assert.NoError(t, err)
@@ -94,14 +94,14 @@ func TestMiddleware_GRPCAuthStream(t *testing.T) {
 		}
 
 		mw := &mw{
-			grpcAuthKey: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
+			username: "user", password: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
 		err := mw.GRPCAuthStream("test", stream, streamInfo, streamHandler)
 		assert.Error(t, err)
 	})
 
 	t.Run("Testcase #3: Negative, multiple authorization keys", func(t *testing.T) {
-		md := metadata.Pairs("authorization", "da1c25d8-37c8-41b1-afe2-42dd4825bfea", "authorization", "double")
+		md := metadata.Pairs("authorization", "Basic dXNlcjpkYTFjMjVkOC0zN2M4LTQxYjEtYWZlMi00MmRkNDgyNWJmZWE=", "authorization", "double")
 		ctx := metadata.NewIncomingContext(context.Background(), md)
 
 		stream := &recvWrapper{
@@ -115,7 +115,7 @@ func TestMiddleware_GRPCAuthStream(t *testing.T) {
 		}
 
 		mw := &mw{
-			grpcAuthKey: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
+			username: "user", password: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
 		err := mw.GRPCAuthStream("test", stream, streamInfo, streamHandler)
 		assert.Error(t, err)

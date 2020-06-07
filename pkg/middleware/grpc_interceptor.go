@@ -58,8 +58,8 @@ func (m *mw) validateGrpcAuth(ctx context.Context) error {
 	}
 
 	authorization := authorizationMap[0]
-	if authorization != m.grpcAuthKey {
-		return grpc.Errorf(codes.Unauthenticated, "Invalid authorization")
+	if err := m.BasicAuth(authorization); err != nil {
+		return grpc.Errorf(codes.Unauthenticated, err.Error())
 	}
 
 	return nil
