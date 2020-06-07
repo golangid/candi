@@ -1,15 +1,17 @@
-package module
+package main
+
+const moduleMainTemplate = `package {{$.module}}
 
 import (
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/interfaces"
-	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
+	"{{$.PackageName}}/internal/factory/base"
+	"{{$.PackageName}}/internal/factory/constant"
+	"{{$.PackageName}}/internal/factory/interfaces"
+	"{{$.PackageName}}/pkg/helper"
 )
 
 const (
 	// Name service name
-	Name constant.Module = "module"
+	Name constant.Module = "{{$.module}}"
 )
 
 // Module model
@@ -60,4 +62,12 @@ func (m *Module) SubscriberHandler(subsType constant.Subscriber) interfaces.Subs
 // Name get module name
 func (m *Module) Name() constant.Module {
 	return Name
+}
+
+`
+
+const defaultFile = `package {{$.packageName}}`
+
+func defaultDataSource(fileName string) []byte {
+	return loadTemplate(defaultFile, map[string]string{"packageName": fileName})
 }

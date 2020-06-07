@@ -1,18 +1,20 @@
 package main
 
+const cmdMainTemplate = `package main
+
 import (
 	"context"
 	"fmt"
 	"runtime/debug"
 	"time"
 
-	"agungdwiprasetyo.com/backend-microservices/config"
-	"agungdwiprasetyo.com/backend-microservices/internal/app"
-	service "agungdwiprasetyo.com/backend-microservices/scripts/service_base/service_template" // change to service location in internal package
+	"{{.PackageName}}/config"
+	"{{.PackageName}}/internal/app"
+	service "{{.PackageName}}/internal/services/{{.ServiceName}}"
 )
 
 const (
-	serviceName = "service"
+	serviceName = "{{.ServiceName}}"
 )
 
 func main() {
@@ -31,3 +33,5 @@ func main() {
 	srv := service.NewService(cfg, serviceName)
 	app.New(srv).Run(ctx)
 }
+
+`

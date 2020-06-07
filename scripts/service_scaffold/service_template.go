@@ -1,10 +1,15 @@
-package service
+package main
+
+const serviceMainTemplate = `package service
 
 import (
-	"agungdwiprasetyo.com/backend-microservices/config"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
+	"{{.PackageName}}/config"
+	"{{.PackageName}}/internal/factory"
+	"{{.PackageName}}/internal/factory/base"
+	"{{.PackageName}}/internal/factory/constant"
+{{- range $module := .Modules}}
+	"{{$.PackageName}}/internal/services/{{$.ServiceName}}/modules/{{$module}}"
+{{- end }}
 )
 
 // Service model
@@ -29,10 +34,16 @@ func (s *Service) GetConfig() *config.Config {
 
 // Modules method
 func (s *Service) Modules(params *base.ModuleParam) []factory.ModuleFactory {
-	return []factory.ModuleFactory{}
+	return []factory.ModuleFactory{
+		{{- range $module := .Modules}}
+			{{$module}}.NewModule(params),
+		{{- end }}
+	}
 }
 
 // Name method
 func (s *Service) Name() constant.Service {
 	return s.name
 }
+
+`
