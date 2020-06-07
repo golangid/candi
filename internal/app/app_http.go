@@ -51,7 +51,7 @@ func (a *App) ServeHTTP() {
 	fmt.Print(routes.String())
 
 	a.httpServer.HideBanner = true
-	if err := a.httpServer.Start(fmt.Sprintf(":%d", config.GlobalEnv.HTTPPort)); err != nil {
+	if err := a.httpServer.Start(fmt.Sprintf(":%d", config.GlobalEnv().HTTPPort)); err != nil {
 		log.Println(err)
 	}
 }

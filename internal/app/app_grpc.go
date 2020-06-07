@@ -15,7 +15,7 @@ func (a *App) ServeGRPC() {
 		return
 	}
 
-	grpcPort := fmt.Sprintf(":%d", config.GlobalEnv.GRPCPort)
+	grpcPort := fmt.Sprintf(":%d", config.GlobalEnv().GRPCPort)
 	listener, err := net.Listen("tcp", grpcPort)
 	if err != nil {
 		panic(err)

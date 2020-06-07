@@ -27,8 +27,8 @@ type mw struct {
 func NewMiddleware(cfg *config.Config) Middleware {
 	return &mw{
 		tokenUtil:   token.NewJWT(cfg.PublicKey, cfg.PrivateKey),
-		username:    config.GlobalEnv.BasicAuthUsername,
-		password:    config.GlobalEnv.BasicAuthPassword,
-		grpcAuthKey: config.GlobalEnv.GRPCAuthKey,
+		username:    config.GlobalEnv().BasicAuthUsername,
+		password:    config.GlobalEnv().BasicAuthPassword,
+		grpcAuthKey: config.GlobalEnv().GRPCAuthKey,
 	}
 }
