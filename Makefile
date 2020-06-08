@@ -6,8 +6,6 @@ ifndef SERVICE_NAME
 $(error SERVICE_NAME is not set)
 endif
 
-PROTO_FILES := $(shell find api/proto/$(SERVICE_NAME) -name '*.proto')
-
 prepare:
 	ln -sf cmd/$(SERVICE_NAME)/main.go main_service.go
 
@@ -18,7 +16,7 @@ run: build
 	./bin
 
 proto:
-	$(foreach proto_file, $(PROTO_FILES),\
+	$(foreach proto_file, $(shell find api/$(SERVICE_NAME)/proto -name '*.proto'),\
 	protoc -I . $(proto_file) --go_out=plugins=grpc:.;)
 
 docker: prepare
