@@ -1,4 +1,4 @@
-package jsonschema
+package api
 
 import (
 	"encoding/json"
@@ -18,8 +18,8 @@ var notShowErrorListType = map[string]bool{
 }
 var jsonSchemaList = map[string]*gojsonschema.Schema{}
 
-// Load all schema from given path
-func Load(serviceName string) error {
+// LoadJSONSchema all schema from given path
+func LoadJSONSchema(serviceName string) error {
 
 	here := fmt.Sprintf("api/jsonschema/%s/", serviceName)
 	return filepath.Walk(here, func(p string, info os.FileInfo, err error) error {

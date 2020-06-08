@@ -5,7 +5,7 @@ import (
 	"io"
 	"strconv"
 
-	pb "agungdwiprasetyo.com/backend-microservices/api/proto/storage-service"
+	pb "agungdwiprasetyo.com/backend-microservices/api/storage-service/proto"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/storage-service/modules/storage/domain"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/storage-service/modules/storage/usecase"
 	"google.golang.org/grpc"

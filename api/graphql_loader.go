@@ -1,4 +1,4 @@
-package graphql
+package api
 
 import (
 	"fmt"
@@ -8,11 +8,11 @@ import (
 	"strings"
 )
 
-// LoadSchema graphql from file
-func LoadSchema(serviceName string) string {
+// LoadGraphQLSchema graphql from file
+func LoadGraphQLSchema(serviceName string) string {
 
 	var schema strings.Builder
-	here := fmt.Sprintf("api/graphql/%s/", serviceName)
+	here := fmt.Sprintf("api/%s/graphql/", serviceName)
 
 	filepath.Walk(here, func(p string, info os.FileInfo, err error) error {
 		if err != nil {

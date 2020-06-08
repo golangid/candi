@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"reflect"
 
-	graphqlschema "agungdwiprasetyo.com/backend-microservices/api/graphql"
+	"agungdwiprasetyo.com/backend-microservices/api"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
@@ -38,7 +38,7 @@ func (a *App) graphqlHandler(mw middleware.Middleware) *graphqlHandler {
 	}
 
 	resolver := resolverVal.Addr().Interface()
-	gqlSchema := graphqlschema.LoadSchema(string(a.serviceName))
+	gqlSchema := api.LoadGraphQLSchema(string(a.serviceName))
 
 	schema := graphql.MustParseSchema(gqlSchema, resolver,
 		graphql.UseStringDescriptions(),

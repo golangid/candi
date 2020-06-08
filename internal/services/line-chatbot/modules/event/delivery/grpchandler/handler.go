@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	proto "agungdwiprasetyo.com/backend-microservices/api/proto/line-chatbot/event"
+	proto "agungdwiprasetyo.com/backend-microservices/api/line-chatbot/proto/event"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/event/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 
