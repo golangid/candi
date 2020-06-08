@@ -1,6 +1,6 @@
 package main
 
-const serviceMainTemplate = `package service
+const serviceMainTemplate = `package {{clean $.ServiceName}}
 
 import (
 	"{{.PackageName}}/config"
@@ -35,9 +35,9 @@ func (s *Service) GetConfig() *config.Config {
 // Modules method
 func (s *Service) Modules(params *base.ModuleParam) []factory.ModuleFactory {
 	return []factory.ModuleFactory{
-		{{- range $module := .Modules}}
-			{{$module}}.NewModule(params),
-		{{- end }}
+	{{- range $module := .Modules}}
+		{{clean $module}}.NewModule(params),
+	{{- end }}
 	}
 }
 

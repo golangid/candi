@@ -96,6 +96,8 @@ var (
 			},
 		},
 	}
+
+	tpl *template.Template
 )
 
 func main() {
@@ -112,6 +114,8 @@ func main() {
 	}
 
 	flag.Parse()
+
+	tpl = template.New(packageName)
 
 	modules := strings.Split(modulesFlag, ",")
 	if modulesFlag == "" {
@@ -190,7 +194,7 @@ func loadTemplate(source string, sourceData interface{}) []byte {
 	var byteBuff = new(bytes.Buffer)
 	defer byteBuff.Reset()
 
-	tmpl, err := template.New(packageName).Parse(source)
+	tmpl, err := tpl.Funcs(formatTemplate()).Parse(source)
 	if err != nil {
 		panic(err)
 	}
@@ -200,4 +204,14 @@ func loadTemplate(source string, sourceData interface{}) []byte {
 	}
 
 	return byteBuff.Bytes()
+}
+
+func formatTemplate() template.FuncMap {
+	replacer := strings.NewReplacer("-", "", "*", "", "/", "", "*", "")
+	return template.FuncMap{
+
+		"clean": func(v interface{}) string {
+			return replacer.Replace(fmt.Sprint(v))
+		},
+	}
 }

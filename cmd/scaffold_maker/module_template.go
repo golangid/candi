@@ -1,6 +1,6 @@
 package main
 
-const moduleMainTemplate = `package {{$.module}}
+const moduleMainTemplate = `package {{clean $.module}}
 
 import (
 	"{{$.PackageName}}/internal/factory/base"
