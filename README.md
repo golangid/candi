@@ -13,19 +13,17 @@ This repository explain implementation of Go for building multiple microservices
 
 ### Create new service
 ```
-go run cmd/scaffold_maker/*.go --servicename={{service_name}} --modules={{module_a}},{{module_b}}
+make init service={{service_name}} modules={{module_a}},{{module_b}}
 ```
-
 
 ### Run service
 ```
-make run {{service_name}}
+make run service={{service_name}}
 ```
-
 
 ### Create docker image a service
 ```
-make docker {{service_name}}
+make docker service={{service_name}}
 ```
 
 ## Services
