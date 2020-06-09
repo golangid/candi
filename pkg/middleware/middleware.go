@@ -26,7 +26,7 @@ type mw struct {
 func NewMiddleware(cfg *config.Config) Middleware {
 	return &mw{
 		tokenUtil: token.NewJWT(cfg.PublicKey, cfg.PrivateKey),
-		username:  config.GlobalEnv().BasicAuthUsername,
-		password:  config.GlobalEnv().BasicAuthPassword,
+		username:  config.BaseEnv().BasicAuthUsername,
+		password:  config.BaseEnv().BasicAuthPassword,
 	}
 }

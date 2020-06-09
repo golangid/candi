@@ -49,11 +49,11 @@ func New(service factory.ServiceFactory) *App {
 	appInstance.config = cfg
 	appInstance.modules = service.Modules(params)
 
-	if config.GlobalEnv().UseHTTP {
+	if config.BaseEnv().UseHTTP {
 		appInstance.httpServer = echo.New()
 	}
 
-	if config.GlobalEnv().UseGRPC {
+	if config.BaseEnv().UseGRPC {
 		// init grpc server
 		appInstance.grpcServer = grpc.NewServer(
 			grpc.MaxSendMsgSize(200*int(helper.MByte)), grpc.MaxRecvMsgSize(200*int(helper.MByte)),
@@ -62,16 +62,16 @@ func New(service factory.ServiceFactory) *App {
 		)
 	}
 
-	if config.GlobalEnv().UseGraphQL {
+	if config.BaseEnv().UseGraphQL {
 		gqlHandler := appInstance.graphqlHandler(mw)
 		appInstance.httpServer.Add(http.MethodGet, "/graphql", echo.WrapHandler(gqlHandler))
 		appInstance.httpServer.Add(http.MethodPost, "/graphql", echo.WrapHandler(gqlHandler))
 		appInstance.httpServer.GET("/graphql/playground", gqlHandler.servePlayground)
 	}
 
-	if config.GlobalEnv().UseKafka {
+	if config.BaseEnv().UseKafka {
 		// init kafka consumer
-		kafkaConsumer, err := sarama.NewConsumerGroup(config.GlobalEnv().Kafka.Brokers, config.GlobalEnv().Kafka.ConsumerGroup, cfg.KafkaConsumerConfig)
+		kafkaConsumer, err := sarama.NewConsumerGroup(config.BaseEnv().Kafka.Brokers, config.BaseEnv().Kafka.ConsumerGroup, cfg.KafkaConsumerConfig)
 		if err != nil {
 			log.Panicf("Error creating consumer group client: %v", err)
 		}

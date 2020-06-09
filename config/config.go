@@ -63,8 +63,8 @@ func Init(ctx context.Context, rootApp string) *Config {
 	}
 }
 
-// GlobalEnv get global basic environment
-func GlobalEnv() Env {
+// BaseEnv get global basic environment
+func BaseEnv() Env {
 	return env
 }
 
