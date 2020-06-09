@@ -1,7 +1,6 @@
 package warung
 
 import (
-	"agungdwiprasetyo.com/backend-microservices/config"
 	"agungdwiprasetyo.com/backend-microservices/internal/factory"
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
@@ -11,30 +10,33 @@ import (
 
 // Service model
 type Service struct {
-	cfg  *config.Config
-	name constant.Service
+	dependency *base.Dependency
+	modules    []factory.ModuleFactory
+	name       constant.Service
 }
 
 // NewService in this service
-func NewService(cfg *config.Config, serviceName string) factory.ServiceFactory {
-	service := &Service{
-		cfg:  cfg,
-		name: constant.Service(serviceName),
+func NewService(serviceName string, dependency *base.Dependency) factory.ServiceFactory {
+	modules := []factory.ModuleFactory{
+		product.NewModule(dependency),
+		user.NewModule(dependency),
 	}
-	return service
+
+	return &Service{
+		dependency: dependency,
+		modules:    modules,
+		name:       constant.Service(serviceName),
+	}
 }
 
-// GetConfig method
-func (s *Service) GetConfig() *config.Config {
-	return s.cfg
+// GetDependency method
+func (s *Service) GetDependency() *base.Dependency {
+	return s.dependency
 }
 
-// Modules method
-func (s *Service) Modules(params *base.ModuleParam) []factory.ModuleFactory {
-	return []factory.ModuleFactory{
-		product.NewModule(params),
-		user.NewModule(params),
-	}
+// GetModules method
+func (s *Service) GetModules() []factory.ModuleFactory {
+	return s.modules
 }
 
 // Name method

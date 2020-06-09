@@ -20,7 +20,7 @@ type Module struct {
 }
 
 // NewModule module constructor
-func NewModule(params *base.ModuleParam) *Module {
+func NewModule(deps *base.Dependency) *Module {
 	uc := usecase.NewStorageUsecase()
 
 	var mod Module

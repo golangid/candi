@@ -20,11 +20,11 @@ type Module struct {
 }
 
 // NewModule module constructor
-func NewModule(params *base.ModuleParam) *Module {
+func NewModule(deps *base.Dependency) *Module {
 
 	var mod Module
-	mod.restHandler = delivery.NewRestProductHandler(params.Middleware)
-	mod.graphqlHandler = delivery.NewGraphQLHandler(params.Middleware)
+	mod.restHandler = delivery.NewRestProductHandler(deps.Middleware)
+	mod.graphqlHandler = delivery.NewGraphQLHandler(deps.Middleware)
 	return &mod
 }
 

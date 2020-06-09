@@ -1,7 +1,6 @@
 package factory
 
 import (
-	"agungdwiprasetyo.com/backend-microservices/config"
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/interfaces"
@@ -9,8 +8,8 @@ import (
 
 // ServiceFactory factory
 type ServiceFactory interface {
-	GetConfig() *config.Config
-	Modules(params *base.ModuleParam) []ModuleFactory
+	GetDependency() *base.Dependency
+	GetModules() []ModuleFactory
 	Name() constant.Service
 }
 

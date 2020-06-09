@@ -20,7 +20,7 @@ func (a *App) KafkaConsumer() {
 
 	topicInfo := make(map[string][]string)
 	var handlers = make(map[string][]interfaces.SubscriberHandler)
-	for _, m := range a.modules {
+	for _, m := range a.service.GetModules() {
 		if h := m.SubscriberHandler(constant.Kafka); h != nil {
 			for _, topic := range h.GetTopics() {
 				handlers[topic] = append(handlers[topic], h) // one same topic consumed by multiple module

@@ -22,12 +22,12 @@ type Module struct {
 }
 
 // NewModule module constructor
-func NewModule(params *base.ModuleParam) *Module {
-	repo := repository.NewRepositoryMongo(params.Config.MongoRead, params.Config.MongoWrite)
+func NewModule(deps *base.Dependency) *Module {
+	repo := repository.NewRepositoryMongo(deps.Config.MongoRead, deps.Config.MongoWrite)
 	uc := usecase.NewEventUsecase(repo)
 
 	var mod Module
-	mod.graphqlHandler = delivery.NewGraphQLHandler(params.Middleware, uc)
+	mod.graphqlHandler = delivery.NewGraphQLHandler(deps.Middleware, uc)
 	mod.kafkaHandler = delivery.NewKafkaHandler([]string{
 		"event",
 	})

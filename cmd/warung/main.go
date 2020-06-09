@@ -8,6 +8,7 @@ import (
 
 	"agungdwiprasetyo.com/backend-microservices/config"
 	"agungdwiprasetyo.com/backend-microservices/internal/app"
+	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/warung"
 )
 
@@ -28,6 +29,6 @@ func main() {
 	cfg := config.Init(ctx, "cmd/"+serviceName)
 	defer cfg.Exit(ctx)
 
-	service := warung.NewService(cfg, serviceName)
+	service := warung.NewService(serviceName, base.InitDependency(cfg))
 	app.New(service).Run(ctx)
 }

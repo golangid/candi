@@ -21,7 +21,7 @@ import (
 func (a *App) graphqlHandler(mw middleware.Middleware) *graphqlHandler {
 	resolverModules := make(map[string]interface{})
 	var resolverFields []reflect.StructField
-	for _, m := range a.modules {
+	for _, m := range a.service.GetModules() {
 		if name, handler := m.GraphQLHandler(); handler != nil {
 			resolverModules[name] = handler
 			resolverFields = append(resolverFields, reflect.StructField{
@@ -38,7 +38,7 @@ func (a *App) graphqlHandler(mw middleware.Middleware) *graphqlHandler {
 	}
 
 	resolver := resolverVal.Addr().Interface()
-	gqlSchema := api.LoadGraphQLSchema(string(a.serviceName))
+	gqlSchema := api.LoadGraphQLSchema(string(a.service.Name()))
 
 	schema := graphql.MustParseSchema(gqlSchema, resolver,
 		graphql.UseStringDescriptions(),

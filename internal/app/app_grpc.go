@@ -24,7 +24,7 @@ func (a *App) ServeGRPC() {
 	fmt.Printf("%s⇨ Server Run at port [::]%s\n\n", helper.GRPCBanner, grpcPort)
 
 	// register all module
-	for _, m := range a.modules {
+	for _, m := range a.service.GetModules() {
 		if h := m.GRPCHandler(); h != nil {
 			h.Register(a.grpcServer)
 		}

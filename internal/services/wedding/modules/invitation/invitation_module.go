@@ -21,11 +21,11 @@ type Module struct {
 }
 
 // NewModule module constructor
-func NewModule(params *base.ModuleParam) *Module {
+func NewModule(deps *base.Dependency) *Module {
 
 	var mod Module
-	mod.restHandler = delivery.NewRestInvitationHandler(params.Middleware)
-	mod.graphqlHandler = delivery.NewGraphQLHandler(params.Middleware)
+	mod.restHandler = delivery.NewRestInvitationHandler(deps.Middleware)
+	mod.graphqlHandler = delivery.NewGraphQLHandler(deps.Middleware)
 	mod.kafkaHandler = delivery.NewKafkaHandler([]string{"test", "coba"})
 	return &mod
 }

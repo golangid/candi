@@ -23,12 +23,12 @@ type Module struct {
 }
 
 // NewModule module constructor
-func NewModule(params *base.ModuleParam) *Module {
-	repo := repository.NewRepoMongo(params.Config.MongoWrite)
+func NewModule(deps *base.Dependency) *Module {
+	repo := repository.NewRepoMongo(deps.Config.MongoWrite)
 	uc := usecase.NewEventUsecase(repo)
 
 	var mod Module
-	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(params.Middleware, uc)
+	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.Middleware, uc)
 	mod.grpcHandler = grpchandler.NewGRPCHandler(uc)
 	return &mod
 }

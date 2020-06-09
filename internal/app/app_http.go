@@ -32,7 +32,7 @@ func (a *App) ServeHTTP() {
 	})
 
 	v1Group := a.httpServer.Group(helper.V1)
-	for _, m := range a.modules {
+	for _, m := range a.service.GetModules() {
 		if h := m.RestHandler(helper.V1); h != nil {
 			h.Mount(v1Group)
 		}

@@ -24,18 +24,18 @@ type Module struct {
 }
 
 // NewModule module constructor
-func NewModule(params *base.ModuleParam) *Module {
+func NewModule(deps *base.Dependency) *Module {
 
 	lineClient, err := linebot.New(os.Getenv("LINE_CHANNEL_SECRET"), os.Getenv("LINE_CHANNEL_TOKEN"))
 	if err != nil {
 		panic(err)
 	}
 
-	repo := repository.NewRepository(params.Config.MongoRead, params.Config.MongoWrite)
+	repo := repository.NewRepository(deps.Config.MongoRead, deps.Config.MongoWrite)
 	uc := usecase.NewBotUsecase(lineClient, repo)
 
 	var mod Module
-	mod.restHandler = delivery.NewRestHandler(params.Middleware, uc)
+	mod.restHandler = delivery.NewRestHandler(deps.Middleware, uc)
 	return &mod
 }
 

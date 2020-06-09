@@ -10,11 +10,8 @@ import (
 
 	"agungdwiprasetyo.com/backend-microservices/config"
 	"agungdwiprasetyo.com/backend-microservices/internal/factory"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	_ "agungdwiprasetyo.com/backend-microservices/pkg/logger"
-	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
 	"github.com/Shopify/sarama"
 	"github.com/labstack/echo"
 	"google.golang.org/grpc"
@@ -22,9 +19,7 @@ import (
 
 // App service
 type App struct {
-	serviceName   constant.Service
-	config        *config.Config
-	modules       []factory.ModuleFactory
+	service       factory.ServiceFactory
 	httpServer    *echo.Echo
 	grpcServer    *grpc.Server
 	kafkaConsumer sarama.ConsumerGroup
@@ -34,20 +29,13 @@ type App struct {
 func New(service factory.ServiceFactory) *App {
 	defer log.Printf("Starting %s service\n", service.Name())
 
-	cfg := service.GetConfig()
-	mw := middleware.NewMiddleware(cfg)
-	params := &base.ModuleParam{
-		Config:     cfg,
-		Middleware: mw,
-	}
-
 	// load json schema for document validation
 	// jsonschema.Load(string(service.Name()))
 
+	dependency := service.GetDependency()
+
 	appInstance := new(App)
-	appInstance.serviceName = service.Name()
-	appInstance.config = cfg
-	appInstance.modules = service.Modules(params)
+	appInstance.service = service
 
 	if config.BaseEnv().UseHTTP {
 		appInstance.httpServer = echo.New()
@@ -57,13 +45,13 @@ func New(service factory.ServiceFactory) *App {
 		// init grpc server
 		appInstance.grpcServer = grpc.NewServer(
 			grpc.MaxSendMsgSize(200*int(helper.MByte)), grpc.MaxRecvMsgSize(200*int(helper.MByte)),
-			grpc.UnaryInterceptor(mw.GRPCAuth),
-			grpc.StreamInterceptor(mw.GRPCAuthStream),
+			grpc.UnaryInterceptor(dependency.Middleware.GRPCAuth),
+			grpc.StreamInterceptor(dependency.Middleware.GRPCAuthStream),
 		)
 	}
 
 	if config.BaseEnv().UseGraphQL {
-		gqlHandler := appInstance.graphqlHandler(mw)
+		gqlHandler := appInstance.graphqlHandler(dependency.Middleware)
 		appInstance.httpServer.Add(http.MethodGet, "/graphql", echo.WrapHandler(gqlHandler))
 		appInstance.httpServer.Add(http.MethodPost, "/graphql", echo.WrapHandler(gqlHandler))
 		appInstance.httpServer.GET("/graphql/playground", gqlHandler.servePlayground)
@@ -71,7 +59,9 @@ func New(service factory.ServiceFactory) *App {
 
 	if config.BaseEnv().UseKafka {
 		// init kafka consumer
-		kafkaConsumer, err := sarama.NewConsumerGroup(config.BaseEnv().Kafka.Brokers, config.BaseEnv().Kafka.ConsumerGroup, cfg.KafkaConsumerConfig)
+		kafkaConsumer, err := sarama.NewConsumerGroup(config.BaseEnv().Kafka.Brokers,
+			config.BaseEnv().Kafka.ConsumerGroup,
+			dependency.Config.KafkaConsumerConfig)
 		if err != nil {
 			log.Panicf("Error creating consumer group client: %v", err)
 		}

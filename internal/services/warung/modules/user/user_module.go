@@ -19,10 +19,10 @@ type Module struct {
 }
 
 // NewModule module constructor
-func NewModule(params *base.ModuleParam) *Module {
+func NewModule(deps *base.Dependency) *Module {
 
 	var mod Module
-	mod.restHandler = delivery.NewRestUserHandler(params.Middleware)
+	mod.restHandler = delivery.NewRestUserHandler(deps.Middleware)
 	return &mod
 }
 
