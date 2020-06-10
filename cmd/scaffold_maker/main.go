@@ -33,7 +33,7 @@ var (
 	data param
 
 	baseDirectoryFileList = []FileStructure{
-		FileStructure{
+		{
 			TargetDir: "api/{{.ServiceName}}/", IsDir: true,
 			Childs: []FileStructure{
 				{TargetDir: "graphql/", IsDir: true},
@@ -41,11 +41,12 @@ var (
 				{TargetDir: "proto/", IsDir: true},
 			},
 		},
-		FileStructure{
+		{
 			TargetDir: "cmd/{{.ServiceName}}/", IsDir: true,
 			Childs: []FileStructure{
 				{FromTemplate: true, Source: cmdMainTemplate, FileName: "main.go"},
-				{FromTemplate: false, Source: "# Additional service environment", FileName: ".env.extend"},
+				{FromTemplate: false, Source: envTemplate, FileName: ".env"},
+				{FromTemplate: false, Source: envTemplate, FileName: ".env.sample"},
 			},
 		},
 	}
@@ -58,7 +59,7 @@ var (
 	}
 
 	cleanArchModuleDir = []FileStructure{
-		FileStructure{
+		{
 			TargetDir: "delivery/", IsDir: true,
 			Childs: []FileStructure{
 				{TargetDir: "graphqlhandler/", IsDir: true, Childs: []FileStructure{
@@ -75,20 +76,20 @@ var (
 				}},
 			},
 		},
-		FileStructure{
+		{
 			TargetDir: "domain/", IsDir: true,
 			Childs: []FileStructure{
 				{FromTemplate: true, FileName: "domain.go"},
 			},
 		},
-		FileStructure{
+		{
 			TargetDir: "repository/", IsDir: true,
 			Childs: []FileStructure{
 				{TargetDir: "interfaces/", IsDir: true},
 				{FromTemplate: true, FileName: "repository.go"},
 			},
 		},
-		FileStructure{
+		{
 			TargetDir: "usecase/", IsDir: true,
 			Childs: []FileStructure{
 				{FromTemplate: true, FileName: "usecase.go"},
@@ -110,7 +111,7 @@ func main() {
 
 	flag.Usage = func() {
 		fmt.Println("-servicename | --servicename => set service name, example: --servicename auth-service")
-		fmt.Println("-modules | --modules => set service name, example: --modules user,auth")
+		fmt.Println("-modules | --modules => set modules name, example: --modules user,auth")
 	}
 
 	flag.Parse()
@@ -207,7 +208,7 @@ func loadTemplate(source string, sourceData interface{}) []byte {
 }
 
 func formatTemplate() template.FuncMap {
-	replacer := strings.NewReplacer("-", "", "*", "", "/", "", "*", "")
+	replacer := strings.NewReplacer("-", "", "*", "", "/", "", ":", "")
 	return template.FuncMap{
 
 		"clean": func(v interface{}) string {

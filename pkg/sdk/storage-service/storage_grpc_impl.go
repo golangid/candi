@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
-	pb "agungdwiprasetyo.com/backend-microservices/api/proto/storage-service"
+	pb "agungdwiprasetyo.com/backend-microservices/api/storage-service/proto"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"google.golang.org/grpc"
