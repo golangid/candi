@@ -10,6 +10,7 @@ import (
 
 	"{{.PackageName}}/config"
 	"{{.PackageName}}/internal/app"
+	"{{.PackageName}}/internal/factory/base"
 	service "{{.PackageName}}/internal/services/{{.ServiceName}}"
 )
 
@@ -30,7 +31,7 @@ func main() {
 	cfg := config.Init(ctx, "cmd/"+serviceName)
 	defer cfg.Exit(ctx)
 
-	srv := service.NewService(cfg, serviceName)
+	srv := service.NewService(serviceName, base.InitDependency(cfg))
 	app.New(srv).Run(ctx)
 }
 

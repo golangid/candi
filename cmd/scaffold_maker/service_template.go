@@ -3,7 +3,6 @@ package main
 const serviceMainTemplate = `package {{clean $.ServiceName}}
 
 import (
-	"{{.PackageName}}/config"
 	"{{.PackageName}}/internal/factory"
 	"{{.PackageName}}/internal/factory/base"
 	"{{.PackageName}}/internal/factory/constant"
@@ -14,31 +13,34 @@ import (
 
 // Service model
 type Service struct {
-	cfg  *config.Config
-	name constant.Service
+	dependency *base.Dependency
+	modules    []factory.ModuleFactory
+	name       constant.Service
 }
 
 // NewService in this service
-func NewService(cfg *config.Config, serviceName string) factory.ServiceFactory {
-	service := &Service{
-		cfg:  cfg,
-		name: constant.Service(serviceName),
-	}
-	return service
-}
-
-// GetConfig method
-func (s *Service) GetConfig() *config.Config {
-	return s.cfg
-}
-
-// Modules method
-func (s *Service) Modules(params *base.ModuleParam) []factory.ModuleFactory {
-	return []factory.ModuleFactory{
+func NewService(serviceName string, dependency *base.Dependency) factory.ServiceFactory {
+	modules := []factory.ModuleFactory{
 	{{- range $module := .Modules}}
-		{{clean $module}}.NewModule(params),
+		{{clean $module}}.NewModule(dependency),
 	{{- end }}
 	}
+
+	return &Service{
+		dependency: dependency,
+		modules:    modules,
+		name:       constant.Service(serviceName),
+	}
+}
+
+// GetDependency method
+func (s *Service) GetDependency() *base.Dependency {
+	return s.dependency
+}
+
+// GetModules method
+func (s *Service) GetModules() []factory.ModuleFactory {
+	return s.modules
 }
 
 // Name method
