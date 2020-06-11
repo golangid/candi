@@ -28,7 +28,7 @@ func main() {
 		}
 	}()
 
-	cfg := config.Init(ctx, "cmd/"+serviceName)
+	cfg := config.Init(ctx, fmt.Sprintf("cmd/%s/", serviceName))
 	defer cfg.Exit(ctx)
 
 	srv := service.NewService(serviceName, base.InitDependency(cfg))

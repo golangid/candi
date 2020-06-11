@@ -1,7 +1,7 @@
 package config
 
 import (
-	"log"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -49,11 +49,11 @@ type Env struct {
 	}
 }
 
-func loadBaseEnv(appLocation string, targetEnv *Env) {
+func loadBaseEnv(serviceLocation string, targetEnv *Env) {
 
 	// load main .env and additional .env in app
-	if err := godotenv.Overload(".env", appLocation+"/.env"); err != nil {
-		log.Println(err)
+	if err := godotenv.Load(serviceLocation + ".env"); err != nil {
+		panic(fmt.Errorf("Load env: %v", err))
 	}
 
 	rootApp, _ := filepath.Abs(filepath.Dir(os.Args[0]))

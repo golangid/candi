@@ -26,7 +26,7 @@ func main() {
 		}
 	}()
 
-	cfg := config.Init(ctx, "cmd/"+serviceName)
+	cfg := config.Init(ctx, fmt.Sprintf("cmd/%s/", serviceName))
 	defer cfg.Exit(ctx)
 
 	service := wedding.NewService(serviceName, base.InitDependency(cfg))
