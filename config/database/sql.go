@@ -14,9 +14,9 @@ func InitSQLDatabase(ctx context.Context, isUse bool) (read, write *sql.DB) {
 		return
 	}
 
-	dbName, ok := os.LookupEnv("SQL_DB_NAME")
+	dbName, ok := os.LookupEnv("SQL_DATABASE_NAME")
 	if !ok {
-		panic("missing SQL_DB_NAME environment")
+		panic("missing SQL_DATABASE_NAME environment")
 	}
 
 	var err error

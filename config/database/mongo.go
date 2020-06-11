@@ -16,9 +16,9 @@ func InitMongoDB(ctx context.Context, isUse bool) (read *mongo.Database, write *
 		return
 	}
 
-	dbName, ok := os.LookupEnv("MONGODB_NAME")
+	dbName, ok := os.LookupEnv("MONGODB_DATABASE_NAME")
 	if !ok {
-		panic("missing MONGODB_NAME environment")
+		panic("missing MONGODB_DATABASE_NAME environment")
 	}
 
 	// init write mongodb
