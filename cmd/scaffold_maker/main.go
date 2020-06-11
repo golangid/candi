@@ -45,8 +45,8 @@ var (
 			TargetDir: "cmd/{{.ServiceName}}/", IsDir: true,
 			Childs: []FileStructure{
 				{FromTemplate: true, Source: cmdMainTemplate, FileName: "main.go"},
-				{FromTemplate: false, Source: envTemplate, FileName: ".env"},
-				{FromTemplate: false, Source: envTemplate, FileName: ".env.sample"},
+				{FromTemplate: true, Source: envTemplate, FileName: ".env"},
+				{FromTemplate: true, Source: envTemplate, FileName: ".env.sample"},
 			},
 		},
 	}
