@@ -23,8 +23,8 @@ type Env struct {
 	UseGraphQL bool
 	// UseGRPC env
 	UseGRPC bool
-	// UseKafka env
-	UseKafka bool
+	// UseKafkaConsumer env
+	UseKafkaConsumer bool
 
 	// Development env checking, this env for debug purpose
 	Development string
@@ -82,11 +82,11 @@ func loadBaseEnv(serviceLocation string, targetEnv *Env) {
 	}
 	env.UseGRPC, _ = strconv.ParseBool(useGRPC)
 
-	useKafka, ok := os.LookupEnv("USE_KAFKA")
+	useKafkaConsumer, ok := os.LookupEnv("USE_KAFKA_CONSUMER")
 	if !ok {
-		panic("missing USE_KAFKA environment")
+		panic("missing USE_KAFKA_CONSUMER environment")
 	}
-	env.UseKafka, _ = strconv.ParseBool(useKafka)
+	env.UseKafkaConsumer, _ = strconv.ParseBool(useKafkaConsumer)
 
 	// ---------------------------
 	useMongoEnv, ok := os.LookupEnv("USE_MONGO")
@@ -116,16 +116,28 @@ func loadBaseEnv(serviceLocation string, targetEnv *Env) {
 
 	// ------------------------------------
 
-	if port, err := strconv.Atoi(os.Getenv("HTTP_PORT")); err != nil {
-		panic("missing HTTP_PORT environment")
-	} else {
-		env.HTTPPort = uint16(port)
+	if env.UseHTTP {
+		if httpPort, ok := os.LookupEnv("HTTP_PORT"); !ok {
+			panic("missing HTTP_PORT environment")
+		} else {
+			port, err := strconv.Atoi(httpPort)
+			if err != nil {
+				panic("HTTP_PORT environment must in integer format")
+			}
+			env.HTTPPort = uint16(port)
+		}
 	}
 
-	if port, err := strconv.Atoi(os.Getenv("GRPC_PORT")); err != nil {
-		panic("missing GRPC_PORT environment")
-	} else {
-		env.GRPCPort = uint16(port)
+	if env.UseGRPC {
+		if grpcPort, ok := os.LookupEnv("GRPC_PORT"); !ok {
+			panic("missing GRPC_PORT environment")
+		} else {
+			port, err := strconv.Atoi(grpcPort)
+			if err != nil {
+				panic("GRPC_PORT environment must in integer format")
+			}
+			env.GRPCPort = uint16(port)
+		}
 	}
 
 	// ------------------------------------
@@ -138,17 +150,16 @@ func loadBaseEnv(serviceLocation string, targetEnv *Env) {
 		panic("missing BASIC_AUTH_PASS environment")
 	}
 
+	kafkaBrokerEnv := os.Getenv("KAFKA_BROKERS")
+	env.Kafka.Brokers = strings.Split(kafkaBrokerEnv, ",") // optional
+	env.Kafka.ClientID = os.Getenv("KAFKA_CLIENT_ID")      // optional
+
 	// kafka environment
-	if env.UseKafka {
-		kafkaBrokers, ok := os.LookupEnv("KAFKA_BROKERS")
-		if !ok {
+	if env.UseKafkaConsumer {
+		if kafkaBrokerEnv == "" {
 			panic("kafka consumer is active, missing KAFKA_BROKERS environment")
 		}
-		env.Kafka.Brokers = strings.Split(kafkaBrokers, ",")
-		env.Kafka.ClientID, ok = os.LookupEnv("KAFKA_CLIENT_ID")
-		if !ok {
-			panic("kafka consumer is active, missing KAFKA_CLIENT_ID environment")
-		}
+
 		env.Kafka.ConsumerGroup, ok = os.LookupEnv("KAFKA_CONSUMER_GROUP")
 		if !ok {
 			panic("kafka consumer is active, missing KAFKA_CONSUMER_GROUP environment")

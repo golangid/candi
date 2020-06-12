@@ -44,7 +44,7 @@ func (a *App) KafkaConsumer() {
 	defer cancel()
 
 	if err := a.kafkaConsumer.Consume(ctx, consumeTopics, &consumer); err != nil {
-		log.Printf("Error from consumer: %v", err)
+		log.Panicf("Error from kafka consumer: %v", err)
 	}
 }
 

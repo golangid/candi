@@ -24,7 +24,7 @@ type Config struct {
 	RedisReadPool, RedisWritePool *redis.Pool
 	PrivateKey                    *rsa.PrivateKey
 	PublicKey                     *rsa.PublicKey
-	KafkaConsumerConfig           *sarama.Config
+	KafkaConfig                   *sarama.Config
 }
 
 // Init app config
@@ -47,7 +47,7 @@ func Init(ctx context.Context, rootApp string) *Config {
 		cfg.SQLRead, cfg.SQLWrite = database.InitSQLDatabase(ctx, env.useSQL)
 		cfg.RedisReadPool, cfg.RedisWritePool = database.InitRedis(env.useRedis)
 		cfg.PrivateKey, cfg.PublicKey = key.LoadRSAKey(env.useRSAKey)
-		cfg.KafkaConsumerConfig = broker.InitKafkaConfig()
+		cfg.KafkaConfig = broker.InitKafkaConfig(env.UseKafkaConsumer, env.Kafka.ClientID)
 
 		cfgChan <- &cfg
 	}()

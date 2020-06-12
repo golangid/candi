@@ -6,7 +6,7 @@ const envTemplate = `# Basic env configuration
 USE_HTTP=[bool]
 USE_GRPC=[bool]
 USE_GRAPHQL=[bool]
-USE_KAFKA=[bool]
+USE_KAFKA_CONSUMER=[bool]
 
 HTTP_PORT=[int]
 GRPC_PORT=[int]
@@ -40,5 +40,10 @@ REDIS_WRITE_AUTH=[string]
 USE_RSA_KEY=[bool]
 
 KAFKA_BROKERS=[string]
+KAFKA_CLIENT_ID=[string]
+KAFKA_CONSUMER_GROUP=[string]
+
+
+# Additional env
 
 `

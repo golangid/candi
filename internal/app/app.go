@@ -57,13 +57,15 @@ func New(service factory.ServiceFactory) *App {
 		appInstance.httpServer.GET("/graphql/playground", gqlHandler.servePlayground)
 	}
 
-	if config.BaseEnv().UseKafka {
+	if config.BaseEnv().UseKafkaConsumer {
 		// init kafka consumer
-		kafkaConsumer, err := sarama.NewConsumerGroup(config.BaseEnv().Kafka.Brokers,
+		kafkaConsumer, err := sarama.NewConsumerGroup(
+			config.BaseEnv().Kafka.Brokers,
 			config.BaseEnv().Kafka.ConsumerGroup,
-			dependency.Config.KafkaConsumerConfig)
+			dependency.Config.KafkaConfig,
+		)
 		if err != nil {
-			log.Panicf("Error creating consumer group client: %v", err)
+			log.Panicf("Error creating kafka consumer group client: %v", err)
 		}
 		appInstance.kafkaConsumer = kafkaConsumer
 	}
