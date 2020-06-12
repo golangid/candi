@@ -19,7 +19,7 @@ func InitKafkaConfig(isUseConsumer bool, clientID string) *sarama.Config {
 	kafkaConfig.Producer.RequiredAcks = sarama.WaitForAll
 	kafkaConfig.Producer.Return.Successes = true
 
-	if !isUseConsumer {
+	if isUseConsumer {
 		// Consumer config
 		kafkaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
 	}
