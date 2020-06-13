@@ -6,9 +6,9 @@ import (
 	"{{$.PackageName}}/internal/factory/base"
 	"{{$.PackageName}}/internal/factory/constant"
 	"{{$.PackageName}}/internal/factory/interfaces"
-	"{{$.PackageName}}/internal/services/coba/modules/{{clean $.module}}/delivery/graphqlhandler"
-	"{{$.PackageName}}/internal/services/coba/modules/{{clean $.module}}/delivery/resthandler"
-	"{{$.PackageName}}/internal/services/coba/modules/{{clean $.module}}/delivery/workerhandler"
+	"{{$.PackageName}}/internal/services/{{.ServiceName}}/modules/{{clean $.module}}/delivery/graphqlhandler"
+	"{{$.PackageName}}/internal/services/{{.ServiceName}}/modules/{{clean $.module}}/delivery/resthandler"
+	"{{$.PackageName}}/internal/services/{{.ServiceName}}/modules/{{clean $.module}}/delivery/workerhandler"
 )
 
 const (
