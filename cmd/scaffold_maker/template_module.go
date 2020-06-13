@@ -7,7 +7,7 @@ import (
 	"{{$.PackageName}}/internal/factory/constant"
 	"{{$.PackageName}}/internal/factory/interfaces"
 	"{{$.PackageName}}/internal/services/coba/modules/{{clean $.module}}/delivery/resthandler"
-	"{{$.PackageName}}/internal/services/coba/modules/{{clean $.module}}/delivery/subscriberhandler"
+	"{{$.PackageName}}/internal/services/coba/modules/{{clean $.module}}/delivery/workerhandler"
 	"{{$.PackageName}}/pkg/helper"
 )
 
@@ -19,14 +19,14 @@ const (
 // Module model
 type Module struct {
 	restHandler *resthandler.RestHandler
-	kafkaHandler *subscriberhandler.KafkaHandler
+	kafkaHandler *workerhandler.KafkaHandler
 }
 
 // NewModule module constructor
 func NewModule(deps *base.Dependency) *Module {
 	var mod Module
 	mod.restHandler = resthandler.NewRestHandler(deps.Middleware)
-	mod.kafkaHandler = subscriberhandler.NewKafkaHandler([]string{"test"})
+	mod.kafkaHandler = workerhandler.NewKafkaHandler([]string{"test"})
 	return &mod
 }
 
@@ -51,9 +51,9 @@ func (m *Module) GraphQLHandler() (name string, resolver interface{}) {
 	return string(Name), nil
 }
 
-// SubscriberHandler method
-func (m *Module) SubscriberHandler(subsType constant.Subscriber) interfaces.SubscriberHandler {
-	switch subsType {
+// WorkerHandler method
+func (m *Module) WorkerHandler(workerType constant.Worker) interfaces.WorkerHandler {
+	switch workerType {
 	case constant.Kafka:
 		return m.kafkaHandler
 	case constant.Redis:

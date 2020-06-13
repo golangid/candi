@@ -19,9 +19,9 @@ func (a *App) KafkaConsumer() {
 	}
 
 	topicInfo := make(map[string][]string)
-	var handlers = make(map[string][]interfaces.SubscriberHandler)
+	var handlers = make(map[string][]interfaces.WorkerHandler)
 	for _, m := range a.service.GetModules() {
-		if h := m.SubscriberHandler(constant.Kafka); h != nil {
+		if h := m.WorkerHandler(constant.Kafka); h != nil {
 			for _, topic := range h.GetTopics() {
 				handlers[topic] = append(handlers[topic], h) // one same topic consumed by multiple module
 				topicInfo[topic] = append(topicInfo[topic], string(m.Name()))
@@ -50,7 +50,7 @@ func (a *App) KafkaConsumer() {
 
 // kafkaConsumer represents a Sarama consumer group consumer
 type kafkaConsumer struct {
-	handlers map[string][]interfaces.SubscriberHandler
+	handlers map[string][]interfaces.WorkerHandler
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim

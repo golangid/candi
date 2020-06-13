@@ -18,6 +18,6 @@ type ModuleFactory interface {
 	RestHandler(version string) interfaces.EchoRestHandler
 	GRPCHandler() interfaces.GRPCHandler
 	GraphQLHandler() (name string, resolver interface{})
-	SubscriberHandler(subsType constant.Subscriber) interfaces.SubscriberHandler
+	WorkerHandler(workerType constant.Worker) interfaces.WorkerHandler
 	Name() constant.Module
 }

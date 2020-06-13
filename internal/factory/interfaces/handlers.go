@@ -17,8 +17,8 @@ type GRPCHandler interface {
 	Register(server *grpc.Server)
 }
 
-// SubscriberHandler delivery factory for all subscriber handler
-type SubscriberHandler interface {
+// WorkerHandler delivery factory for all worker handler
+type WorkerHandler interface {
 	GetTopics() []string
 	ProcessMessage(ctx context.Context, message []byte)
 }

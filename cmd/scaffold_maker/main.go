@@ -102,7 +102,7 @@ func main() {
 					{TargetDir: "resthandler/", IsDir: true, Childs: []FileStructure{
 						{FromTemplate: true, DataSource: dataSource, Source: deliveryRestTemplate, FileName: "resthandler.go"},
 					}},
-					{TargetDir: "subscriberhandler/", IsDir: true, Childs: []FileStructure{
+					{TargetDir: "workerhandler/", IsDir: true, Childs: []FileStructure{
 						{FromTemplate: true, DataSource: dataSource, Source: deliveryKafkaTemplate, FileName: "kafkahandler.go"},
 					}},
 				},

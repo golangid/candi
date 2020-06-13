@@ -55,9 +55,9 @@ func (m *Module) GraphQLHandler() (name string, resolver interface{}) {
 	return string(Event), m.graphqlHandler
 }
 
-// SubscriberHandler method
-func (m *Module) SubscriberHandler(subsType constant.Subscriber) interfaces.SubscriberHandler {
-	switch subsType {
+// WorkerHandler method
+func (m *Module) WorkerHandler(workerType constant.Worker) interfaces.WorkerHandler {
+	switch workerType {
 	case constant.Kafka:
 		return m.kafkaHandler
 	default:

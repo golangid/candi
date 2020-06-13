@@ -1,11 +1,11 @@
 package constant
 
-// Subscriber is the type returned by a classifier subscriber (kafka, redis, rabbitmq)
-type Subscriber int
+// Worker is the type returned by a classifier worker (kafka, redis, rabbitmq)
+type Worker int
 
 const (
 	// Kafka subscriber
-	Kafka Subscriber = iota
+	Kafka Worker = iota
 	// Redis subscriber
 	Redis
 	// RabbitMQ subscriber

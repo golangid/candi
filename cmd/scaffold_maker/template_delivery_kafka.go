@@ -1,6 +1,6 @@
 package main
 
-const deliveryKafkaTemplate = `package subscriberhandler
+const deliveryKafkaTemplate = `package workerhandler
 
 import (
 	"context"
