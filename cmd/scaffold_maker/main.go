@@ -24,80 +24,13 @@ type FileStructure struct {
 	TargetDir    string
 	IsDir        bool
 	FromTemplate bool
+	DataSource   interface{}
 	Source       string
 	FileName     string
 	Childs       []FileStructure
 }
 
 var (
-	data param
-
-	baseDirectoryFileList = []FileStructure{
-		{
-			TargetDir: "api/{{.ServiceName}}/", IsDir: true,
-			Childs: []FileStructure{
-				{TargetDir: "graphql/", IsDir: true},
-				{TargetDir: "jsonschema/", IsDir: true},
-				{TargetDir: "proto/", IsDir: true},
-			},
-		},
-		{
-			TargetDir: "cmd/{{.ServiceName}}/", IsDir: true,
-			Childs: []FileStructure{
-				{FromTemplate: true, Source: cmdMainTemplate, FileName: "main.go"},
-				{FromTemplate: true, Source: envTemplate, FileName: ".env"},
-				{FromTemplate: true, Source: envTemplate, FileName: ".env.sample"},
-			},
-		},
-	}
-
-	serviceStructure = FileStructure{
-		TargetDir: "internal/services/{{.ServiceName}}/", IsDir: true,
-		Childs: []FileStructure{
-			{FromTemplate: true, Source: serviceMainTemplate, FileName: "service.go"},
-		},
-	}
-
-	cleanArchModuleDir = []FileStructure{
-		{
-			TargetDir: "delivery/", IsDir: true,
-			Childs: []FileStructure{
-				{TargetDir: "graphqlhandler/", IsDir: true, Childs: []FileStructure{
-					{FromTemplate: true, FileName: "graphqlhandler.go"},
-				}},
-				{TargetDir: "grpchandler/", IsDir: true, Childs: []FileStructure{
-					{FromTemplate: true, FileName: "grpchandler.go"},
-				}},
-				{TargetDir: "resthandler/", IsDir: true, Childs: []FileStructure{
-					{FromTemplate: true, FileName: "resthandler.go"},
-				}},
-				{TargetDir: "subscriberhandler/", IsDir: true, Childs: []FileStructure{
-					{FromTemplate: true, FileName: "subscriberhandler.go"},
-				}},
-			},
-		},
-		{
-			TargetDir: "domain/", IsDir: true,
-			Childs: []FileStructure{
-				{FromTemplate: true, FileName: "domain.go"},
-			},
-		},
-		{
-			TargetDir: "repository/", IsDir: true,
-			Childs: []FileStructure{
-				{TargetDir: "interfaces/", IsDir: true},
-				{FromTemplate: true, FileName: "repository.go"},
-			},
-		},
-		{
-			TargetDir: "usecase/", IsDir: true,
-			Childs: []FileStructure{
-				{FromTemplate: true, FileName: "usecase.go"},
-				{FromTemplate: true, FileName: "usecase_impl.go"},
-			},
-		},
-	}
-
 	tpl *template.Template
 )
 
@@ -116,6 +49,10 @@ func main() {
 
 	flag.Parse()
 
+	var data param
+	data.PackageName = packageName
+	data.ServiceName = serviceName
+
 	tpl = template.New(packageName)
 
 	modules := strings.Split(modulesFlag, ",")
@@ -123,24 +60,94 @@ func main() {
 		modules = []string{"module"} // default module name
 	}
 
-	var moduleStructure = FileStructure{
-		TargetDir: "modules/", IsDir: true,
+	apiStructure := FileStructure{
+		TargetDir: "api/{{.ServiceName}}/", IsDir: true, DataSource: data,
+		Childs: []FileStructure{
+			{TargetDir: "graphql/", IsDir: true},
+			{TargetDir: "jsonschema/", IsDir: true},
+			{TargetDir: "proto/", IsDir: true},
+		},
 	}
-	for _, module := range modules {
-		data.Modules = append(data.Modules, module)
-		buff := loadTemplate(moduleMainTemplate, map[string]string{"PackageName": packageName, "module": module})
+
+	cmdStructure := FileStructure{
+		TargetDir: "cmd/{{.ServiceName}}/", IsDir: true, DataSource: data,
+		Childs: []FileStructure{
+			{FromTemplate: true, DataSource: data, Source: cmdMainTemplate, FileName: "main.go"},
+			{FromTemplate: true, DataSource: data, Source: envTemplate, FileName: ".env"},
+			{FromTemplate: true, DataSource: data, Source: envTemplate, FileName: ".env.sample"},
+		},
+	}
+
+	serviceStructure := FileStructure{
+		TargetDir: "internal/services/{{.ServiceName}}/", IsDir: true, DataSource: data,
+	}
+
+	var moduleStructure = FileStructure{
+		TargetDir: "modules/", IsDir: true, DataSource: data,
+	}
+	for _, moduleName := range modules {
+		data.Modules = append(data.Modules, moduleName)
+		dataSource := map[string]string{"PackageName": packageName, "ServiceName": serviceName, "module": moduleName}
+
+		cleanArchModuleDir := []FileStructure{
+			{
+				TargetDir: "delivery/", IsDir: true,
+				Childs: []FileStructure{
+					{TargetDir: "graphqlhandler/", IsDir: true, Childs: []FileStructure{
+						{FromTemplate: true, FileName: "graphqlhandler.go"},
+					}},
+					{TargetDir: "grpchandler/", IsDir: true, Childs: []FileStructure{
+						{FromTemplate: true, FileName: "grpchandler.go"},
+					}},
+					{TargetDir: "resthandler/", IsDir: true, Childs: []FileStructure{
+						{FromTemplate: true, DataSource: dataSource, Source: deliveryRestTemplate, FileName: "resthandler.go"},
+					}},
+					{TargetDir: "subscriberhandler/", IsDir: true, Childs: []FileStructure{
+						{FromTemplate: true, FileName: "subscriberhandler.go"},
+					}},
+				},
+			},
+			{
+				TargetDir: "domain/", IsDir: true,
+				Childs: []FileStructure{
+					{FromTemplate: true, FileName: "domain.go"},
+				},
+			},
+			{
+				TargetDir: "repository/", IsDir: true,
+				Childs: []FileStructure{
+					{TargetDir: "interfaces/", IsDir: true},
+					{FromTemplate: true, FileName: "repository.go"},
+				},
+			},
+			{
+				TargetDir: "usecase/", IsDir: true,
+				Childs: []FileStructure{
+					{FromTemplate: true, FileName: "usecase.go"},
+					{FromTemplate: true, FileName: "usecase_impl.go"},
+				},
+			},
+		}
+
 		moduleStructure.Childs = append(moduleStructure.Childs, []FileStructure{
-			{TargetDir: module + "/", IsDir: true, Childs: append(cleanArchModuleDir, FileStructure{
-				FromTemplate: false, Source: string(buff), FileName: "module.go",
-			})},
+			{
+				TargetDir: moduleName + "/", IsDir: true,
+				Childs: append(cleanArchModuleDir,
+					FileStructure{
+						FromTemplate: true, DataSource: dataSource, Source: moduleMainTemplate, FileName: "module.go",
+					},
+				),
+			},
 		}...)
 	}
-
 	serviceStructure.Childs = append(serviceStructure.Childs, moduleStructure)
-	baseDirectoryFileList = append(baseDirectoryFileList, serviceStructure)
+	serviceStructure.Childs = append(serviceStructure.Childs, FileStructure{
+		FromTemplate: true, DataSource: data, Source: serviceMainTemplate, FileName: "service.go"},
+	)
 
-	data.PackageName = packageName
-	data.ServiceName = serviceName
+	baseDirectoryFileList := []FileStructure{
+		apiStructure, cmdStructure, serviceStructure,
+	}
 
 	for _, fl := range baseDirectoryFileList {
 		exec(fl, 0)
@@ -149,18 +156,18 @@ func main() {
 }
 
 func exec(fl FileStructure, depth int) {
-	dirBuff := loadTemplate(fl.TargetDir, data)
+	dirBuff := loadTemplate(fl.TargetDir, fl.DataSource)
 
 	dirName := string(dirBuff)
 	if depth == 0 {
 		fmt.Println(dirName, depth)
 		if _, err := os.Stat(dirName); os.IsExist(err) {
-			return
+			panic(err)
 		}
 	}
 
 	if fl.IsDir {
-		fmt.Println("mkdir", dirName)
+		fmt.Printf("creating %s ...", dirName)
 		if err := os.Mkdir(dirName, 0700); err != nil {
 			fmt.Println("mkdir err:", err)
 			panic(err)
@@ -171,7 +178,7 @@ func exec(fl FileStructure, depth int) {
 		var buff []byte
 		if fl.FromTemplate {
 			if fl.Source != "" {
-				buff = loadTemplate(fl.Source, data)
+				buff = loadTemplate(fl.Source, fl.DataSource)
 			} else {
 				lastDir := filepath.Dir(fl.TargetDir)
 				buff = defaultDataSource(lastDir[strings.LastIndex(lastDir, "/")+1:])
@@ -216,3 +223,5 @@ func formatTemplate() template.FuncMap {
 		},
 	}
 }
+
+// func parse

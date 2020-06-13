@@ -6,6 +6,7 @@ import (
 	"{{$.PackageName}}/internal/factory/base"
 	"{{$.PackageName}}/internal/factory/constant"
 	"{{$.PackageName}}/internal/factory/interfaces"
+	"{{$.PackageName}}/internal/services/coba/modules/{{clean $.module}}/delivery/resthandler"
 	"{{$.PackageName}}/pkg/helper"
 )
 
@@ -16,11 +17,13 @@ const (
 
 // Module model
 type Module struct {
+	restHandler *resthandler.RestHandler
 }
 
 // NewModule module constructor
 func NewModule(deps *base.Dependency) *Module {
 	var mod Module
+	mod.restHandler = resthandler.NewRestHandler(deps.Middleware)
 	return &mod
 }
 
@@ -28,7 +31,7 @@ func NewModule(deps *base.Dependency) *Module {
 func (m *Module) RestHandler(version string) (d interfaces.EchoRestHandler) {
 	switch version {
 	case helper.V1:
-		d = nil
+		d = m.restHandler
 	case helper.V2:
 		d = nil
 	}
