@@ -103,7 +103,7 @@ func main() {
 						{FromTemplate: true, DataSource: dataSource, Source: deliveryRestTemplate, FileName: "resthandler.go"},
 					}},
 					{TargetDir: "subscriberhandler/", IsDir: true, Childs: []FileStructure{
-						{FromTemplate: true, FileName: "subscriberhandler.go"},
+						{FromTemplate: true, DataSource: dataSource, Source: deliveryKafkaTemplate, FileName: "kafkahandler.go"},
 					}},
 				},
 			},
@@ -167,7 +167,7 @@ func exec(fl FileStructure, depth int) {
 	}
 
 	if fl.IsDir {
-		fmt.Printf("creating %s ...", dirName)
+		fmt.Printf("creating %s...\n", dirName)
 		if err := os.Mkdir(dirName, 0700); err != nil {
 			fmt.Println("mkdir err:", err)
 			panic(err)
