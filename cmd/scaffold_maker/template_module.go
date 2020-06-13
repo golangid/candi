@@ -6,25 +6,28 @@ import (
 	"{{$.PackageName}}/internal/factory/base"
 	"{{$.PackageName}}/internal/factory/constant"
 	"{{$.PackageName}}/internal/factory/interfaces"
+	"{{$.PackageName}}/internal/services/coba/modules/{{clean $.module}}/delivery/graphqlhandler"
 	"{{$.PackageName}}/internal/services/coba/modules/{{clean $.module}}/delivery/resthandler"
 	"{{$.PackageName}}/internal/services/coba/modules/{{clean $.module}}/delivery/workerhandler"
 )
 
 const (
 	// Name service name
-	Name constant.Module = "{{$.module}}"
+	Name constant.Module = "{{upper $.module}}"
 )
 
 // Module model
 type Module struct {
-	restHandler	 *resthandler.RestHandler
-	kafkaHandler *workerhandler.KafkaHandler
+	restHandler    *resthandler.RestHandler
+	graphqlHandler *graphqlhandler.GraphQLHandler
+	kafkaHandler   *workerhandler.KafkaHandler
 }
 
 // NewModule module constructor
 func NewModule(deps *base.Dependency) *Module {
 	var mod Module
 	mod.restHandler = resthandler.NewRestHandler(deps.Middleware)
+	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.Middleware)
 	mod.kafkaHandler = workerhandler.NewKafkaHandler([]string{"test"})
 	return &mod
 }
@@ -41,7 +44,7 @@ func (m *Module) GRPCHandler() interfaces.GRPCHandler {
 
 // GraphQLHandler method
 func (m *Module) GraphQLHandler() (name string, resolver interface{}) {
-	return string(Name), nil
+	return string(Name), m.graphqlHandler
 }
 
 // WorkerHandler method

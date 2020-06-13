@@ -62,11 +62,6 @@ func main() {
 
 	apiStructure := FileStructure{
 		TargetDir: "api/{{.ServiceName}}/", IsDir: true, DataSource: data,
-		Childs: []FileStructure{
-			{TargetDir: "graphql/", IsDir: true},
-			{TargetDir: "jsonschema/", IsDir: true},
-			{TargetDir: "proto/", IsDir: true},
-		},
 	}
 
 	cmdStructure := FileStructure{
@@ -94,7 +89,7 @@ func main() {
 				TargetDir: "delivery/", IsDir: true,
 				Childs: []FileStructure{
 					{TargetDir: "graphqlhandler/", IsDir: true, Childs: []FileStructure{
-						{FromTemplate: true, FileName: "graphqlhandler.go"},
+						{FromTemplate: true, DataSource: dataSource, Source: deliveryGraphqlTemplate, FileName: "graphqlhandler.go"},
 					}},
 					{TargetDir: "grpchandler/", IsDir: true, Childs: []FileStructure{
 						{FromTemplate: true, FileName: "grpchandler.go"},
@@ -144,6 +139,27 @@ func main() {
 	serviceStructure.Childs = append(serviceStructure.Childs, FileStructure{
 		FromTemplate: true, DataSource: data, Source: serviceMainTemplate, FileName: "service.go"},
 	)
+
+	apiStructure.Childs = []FileStructure{
+		{
+			TargetDir: "graphql/", IsDir: true,
+			Childs: []FileStructure{
+				{FromTemplate: true, DataSource: data, Source: defaultGraphqlSchema, FileName: "_schema.graphql"},
+			},
+		},
+		{
+			TargetDir: "jsonschema/", IsDir: true,
+			Childs: []FileStructure{
+				// {FromTemplate: true, DataSource: dataSource, FileName: "_schema.json"},
+			},
+		},
+		{
+			TargetDir: "proto/", IsDir: true,
+			Childs: []FileStructure{
+				// {FromTemplate: true, DataSource: dataSource, FileName: "proto.proto"},
+			},
+		},
+	}
 
 	baseDirectoryFileList := []FileStructure{
 		apiStructure, cmdStructure, serviceStructure,
@@ -221,7 +237,9 @@ func formatTemplate() template.FuncMap {
 		"clean": func(v interface{}) string {
 			return replacer.Replace(fmt.Sprint(v))
 		},
+
+		"upper": func(str string) string {
+			return strings.Title(str)
+		},
 	}
 }
-
-// func parse

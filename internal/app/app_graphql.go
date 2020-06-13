@@ -20,7 +20,7 @@ import (
 // graphQLHandler graphql
 func (a *App) graphqlHandler(mw middleware.Middleware) *graphqlHandler {
 	resolverModules := make(map[string]interface{})
-	var resolverFields []reflect.StructField
+	var resolverFields []reflect.StructField // for creating dynamic struct
 	for _, m := range a.service.GetModules() {
 		if name, handler := m.GraphQLHandler(); handler != nil {
 			resolverModules[name] = handler
