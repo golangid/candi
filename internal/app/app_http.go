@@ -26,15 +26,15 @@ func (a *App) ServeHTTP() {
 
 	a.httpServer.GET("/", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{
-			"message":   "Service up and running",
+			"message":   fmt.Sprintf("Service %s up and running", a.service.Name()),
 			"timestamp": time.Now().Format(time.RFC3339Nano),
 		})
 	})
 
-	v1Group := a.httpServer.Group(helper.V1)
+	rootPath := a.httpServer.Group("")
 	for _, m := range a.service.GetModules() {
-		if h := m.RestHandler(helper.V1); h != nil {
-			h.Mount(v1Group)
+		if h := m.RestHandler(); h != nil {
+			h.Mount(rootPath)
 		}
 	}
 
@@ -45,7 +45,7 @@ func (a *App) ServeHTTP() {
 	})
 	for _, route := range httpRoutes {
 		if !strings.Contains(route.Name, "(*Group)") {
-			routes.WriteString(helper.StringGreen(fmt.Sprintf("[HTTP-ROUTE] %-8s %-30s --> %s\n", route.Method, route.Path, route.Name)))
+			routes.WriteString(helper.StringGreen(fmt.Sprintf("[HTTP-ROUTE] %-6s %-30s --> %s\n", route.Method, route.Path, route.Name)))
 		}
 	}
 	fmt.Print(routes.String())

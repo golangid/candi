@@ -5,6 +5,7 @@ const deliveryRestTemplate = `package resthandler
 import (
 	"net/http"
 
+	"{{.PackageName}}/pkg/helper"
 	"{{.PackageName}}/pkg/middleware"
 	"{{.PackageName}}/pkg/wrapper"
 	"github.com/labstack/echo"
@@ -22,10 +23,12 @@ func NewRestHandler(mw middleware.Middleware) *RestHandler {
 	}
 }
 
-// Mount handler
+// Mount handler with root "/"
+// handling version in here
 func (h *RestHandler) Mount(root *echo.Group) {
-	{{clean $.module}} := root.Group("/{{clean $.module}}")
+	v1Root := root.Group(helper.V1)
 
+	{{clean $.module}} := v1Root.Group("/{{clean $.module}}")
 	{{clean $.module}}.GET("", h.hello)
 }
 

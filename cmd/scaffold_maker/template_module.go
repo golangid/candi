@@ -8,7 +8,6 @@ import (
 	"{{$.PackageName}}/internal/factory/interfaces"
 	"{{$.PackageName}}/internal/services/coba/modules/{{clean $.module}}/delivery/resthandler"
 	"{{$.PackageName}}/internal/services/coba/modules/{{clean $.module}}/delivery/workerhandler"
-	"{{$.PackageName}}/pkg/helper"
 )
 
 const (
@@ -18,7 +17,7 @@ const (
 
 // Module model
 type Module struct {
-	restHandler *resthandler.RestHandler
+	restHandler	 *resthandler.RestHandler
 	kafkaHandler *workerhandler.KafkaHandler
 }
 
@@ -31,14 +30,8 @@ func NewModule(deps *base.Dependency) *Module {
 }
 
 // RestHandler method
-func (m *Module) RestHandler(version string) (d interfaces.EchoRestHandler) {
-	switch version {
-	case helper.V1:
-		d = m.restHandler
-	case helper.V2:
-		d = nil
-	}
-	return
+func (m *Module) RestHandler() interfaces.EchoRestHandler {
+	return m.restHandler
 }
 
 // GRPCHandler method

@@ -5,7 +5,6 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/internal/factory/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/wedding/modules/invitation/delivery"
-	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 )
 
 const (
@@ -31,14 +30,8 @@ func NewModule(deps *base.Dependency) *Module {
 }
 
 // RestHandler method
-func (m *Module) RestHandler(version string) (d interfaces.EchoRestHandler) {
-	switch version {
-	case helper.V1:
-		d = m.restHandler
-	case helper.V2:
-		d = nil // TODO versioning
-	}
-	return
+func (m *Module) RestHandler() interfaces.EchoRestHandler {
+	return m.restHandler
 }
 
 // GRPCHandler method

@@ -9,7 +9,6 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/chatbot/delivery"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/chatbot/repository"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/chatbot/usecase"
-	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"github.com/line/line-bot-sdk-go/linebot"
 )
 
@@ -40,14 +39,8 @@ func NewModule(deps *base.Dependency) *Module {
 }
 
 // RestHandler method
-func (m *Module) RestHandler(version string) (d interfaces.EchoRestHandler) {
-	switch version {
-	case helper.V1:
-		d = m.restHandler
-	case helper.V2:
-		d = nil // TODO versioning
-	}
-	return
+func (m *Module) RestHandler() interfaces.EchoRestHandler {
+	return m.restHandler
 }
 
 // GRPCHandler method
