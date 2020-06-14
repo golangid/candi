@@ -2,7 +2,6 @@ package graphqlhandler
 
 import (
 	"context"
-	"net/http"
 
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/event/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
@@ -11,26 +10,22 @@ import (
 
 // GraphQLHandler model
 type GraphQLHandler struct {
-	uc        usecase.EventUsecase
-	basicAuth func(ctx context.Context)
+	uc usecase.EventUsecase
+	mw middleware.Middleware
 }
 
 // NewGraphQLHandler delivery
 func NewGraphQLHandler(mw middleware.Middleware, uc usecase.EventUsecase) *GraphQLHandler {
 	return &GraphQLHandler{
 		uc: uc,
-		basicAuth: func(ctx context.Context) {
-			headers := ctx.Value(shared.ContextKey("headers")).(http.Header)
-			if err := mw.BasicAuth(headers.Get("Authorization")); err != nil {
-				panic(err)
-			}
-		},
+		mw: mw,
 	}
 }
 
 // GetAll handler
 func (h *GraphQLHandler) GetAll(ctx context.Context, filter struct{ *shared.Filter }) (*EventListResolver, error) {
-	h.basicAuth(ctx)
+	h.mw.GraphQLBasicAuth(ctx)
+
 	events, meta, err := h.uc.FindAll(ctx, filter.Filter)
 	if err != nil {
 		return nil, err

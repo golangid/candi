@@ -95,10 +95,6 @@ func (h *graphqlHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *graphqlHandler) servePlayground(c echo.Context) error {
-	c.Response().Header().Set("WWW-Authenticate", `Basic realm=""`)
-	if err := h.mw.BasicAuth(c.Request().Header.Get("Authorization")); err != nil {
-		return wrapper.NewHTTPResponse(http.StatusUnauthorized, "Unauthorized").JSON(c.Response())
-	}
 
 	b, err := ioutil.ReadFile("web/graphql_playground.html")
 	if err != nil {

@@ -19,9 +19,8 @@ import (
 
 // RestHandler handler
 type RestHandler struct {
-	mw        middleware.Middleware
-	uc        usecase.BotUsecase
-	basicAuth echo.MiddlewareFunc
+	mw middleware.Middleware
+	uc usecase.BotUsecase
 }
 
 // NewRestHandler create new rest handler
@@ -29,15 +28,6 @@ func NewRestHandler(mw middleware.Middleware, uc usecase.BotUsecase) *RestHandle
 	return &RestHandler{
 		mw: mw,
 		uc: uc,
-		basicAuth: func(next echo.HandlerFunc) echo.HandlerFunc {
-			return func(c echo.Context) error {
-				if err := mw.BasicAuth(c.Request().Header.Get("Authorization")); err != nil {
-					return wrapper.NewHTTPResponse(http.StatusUnauthorized, "Unauthorized").JSON(c.Response())
-				}
-
-				return next(c)
-			}
-		},
 	}
 }
 
@@ -46,7 +36,7 @@ func (h *RestHandler) Mount(root *echo.Group) {
 	bot := root.Group("/bot")
 
 	bot.POST("/callback", h.callback)
-	bot.POST("/pushmessage", h.pushMessage, h.basicAuth)
+	bot.POST("/pushmessage", h.pushMessage, h.mw.HTTPBasicAuth(false))
 }
 
 func (h *RestHandler) callback(c echo.Context) error {

@@ -1,25 +1,22 @@
 package middleware
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
+	"net/http"
 	"strings"
+
+	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
+	"agungdwiprasetyo.com/backend-microservices/pkg/wrapper"
+	"github.com/labstack/echo"
 )
 
-// BasicAuth function basic auth
-func (m *mw) BasicAuth(authorization string) error {
-	authorizations := strings.Split(authorization, " ")
-	if len(authorizations) != 2 {
-		return errors.New("Unauthorized")
-	}
-
-	authType, val := authorizations[0], authorizations[1]
-	if authType != "Basic" {
-		return errors.New("Unauthorized")
-	}
+// Basic function basic auth
+func (m *mw) Basic(ctx context.Context, key string) error {
 
 	isValid := func() bool {
-		data, err := base64.StdEncoding.DecodeString(val)
+		data, err := base64.StdEncoding.DecodeString(key)
 		if err != nil {
 			return false
 		}
@@ -42,4 +39,49 @@ func (m *mw) BasicAuth(authorization string) error {
 	}
 
 	return nil
+}
+
+// HTTPBasicAuth http basic auth middleware
+func (m *mw) HTTPBasicAuth(showAlert bool) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+
+			if showAlert {
+				c.Response().Header().Set("WWW-Authenticate", `Basic realm=""`)
+			}
+
+			authorization := c.Request().Header.Get(echo.HeaderAuthorization)
+			if authorization == "" {
+				return wrapper.NewHTTPResponse(http.StatusUnauthorized, "Invalid authorization").JSON(c.Response())
+			}
+
+			authValues := strings.Split(authorization, " ")
+			authType := strings.ToLower(authValues[0])
+			if authType != "basic" || len(authValues) != 2 {
+				return wrapper.NewHTTPResponse(http.StatusUnauthorized, "Invalid authorization").JSON(c.Response())
+			}
+
+			key := authValues[1]
+			if err := m.Basic(c.Request().Context(), key); err != nil {
+				return wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(c.Response())
+			}
+
+			return next(c)
+		}
+	}
+}
+
+func (m *mw) GraphQLBasicAuth(ctx context.Context) {
+	headers := ctx.Value(shared.ContextKey("headers")).(http.Header)
+	authorization := headers.Get("Authorization")
+
+	authValues := strings.Split(authorization, " ")
+	authType := strings.ToLower(authValues[0])
+	if authType != "basic" || len(authValues) != 2 {
+		panic("Invalid authorization")
+	}
+
+	if err := m.Basic(ctx, authValues[1]); err != nil {
+		panic(err)
+	}
 }

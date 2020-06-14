@@ -13,10 +13,10 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-// GRPCAuth function,
+// GRPCBasicAuth function,
 // or Unary interceptor
 // additional security for our GRPC server
-func (m *mw) GRPCAuth(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+func (m *mw) GRPCBasicAuth(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	start := time.Now()
 	defer func() {
 		m.grpcLog(start, err, info.FullMethod, "GRPC")
@@ -31,8 +31,8 @@ func (m *mw) GRPCAuth(ctx context.Context, req interface{}, info *grpc.UnaryServ
 	return
 }
 
-// GRPCAuthStream interceptor
-func (m *mw) GRPCAuthStream(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+// GRPCBasicAuthStream interceptor
+func (m *mw) GRPCBasicAuthStream(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
 	start := time.Now()
 	defer func() {
 		m.grpcLog(start, err, info.FullMethod, "GRPC-STREAM")
@@ -58,7 +58,7 @@ func (m *mw) validateGrpcAuth(ctx context.Context) error {
 	}
 
 	authorization := authorizationMap[0]
-	if err := m.BasicAuth(authorization); err != nil {
+	if err := m.Basic(ctx, authorization); err != nil {
 		return grpc.Errorf(codes.Unauthenticated, err.Error())
 	}
 

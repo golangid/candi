@@ -45,8 +45,8 @@ func New(service factory.ServiceFactory) *App {
 		// init grpc server
 		appInstance.grpcServer = grpc.NewServer(
 			grpc.MaxSendMsgSize(200*int(helper.MByte)), grpc.MaxRecvMsgSize(200*int(helper.MByte)),
-			grpc.UnaryInterceptor(dependency.Middleware.GRPCAuth),
-			grpc.StreamInterceptor(dependency.Middleware.GRPCAuthStream),
+			grpc.UnaryInterceptor(dependency.Middleware.GRPCBasicAuth),
+			grpc.StreamInterceptor(dependency.Middleware.GRPCBasicAuthStream),
 		)
 	}
 
@@ -54,7 +54,7 @@ func New(service factory.ServiceFactory) *App {
 		gqlHandler := appInstance.graphqlHandler(dependency.Middleware)
 		appInstance.httpServer.Add(http.MethodGet, "/graphql", echo.WrapHandler(gqlHandler))
 		appInstance.httpServer.Add(http.MethodPost, "/graphql", echo.WrapHandler(gqlHandler))
-		appInstance.httpServer.GET("/graphql/playground", gqlHandler.servePlayground)
+		appInstance.httpServer.GET("/graphql/playground", gqlHandler.servePlayground, dependency.Middleware.HTTPBasicAuth(true))
 	}
 
 	if config.BaseEnv().UseKafkaConsumer {

@@ -11,10 +11,12 @@ import (
 
 // Middleware abstraction
 type Middleware interface {
-	BasicAuth(string) error
-	ValidateBearer() echo.MiddlewareFunc
-	GRPCAuth(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error)
-	GRPCAuthStream(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error)
+	Basic(context.Context, string) error
+	Bearer(context.Context, string) (*token.Claim, error)
+
+	HTTPMiddleware
+	GRPCMiddleware
+	GraphQLMiddleware
 }
 
 type mw struct {
@@ -29,4 +31,22 @@ func NewMiddleware(cfg *config.Config) Middleware {
 		username:  config.BaseEnv().BasicAuthUsername,
 		password:  config.BaseEnv().BasicAuthPassword,
 	}
+}
+
+// HTTPMiddleware interface, common middleware for http handler
+type HTTPMiddleware interface {
+	HTTPBasicAuth(showAlert bool) echo.MiddlewareFunc
+	HTTPBearerAuth() echo.MiddlewareFunc
+}
+
+// GRPCMiddleware interface, common middleware for grpc handler
+type GRPCMiddleware interface {
+	GRPCBasicAuth(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error)
+	GRPCBasicAuthStream(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error)
+}
+
+// GraphQLMiddleware interface, common middleware for graphql handler, as directive in graphql schema
+type GraphQLMiddleware interface {
+	GraphQLBasicAuth(ctx context.Context)
+	GraphQLBearerAuth(ctx context.Context) *token.Claim
 }
