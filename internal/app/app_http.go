@@ -15,7 +15,7 @@ import (
 	echoMidd "github.com/labstack/echo/middleware"
 )
 
-// ServeHTTP user service
+// ServeHTTP service
 func (a *App) ServeHTTP() {
 	if a.httpServer == nil {
 		return

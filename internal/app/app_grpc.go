@@ -9,7 +9,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 )
 
-// ServeGRPC user service
+// ServeGRPC service
 func (a *App) ServeGRPC() {
 	if a.grpcServer == nil {
 		return

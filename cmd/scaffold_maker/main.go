@@ -77,6 +77,10 @@ func main() {
 		TargetDir: "internal/services/{{.ServiceName}}/", IsDir: true, DataSource: data,
 	}
 
+	apiProtoStructure := FileStructure{
+		TargetDir: "proto/", IsDir: true,
+	}
+
 	var moduleStructure = FileStructure{
 		TargetDir: "modules/", IsDir: true, DataSource: data,
 	}
@@ -92,7 +96,7 @@ func main() {
 						{FromTemplate: true, DataSource: dataSource, Source: deliveryGraphqlTemplate, FileName: "graphqlhandler.go"},
 					}},
 					{TargetDir: "grpchandler/", IsDir: true, Childs: []FileStructure{
-						{FromTemplate: true, FileName: "grpchandler.go"},
+						{FromTemplate: true, DataSource: dataSource, Source: deliveryGRPCTemplate, FileName: "grpchandler.go"},
 					}},
 					{TargetDir: "resthandler/", IsDir: true, Childs: []FileStructure{
 						{FromTemplate: true, DataSource: dataSource, Source: deliveryRestTemplate, FileName: "resthandler.go"},
@@ -134,6 +138,13 @@ func main() {
 				),
 			},
 		}...)
+
+		apiProtoStructure.Childs = append(apiProtoStructure.Childs, FileStructure{
+			TargetDir: moduleName, IsDir: true,
+			Childs: []FileStructure{
+				{FromTemplate: true, DataSource: dataSource, Source: defaultGRPCProto, FileName: moduleName + ".proto"},
+			},
+		})
 	}
 	serviceStructure.Childs = append(serviceStructure.Childs, moduleStructure)
 	serviceStructure.Childs = append(serviceStructure.Childs, FileStructure{
@@ -153,12 +164,7 @@ func main() {
 				// {FromTemplate: true, DataSource: dataSource, FileName: "_schema.json"},
 			},
 		},
-		{
-			TargetDir: "proto/", IsDir: true,
-			Childs: []FileStructure{
-				// {FromTemplate: true, DataSource: dataSource, FileName: "proto.proto"},
-			},
-		},
+		apiProtoStructure,
 	}
 
 	baseDirectoryFileList := []FileStructure{

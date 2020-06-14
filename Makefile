@@ -7,10 +7,11 @@ endif
 
 init:
 	go run cmd/scaffold_maker/*.go --servicename=$(service) --modules=$(modules)
+	@ # @$(MAKE) -f $(lastword $(MAKEFILE_LIST)) proto
 
 prepare:
-	if [ ! -d "cmd/$(service)" ]; then  echo "service $(service) undefined"; exit 1; fi
-	ln -sf cmd/$(service)/main.go main_service.go
+	@if [ ! -d "cmd/$(service)" ]; then  echo "ERROR: service '$(service)' undefined"; exit 1; fi
+	@ln -sf cmd/$(service)/main.go main_service.go
 
 build: prepare
 	go build -o bin

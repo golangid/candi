@@ -7,6 +7,7 @@ import (
 	"{{$.PackageName}}/internal/factory/constant"
 	"{{$.PackageName}}/internal/factory/interfaces"
 	"{{$.PackageName}}/internal/services/{{.ServiceName}}/modules/{{clean $.module}}/delivery/graphqlhandler"
+	"{{$.PackageName}}/internal/services/{{.ServiceName}}/modules/{{clean $.module}}/delivery/grpchandler"
 	"{{$.PackageName}}/internal/services/{{.ServiceName}}/modules/{{clean $.module}}/delivery/resthandler"
 	"{{$.PackageName}}/internal/services/{{.ServiceName}}/modules/{{clean $.module}}/delivery/workerhandler"
 )
@@ -19,6 +20,7 @@ const (
 // Module model
 type Module struct {
 	restHandler    *resthandler.RestHandler
+	grpcHandler    *grpchandler.GRPCHandler
 	graphqlHandler *graphqlhandler.GraphQLHandler
 	kafkaHandler   *workerhandler.KafkaHandler
 }
@@ -27,6 +29,7 @@ type Module struct {
 func NewModule(deps *base.Dependency) *Module {
 	var mod Module
 	mod.restHandler = resthandler.NewRestHandler(deps.Middleware)
+	mod.grpcHandler = grpchandler.NewGRPCHandler(deps.Middleware)
 	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.Middleware)
 	mod.kafkaHandler = workerhandler.NewKafkaHandler([]string{"test"})
 	return &mod
@@ -39,7 +42,7 @@ func (m *Module) RestHandler() interfaces.EchoRestHandler {
 
 // GRPCHandler method
 func (m *Module) GRPCHandler() interfaces.GRPCHandler {
-	return nil
+	return m.grpcHandler
 }
 
 // GraphQLHandler method
