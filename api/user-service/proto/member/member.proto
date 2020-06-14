@@ -1,0 +1,14 @@
+syntax="proto3";
+package member;
+
+service MemberHandler {
+	rpc Hello(Request) returns (Response);
+}
+
+message Request {
+    string Message=1;
+}
+
+message Response {
+	string Message=1;
+}
