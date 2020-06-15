@@ -1,20 +1,18 @@
-package main
-
-const moduleMainTemplate = `package {{clean $.module}}
+package customer
 
 import (
-	"{{$.PackageName}}/pkg/codebase/factory/base"
-	"{{$.PackageName}}/pkg/codebase/factory/constant"
-	"{{$.PackageName}}/pkg/codebase/factory/interfaces"
-	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{clean $.module}}/delivery/graphqlhandler"
-	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{clean $.module}}/delivery/grpchandler"
-	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{clean $.module}}/delivery/resthandler"
-	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{clean $.module}}/delivery/workerhandler"
+	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/customer/delivery/graphqlhandler"
+	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/customer/delivery/grpchandler"
+	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/customer/delivery/resthandler"
+	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/customer/delivery/workerhandler"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/interfaces"
 )
 
 const (
 	// Name service name
-	Name constant.Module = "{{upper $.module}}"
+	Name constant.Module = "Customer"
 )
 
 // Module model
@@ -34,10 +32,8 @@ func NewModule(deps *base.Dependency) *Module {
 	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.Middleware)
 
 	mod.workerHandlers = map[constant.Worker]interfaces.WorkerHandler{
-		constant.Kafka: workerhandler.NewKafkaHandler([]string{"test"}), // example worker
-		// add more worker type from delivery, implement "interfaces.WorkerHandler"
+		constant.Kafka: workerhandler.NewKafkaHandler([]string{"test"}),
 	}
-
 	return &mod
 }
 
@@ -64,11 +60,4 @@ func (m *Module) WorkerHandler(workerType constant.Worker) interfaces.WorkerHand
 // Name get module name
 func (m *Module) Name() constant.Module {
 	return Name
-}
-`
-
-const defaultFile = `package {{$.packageName}}`
-
-func defaultDataSource(fileName string) []byte {
-	return loadTemplate(defaultFile, map[string]string{"packageName": fileName})
 }

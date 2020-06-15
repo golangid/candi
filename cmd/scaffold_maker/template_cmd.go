@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"{{.PackageName}}/config"
+	service "{{.PackageName}}/internal/{{.ServiceName}}"
 	"{{.PackageName}}/pkg/codebase/app"
 	"{{.PackageName}}/pkg/codebase/factory/base"
-	service "{{.PackageName}}/internal/services/{{.ServiceName}}"
 )
 
 const (

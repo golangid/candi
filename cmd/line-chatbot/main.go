@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/config"
-	linechatbot "agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot"
+	linechatbot "agungdwiprasetyo.com/backend-microservices/internal/line-chatbot"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/app"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
 )

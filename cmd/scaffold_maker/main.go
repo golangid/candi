@@ -79,7 +79,7 @@ func main() {
 	}
 
 	serviceStructure := FileStructure{
-		TargetDir: "internal/services/{{.ServiceName}}/", IsDir: true, DataSource: data,
+		TargetDir: "internal/{{.ServiceName}}/", IsDir: true, DataSource: data,
 	}
 
 	apiProtoStructure := FileStructure{

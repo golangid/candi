@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/config"
-	service "agungdwiprasetyo.com/backend-microservices/internal/services/user-service"
+	service "agungdwiprasetyo.com/backend-microservices/internal/user-service"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/app"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
 )

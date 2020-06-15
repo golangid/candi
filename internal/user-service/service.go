@@ -1,14 +1,12 @@
-package main
-
-const serviceMainTemplate = `package {{clean $.ServiceName}}
+package userservice
 
 import (
-	"{{.PackageName}}/pkg/codebase/factory"
-	"{{.PackageName}}/pkg/codebase/factory/base"
-	"{{.PackageName}}/pkg/codebase/factory/constant"
-{{- range $module := .Modules}}
-	"{{$.PackageName}}/internal/{{$.ServiceName}}/modules/{{$module}}"
-{{- end }}
+	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/auth"
+	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/customer"
+	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/member"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
 )
 
 // Service model
@@ -21,9 +19,9 @@ type Service struct {
 // NewService in this service
 func NewService(serviceName string, dependency *base.Dependency) factory.ServiceFactory {
 	modules := []factory.ModuleFactory{
-	{{- range $module := .Modules}}
-		{{clean $module}}.NewModule(dependency),
-	{{- end }}
+		member.NewModule(dependency),
+		customer.NewModule(dependency),
+		auth.NewModule(dependency),
 	}
 
 	return &Service{
@@ -47,5 +45,3 @@ func (s *Service) GetModules() []factory.ModuleFactory {
 func (s *Service) Name() constant.Service {
 	return s.name
 }
-
-`
