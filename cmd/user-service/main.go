@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/config"
-	"agungdwiprasetyo.com/backend-microservices/internal/app"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
 	service "agungdwiprasetyo.com/backend-microservices/internal/services/user-service"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/app"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
 )
 
 const (
@@ -32,4 +32,3 @@ func main() {
 	srv := service.NewService(serviceName, base.InitDependency(cfg))
 	app.New(srv).Run(ctx)
 }
-

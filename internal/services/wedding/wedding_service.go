@@ -1,11 +1,11 @@
 package wedding
 
 import (
-	"agungdwiprasetyo.com/backend-microservices/internal/factory"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/wedding/modules/event"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/wedding/modules/invitation"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
 )
 
 // Service model

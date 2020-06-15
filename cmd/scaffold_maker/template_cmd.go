@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"{{.PackageName}}/config"
-	"{{.PackageName}}/internal/app"
-	"{{.PackageName}}/internal/factory/base"
+	"{{.PackageName}}/pkg/codebase/app"
+	"{{.PackageName}}/pkg/codebase/factory/base"
 	service "{{.PackageName}}/internal/services/{{.ServiceName}}"
 )
 

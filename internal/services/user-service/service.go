@@ -1,12 +1,12 @@
 package userservice
 
 import (
-	"agungdwiprasetyo.com/backend-microservices/internal/factory"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
-	"agungdwiprasetyo.com/backend-microservices/internal/services/user-service/modules/member"
-	"agungdwiprasetyo.com/backend-microservices/internal/services/user-service/modules/customer"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/user-service/modules/auth"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/user-service/modules/customer"
+	"agungdwiprasetyo.com/backend-microservices/internal/services/user-service/modules/member"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
 )
 
 // Service model
@@ -45,4 +45,3 @@ func (s *Service) GetModules() []factory.ModuleFactory {
 func (s *Service) Name() constant.Service {
 	return s.name
 }
-

@@ -3,9 +3,9 @@ package main
 const serviceMainTemplate = `package {{clean $.ServiceName}}
 
 import (
-	"{{.PackageName}}/internal/factory"
-	"{{.PackageName}}/internal/factory/base"
-	"{{.PackageName}}/internal/factory/constant"
+	"{{.PackageName}}/pkg/codebase/factory"
+	"{{.PackageName}}/pkg/codebase/factory/base"
+	"{{.PackageName}}/pkg/codebase/factory/constant"
 {{- range $module := .Modules}}
 	"{{$.PackageName}}/internal/services/{{$.ServiceName}}/modules/{{$module}}"
 {{- end }}

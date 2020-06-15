@@ -3,9 +3,9 @@ package main
 const moduleMainTemplate = `package {{clean $.module}}
 
 import (
-	"{{$.PackageName}}/internal/factory/base"
-	"{{$.PackageName}}/internal/factory/constant"
-	"{{$.PackageName}}/internal/factory/interfaces"
+	"{{$.PackageName}}/pkg/codebase/factory/base"
+	"{{$.PackageName}}/pkg/codebase/factory/constant"
+	"{{$.PackageName}}/pkg/codebase/factory/interfaces"
 	"{{$.PackageName}}/internal/services/{{.ServiceName}}/modules/{{clean $.module}}/delivery/graphqlhandler"
 	"{{$.PackageName}}/internal/services/{{.ServiceName}}/modules/{{clean $.module}}/delivery/grpchandler"
 	"{{$.PackageName}}/internal/services/{{.ServiceName}}/modules/{{clean $.module}}/delivery/resthandler"

@@ -1,11 +1,11 @@
 package linechatbot
 
 import (
-	"agungdwiprasetyo.com/backend-microservices/internal/factory"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/chatbot"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/event"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
 )
 
 // Service model

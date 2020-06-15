@@ -1,11 +1,11 @@
 package warung
 
 import (
-	"agungdwiprasetyo.com/backend-microservices/internal/factory"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/warung/modules/product"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/warung/modules/user"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
 )
 
 // Service model

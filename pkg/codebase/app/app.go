@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	"agungdwiprasetyo.com/backend-microservices/config"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	_ "agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"github.com/Shopify/sarama"

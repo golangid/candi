@@ -1,10 +1,10 @@
 package user
 
 import (
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/warung/modules/user/delivery"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/interfaces"
 )
 
 const (

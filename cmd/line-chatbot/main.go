@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/config"
-	"agungdwiprasetyo.com/backend-microservices/internal/app"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
 	linechatbot "agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/app"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
 )
 
 const (

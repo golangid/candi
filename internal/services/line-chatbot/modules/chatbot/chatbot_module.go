@@ -3,12 +3,12 @@ package chatbot
 import (
 	"os"
 
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/constant"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/chatbot/delivery"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/chatbot/repository"
 	"agungdwiprasetyo.com/backend-microservices/internal/services/line-chatbot/modules/chatbot/usecase"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/interfaces"
 	"github.com/line/line-bot-sdk-go/linebot"
 )
 

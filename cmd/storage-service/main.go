@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/config"
-	"agungdwiprasetyo.com/backend-microservices/internal/app"
-	"agungdwiprasetyo.com/backend-microservices/internal/factory/base"
 	service "agungdwiprasetyo.com/backend-microservices/internal/services/storage-service"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/app"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
 )
 
 const (
