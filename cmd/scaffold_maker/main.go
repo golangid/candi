@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 )
@@ -59,6 +60,10 @@ func main() {
 	if modulesFlag == "" {
 		modules = []string{"module"} // default module name
 	}
+
+	sort.Slice(modules, func(i, j int) bool {
+		return modules[i] < modules[j]
+	})
 
 	apiStructure := FileStructure{
 		TargetDir: "api/{{.ServiceName}}/", IsDir: true, DataSource: data,

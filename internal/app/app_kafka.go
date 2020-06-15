@@ -35,7 +35,7 @@ func (a *App) KafkaConsumer() {
 	println(helper.StringYellow("Kafka consumer is active"))
 	var consumeTopics []string
 	for topic, handlerNames := range topicInfo {
-		print(helper.StringYellow(fmt.Sprintf("[KAFKA-CONSUMER] (topic): %-8s --> (modules): [%s]\n", topic, strings.Join(handlerNames, ", "))))
+		print(helper.StringYellow(fmt.Sprintf("[KAFKA-CONSUMER] (topic): %-8s  (consumed by modules)--> [%s]\n", topic, strings.Join(handlerNames, ", "))))
 		consumeTopics = append(consumeTopics, topic)
 	}
 	println()
