@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/config"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
@@ -94,12 +95,15 @@ func (a *App) Run(ctx context.Context) {
 	signal.Notify(quitSignal, os.Interrupt, syscall.SIGTERM)
 	<-quitSignal
 
-	a.Shutdown(ctx)
+	a.shutdown()
 }
 
-// Shutdown graceful shutdown all server, panic if there is still a process running when the request exceed given timeout in context
-func (a *App) Shutdown(ctx context.Context) {
-	println()
+// graceful shutdown all server, panic if there is still a process running when the request exceed given timeout in context
+func (a *App) shutdown() {
+	println("Graceful shutdown...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
 
 	if a.httpServer != nil {
 		log.Println("Stopping HTTP server...")

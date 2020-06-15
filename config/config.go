@@ -88,5 +88,5 @@ func (c *Config) Exit(ctx context.Context) {
 		c.SQLWrite.Close()
 	}
 
-	log.Println("\x1b[33;1mConfig: Success close all connection\x1b[0m")
+	log.Println("\x1b[32;1mConfig: Success close all connection\x1b[0m")
 }
