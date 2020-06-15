@@ -85,6 +85,9 @@ func main() {
 	apiProtoStructure := FileStructure{
 		TargetDir: "proto/", IsDir: true,
 	}
+	apiGraphQLStructure := FileStructure{
+		TargetDir: "graphql/", IsDir: true,
+	}
 
 	var moduleStructure = FileStructure{
 		TargetDir: "modules/", IsDir: true, DataSource: data,
@@ -150,19 +153,20 @@ func main() {
 				{FromTemplate: true, DataSource: dataSource, Source: defaultGRPCProto, FileName: moduleName + ".proto"},
 			},
 		})
+		apiGraphQLStructure.Childs = append(apiGraphQLStructure.Childs, FileStructure{
+			FromTemplate: true, DataSource: dataSource, Source: defaultGraphqlSchema, FileName: moduleName + ".graphql",
+		})
 	}
 	serviceStructure.Childs = append(serviceStructure.Childs, moduleStructure)
 	serviceStructure.Childs = append(serviceStructure.Childs, FileStructure{
 		FromTemplate: true, DataSource: data, Source: serviceMainTemplate, FileName: "service.go"},
 	)
 
+	apiGraphQLStructure.Childs = append(apiGraphQLStructure.Childs, FileStructure{
+		FromTemplate: true, DataSource: data, Source: defaultGraphqlRootSchema, FileName: "_schema.graphql",
+	})
 	apiStructure.Childs = []FileStructure{
-		{
-			TargetDir: "graphql/", IsDir: true,
-			Childs: []FileStructure{
-				{FromTemplate: true, DataSource: data, Source: defaultGraphqlSchema, FileName: "_schema.graphql"},
-			},
-		},
+		apiGraphQLStructure,
 		{
 			TargetDir: "jsonschema/", IsDir: true,
 			Childs: []FileStructure{
