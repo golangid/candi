@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"agungdwiprasetyo.com/backend-microservices/config"
+	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 	"agungdwiprasetyo.com/backend-microservices/pkg/token"
 	"github.com/labstack/echo"
 	"google.golang.org/grpc"
@@ -17,20 +18,6 @@ type Middleware interface {
 	HTTPMiddleware
 	GRPCMiddleware
 	GraphQLMiddleware
-}
-
-type mw struct {
-	tokenUtil          token.Token
-	username, password string
-}
-
-// NewMiddleware create new middleware instance
-func NewMiddleware(cfg *config.Config) Middleware {
-	return &mw{
-		tokenUtil: token.NewJWT(cfg.PublicKey, cfg.PrivateKey),
-		username:  config.BaseEnv().BasicAuthUsername,
-		password:  config.BaseEnv().BasicAuthPassword,
-	}
 }
 
 // HTTPMiddleware interface, common middleware for http handler
@@ -49,4 +36,20 @@ type GRPCMiddleware interface {
 type GraphQLMiddleware interface {
 	GraphQLBasicAuth(ctx context.Context)
 	GraphQLBearerAuth(ctx context.Context) *token.Claim
+}
+
+type mw struct {
+	tokenValidator interface {
+		Validate(ctx context.Context, token string) <-chan shared.Result
+	}
+	username, password string
+}
+
+// NewMiddleware create new middleware instance
+func NewMiddleware(cfg *config.Config) Middleware {
+	return &mw{
+		tokenValidator: token.NewJWT(cfg.PublicKey, cfg.PrivateKey),
+		username:       config.BaseEnv().BasicAuthUsername,
+		password:       config.BaseEnv().BasicAuthPassword,
+	}
 }

@@ -15,7 +15,7 @@ import (
 
 // Bearer token validator
 func (m *mw) Bearer(ctx context.Context, tokenString string) (*token.Claim, error) {
-	resp := <-m.tokenUtil.Validate(ctx, tokenString)
+	resp := <-m.tokenValidator.Validate(ctx, tokenString)
 	if resp.Error != nil {
 		return nil, resp.Error
 	}
