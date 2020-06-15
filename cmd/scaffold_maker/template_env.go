@@ -3,16 +3,16 @@ package main
 const envTemplate = `# Basic env configuration
 
 # Service Handlers
-USE_HTTP=[bool]
-USE_GRPC=[bool]
-USE_GRAPHQL=[bool]
-USE_KAFKA_CONSUMER=[bool]
+USE_HTTP=true
+USE_GRPC=true
+USE_GRAPHQL=true
+USE_KAFKA_CONSUMER=true
 
-HTTP_PORT=[int]
-GRPC_PORT=[int]
+HTTP_PORT=8000
+GRPC_PORT=8001
 
-BASIC_AUTH_USERNAME=[string]
-BASIC_AUTH_PASS=[string]
+BASIC_AUTH_USERNAME=user
+BASIC_AUTH_PASS=pass
 
 USE_MONGO=[bool]
 MONGODB_HOST_WRITE=[string]
@@ -39,8 +39,8 @@ REDIS_WRITE_AUTH=[string]
 
 USE_RSA_KEY=[bool]
 
-KAFKA_BROKERS=[string]
-KAFKA_CLIENT_ID=[string]
+KAFKA_BROKERS=localhost:9092
+KAFKA_CLIENT_ID=client_id
 KAFKA_CONSUMER_GROUP=[string]
 
 

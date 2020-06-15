@@ -28,6 +28,7 @@ type FileStructure struct {
 	DataSource   interface{}
 	Source       string
 	FileName     string
+	Skip         bool
 	Childs       []FileStructure
 }
 
@@ -37,13 +38,16 @@ var (
 
 func main() {
 
+	var scope string
 	var serviceName string
 	var modulesFlag string
 
+	flag.StringVar(&scope, "scope", "initservice", "set scope")
 	flag.StringVar(&serviceName, "servicename", "", "set service name")
 	flag.StringVar(&modulesFlag, "modules", "", "set all modules from service")
 
 	flag.Usage = func() {
+		fmt.Println("-scope | --scope => set scope (initservice or addmodule), example: --scope initservice")
 		fmt.Println("-servicename | --servicename => set service name, example: --servicename auth-service")
 		fmt.Println("-modules | --modules => set modules name, example: --modules user,auth")
 	}
@@ -89,10 +93,23 @@ func main() {
 		TargetDir: "graphql/", IsDir: true,
 	}
 
+	if scope == "addmodule" {
+		files, err := ioutil.ReadDir("internal/" + serviceName + "/modules")
+		if err != nil {
+			panic(err)
+		}
+		for _, f := range files {
+			if f.IsDir() {
+				data.Modules = append(data.Modules, f.Name())
+			}
+		}
+	}
+
 	var moduleStructure = FileStructure{
 		TargetDir: "modules/", IsDir: true, DataSource: data,
 	}
 	for _, moduleName := range modules {
+		moduleName = strings.TrimSpace(moduleName)
 		data.Modules = append(data.Modules, moduleName)
 		dataSource := map[string]string{"PackageName": packageName, "ServiceName": serviceName, "module": moduleName}
 
@@ -159,8 +176,8 @@ func main() {
 	}
 	serviceStructure.Childs = append(serviceStructure.Childs, moduleStructure)
 	serviceStructure.Childs = append(serviceStructure.Childs, FileStructure{
-		FromTemplate: true, DataSource: data, Source: serviceMainTemplate, FileName: "service.go"},
-	)
+		FromTemplate: true, DataSource: data, Source: serviceMainTemplate, FileName: "service.go",
+	})
 
 	apiGraphQLStructure.Childs = append(apiGraphQLStructure.Childs, FileStructure{
 		FromTemplate: true, DataSource: data, Source: defaultGraphqlRootSchema, FileName: "_schema.graphql",
@@ -176,25 +193,47 @@ func main() {
 		apiProtoStructure,
 	}
 
-	baseDirectoryFileList := []FileStructure{
-		apiStructure, cmdStructure, serviceStructure,
+	var baseDirectoryFile FileStructure
+	switch scope {
+	case "initservice":
+		baseDirectoryFile.Childs = []FileStructure{
+			apiStructure, cmdStructure, serviceStructure,
+		}
+
+	case "addmodule":
+		moduleStructure.Skip = true
+		serviceStructure.Skip = true
+		serviceStructure.Childs = []FileStructure{
+			moduleStructure,
+			{FromTemplate: true, DataSource: data, Source: serviceMainTemplate, FileName: "service.go"},
+		}
+
+		apiStructure.Skip = true
+		apiProtoStructure.Skip, apiGraphQLStructure.Skip = true, true
+		apiStructure.Childs = []FileStructure{
+			apiProtoStructure, apiGraphQLStructure,
+		}
+
+		baseDirectoryFile.Childs = []FileStructure{apiStructure, serviceStructure}
+		baseDirectoryFile.Skip = true
+
+	default:
+		panic("invalid scope parameter")
 	}
 
-	for _, fl := range baseDirectoryFileList {
-		exec(fl, 0)
-	}
-
+	exec(baseDirectoryFile)
 }
 
-func exec(fl FileStructure, depth int) {
+func exec(fl FileStructure) {
 	dirBuff := loadTemplate(fl.TargetDir, fl.DataSource)
-
 	dirName := string(dirBuff)
-	if depth == 0 {
-		fmt.Println(dirName, depth)
-		if _, err := os.Stat(dirName); os.IsExist(err) {
-			panic(err)
-		}
+
+	if fl.Skip {
+		goto execChild
+	}
+
+	if _, err := os.Stat(dirName); os.IsExist(err) {
+		panic(err)
 	}
 
 	if fl.IsDir {
@@ -223,9 +262,10 @@ func exec(fl FileStructure, depth int) {
 		}
 	}
 
+execChild:
 	for _, child := range fl.Childs {
 		child.TargetDir = dirName + child.TargetDir
-		exec(child, depth+1)
+		exec(child)
 	}
 }
 

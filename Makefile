@@ -6,8 +6,12 @@ $(error "service" is not set)
 endif
 
 init:
-	go run cmd/scaffold_maker/*.go --servicename=$(service) --modules=$(modules)
-	@ # @$(MAKE) -f $(lastword $(MAKEFILE_LIST)) proto
+	go run cmd/scaffold_maker/*.go --scope=initservice --servicename=$(service) --modules=$(modules)
+	@$(MAKE) -f $(lastword $(MAKEFILE_LIST)) proto
+
+add-module:
+	go run cmd/scaffold_maker/*.go --scope=addmodule --servicename=$(service) --modules=$(modules)
+	@$(MAKE) -f $(lastword $(MAKEFILE_LIST)) proto
 
 prepare:
 	@if [ ! -d "cmd/$(service)" ]; then  echo "ERROR: service '$(service)' undefined"; exit 1; fi

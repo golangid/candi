@@ -22,6 +22,11 @@ make init service={{service_name}} modules={{module_a}},{{module_b}}
 make run service={{service_name}}
 ```
 
+### Add new modules in existing service
+```
+make add-module service={{service_name}} modules={{module_c}},{{module_d}}
+```
+
 ### Create docker image a service
 ```
 make docker service={{service_name}}

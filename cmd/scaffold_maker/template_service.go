@@ -3,12 +3,12 @@ package main
 const serviceMainTemplate = `package {{clean $.ServiceName}}
 
 import (
-	"{{.PackageName}}/pkg/codebase/factory"
-	"{{.PackageName}}/pkg/codebase/factory/base"
-	"{{.PackageName}}/pkg/codebase/factory/constant"
 {{- range $module := .Modules}}
 	"{{$.PackageName}}/internal/{{$.ServiceName}}/modules/{{$module}}"
 {{- end }}
+	"{{.PackageName}}/pkg/codebase/factory"
+	"{{.PackageName}}/pkg/codebase/factory/base"
+	"{{.PackageName}}/pkg/codebase/factory/constant"
 )
 
 // Service model
