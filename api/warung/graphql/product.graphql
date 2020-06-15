@@ -1,4 +1,0 @@
-################### Product Module Area
-type Product {
-    getAll(filter: Filter!): String!
-}
