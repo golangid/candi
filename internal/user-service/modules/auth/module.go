@@ -7,7 +7,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/auth/delivery/workerhandler"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/interfaces"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 )
 
 const (

@@ -9,7 +9,7 @@ import (
 	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{clean $.module}}/delivery/workerhandler"
 	"{{$.PackageName}}/pkg/codebase/factory/base"
 	"{{$.PackageName}}/pkg/codebase/factory/constant"
-	"{{$.PackageName}}/pkg/codebase/factory/interfaces"
+	"{{$.PackageName}}/pkg/codebase/interfaces"
 )
 
 const (

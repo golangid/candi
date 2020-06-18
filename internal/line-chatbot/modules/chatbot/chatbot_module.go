@@ -8,7 +8,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/line-chatbot/modules/chatbot/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/interfaces"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"github.com/line/line-bot-sdk-go/linebot"
 )
 

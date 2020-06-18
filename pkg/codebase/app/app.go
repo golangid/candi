@@ -28,7 +28,7 @@ type App struct {
 
 // New service app
 func New(service factory.ServiceFactory) *App {
-	defer log.Printf("Starting \x1b[31;1m%s\x1b[0m service\n", service.Name())
+	log.Printf("Starting \x1b[34;1m%s\x1b[0m service\n", service.Name())
 
 	// load json schema for document validation
 	// jsonschema.Load(string(service.Name()))

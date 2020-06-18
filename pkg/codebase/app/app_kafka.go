@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/interfaces"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"github.com/Shopify/sarama"
 )
