@@ -3,8 +3,8 @@ package storage
 import (
 	"agungdwiprasetyo.com/backend-microservices/internal/storage-service/modules/storage/delivery/grpchandler"
 	"agungdwiprasetyo.com/backend-microservices/internal/storage-service/modules/storage/usecase"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 )
 
@@ -19,7 +19,7 @@ type Module struct {
 }
 
 // NewModule module constructor
-func NewModule(deps *base.Dependency) *Module {
+func NewModule(deps dependency.Dependency) *Module {
 	uc := usecase.NewStorageUsecase()
 
 	var mod Module
@@ -48,7 +48,7 @@ func (m *Module) WorkerHandler(workerType constant.Worker) interfaces.WorkerHand
 	switch workerType {
 	case constant.Kafka:
 		return nil
-	case constant.Redis:
+	case constant.RedisSubscriber:
 		return nil
 	case constant.RabbitMQ:
 		return nil

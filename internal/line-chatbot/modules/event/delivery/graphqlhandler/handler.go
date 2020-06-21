@@ -4,18 +4,18 @@ import (
 	"context"
 
 	"agungdwiprasetyo.com/backend-microservices/internal/line-chatbot/modules/event/usecase"
-	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 )
 
 // GraphQLHandler model
 type GraphQLHandler struct {
 	uc usecase.EventUsecase
-	mw middleware.Middleware
+	mw interfaces.Middleware
 }
 
 // NewGraphQLHandler delivery
-func NewGraphQLHandler(mw middleware.Middleware, uc usecase.EventUsecase) *GraphQLHandler {
+func NewGraphQLHandler(mw interfaces.Middleware, uc usecase.EventUsecase) *GraphQLHandler {
 	return &GraphQLHandler{
 		uc: uc,
 		mw: mw,

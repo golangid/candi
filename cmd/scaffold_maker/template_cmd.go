@@ -9,7 +9,7 @@ import (
 	"{{.PackageName}}/config"
 	service "{{.PackageName}}/internal/{{.ServiceName}}"
 	"{{.PackageName}}/pkg/codebase/app"
-	"{{.PackageName}}/pkg/codebase/factory/base"
+	"{{.PackageName}}/pkg/codebase/factory/dependency"
 )
 
 const (

@@ -11,7 +11,7 @@ import (
 	"os"
 
 	"agungdwiprasetyo.com/backend-microservices/internal/line-chatbot/modules/chatbot/usecase"
-	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/wrapper"
 	"github.com/labstack/echo"
 	"github.com/line/line-bot-sdk-go/linebot"
@@ -19,12 +19,12 @@ import (
 
 // RestHandler handler
 type RestHandler struct {
-	mw middleware.Middleware
+	mw interfaces.Middleware
 	uc usecase.BotUsecase
 }
 
 // NewRestHandler create new rest handler
-func NewRestHandler(mw middleware.Middleware, uc usecase.BotUsecase) *RestHandler {
+func NewRestHandler(mw interfaces.Middleware, uc usecase.BotUsecase) *RestHandler {
 	return &RestHandler{
 		mw: mw,
 		uc: uc,

@@ -7,19 +7,19 @@ import (
 	"{{$.PackageName}}/internal/{{$.ServiceName}}/modules/{{$module}}"
 {{- end }}
 	"{{.PackageName}}/pkg/codebase/factory"
-	"{{.PackageName}}/pkg/codebase/factory/base"
+	"{{.PackageName}}/pkg/codebase/factory/dependency"
 	"{{.PackageName}}/pkg/codebase/factory/constant"
 )
 
 // Service model
 type Service struct {
-	dependency *base.Dependency
+	dependency *dependency.Dependency
 	modules    []factory.ModuleFactory
 	name       constant.Service
 }
 
 // NewService in this service
-func NewService(serviceName string, dependency *base.Dependency) factory.ServiceFactory {
+func NewService(serviceName string, dependency *dependency.Dependency) factory.ServiceFactory {
 	modules := []factory.ModuleFactory{
 	{{- range $module := .Modules}}
 		{{clean $module}}.NewModule(dependency),
@@ -34,7 +34,7 @@ func NewService(serviceName string, dependency *base.Dependency) factory.Service
 }
 
 // GetDependency method
-func (s *Service) GetDependency() *base.Dependency {
+func (s *Service) GetDependency() *dependency.Dependency {
 	return s.dependency
 }
 

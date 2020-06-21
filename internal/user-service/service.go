@@ -6,8 +6,8 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/customer"
 	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/member"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
 	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
 	"agungdwiprasetyo.com/backend-microservices/pkg/publisher"
 	authsdk "agungdwiprasetyo.com/backend-microservices/pkg/sdk/auth-service"
@@ -15,18 +15,18 @@ import (
 
 // Service model
 type Service struct {
-	dependency base.Dependency
-	modules    []factory.ModuleFactory
-	name       constant.Service
+	deps    dependency.Dependency
+	modules []factory.ModuleFactory
+	name    constant.Service
 }
 
 // NewService starting service
 func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 	// init all service dependencies
-	deps := base.InitDependency(
-		base.SetMiddleware(middleware.NewMiddleware(authsdk.NewAuthServiceGRPC())),
-		base.SetMongoDatabase(cfg.MongoDB),
-		base.SetBroker(cfg.KafkaConfig, publisher.NewKafkaPublisher(cfg.KafkaConfig)),
+	deps := dependency.InitDependency(
+		dependency.SetMiddleware(middleware.NewMiddleware(authsdk.NewAuthServiceGRPC())),
+		dependency.SetMongoDatabase(cfg.MongoDB),
+		dependency.SetBroker(cfg.KafkaConfig, publisher.NewKafkaPublisher(cfg.KafkaConfig)),
 	)
 
 	modules := []factory.ModuleFactory{
@@ -36,15 +36,15 @@ func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 	}
 
 	return &Service{
-		dependency: deps,
-		modules:    modules,
-		name:       constant.Service(serviceName),
+		deps:    deps,
+		modules: modules,
+		name:    constant.Service(serviceName),
 	}
 }
 
 // GetDependency method
-func (s *Service) GetDependency() base.Dependency {
-	return s.dependency
+func (s *Service) GetDependency() dependency.Dependency {
+	return s.deps
 }
 
 // GetModules method

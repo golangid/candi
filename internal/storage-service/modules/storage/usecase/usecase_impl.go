@@ -20,7 +20,7 @@ type storageUsecaseImpl struct {
 func NewStorageUsecase() StorageUsecase {
 	minioClient, err := minio.New(os.Getenv("MINIO_HOST"), os.Getenv("MINIO_ACCESS_KEY"), os.Getenv("MINIO_SECRET_KEY"), false)
 	if err != nil {
-		panic(err)
+		// panic(err)
 	}
 	return &storageUsecaseImpl{
 		minioClient: minioClient,

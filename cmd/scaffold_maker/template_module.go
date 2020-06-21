@@ -7,7 +7,7 @@ import (
 	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{clean $.module}}/delivery/grpchandler"
 	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{clean $.module}}/delivery/resthandler"
 	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{clean $.module}}/delivery/workerhandler"
-	"{{$.PackageName}}/pkg/codebase/factory/base"
+	"{{$.PackageName}}/pkg/codebase/factory/dependency"
 	"{{$.PackageName}}/pkg/codebase/factory/constant"
 	"{{$.PackageName}}/pkg/codebase/interfaces"
 )
@@ -27,7 +27,7 @@ type Module struct {
 }
 
 // NewModule module constructor
-func NewModule(deps *base.Dependency) *Module {
+func NewModule(deps *dependency.Dependency) *Module {
 	var mod Module
 	mod.restHandler = resthandler.NewRestHandler(deps.Middleware)
 	mod.grpcHandler = grpchandler.NewGRPCHandler(deps.Middleware)

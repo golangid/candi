@@ -6,8 +6,8 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/line-chatbot/modules/chatbot/delivery"
 	"agungdwiprasetyo.com/backend-microservices/internal/line-chatbot/modules/chatbot/repository"
 	"agungdwiprasetyo.com/backend-microservices/internal/line-chatbot/modules/chatbot/usecase"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"github.com/line/line-bot-sdk-go/linebot"
 )
@@ -23,18 +23,18 @@ type Module struct {
 }
 
 // NewModule module constructor
-func NewModule(deps *base.Dependency) *Module {
+func NewModule(deps dependency.Dependency) *Module {
 
 	lineClient, err := linebot.New(os.Getenv("LINE_CHANNEL_SECRET"), os.Getenv("LINE_CHANNEL_TOKEN"))
 	if err != nil {
 		panic(err)
 	}
 
-	repo := repository.NewRepository(deps.Config.MongoRead, deps.Config.MongoWrite)
+	repo := repository.NewRepository(deps.GetMongoDatabase().ReadDB(), deps.GetMongoDatabase().WriteDB())
 	uc := usecase.NewBotUsecase(lineClient, repo)
 
 	var mod Module
-	mod.restHandler = delivery.NewRestHandler(deps.Middleware, uc)
+	mod.restHandler = delivery.NewRestHandler(deps.GetMiddleware(), uc)
 	return &mod
 }
 

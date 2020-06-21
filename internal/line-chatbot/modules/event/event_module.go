@@ -5,8 +5,8 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/line-chatbot/modules/event/delivery/grpchandler"
 	"agungdwiprasetyo.com/backend-microservices/internal/line-chatbot/modules/event/repository"
 	"agungdwiprasetyo.com/backend-microservices/internal/line-chatbot/modules/event/usecase"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 )
 
@@ -22,12 +22,12 @@ type Module struct {
 }
 
 // NewModule module constructor
-func NewModule(deps *base.Dependency) *Module {
-	repo := repository.NewRepoMongo(deps.Config.MongoWrite)
+func NewModule(deps dependency.Dependency) *Module {
+	repo := repository.NewRepoMongo(deps.GetMongoDatabase().WriteDB())
 	uc := usecase.NewEventUsecase(repo)
 
 	var mod Module
-	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.Middleware, uc)
+	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware(), uc)
 	mod.grpcHandler = grpchandler.NewGRPCHandler(uc)
 	return &mod
 }

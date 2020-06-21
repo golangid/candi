@@ -7,7 +7,6 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/config"
 	service "agungdwiprasetyo.com/backend-microservices/internal/storage-service"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/app"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
 )
 
 const (
@@ -25,6 +24,6 @@ func main() {
 	cfg := config.Init(fmt.Sprintf("cmd/%s/", serviceName))
 	defer cfg.Exit()
 
-	srv := service.NewService(serviceName, base.InitDependency(cfg))
+	srv := service.NewService(serviceName, cfg)
 	app.New(srv).Run()
 }

@@ -7,7 +7,6 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/config"
 	linechatbot "agungdwiprasetyo.com/backend-microservices/internal/line-chatbot"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/app"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
 )
 
 const (
@@ -25,6 +24,6 @@ func main() {
 	cfg := config.Init(fmt.Sprintf("cmd/%s/", serviceName))
 	defer cfg.Exit()
 
-	service := linechatbot.NewService(serviceName, base.InitDependency(cfg))
+	service := linechatbot.NewService(serviceName, cfg)
 	app.New(service).Run()
 }

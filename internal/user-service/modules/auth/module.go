@@ -5,8 +5,8 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/auth/delivery/grpchandler"
 	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/auth/delivery/resthandler"
 	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/auth/delivery/workerhandler"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/base"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 )
 
@@ -25,7 +25,7 @@ type Module struct {
 }
 
 // NewModule module constructor
-func NewModule(deps base.Dependency) *Module {
+func NewModule(deps dependency.Dependency) *Module {
 	var mod Module
 	mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware())
 	mod.grpcHandler = grpchandler.NewGRPCHandler(deps.GetMiddleware())

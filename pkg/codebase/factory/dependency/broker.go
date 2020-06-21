@@ -1,4 +1,4 @@
-package base
+package dependency
 
 import (
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
