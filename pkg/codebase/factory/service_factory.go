@@ -7,7 +7,7 @@ import (
 
 // ServiceFactory factory
 type ServiceFactory interface {
-	GetDependency() *base.Dependency
+	GetDependency() base.Dependency
 	GetModules() []ModuleFactory
 	Name() constant.Service
 }

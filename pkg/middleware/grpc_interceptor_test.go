@@ -34,7 +34,7 @@ func TestMiddleware_GRPCAuth(t *testing.T) {
 		mw := &mw{
 			username: "user", password: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
-		_, err := mw.GRPCAuth(ctx, "testing", unaryInfo, unaryHandler)
+		_, err := mw.GRPCBasicAuth(ctx, "testing", unaryInfo, unaryHandler)
 		assert.NoError(t, err)
 	})
 
@@ -52,7 +52,7 @@ func TestMiddleware_GRPCAuth(t *testing.T) {
 		mw := &mw{
 			username: "user", password: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
-		_, err := mw.GRPCAuth(ctx, "testing", unaryInfo, unaryHandler)
+		_, err := mw.GRPCBasicAuth(ctx, "testing", unaryInfo, unaryHandler)
 		assert.Error(t, err)
 	})
 }
@@ -76,7 +76,7 @@ func TestMiddleware_GRPCAuthStream(t *testing.T) {
 		mw := &mw{
 			username: "user", password: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
-		err := mw.GRPCAuthStream("test", stream, streamInfo, streamHandler)
+		err := mw.GRPCBasicAuthStream("test", stream, streamInfo, streamHandler)
 		assert.NoError(t, err)
 	})
 
@@ -96,7 +96,7 @@ func TestMiddleware_GRPCAuthStream(t *testing.T) {
 		mw := &mw{
 			username: "user", password: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
-		err := mw.GRPCAuthStream("test", stream, streamInfo, streamHandler)
+		err := mw.GRPCBasicAuthStream("test", stream, streamInfo, streamHandler)
 		assert.Error(t, err)
 	})
 
@@ -117,7 +117,7 @@ func TestMiddleware_GRPCAuthStream(t *testing.T) {
 		mw := &mw{
 			username: "user", password: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
-		err := mw.GRPCAuthStream("test", stream, streamInfo, streamHandler)
+		err := mw.GRPCBasicAuthStream("test", stream, streamInfo, streamHandler)
 		assert.Error(t, err)
 	})
 }

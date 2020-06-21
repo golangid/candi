@@ -3,7 +3,7 @@ package graphqlhandler
 import (
 	"context"
 
-	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 )
 
 // GraphQLHandler model
@@ -11,7 +11,7 @@ type GraphQLHandler struct {
 }
 
 // NewGraphQLHandler delivery
-func NewGraphQLHandler(mw middleware.Middleware) *GraphQLHandler {
+func NewGraphQLHandler(mw interfaces.Middleware) *GraphQLHandler {
 	return &GraphQLHandler{}
 }
 
@@ -19,4 +19,3 @@ func NewGraphQLHandler(mw middleware.Middleware) *GraphQLHandler {
 func (h *GraphQLHandler) Hello(ctx context.Context) (string, error) {
 	return "Hello, from service: user-service, module: member", nil
 }
-

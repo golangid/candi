@@ -1,18 +1,36 @@
 package database
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"os"
+
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 )
 
+type sqlInstance struct {
+	read, write *sql.DB
+}
+
+func (s *sqlInstance) ReadDB() *sql.DB {
+	return s.read
+}
+func (s *sqlInstance) WriteDB() *sql.DB {
+	return s.write
+}
+func (s *sqlInstance) Disconnect() {
+	s.read.Close()
+	s.write.Close()
+}
+
 // InitSQLDatabase return sql db read & write instance
-func InitSQLDatabase(ctx context.Context, isUse bool) (read, write *sql.DB) {
+func InitSQLDatabase(isUse bool) interfaces.SQLDatabase {
 	if !isUse {
-		return
+		return nil
 	}
+
+	inst := new(sqlInstance)
 
 	dbName, ok := os.LookupEnv("SQL_DATABASE_NAME")
 	if !ok {
@@ -22,18 +40,18 @@ func InitSQLDatabase(ctx context.Context, isUse bool) (read, write *sql.DB) {
 	var err error
 	descriptor := fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable",
 		os.Getenv("SQL_DB_READ_HOST"), os.Getenv("SQL_DB_READ_USER"), os.Getenv("SQL_DB_READ_PASSWORD"), dbName)
-	read, err = sql.Open(os.Getenv("SQL_DRIVER_NAME"), descriptor)
+	inst.read, err = sql.Open(os.Getenv("SQL_DRIVER_NAME"), descriptor)
 	if err != nil {
 		panic("SQL Read: " + err.Error())
 	}
 
 	descriptor = fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable",
 		os.Getenv("SQL_DB_WRITE_HOST"), os.Getenv("SQL_DB_WRITE_USER"), os.Getenv("SQL_DB_WRITE_PASSWORD"), dbName)
-	write, err = sql.Open(os.Getenv("SQL_DRIVER_NAME"), descriptor)
+	inst.write, err = sql.Open(os.Getenv("SQL_DRIVER_NAME"), descriptor)
 	if err != nil {
 		panic("SQL Write: " + err.Error())
 	}
 
 	log.Println("Success load SQL connection")
-	return
+	return inst
 }

@@ -2,33 +2,33 @@ package config
 
 import (
 	"context"
-	"crypto/rsa"
-	"database/sql"
 	"fmt"
 	"log"
+	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/config/broker"
 	"agungdwiprasetyo.com/backend-microservices/config/database"
-	"agungdwiprasetyo.com/backend-microservices/config/key"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"github.com/Shopify/sarama"
-	"github.com/gomodule/redigo/redis"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var env Env
 
 // Config app
 type Config struct {
-	MongoRead, MongoWrite         *mongo.Database
-	SQLRead, SQLWrite             *sql.DB
-	RedisReadPool, RedisWritePool *redis.Pool
-	PrivateKey                    *rsa.PrivateKey
-	PublicKey                     *rsa.PublicKey
-	KafkaConfig                   *sarama.Config
+	MongoDB     interfaces.MongoDatabase
+	SQLDB       interfaces.SQLDatabase
+	RedisPool   interfaces.RedisPool
+	Key         interfaces.Key
+	KafkaConfig *sarama.Config
 }
 
 // Init app config
-func Init(ctx context.Context, rootApp string) *Config {
+func Init(rootApp string) *Config {
+	// set timeout for init configuration
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+
 	loadBaseEnv(rootApp, &env)
 
 	cfgChan := make(chan *Config)
@@ -43,10 +43,9 @@ func Init(ctx context.Context, rootApp string) *Config {
 		}()
 
 		var cfg Config
-		cfg.MongoRead, cfg.MongoWrite = database.InitMongoDB(ctx, env.useMongo)
-		cfg.SQLRead, cfg.SQLWrite = database.InitSQLDatabase(ctx, env.useSQL)
-		cfg.RedisReadPool, cfg.RedisWritePool = database.InitRedis(env.useRedis)
-		cfg.PrivateKey, cfg.PublicKey = key.LoadRSAKey(env.useRSAKey)
+		cfg.MongoDB = database.InitMongoDB(ctx, env.useMongo)
+		cfg.SQLDB = database.InitSQLDatabase(env.useSQL)
+		cfg.RedisPool = database.InitRedis(env.useRedis)
 		cfg.KafkaConfig = broker.InitKafkaConfig(env.UseKafkaConsumer, env.Kafka.ClientID)
 
 		cfgChan <- &cfg
@@ -69,23 +68,24 @@ func BaseEnv() Env {
 }
 
 // Exit close all connection
-func (c *Config) Exit(ctx context.Context) {
+func (c *Config) Exit() {
+	// set timeout for close all configuration
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+
 	if env.useMongo {
 		// close mongo connection
-		c.MongoRead.Client().Disconnect(ctx)
-		c.MongoWrite.Client().Disconnect(ctx)
+		c.MongoDB.Disconnect(ctx)
 	}
 
 	if env.useRedis {
 		// close redis connection
-		c.RedisReadPool.Close()
-		c.RedisWritePool.Close()
+		c.RedisPool.Disconnect()
 	}
 
 	if env.useSQL {
 		// close sql connection
-		c.SQLRead.Close()
-		c.SQLWrite.Close()
+		c.SQLDB.Disconnect()
 	}
 
 	log.Println("\x1b[32;1mConfig: Success close all connection\x1b[0m")

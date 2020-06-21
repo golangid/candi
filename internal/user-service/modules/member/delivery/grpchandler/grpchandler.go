@@ -4,17 +4,17 @@ import (
 	"context"
 
 	proto "agungdwiprasetyo.com/backend-microservices/api/user-service/proto/member"
-	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"google.golang.org/grpc"
 )
 
 // GRPCHandler rpc handler
 type GRPCHandler struct {
-	mw middleware.Middleware
+	mw interfaces.Middleware
 }
 
 // NewGRPCHandler func
-func NewGRPCHandler(mw middleware.Middleware) *GRPCHandler {
+func NewGRPCHandler(mw interfaces.Middleware) *GRPCHandler {
 	return &GRPCHandler{
 		mw: mw,
 	}
@@ -31,4 +31,3 @@ func (h *GRPCHandler) Hello(ctx context.Context, req *proto.Request) (*proto.Res
 		Message: req.Message + "; Hello, from service: user-service, module: member",
 	}, nil
 }
-

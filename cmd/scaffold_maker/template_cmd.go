@@ -3,10 +3,8 @@ package main
 const cmdMainTemplate = `package main
 
 import (
-	"context"
 	"fmt"
 	"runtime/debug"
-	"time"
 
 	"{{.PackageName}}/config"
 	service "{{.PackageName}}/internal/{{.ServiceName}}"
@@ -19,20 +17,18 @@ const (
 )
 
 func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer func() {
-		cancel()
 		if r := recover(); r != nil {
 			fmt.Printf("Failed to start %s service: %v\n", serviceName, r)
 			fmt.Printf("Stack trace: \n%s\n", debug.Stack())
 		}
 	}()
 
-	cfg := config.Init(ctx, fmt.Sprintf("cmd/%s/", serviceName))
-	defer cfg.Exit(ctx)
+	cfg := config.Init(fmt.Sprintf("cmd/%s/", serviceName))
+	defer cfg.Exit()
 
 	srv := service.NewService(serviceName, base.InitDependency(cfg))
-	app.New(srv).Run(ctx)
+	app.New(srv).Run()
 }
 
 `

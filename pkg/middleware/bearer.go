@@ -8,19 +8,18 @@ import (
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
-	"agungdwiprasetyo.com/backend-microservices/pkg/token"
 	"agungdwiprasetyo.com/backend-microservices/pkg/wrapper"
 	"github.com/labstack/echo"
 )
 
 // Bearer token validator
-func (m *mw) Bearer(ctx context.Context, tokenString string) (*token.Claim, error) {
+func (m *mw) Bearer(ctx context.Context, tokenString string) (*shared.TokenClaim, error) {
 	resp := <-m.tokenValidator.Validate(ctx, tokenString)
 	if resp.Error != nil {
 		return nil, resp.Error
 	}
 
-	tokenClaim, ok := resp.Data.(*token.Claim)
+	tokenClaim, ok := resp.Data.(*shared.TokenClaim)
 	if !ok {
 		return nil, errors.New("Validate token: result is not claim data")
 	}
@@ -56,7 +55,7 @@ func (m *mw) HTTPBearerAuth() echo.MiddlewareFunc {
 	}
 }
 
-func (m *mw) GraphQLBearerAuth(ctx context.Context) *token.Claim {
+func (m *mw) GraphQLBearerAuth(ctx context.Context) *shared.TokenClaim {
 	headers := ctx.Value(shared.ContextKey("headers")).(http.Header)
 	authorization := headers.Get("Authorization")
 	if authorization == "" {

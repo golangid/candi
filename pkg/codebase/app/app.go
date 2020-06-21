@@ -46,16 +46,16 @@ func New(service factory.ServiceFactory) *App {
 		// init grpc server
 		appInstance.grpcServer = grpc.NewServer(
 			grpc.MaxSendMsgSize(200*int(helper.MByte)), grpc.MaxRecvMsgSize(200*int(helper.MByte)),
-			grpc.UnaryInterceptor(dependency.Middleware.GRPCBasicAuth),
-			grpc.StreamInterceptor(dependency.Middleware.GRPCBasicAuthStream),
+			grpc.UnaryInterceptor(dependency.GetMiddleware().GRPCBasicAuth),
+			grpc.StreamInterceptor(dependency.GetMiddleware().GRPCBasicAuthStream),
 		)
 	}
 
 	if config.BaseEnv().UseGraphQL {
-		gqlHandler := appInstance.graphqlHandler(dependency.Middleware)
+		gqlHandler := appInstance.graphqlHandler(dependency.GetMiddleware())
 		appInstance.httpServer.Add(http.MethodGet, "/graphql", echo.WrapHandler(gqlHandler))
 		appInstance.httpServer.Add(http.MethodPost, "/graphql", echo.WrapHandler(gqlHandler))
-		appInstance.httpServer.GET("/graphql/playground", gqlHandler.servePlayground, dependency.Middleware.HTTPBasicAuth(true))
+		appInstance.httpServer.GET("/graphql/playground", gqlHandler.servePlayground, dependency.GetMiddleware().HTTPBasicAuth(true))
 	}
 
 	if config.BaseEnv().UseKafkaConsumer {
@@ -63,7 +63,7 @@ func New(service factory.ServiceFactory) *App {
 		kafkaConsumer, err := sarama.NewConsumerGroup(
 			config.BaseEnv().Kafka.Brokers,
 			config.BaseEnv().Kafka.ConsumerGroup,
-			dependency.Config.KafkaConfig,
+			dependency.GetBroker().Config(),
 		)
 		if err != nil {
 			log.Panicf("Error creating kafka consumer group client: %v", err)
@@ -75,7 +75,7 @@ func New(service factory.ServiceFactory) *App {
 }
 
 // Run start app
-func (a *App) Run(ctx context.Context) {
+func (a *App) Run() {
 
 	hasServiceHandlerRunning := a.httpServer != nil || a.grpcServer != nil || a.kafkaConsumer != nil
 	if !hasServiceHandlerRunning {

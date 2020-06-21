@@ -3,19 +3,19 @@ package resthandler
 import (
 	"net/http"
 
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
-	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
 	"agungdwiprasetyo.com/backend-microservices/pkg/wrapper"
 	"github.com/labstack/echo"
 )
 
 // RestHandler handler
 type RestHandler struct {
-	mw middleware.Middleware
+	mw interfaces.Middleware
 }
 
 // NewRestHandler create new rest handler
-func NewRestHandler(mw middleware.Middleware) *RestHandler {
+func NewRestHandler(mw interfaces.Middleware) *RestHandler {
 	return &RestHandler{
 		mw: mw,
 	}
@@ -33,4 +33,3 @@ func (h *RestHandler) Mount(root *echo.Group) {
 func (h *RestHandler) hello(c echo.Context) error {
 	return wrapper.NewHTTPResponse(http.StatusOK, "Hello, from service: user-service, module: member").JSON(c.Response())
 }
-

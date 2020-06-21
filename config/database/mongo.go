@@ -6,15 +6,33 @@ import (
 	"log"
 	"os"
 
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+type mongoInstance struct {
+	read, write *mongo.Database
+}
+
+func (m *mongoInstance) ReadDB() *mongo.Database {
+	return m.read
+}
+func (m *mongoInstance) WriteDB() *mongo.Database {
+	return m.write
+}
+func (m *mongoInstance) Disconnect(ctx context.Context) {
+	m.write.Client().Disconnect(ctx)
+	m.read.Client().Disconnect(ctx)
+}
+
 // InitMongoDB return mongo db read & write instance
-func InitMongoDB(ctx context.Context, isUse bool) (read *mongo.Database, write *mongo.Database) {
+func InitMongoDB(ctx context.Context, isUse bool) interfaces.MongoDatabase {
 	if !isUse {
-		return
+		return nil
 	}
+
+	dbInstance := new(mongoInstance)
 
 	dbName, ok := os.LookupEnv("MONGODB_DATABASE_NAME")
 	if !ok {
@@ -30,7 +48,7 @@ func InitMongoDB(ctx context.Context, isUse bool) (read *mongo.Database, write *
 	if err := client.Connect(ctx); err != nil {
 		panic(fmt.Errorf("mongo: %v, conn: %s", err, hostWrite))
 	}
-	write = client.Database(dbName)
+	dbInstance.write = client.Database(dbName)
 
 	// init read mongodb
 	hostRead := os.Getenv("MONGODB_HOST_READ")
@@ -41,8 +59,8 @@ func InitMongoDB(ctx context.Context, isUse bool) (read *mongo.Database, write *
 	if err := client.Connect(ctx); err != nil {
 		panic(fmt.Errorf("mongo: %v, conn: %s", err, hostRead))
 	}
-	read = client.Database(dbName)
+	dbInstance.read = client.Database(dbName)
 
 	log.Println("Success load Mongo connection")
-	return
+	return dbInstance
 }
