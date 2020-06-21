@@ -34,6 +34,7 @@ make docker service={{service_name}}
 
 ## Services
 
+* [**Auth Service**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/auth-service)
 * [**Line Chatbot**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/line-chatbot#line-chatbot-service)
 * [**Storage Service**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/storage-service)
 * [**User Service**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/user-service)

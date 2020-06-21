@@ -1,0 +1,14 @@
+syntax="proto3";
+package token;
+
+service TokenHandler {
+	rpc Hello(Request) returns (Response);
+}
+
+message Request {
+    string Message=1;
+}
+
+message Response {
+	string Message=1;
+}
