@@ -18,7 +18,7 @@ import (
 )
 
 // graphQLHandler graphql
-func (a *App) graphqlHandler(mw interfaces.Middleware) *graphqlHandler {
+func (a *App) graphqlHandler() *graphqlHandler {
 	resolverModules := make(map[string]interface{})
 	var resolverFields []reflect.StructField // for creating dynamic struct
 	for _, m := range a.service.GetModules() {
@@ -48,7 +48,6 @@ func (a *App) graphqlHandler(mw interfaces.Middleware) *graphqlHandler {
 
 	return &graphqlHandler{
 		schema: schema,
-		mw:     mw,
 	}
 }
 

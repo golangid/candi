@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -19,16 +20,16 @@ func (s *sqlInstance) ReadDB() *sql.DB {
 func (s *sqlInstance) WriteDB() *sql.DB {
 	return s.write
 }
-func (s *sqlInstance) Disconnect() {
-	s.read.Close()
-	s.write.Close()
+func (s *sqlInstance) Disconnect(ctx context.Context) error {
+	defer log.Println("sql: success disconnect")
+	if err := s.read.Close(); err != nil {
+		return err
+	}
+	return s.write.Close()
 }
 
 // InitSQLDatabase return sql db read & write instance
-func InitSQLDatabase(isUse bool) interfaces.SQLDatabase {
-	if !isUse {
-		return nil
-	}
+func InitSQLDatabase() interfaces.SQLDatabase {
 
 	inst := new(sqlInstance)
 

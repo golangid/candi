@@ -1,15 +1,19 @@
 package userservice
 
 import (
+	"context"
+
 	"agungdwiprasetyo.com/backend-microservices/config"
+	"agungdwiprasetyo.com/backend-microservices/config/broker"
+	"agungdwiprasetyo.com/backend-microservices/config/database"
 	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/auth"
 	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/customer"
 	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/member"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
-	"agungdwiprasetyo.com/backend-microservices/pkg/publisher"
 	authsdk "agungdwiprasetyo.com/backend-microservices/pkg/sdk/auth-service"
 )
 
@@ -22,12 +26,35 @@ type Service struct {
 
 // NewService starting service
 func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
-	// init all service dependencies
-	deps := dependency.InitDependency(
+	var depsOptions = []dependency.Option{
 		dependency.SetMiddleware(middleware.NewMiddleware(authsdk.NewAuthServiceGRPC())),
-		dependency.SetMongoDatabase(cfg.MongoDB),
-		dependency.SetBroker(cfg.KafkaConfig, publisher.NewKafkaPublisher(cfg.KafkaConfig)),
+	}
+
+	cfg.Load(
+		func(ctx context.Context) interfaces.Closer {
+			d := database.InitMongoDB(ctx)
+			depsOptions = append(depsOptions, dependency.SetMongoDatabase(d))
+			return d
+		},
+		func(context.Context) interfaces.Closer {
+			d := database.InitRedis()
+			depsOptions = append(depsOptions, dependency.SetRedisPool(d))
+			return d
+		},
+		func(context.Context) interfaces.Closer {
+			d := database.InitSQLDatabase()
+			depsOptions = append(depsOptions, dependency.SetSQLDatabase(d))
+			return d
+		},
+		func(context.Context) interfaces.Closer {
+			d := broker.InitKafkaBroker(config.BaseEnv().Kafka.ClientID)
+			depsOptions = append(depsOptions, dependency.SetBroker(d))
+			return d
+		},
 	)
+
+	// init all service dependencies
+	deps := dependency.InitDependency(depsOptions...)
 
 	modules := []factory.ModuleFactory{
 		member.NewModule(deps),

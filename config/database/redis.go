@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -22,17 +23,16 @@ func (m *redisInstance) WritePool() *redis.Pool {
 	return m.write
 }
 
-func (m *redisInstance) Disconnect() {
-	m.read.Close()
-	m.write.Close()
+func (m *redisInstance) Disconnect(ctx context.Context) error {
+	defer log.Println("redis: success disconnect")
+	if err := m.read.Close(); err != nil {
+		return err
+	}
+	return m.write.Close()
 }
 
 // InitRedis connection
-func InitRedis(isUse bool) interfaces.RedisPool {
-	if !isUse {
-		return nil
-	}
-
+func InitRedis() interfaces.RedisPool {
 	inst := new(redisInstance)
 
 	hostRead, portRead, passRead := os.Getenv("REDIS_READ_HOST"), os.Getenv("REDIS_READ_PORT"), os.Getenv("REDIS_READ_AUTH")

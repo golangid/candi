@@ -52,7 +52,7 @@ func New(service factory.ServiceFactory) *App {
 	}
 
 	if config.BaseEnv().UseGraphQL {
-		gqlHandler := appInstance.graphqlHandler(dependency.GetMiddleware())
+		gqlHandler := appInstance.graphqlHandler()
 		appInstance.httpServer.Add(http.MethodGet, "/graphql", echo.WrapHandler(gqlHandler))
 		appInstance.httpServer.Add(http.MethodPost, "/graphql", echo.WrapHandler(gqlHandler))
 		appInstance.httpServer.GET("/graphql/playground", gqlHandler.servePlayground, dependency.GetMiddleware().HTTPBasicAuth(true))
@@ -63,7 +63,7 @@ func New(service factory.ServiceFactory) *App {
 		kafkaConsumer, err := sarama.NewConsumerGroup(
 			config.BaseEnv().Kafka.Brokers,
 			config.BaseEnv().Kafka.ConsumerGroup,
-			dependency.GetBroker().Config(),
+			dependency.GetBroker().GetConfig(),
 		)
 		if err != nil {
 			log.Panicf("Error creating kafka consumer group client: %v", err)

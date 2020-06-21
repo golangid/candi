@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"sort"
 	"strings"
@@ -52,6 +51,6 @@ func (a *App) ServeHTTP() {
 
 	a.httpServer.HideBanner = true
 	if err := a.httpServer.Start(fmt.Sprintf(":%d", config.BaseEnv().HTTPPort)); err != nil {
-		log.Println(err)
+		fmt.Println(err)
 	}
 }

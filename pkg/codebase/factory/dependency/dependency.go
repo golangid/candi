@@ -2,7 +2,6 @@ package dependency
 
 import (
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
-	"github.com/Shopify/sarama"
 )
 
 // Dependency base
@@ -35,8 +34,7 @@ func SetMiddleware(mw interfaces.Middleware) Option {
 }
 
 // SetBroker option func
-func SetBroker(cfg *sarama.Config, pub interfaces.Publisher) Option {
-	broker := initBroker(cfg, pub)
+func SetBroker(broker interfaces.Broker) Option {
 	return func(d *deps) {
 		d.broker = broker
 	}

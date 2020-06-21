@@ -1,9 +1,14 @@
 package interfaces
 
-import "github.com/Shopify/sarama"
+import (
+	"context"
+
+	"github.com/Shopify/sarama"
+)
 
 // Broker abstraction
 type Broker interface {
-	Config() *sarama.Config
+	GetConfig() *sarama.Config
 	Publisher() Publisher
+	Disconnect(ctx context.Context) error
 }

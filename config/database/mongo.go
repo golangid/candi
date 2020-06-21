@@ -21,17 +21,16 @@ func (m *mongoInstance) ReadDB() *mongo.Database {
 func (m *mongoInstance) WriteDB() *mongo.Database {
 	return m.write
 }
-func (m *mongoInstance) Disconnect(ctx context.Context) {
-	m.write.Client().Disconnect(ctx)
-	m.read.Client().Disconnect(ctx)
+func (m *mongoInstance) Disconnect(ctx context.Context) error {
+	defer log.Println("mongo: success disconnect")
+	if err := m.write.Client().Disconnect(ctx); err != nil {
+		return err
+	}
+	return m.read.Client().Disconnect(ctx)
 }
 
 // InitMongoDB return mongo db read & write instance
-func InitMongoDB(ctx context.Context, isUse bool) interfaces.MongoDatabase {
-	if !isUse {
-		return nil
-	}
-
+func InitMongoDB(ctx context.Context) interfaces.MongoDatabase {
 	dbInstance := new(mongoInstance)
 
 	dbName, ok := os.LookupEnv("MONGODB_DATABASE_NAME")

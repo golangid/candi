@@ -12,19 +12,19 @@ import (
 type SQLDatabase interface {
 	ReadDB() *sql.DB
 	WriteDB() *sql.DB
-	Disconnect()
+	Disconnect(ctx context.Context) error
 }
 
 // MongoDatabase abstraction
 type MongoDatabase interface {
 	ReadDB() *mongo.Database
 	WriteDB() *mongo.Database
-	Disconnect(ctx context.Context)
+	Disconnect(ctx context.Context) error
 }
 
 // RedisPool abstraction
 type RedisPool interface {
 	ReadPool() *redis.Pool
 	WritePool() *redis.Pool
-	Disconnect()
+	Disconnect(ctx context.Context) error
 }

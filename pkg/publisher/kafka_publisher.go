@@ -3,7 +3,6 @@ package publisher
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"time"
 
@@ -11,12 +10,13 @@ import (
 	"github.com/Shopify/sarama"
 )
 
-type kafkaPublisher struct {
+// KafkaPublisher kafka
+type KafkaPublisher struct {
 	producer sarama.SyncProducer
 }
 
 // NewKafkaPublisher constructor
-func NewKafkaPublisher(cfg *sarama.Config) Publisher {
+func NewKafkaPublisher(cfg *sarama.Config) *KafkaPublisher {
 
 	brokers := config.BaseEnv().Kafka.Brokers
 	if len(brokers) == 0 || (len(brokers) == 1 && brokers[0] == "") {
@@ -26,14 +26,15 @@ func NewKafkaPublisher(cfg *sarama.Config) Publisher {
 
 	producer, err := sarama.NewSyncProducer(brokers, cfg)
 	if err != nil {
-		panic(fmt.Errorf("%v. Brokers: %v", err, brokers))
+		log.Printf("Kafka publisher: warning, %v. Should be panicked when using kafka publisher", err)
+		return nil
 	}
 
-	return &kafkaPublisher{producer}
+	return &KafkaPublisher{producer}
 }
 
 // PublishMessage method
-func (p *kafkaPublisher) PublishMessage(ctx context.Context, topic, key string, data interface{}) (err error) {
+func (p *KafkaPublisher) PublishMessage(ctx context.Context, topic, key string, data interface{}) (err error) {
 	payload, _ := json.Marshal(data)
 
 	msg := &sarama.ProducerMessage{

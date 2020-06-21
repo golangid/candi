@@ -1,13 +1,31 @@
 package broker
 
 import (
+	"context"
 	"time"
 
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
+	"agungdwiprasetyo.com/backend-microservices/pkg/publisher"
 	"github.com/Shopify/sarama"
 )
 
-// InitKafkaConfig init kafka broker configuration
-func InitKafkaConfig(isUseConsumer bool, clientID string) *sarama.Config {
+type kafkaBroker struct {
+	cfg *sarama.Config
+	pub interfaces.Publisher
+}
+
+func (b *kafkaBroker) GetConfig() *sarama.Config {
+	return b.cfg
+}
+func (b *kafkaBroker) Publisher() interfaces.Publisher {
+	return b.pub
+}
+func (b *kafkaBroker) Disconnect(ctx context.Context) error {
+	return nil
+}
+
+// InitKafkaBroker init kafka broker configuration
+func InitKafkaBroker(clientID string) interfaces.Broker {
 
 	kafkaConfig := sarama.NewConfig()
 	kafkaConfig.Version, _ = sarama.ParseKafkaVersion("2.1.1")
@@ -19,10 +37,11 @@ func InitKafkaConfig(isUseConsumer bool, clientID string) *sarama.Config {
 	kafkaConfig.Producer.RequiredAcks = sarama.WaitForAll
 	kafkaConfig.Producer.Return.Successes = true
 
-	if isUseConsumer {
-		// Consumer config
-		kafkaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
-	}
+	// Consumer config
+	kafkaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
 
-	return kafkaConfig
+	return &kafkaBroker{
+		cfg: kafkaConfig,
+		pub: publisher.NewKafkaPublisher(kafkaConfig),
+	}
 }
