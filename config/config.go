@@ -7,15 +7,12 @@ import (
 	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
-	"github.com/Shopify/sarama"
 )
 
 var env Env
 
 // Config app
 type Config struct {
-	KafkaConfig *sarama.Config
-
 	closers []interfaces.Closer
 }
 
