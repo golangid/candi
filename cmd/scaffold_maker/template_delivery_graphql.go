@@ -6,7 +6,7 @@ const (
 import (
 	"context"
 
-	"{{.PackageName}}/pkg/middleware"
+	"{{.PackageName}}/pkg/codebase/interfaces"
 )
 
 // GraphQLHandler model
@@ -14,7 +14,7 @@ type GraphQLHandler struct {
 }
 
 // NewGraphQLHandler delivery
-func NewGraphQLHandler(mw middleware.Middleware) *GraphQLHandler {
+func NewGraphQLHandler(mw interfaces.Middleware) *GraphQLHandler {
 	return &GraphQLHandler{}
 }
 

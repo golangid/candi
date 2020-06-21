@@ -88,32 +88,6 @@ func loadBaseEnv(serviceLocation string, targetEnv *Env) {
 	}
 	env.UseKafkaConsumer, _ = strconv.ParseBool(useKafkaConsumer)
 
-	// ---------------------------
-	useMongoEnv, ok := os.LookupEnv("USE_MONGO")
-	if !ok {
-		panic("missing USE_MONGO environment")
-	}
-	env.useMongo, _ = strconv.ParseBool(useMongoEnv)
-
-	useSQLEnv, ok := os.LookupEnv("USE_SQL")
-	if !ok {
-		panic("missing USE_SQL environment")
-	}
-	env.useSQL, _ = strconv.ParseBool(useSQLEnv)
-
-	useRedisEnv, ok := os.LookupEnv("USE_REDIS")
-	if !ok {
-		panic("missing USE_REDIS environment")
-	}
-	env.useRedis, _ = strconv.ParseBool(useRedisEnv)
-
-	useRSAEnv, ok := os.LookupEnv("USE_RSA_KEY")
-	if !ok {
-		panic("missing USE_RSA_KEY environment")
-	}
-	env.useRSAKey, _ = strconv.ParseBool(useRSAEnv)
-	// ---------------------------
-
 	// ------------------------------------
 
 	if env.UseHTTP {

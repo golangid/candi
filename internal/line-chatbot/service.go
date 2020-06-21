@@ -42,7 +42,7 @@ func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 		},
 	)
 
-	// init all service dependencies
+	// inject all service dependencies
 	deps := dependency.InitDependency(depsOptions...)
 
 	modules := []factory.ModuleFactory{

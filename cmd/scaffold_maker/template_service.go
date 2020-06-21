@@ -3,39 +3,69 @@ package main
 const serviceMainTemplate = `package {{clean $.ServiceName}}
 
 import (
+	"context"
+
+	"{{$.PackageName}}/config"
+	"{{$.PackageName}}/config/broker"
+	"{{$.PackageName}}/config/database"
 {{- range $module := .Modules}}
 	"{{$.PackageName}}/internal/{{$.ServiceName}}/modules/{{$module}}"
 {{- end }}
-	"{{.PackageName}}/pkg/codebase/factory"
-	"{{.PackageName}}/pkg/codebase/factory/dependency"
-	"{{.PackageName}}/pkg/codebase/factory/constant"
+	"{{$.PackageName}}/pkg/codebase/factory"
+	"{{$.PackageName}}/pkg/codebase/factory/constant"
+	"{{$.PackageName}}/pkg/codebase/factory/dependency"
+	"{{$.PackageName}}/pkg/codebase/interfaces"
+	"{{$.PackageName}}/pkg/middleware"
+	authsdk "{{$.PackageName}}/pkg/sdk/auth-service"
 )
 
 // Service model
 type Service struct {
-	dependency *dependency.Dependency
-	modules    []factory.ModuleFactory
-	name       constant.Service
+	deps    dependency.Dependency
+	modules []factory.ModuleFactory
+	name    constant.Service
 }
 
 // NewService in this service
-func NewService(serviceName string, dependency *dependency.Dependency) factory.ServiceFactory {
+func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
+	// See all optionn in dependency package
+	var depsOptions = []dependency.Option{
+		dependency.SetMiddleware(middleware.NewMiddleware(authsdk.NewAuthServiceGRPC())),
+	}
+
+	cfg.Load(
+		func(ctx context.Context) interfaces.Closer {
+			d := database.InitMongoDB(ctx)
+			depsOptions = append(depsOptions, dependency.SetMongoDatabase(d))
+			return d
+		},
+		func(context.Context) interfaces.Closer {
+			d := broker.InitKafkaBroker(config.BaseEnv().Kafka.ClientID)
+			depsOptions = append(depsOptions, dependency.SetBroker(d))
+			return d
+		},
+		// ... add some dependencies
+	)
+
+	// inject all service dependencies
+	deps := dependency.InitDependency(depsOptions...)
+
 	modules := []factory.ModuleFactory{
 	{{- range $module := .Modules}}
-		{{clean $module}}.NewModule(dependency),
+		{{clean $module}}.NewModule(deps),
 	{{- end }}
 	}
 
 	return &Service{
-		dependency: dependency,
-		modules:    modules,
-		name:       constant.Service(serviceName),
+		deps:    deps,
+		modules: modules,
+		name:    constant.Service(serviceName),
 	}
 }
 
 // GetDependency method
-func (s *Service) GetDependency() *dependency.Dependency {
-	return s.dependency
+func (s *Service) GetDependency() dependency.Dependency {
+	return s.deps
 }
 
 // GetModules method

@@ -27,11 +27,11 @@ type Module struct {
 }
 
 // NewModule module constructor
-func NewModule(deps *dependency.Dependency) *Module {
+func NewModule(deps dependency.Dependency) *Module {
 	var mod Module
-	mod.restHandler = resthandler.NewRestHandler(deps.Middleware)
-	mod.grpcHandler = grpchandler.NewGRPCHandler(deps.Middleware)
-	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.Middleware)
+	mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware())
+	mod.grpcHandler = grpchandler.NewGRPCHandler(deps.GetMiddleware())
+	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware())
 
 	mod.workerHandlers = map[constant.Worker]interfaces.WorkerHandler{
 		constant.Kafka: workerhandler.NewKafkaHandler([]string{"test"}), // example worker

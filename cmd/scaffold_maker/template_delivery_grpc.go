@@ -7,17 +7,17 @@ import (
 	"context"
 
 	proto "{{.PackageName}}/api/{{.ServiceName}}/proto/{{$.module}}"
-	"{{.PackageName}}/pkg/middleware"
+	"{{.PackageName}}/pkg/codebase/interfaces"
 	"google.golang.org/grpc"
 )
 
 // GRPCHandler rpc handler
 type GRPCHandler struct {
-	mw middleware.Middleware
+	mw interfaces.Middleware
 }
 
 // NewGRPCHandler func
-func NewGRPCHandler(mw middleware.Middleware) *GRPCHandler {
+func NewGRPCHandler(mw interfaces.Middleware) *GRPCHandler {
 	return &GRPCHandler{
 		mw: mw,
 	}

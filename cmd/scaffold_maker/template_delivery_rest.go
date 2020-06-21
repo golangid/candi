@@ -5,19 +5,19 @@ const deliveryRestTemplate = `package resthandler
 import (
 	"net/http"
 
+	"{{.PackageName}}/pkg/codebase/interfaces"
 	"{{.PackageName}}/pkg/helper"
-	"{{.PackageName}}/pkg/middleware"
 	"{{.PackageName}}/pkg/wrapper"
 	"github.com/labstack/echo"
 )
 
 // RestHandler handler
 type RestHandler struct {
-	mw middleware.Middleware
+	mw interfaces.Middleware
 }
 
 // NewRestHandler create new rest handler
-func NewRestHandler(mw middleware.Middleware) *RestHandler {
+func NewRestHandler(mw interfaces.Middleware) *RestHandler {
 	return &RestHandler{
 		mw: mw,
 	}
