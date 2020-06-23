@@ -31,7 +31,7 @@ func (h *RestHandler) Mount(root *echo.Group) {
 
 	pushnotif := v1Root.Group("/pushnotif")
 	pushnotif.GET("", h.hello)
-	pushnotif.POST("/push", h.push)
+	pushnotif.POST("/push", h.push, h.mw.HTTPBasicAuth(false))
 }
 
 func (h *RestHandler) hello(c echo.Context) error {
