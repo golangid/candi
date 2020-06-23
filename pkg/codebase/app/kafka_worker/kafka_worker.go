@@ -53,7 +53,7 @@ func (h *kafkaWorker) Serve() {
 		handlers: handlers,
 	}
 
-	fmt.Println(helper.StringYellow("⇨ Kafka consumer is active"))
+	fmt.Println(helper.StringYellow("⇨ Kafka consumer is active. Brokers: " + strings.Join(config.BaseEnv().Kafka.Brokers, ", ")))
 	var consumeTopics []string
 	for topic, handlerNames := range topicInfo {
 		fmt.Println(helper.StringYellow(fmt.Sprintf("[KAFKA-CONSUMER] (topic): %-8s  (consumed by modules)--> [%s]\n", topic, strings.Join(handlerNames, ", "))))
