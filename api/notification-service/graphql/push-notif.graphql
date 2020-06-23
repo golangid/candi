@@ -1,0 +1,4 @@
+################### PushNotifModule Module Area
+type PushNotifModule {
+    hello(): String!
+}
