@@ -5,8 +5,8 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/auth-service/modules/token/delivery/grpchandler"
 	"agungdwiprasetyo.com/backend-microservices/internal/auth-service/modules/token/delivery/resthandler"
 	"agungdwiprasetyo.com/backend-microservices/internal/auth-service/modules/token/delivery/workerhandler"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 )
 
@@ -32,7 +32,7 @@ func NewModule(deps dependency.Dependency) *Module {
 	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware())
 
 	mod.workerHandlers = map[constant.Worker]interfaces.WorkerHandler{
-		constant.Kafka: workerhandler.NewKafkaHandler([]string{"test"}), // example worker
+		constant.Kafka: workerhandler.NewKafkaHandler(), // example worker
 		// add more worker type from delivery, implement "interfaces.WorkerHandler"
 	}
 

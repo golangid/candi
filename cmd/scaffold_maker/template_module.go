@@ -34,7 +34,7 @@ func NewModule(deps dependency.Dependency) *Module {
 	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware())
 
 	mod.workerHandlers = map[constant.Worker]interfaces.WorkerHandler{
-		constant.Kafka: workerhandler.NewKafkaHandler([]string{"test"}), // example worker
+		constant.Kafka: workerhandler.NewKafkaHandler(), // example worker
 		// add more worker type from delivery, implement "interfaces.WorkerHandler"
 	}
 

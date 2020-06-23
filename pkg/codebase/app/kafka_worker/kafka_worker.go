@@ -95,7 +95,7 @@ func (c *kafkaConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim 
 		log.Printf("Message claimed: value = %s, timestamp = %v, topic = %s", string(message.Value), message.Timestamp, message.Topic)
 
 		for _, handler := range c.handlers[message.Topic] {
-			handler.ProcessMessage(session.Context(), message.Value)
+			handler.ProcessMessage(session.Context(), message.Topic, message.Value)
 		}
 
 		session.MarkMessage(message, "")

@@ -11,9 +11,9 @@ type KafkaHandler struct {
 }
 
 // NewKafkaHandler constructor
-func NewKafkaHandler(topics []string) *KafkaHandler {
+func NewKafkaHandler() *KafkaHandler {
 	return &KafkaHandler{
-		topics: topics,
+		topics: []string{"test"},
 	}
 }
 
@@ -23,7 +23,6 @@ func (h *KafkaHandler) GetTopics() []string {
 }
 
 // ProcessMessage from kafka consumer
-func (h *KafkaHandler) ProcessMessage(ctx context.Context, message []byte) {
+func (h *KafkaHandler) ProcessMessage(ctx context.Context, topic string, message []byte) {
 	fmt.Printf("message consumed by module token. message: %s\n", string(message))
 }
-

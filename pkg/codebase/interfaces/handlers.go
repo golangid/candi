@@ -20,5 +20,5 @@ type GRPCHandler interface {
 // WorkerHandler delivery factory for all worker handler
 type WorkerHandler interface {
 	GetTopics() []string
-	ProcessMessage(ctx context.Context, message []byte)
+	ProcessMessage(ctx context.Context, topic string, message []byte)
 }
