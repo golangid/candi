@@ -3,72 +3,44 @@ package app
 import (
 	"context"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/config"
+	graphqlserver "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/graphql_server"
+	grpcserver "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/grpc_server"
+	kafkaworker "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/kafka_worker"
+	restserver "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/rest_server"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
-	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	_ "agungdwiprasetyo.com/backend-microservices/pkg/logger"
-	"github.com/Shopify/sarama"
-	"github.com/labstack/echo"
-	"google.golang.org/grpc"
 )
 
 // App service
 type App struct {
-	service       factory.ServiceFactory
-	httpServer    *echo.Echo
-	grpcServer    *grpc.Server
-	kafkaConsumer sarama.ConsumerGroup
+	servers []factory.AppServerFactory
 }
 
 // New service app
 func New(service factory.ServiceFactory) *App {
 	log.Printf("Starting \x1b[34;1m%s\x1b[0m service\n", service.Name())
 
-	// load json schema for document validation
-	// jsonschema.Load(string(service.Name()))
-
-	dependency := service.GetDependency()
-
 	appInstance := new(App)
-	appInstance.service = service
-
-	if config.BaseEnv().UseHTTP {
-		appInstance.httpServer = echo.New()
+	if config.BaseEnv().UseREST {
+		appInstance.servers = append(appInstance.servers, restserver.NewServer(service))
 	}
 
 	if config.BaseEnv().UseGRPC {
-		// init grpc server
-		appInstance.grpcServer = grpc.NewServer(
-			grpc.MaxSendMsgSize(200*int(helper.MByte)), grpc.MaxRecvMsgSize(200*int(helper.MByte)),
-			grpc.UnaryInterceptor(dependency.GetMiddleware().GRPCBasicAuth),
-			grpc.StreamInterceptor(dependency.GetMiddleware().GRPCBasicAuthStream),
-		)
+		appInstance.servers = append(appInstance.servers, grpcserver.NewServer(service))
 	}
 
 	if config.BaseEnv().UseGraphQL {
-		gqlHandler := appInstance.graphqlHandler()
-		appInstance.httpServer.Add(http.MethodGet, "/graphql", echo.WrapHandler(gqlHandler))
-		appInstance.httpServer.Add(http.MethodPost, "/graphql", echo.WrapHandler(gqlHandler))
-		appInstance.httpServer.GET("/graphql/playground", gqlHandler.servePlayground, dependency.GetMiddleware().HTTPBasicAuth(true))
+		appInstance.servers = append(appInstance.servers, graphqlserver.NewServer(service))
 	}
 
 	if config.BaseEnv().UseKafkaConsumer {
-		// init kafka consumer
-		kafkaConsumer, err := sarama.NewConsumerGroup(
-			config.BaseEnv().Kafka.Brokers,
-			config.BaseEnv().Kafka.ConsumerGroup,
-			dependency.GetBroker().GetConfig(),
-		)
-		if err != nil {
-			log.Panicf("Error creating kafka consumer group client: %v", err)
-		}
-		appInstance.kafkaConsumer = kafkaConsumer
+		appInstance.servers = append(appInstance.servers, kafkaworker.NewWorker(service))
 	}
 
 	return appInstance
@@ -76,20 +48,13 @@ func New(service factory.ServiceFactory) *App {
 
 // Run start app
 func (a *App) Run() {
-
-	hasServiceHandlerRunning := a.httpServer != nil || a.grpcServer != nil || a.kafkaConsumer != nil
-	if !hasServiceHandlerRunning {
-		panic("No service handler running")
+	if len(a.servers) == 0 {
+		panic("No server handler running")
 	}
 
-	// serve http server
-	go a.ServeHTTP()
-
-	// serve grpc server
-	go a.ServeGRPC()
-
-	// serve kafka consumer
-	go a.KafkaConsumer()
+	for _, server := range a.servers {
+		go server.Serve()
+	}
 
 	quitSignal := make(chan os.Signal, 1)
 	signal.Notify(quitSignal, os.Interrupt, syscall.SIGTERM)
@@ -105,20 +70,9 @@ func (a *App) shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
-	if a.httpServer != nil {
-		log.Println("Stopping HTTP server...")
-		if err := a.httpServer.Shutdown(ctx); err != nil {
-			panic(err)
-		}
+	for _, server := range a.servers {
+		server.Shutdown(ctx)
 	}
 
-	if a.grpcServer != nil {
-		log.Println("Stopping GRPC server...")
-		a.grpcServer.GracefulStop()
-	}
-
-	if a.kafkaConsumer != nil {
-		log.Println("Stopping kafka consumer...")
-		a.kafkaConsumer.Close()
-	}
+	log.Println("Success shutdown all server")
 }

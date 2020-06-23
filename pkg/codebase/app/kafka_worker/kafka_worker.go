@@ -1,4 +1,4 @@
-package app
+package kafkaworker
 
 import (
 	"context"
@@ -6,21 +6,42 @@ import (
 	"log"
 	"strings"
 
+	"agungdwiprasetyo.com/backend-microservices/config"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"github.com/Shopify/sarama"
 )
 
-// KafkaConsumer consume data from kafka
-func (a *App) KafkaConsumer() {
-	if a.kafkaConsumer == nil {
-		return
+type kafkaWorker struct {
+	engine  sarama.ConsumerGroup
+	service factory.ServiceFactory
+}
+
+// NewWorker create new HTTP server
+func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
+	// init kafka consumer
+	kafkaConsumer, err := sarama.NewConsumerGroup(
+		config.BaseEnv().Kafka.Brokers,
+		config.BaseEnv().Kafka.ConsumerGroup,
+		service.GetDependency().GetBroker().GetConfig(),
+	)
+	if err != nil {
+		log.Panicf("Error creating kafka consumer group client: %v", err)
 	}
+
+	return &kafkaWorker{
+		engine:  kafkaConsumer,
+		service: service,
+	}
+}
+
+func (h *kafkaWorker) Serve() {
 
 	topicInfo := make(map[string][]string)
 	var handlers = make(map[string][]interfaces.WorkerHandler)
-	for _, m := range a.service.GetModules() {
+	for _, m := range h.service.GetModules() {
 		if h := m.WorkerHandler(constant.Kafka); h != nil {
 			for _, topic := range h.GetTopics() {
 				handlers[topic] = append(handlers[topic], h) // one same topic consumed by multiple module
@@ -32,20 +53,24 @@ func (a *App) KafkaConsumer() {
 		handlers: handlers,
 	}
 
-	println(helper.StringYellow("Kafka consumer is active"))
+	fmt.Println(helper.StringYellow("⇨ Kafka consumer is active"))
 	var consumeTopics []string
 	for topic, handlerNames := range topicInfo {
-		print(helper.StringYellow(fmt.Sprintf("[KAFKA-CONSUMER] (topic): %-8s  (consumed by modules)--> [%s]\n", topic, strings.Join(handlerNames, ", "))))
+		fmt.Println(helper.StringYellow(fmt.Sprintf("[KAFKA-CONSUMER] (topic): %-8s  (consumed by modules)--> [%s]\n", topic, strings.Join(handlerNames, ", "))))
 		consumeTopics = append(consumeTopics, topic)
 	}
-	println()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if err := a.kafkaConsumer.Consume(ctx, consumeTopics, &consumer); err != nil {
+	if err := h.engine.Consume(ctx, consumeTopics, &consumer); err != nil {
 		log.Panicf("Error from kafka consumer: %v", err)
 	}
+}
+
+func (h *kafkaWorker) Shutdown(ctx context.Context) {
+	log.Println("Stopping Kafka consumer...")
+	h.engine.Close()
 }
 
 // kafkaConsumer represents a Sarama consumer group consumer

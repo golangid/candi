@@ -17,8 +17,8 @@ type Env struct {
 
 	useSQL, useMongo, useRedis, useRSAKey bool
 
-	// UseHTTP env
-	UseHTTP bool
+	// UseREST env
+	UseREST bool
 	// UseGraphQL env
 	UseGraphQL bool
 	// UseGRPC env
@@ -29,8 +29,10 @@ type Env struct {
 	// Development env checking, this env for debug purpose
 	Development string
 
-	// HTTPPort config
-	HTTPPort uint16
+	// RESTPort config
+	RESTPort uint16
+	// GraphQLPort config
+	GraphQLPort uint16
 	// GRPCPort Config
 	GRPCPort uint16
 
@@ -61,20 +63,17 @@ func loadBaseEnv(serviceLocation string, targetEnv *Env) {
 	env.RootApp = rootApp
 
 	// ------------------------------------
-	useHTTP, ok := os.LookupEnv("USE_HTTP")
+	useREST, ok := os.LookupEnv("USE_REST")
 	if !ok {
-		panic("missing USE_HTTP environment")
+		panic("missing USE_REST environment")
 	}
-	env.UseHTTP, _ = strconv.ParseBool(useHTTP)
+	env.UseREST, _ = strconv.ParseBool(useREST)
 
 	useGraphQL, ok := os.LookupEnv("USE_GRAPHQL")
 	if !ok {
 		panic("missing USE_GRAPHQL environment")
 	}
 	env.UseGraphQL, _ = strconv.ParseBool(useGraphQL)
-	if env.UseGraphQL && !env.UseHTTP {
-		panic("GraphQL required http server")
-	}
 
 	useGRPC, ok := os.LookupEnv("USE_GRPC")
 	if !ok {
@@ -90,15 +89,15 @@ func loadBaseEnv(serviceLocation string, targetEnv *Env) {
 
 	// ------------------------------------
 
-	if env.UseHTTP {
-		if httpPort, ok := os.LookupEnv("HTTP_PORT"); !ok {
-			panic("missing HTTP_PORT environment")
+	if env.UseREST {
+		if restPort, ok := os.LookupEnv("REST_HTTP_PORT"); !ok {
+			panic("missing REST_HTTP_PORT environment")
 		} else {
-			port, err := strconv.Atoi(httpPort)
+			port, err := strconv.Atoi(restPort)
 			if err != nil {
-				panic("HTTP_PORT environment must in integer format")
+				panic("REST_HTTP_PORT environment must in integer format")
 			}
-			env.HTTPPort = uint16(port)
+			env.RESTPort = uint16(port)
 		}
 	}
 
@@ -111,6 +110,18 @@ func loadBaseEnv(serviceLocation string, targetEnv *Env) {
 				panic("GRPC_PORT environment must in integer format")
 			}
 			env.GRPCPort = uint16(port)
+		}
+	}
+
+	if env.UseGraphQL {
+		if graphqlPort, ok := os.LookupEnv("GRAPHQL_HTTP_PORT"); !ok {
+			panic("missing GRAPHQL_HTTP_PORT environment")
+		} else {
+			port, err := strconv.Atoi(graphqlPort)
+			if err != nil {
+				panic("GRAPHQL_HTTP_PORT environment must in integer format")
+			}
+			env.GraphQLPort = uint16(port)
 		}
 	}
 

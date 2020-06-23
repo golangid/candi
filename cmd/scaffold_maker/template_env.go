@@ -3,13 +3,14 @@ package main
 const envTemplate = `# Basic env configuration
 
 # Service Handlers
-USE_HTTP=true
+USE_REST=true
 USE_GRPC=true
 USE_GRAPHQL=true
 USE_KAFKA_CONSUMER=true
 
-HTTP_PORT=8000
-GRPC_PORT=8001
+REST_HTTP_PORT=8000
+GRAPHQL_HTTP_PORT=8001
+GRPC_PORT=8002
 
 BASIC_AUTH_USERNAME=user
 BASIC_AUTH_PASS=pass
