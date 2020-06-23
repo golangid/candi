@@ -32,19 +32,19 @@ func (h *GraphQLHandler) Hello(ctx context.Context) (string, error) {
 
 type Query {
 {{- range $module := .Modules}}
-	{{$module}}: {{upper $module}}Module
+	{{clean $module}}: {{clean (upper $module)}}Module
 {{- end }}
 }
 
 type Mutation {
 {{- range $module := .Modules}}
-	{{$module}}: {{upper $module}}Module
+	{{clean $module}}: {{clean (upper $module)}}Module
 {{- end }}
 }
 `
 
-	defaultGraphqlSchema = `################### {{upper $.module}}Module Module Area
-type {{upper $.module}}Module {
+	defaultGraphqlSchema = `################### {{clean (upper $.module)}}Module Module Area
+type {{clean (upper $.module)}}Module {
     hello(): String!
 }
 `

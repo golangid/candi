@@ -3,10 +3,10 @@ package main
 const moduleMainTemplate = `package {{clean $.module}}
 
 import (
-	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{clean $.module}}/delivery/graphqlhandler"
-	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{clean $.module}}/delivery/grpchandler"
-	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{clean $.module}}/delivery/resthandler"
-	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{clean $.module}}/delivery/workerhandler"
+	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{$.module}}/delivery/graphqlhandler"
+	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{$.module}}/delivery/grpchandler"
+	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{$.module}}/delivery/resthandler"
+	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{$.module}}/delivery/workerhandler"
 	"{{$.PackageName}}/pkg/codebase/factory/dependency"
 	"{{$.PackageName}}/pkg/codebase/factory/constant"
 	"{{$.PackageName}}/pkg/codebase/interfaces"
@@ -14,7 +14,7 @@ import (
 
 const (
 	// Name service name
-	Name constant.Module = "{{upper $.module}}"
+	Name constant.Module = "{{clean (upper $.module)}}"
 )
 
 // Module model

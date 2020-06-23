@@ -25,7 +25,7 @@ func NewGRPCHandler(mw interfaces.Middleware) *GRPCHandler {
 
 // Register grpc server
 func (h *GRPCHandler) Register(server *grpc.Server) {
-	proto.Register{{upper $.module}}HandlerServer(server, h)
+	proto.Register{{clean (upper $.module)}}HandlerServer(server, h)
 }
 
 // FindAll rpc
@@ -38,9 +38,9 @@ func (h *GRPCHandler) Hello(ctx context.Context, req *proto.Request) (*proto.Res
 `
 
 	defaultGRPCProto = `syntax="proto3";
-package {{$.module}};
+package {{clean $.module}};
 
-service {{upper $.module}}Handler {
+service {{clean (upper $.module)}}Handler {
 	rpc Hello(Request) returns (Response);
 }
 

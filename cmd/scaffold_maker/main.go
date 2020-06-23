@@ -289,8 +289,8 @@ func formatTemplate() template.FuncMap {
 	replacer := strings.NewReplacer("-", "", "*", "", "/", "", ":", "")
 	return template.FuncMap{
 
-		"clean": func(v interface{}) string {
-			return replacer.Replace(fmt.Sprint(v))
+		"clean": func(v string) string {
+			return replacer.Replace(v)
 		},
 
 		"upper": func(str string) string {
