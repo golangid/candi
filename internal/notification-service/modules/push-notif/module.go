@@ -5,8 +5,9 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/delivery/grpchandler"
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/delivery/resthandler"
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/delivery/workerhandler"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
+	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 )
 
@@ -26,13 +27,15 @@ type Module struct {
 
 // NewModule module constructor
 func NewModule(deps dependency.Dependency) *Module {
+	uc := usecase.NewPushNotifUsecase()
+
 	var mod Module
-	mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware())
+	mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware(), uc)
 	mod.grpcHandler = grpchandler.NewGRPCHandler(deps.GetMiddleware())
 	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware())
 
 	mod.workerHandlers = map[constant.Worker]interfaces.WorkerHandler{
-		constant.Kafka: workerhandler.NewKafkaHandler(), // example worker
+		constant.Kafka: workerhandler.NewKafkaHandler(uc), // example worker
 		// add more worker type from delivery, implement "interfaces.WorkerHandler"
 	}
 
