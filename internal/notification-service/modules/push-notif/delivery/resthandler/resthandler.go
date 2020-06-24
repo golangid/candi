@@ -3,6 +3,7 @@ package resthandler
 import (
 	"net/http"
 
+	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/domain"
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
@@ -39,7 +40,12 @@ func (h *RestHandler) hello(c echo.Context) error {
 }
 
 func (h *RestHandler) push(c echo.Context) error {
-	if err := h.uc.SendNotification(c.Request().Context()); err != nil {
+	var payload domain.PushNotifRequestPayload
+	if err := c.Bind(&payload); err != nil {
+		return wrapper.NewHTTPResponse(http.StatusBadRequest, "Failed parse body payload", err).JSON(c.Response())
+	}
+
+	if err := h.uc.SendNotification(c.Request().Context(), &payload); err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, "Failed send push notification").JSON(c.Response())
 	}
 	return wrapper.NewHTTPResponse(http.StatusOK, "Success send push notification").JSON(c.Response())

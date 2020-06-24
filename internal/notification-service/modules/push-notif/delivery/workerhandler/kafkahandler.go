@@ -2,8 +2,10 @@ package workerhandler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/domain"
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 )
@@ -34,7 +36,9 @@ func (h *KafkaHandler) ProcessMessage(ctx context.Context, topic string, message
 	var err error
 	switch topic {
 	case "push-notif":
-		err = h.uc.SendNotification(ctx)
+		var payload domain.PushNotifRequestPayload
+		json.Unmarshal(message, &payload)
+		err = h.uc.SendNotification(ctx, &payload)
 	}
 
 	if err != nil {

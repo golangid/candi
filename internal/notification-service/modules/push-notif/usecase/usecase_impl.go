@@ -19,12 +19,13 @@ func NewPushNotifUsecase(repo *repository.Repository) PushNotifUsecase {
 	}
 }
 
-func (uc *pushNotifUsecaseImpl) SendNotification(ctx context.Context) (err error) {
+func (uc *pushNotifUsecaseImpl) SendNotification(ctx context.Context, request *domain.PushNotifRequestPayload) (err error) {
 
 	requestPayload := domain.PushRequest{
+		To: request.To,
 		Notification: &domain.Notification{
-			Title:          "Testing",
-			Body:           "Hello",
+			Title:          request.Title,
+			Body:           request.Message,
 			Image:          "https://storage.googleapis.com/agungdp/static/logo/golang.png",
 			Sound:          "default",
 			MutableContent: true,
