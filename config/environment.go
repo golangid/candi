@@ -44,6 +44,9 @@ type Env struct {
 	// CacheExpired config
 	CacheExpired time.Duration
 
+	// JaegerTracingHost env
+	JaegerTracingHost string
+
 	Kafka struct {
 		Brokers       []string
 		ClientID      string
@@ -133,6 +136,11 @@ func loadBaseEnv(serviceLocation string, targetEnv *Env) {
 	env.BasicAuthPassword, ok = os.LookupEnv("BASIC_AUTH_PASS")
 	if !ok {
 		panic("missing BASIC_AUTH_PASS environment")
+	}
+
+	env.JaegerTracingHost, ok = os.LookupEnv("JAEGER_TRACING_HOST")
+	if !ok {
+		panic("missing JAEGER_TRACING_HOST environment")
 	}
 
 	kafkaBrokerEnv := os.Getenv("KAFKA_BROKERS")

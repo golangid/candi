@@ -39,6 +39,8 @@ KAFKA_BROKERS=localhost:9092
 KAFKA_CLIENT_ID=client_id
 KAFKA_CONSUMER_GROUP=[string]
 
+JAEGER_TRACING_HOST=[string]
+
 
 # Additional env
 

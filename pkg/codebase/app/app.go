@@ -15,6 +15,7 @@ import (
 	restserver "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/rest_server"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
 	_ "agungdwiprasetyo.com/backend-microservices/pkg/logger"
+	"agungdwiprasetyo.com/backend-microservices/pkg/utils"
 )
 
 // App service
@@ -25,6 +26,9 @@ type App struct {
 // New service app
 func New(service factory.ServiceFactory) *App {
 	log.Printf("Starting \x1b[34;1m%s\x1b[0m service\n", service.Name())
+
+	// init tracer
+	utils.InitTracer(config.BaseEnv().JaegerTracingHost, string(service.Name()))
 
 	appInstance := new(App)
 	if config.BaseEnv().UseREST {

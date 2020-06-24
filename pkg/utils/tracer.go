@@ -4,15 +4,40 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"math"
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
+	"github.com/uber/jaeger-client-go/config"
 )
 
-// Tracer for trace
+// InitTracer with agent host and service name
+func InitTracer(agentHost, serviceName string) {
+	cfg := &config.Configuration{
+		Sampler: &config.SamplerConfig{
+			Type:  "const",
+			Param: 1,
+		},
+		Reporter: &config.ReporterConfig{
+			LogSpans:            true,
+			BufferFlushInterval: 1 * time.Second,
+			LocalAgentHostPort:  agentHost,
+		},
+		ServiceName: serviceName,
+	}
+	tracer, _, err := cfg.NewTracer(config.MaxTagValueLength(math.MaxInt32))
+	if err != nil {
+		log.Panicf("ERROR: cannot init tracer connection: %v\n", err)
+	}
+	opentracing.SetGlobalTracer(tracer)
+}
+
+// Tracer abstraction
 type Tracer interface {
 	Context() context.Context
 	Tags() map[string]interface{}
