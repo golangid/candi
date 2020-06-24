@@ -25,6 +25,8 @@ type Env struct {
 	UseGRPC bool
 	// UseKafkaConsumer env
 	UseKafkaConsumer bool
+	// UseCronScheduler env
+	UseCronScheduler bool
 
 	// Development env checking, this env for debug purpose
 	Development string
@@ -89,6 +91,12 @@ func loadBaseEnv(serviceLocation string, targetEnv *Env) {
 		panic("missing USE_KAFKA_CONSUMER environment")
 	}
 	env.UseKafkaConsumer, _ = strconv.ParseBool(useKafkaConsumer)
+
+	useCronScheduler, ok := os.LookupEnv("USE_CRON_SCHEDULER")
+	if !ok {
+		panic("missing USE_CRON_SCHEDULER environment")
+	}
+	env.UseCronScheduler, _ = strconv.ParseBool(useCronScheduler)
 
 	// ------------------------------------
 

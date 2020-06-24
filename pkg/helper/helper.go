@@ -104,3 +104,16 @@ func ToBoolPtr(b bool) *bool {
 func ToStringPtr(str string) *string {
 	return &str
 }
+
+// CronJobKeyToString helper
+func CronJobKeyToString(jobName string, interval string) string {
+	return fmt.Sprintf("%s:%s", jobName, interval)
+}
+
+// ParseCronJobKey helper
+func ParseCronJobKey(str string) (jobName string, interval string) {
+	split := strings.Split(str, ":")
+	jobName = split[0]
+	interval = split[1]
+	return
+}

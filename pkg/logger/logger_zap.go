@@ -9,7 +9,8 @@ import (
 
 var logger *zap.SugaredLogger
 
-func init() {
+// InitZap logger
+func InitZap() {
 	var (
 		logg *zap.Logger
 		err  error
@@ -85,4 +86,9 @@ func LogEf(format string, i ...interface{}) {
 // LogI info
 func LogI(message string) {
 	logger.Info(message)
+}
+
+// LogIf info with format
+func LogIf(format string, i ...interface{}) {
+	logger.Infof(format, i...)
 }

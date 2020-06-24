@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/config"
+	cronworker "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/cron_worker"
 	graphqlserver "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/graphql_server"
 	grpcserver "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/grpc_server"
 	kafkaworker "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/kafka_worker"
@@ -25,7 +26,7 @@ type App struct {
 
 // New service app
 func New(service factory.ServiceFactory) *App {
-	log.Printf("Starting \x1b[34;1m%s\x1b[0m service\n", service.Name())
+	log.Printf("Starting \x1b[32;1m%s\x1b[0m service\n\n", service.Name())
 
 	// init tracer
 	utils.InitTracer(config.BaseEnv().JaegerTracingHost, string(service.Name()))
@@ -47,6 +48,10 @@ func New(service factory.ServiceFactory) *App {
 
 	if config.BaseEnv().UseKafkaConsumer {
 		appInstance.servers = append(appInstance.servers, kafkaworker.NewWorker(service))
+	}
+
+	if config.BaseEnv().UseCronScheduler {
+		appInstance.servers = append(appInstance.servers, cronworker.NewWorker(service))
 	}
 
 	return appInstance
