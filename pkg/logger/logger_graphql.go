@@ -38,7 +38,22 @@ type NoopTracer struct{}
 
 // TraceQuery method
 func (NoopTracer) TraceQuery(ctx context.Context, queryString string, operationName string, variables map[string]interface{}, varTypes map[string]*introspection.Type) (context.Context, trace.TraceQueryFinishFunc) {
-	return ctx, func(errs []*errors.QueryError) {}
+	tags := map[string]interface{}{
+		"graphql.query": queryString, "graphql.operationName": operationName,
+	}
+	if len(variables) != 0 {
+		tags["graphql.variables"] = variables
+	}
+
+	return ctx, func(errs []*errors.QueryError) {
+		if len(errs) > 0 {
+			msg := errs[0].Error()
+			if len(errs) > 1 {
+				msg += fmt.Sprintf(" (and %d more errors)", len(errs)-1)
+			}
+			tags["graphql.error"] = msg
+		}
+	}
 }
 
 // TraceField method
