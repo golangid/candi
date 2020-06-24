@@ -14,7 +14,7 @@ import (
 	kafkaworker "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/kafka_worker"
 	restserver "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/rest_server"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
-	_ "agungdwiprasetyo.com/backend-microservices/pkg/logger"
+	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"agungdwiprasetyo.com/backend-microservices/pkg/utils"
 )
 
@@ -29,6 +29,8 @@ func New(service factory.ServiceFactory) *App {
 
 	// init tracer
 	utils.InitTracer(config.BaseEnv().JaegerTracingHost, string(service.Name()))
+	// init logger
+	logger.InitZap()
 
 	appInstance := new(App)
 	if config.BaseEnv().UseREST {
@@ -78,5 +80,5 @@ func (a *App) shutdown() {
 		server.Shutdown(ctx)
 	}
 
-	log.Println("Success shutdown all server")
+	log.Println("Success shutdown all server & worker")
 }
