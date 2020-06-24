@@ -19,6 +19,7 @@ require (
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-isatty v0.0.11 // indirect
 	github.com/minio/minio-go/v6 v6.0.56
+	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/stretchr/testify v1.4.0
