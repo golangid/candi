@@ -17,7 +17,7 @@ type grpcServer struct {
 	service      factory.ServiceFactory
 }
 
-// NewServer create new HTTP server
+// NewServer create new GRPC server
 func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
 
 	return &grpcServer{

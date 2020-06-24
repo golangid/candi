@@ -23,7 +23,7 @@ type restServer struct {
 	service      factory.ServiceFactory
 }
 
-// NewServer create new HTTP server
+// NewServer create new REST server
 func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
 	return &restServer{
 		serverEngine: echo.New(),

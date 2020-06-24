@@ -19,7 +19,7 @@ type kafkaWorker struct {
 	service factory.ServiceFactory
 }
 
-// NewWorker create new HTTP server
+// NewWorker create new kafka consumer
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	// init kafka consumer
 	kafkaConsumer, err := sarama.NewConsumerGroup(

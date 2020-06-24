@@ -24,7 +24,7 @@ type graphqlServer struct {
 	service     factory.ServiceFactory
 }
 
-// NewServer create new HTTP server
+// NewServer create new GraphQL server
 func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
 	resolverModules := make(map[string]interface{})
 	var resolverFields []reflect.StructField // for creating dynamic struct
