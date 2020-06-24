@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
+	"agungdwiprasetyo.com/backend-microservices/pkg/utils"
 )
 
 // GraphQLHandler model
@@ -17,6 +18,8 @@ func NewGraphQLHandler(mw interfaces.Middleware) *GraphQLHandler {
 
 // Hello resolver
 func (h *GraphQLHandler) Hello(ctx context.Context) (string, error) {
+	trace := utils.StartTrace(ctx, "Delivery-PushNotif")
+	defer trace.Finish()
+
 	return "Hello, from service: notification-service, module: push-notif", nil
 }
-

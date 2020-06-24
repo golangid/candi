@@ -41,7 +41,6 @@ type NoopTracer struct{}
 // TraceQuery method
 func (NoopTracer) TraceQuery(ctx context.Context, queryString string, operationName string, variables map[string]interface{}, varTypes map[string]*introspection.Type) (context.Context, trace.TraceQueryFinishFunc) {
 	trace := utils.StartTrace(ctx, fmt.Sprintf("GraphQL:%s", operationName))
-	defer trace.Finish()
 
 	tags := trace.Tags()
 	tags["graphql.query"] = queryString
@@ -51,6 +50,7 @@ func (NoopTracer) TraceQuery(ctx context.Context, queryString string, operationN
 	}
 
 	return trace.Context(), func(errs []*gqlerrors.QueryError) {
+		defer trace.Finish()
 		if len(errs) > 0 {
 			msg := errs[0].Error()
 			if len(errs) > 1 {
