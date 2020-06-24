@@ -5,6 +5,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/delivery/grpchandler"
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/delivery/resthandler"
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/delivery/workerhandler"
+	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/repository"
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
@@ -27,7 +28,8 @@ type Module struct {
 
 // NewModule module constructor
 func NewModule(deps dependency.Dependency) *Module {
-	uc := usecase.NewPushNotifUsecase()
+	repo := repository.NewRepository()
+	uc := usecase.NewPushNotifUsecase(repo)
 
 	var mod Module
 	mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware(), uc)

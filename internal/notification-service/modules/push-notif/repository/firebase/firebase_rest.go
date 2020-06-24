@@ -1,4 +1,4 @@
-package pushnotif
+package firebase
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/repository/interfaces"
+	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/auth/domain"
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 	"agungdwiprasetyo.com/backend-microservices/pkg/utils"
 )
@@ -18,7 +20,7 @@ type firebaseREST struct {
 }
 
 // NewFirebaseREST constructor
-func NewFirebaseREST(host, key string) PushNotif {
+func NewFirebaseREST(host, key string) interfaces.PushNotif {
 	return &firebaseREST{
 		host:        host,
 		key:         key,
@@ -26,7 +28,7 @@ func NewFirebaseREST(host, key string) PushNotif {
 	}
 }
 
-func (f *firebaseREST) Push(ctx context.Context, req PushRequest) <-chan shared.Result {
+func (f *firebaseREST) Push(ctx context.Context, req domain.PushRequest) <-chan shared.Result {
 	output := make(chan shared.Result)
 
 	go func() {
@@ -42,7 +44,7 @@ func (f *firebaseREST) Push(ctx context.Context, req PushRequest) <-chan shared.
 			return
 		}
 
-		var resp PushResponse
+		var resp domain.PushResponse
 		json.Unmarshal(body, &resp)
 		output <- shared.Result{Data: resp}
 	}()

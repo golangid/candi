@@ -2,29 +2,27 @@ package usecase
 
 import (
 	"context"
-	"os"
 
+	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/repository"
+	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/auth/domain"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
-	"agungdwiprasetyo.com/backend-microservices/pkg/pushnotif"
 )
 
 type pushNotifUsecaseImpl struct {
-	pushNotif pushnotif.PushNotif
+	repo *repository.Repository
 }
 
 // NewPushNotifUsecase constructor
-func NewPushNotifUsecase() PushNotifUsecase {
+func NewPushNotifUsecase(repo *repository.Repository) PushNotifUsecase {
 	return &pushNotifUsecaseImpl{
-		pushNotif: pushnotif.NewFirebaseREST(
-			os.Getenv("FIREBASE_HOST"), os.Getenv("FIREBASE_KRAB_KEY"),
-		),
+		repo: repo,
 	}
 }
 
 func (uc *pushNotifUsecaseImpl) SendNotification(ctx context.Context) (err error) {
 
-	requestPayload := pushnotif.PushRequest{
-		Notification: &pushnotif.Notification{
+	requestPayload := domain.PushRequest{
+		Notification: &domain.Notification{
 			Title:          "Testing",
 			Body:           "Hello",
 			Image:          "https://storage.googleapis.com/agungdp/static/logo/golang.png",
@@ -35,7 +33,7 @@ func (uc *pushNotifUsecaseImpl) SendNotification(ctx context.Context) (err error
 		},
 		Data: map[string]interface{}{"type": "type"},
 	}
-	result := <-uc.pushNotif.Push(ctx, requestPayload)
+	result := <-uc.repo.PushNotif.Push(ctx, requestPayload)
 	if result.Error != nil {
 		return result.Error
 	}
