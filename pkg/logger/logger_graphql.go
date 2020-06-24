@@ -3,11 +3,13 @@ package logger
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"time"
 
-	"github.com/graph-gophers/graphql-go/errors"
+	"agungdwiprasetyo.com/backend-microservices/pkg/utils"
+	gqlerrors "github.com/graph-gophers/graphql-go/errors"
 	"github.com/graph-gophers/graphql-go/introspection"
 	"github.com/graph-gophers/graphql-go/trace"
 )
@@ -38,20 +40,23 @@ type NoopTracer struct{}
 
 // TraceQuery method
 func (NoopTracer) TraceQuery(ctx context.Context, queryString string, operationName string, variables map[string]interface{}, varTypes map[string]*introspection.Type) (context.Context, trace.TraceQueryFinishFunc) {
-	tags := map[string]interface{}{
-		"graphql.query": queryString, "graphql.operationName": operationName,
-	}
+	trace := utils.StartTrace(ctx, fmt.Sprintf("GraphQL:%s", operationName))
+	defer trace.Finish()
+
+	tags := trace.Tags()
+	tags["graphql.query"] = queryString
+	tags["graphql.operationName"] = operationName
 	if len(variables) != 0 {
 		tags["graphql.variables"] = variables
 	}
 
-	return ctx, func(errs []*errors.QueryError) {
+	return trace.Context(), func(errs []*gqlerrors.QueryError) {
 		if len(errs) > 0 {
 			msg := errs[0].Error()
 			if len(errs) > 1 {
 				msg += fmt.Sprintf(" (and %d more errors)", len(errs)-1)
 			}
-			tags["graphql.error"] = msg
+			trace.SetError(errors.New(msg))
 		}
 	}
 }
@@ -59,7 +64,7 @@ func (NoopTracer) TraceQuery(ctx context.Context, queryString string, operationN
 // TraceField method
 func (NoopTracer) TraceField(ctx context.Context, label, typeName, fieldName string, trivial bool, args map[string]interface{}) (context.Context, trace.TraceFieldFinishFunc) {
 	start := time.Now()
-	return ctx, func(err *errors.QueryError) {
+	return ctx, func(err *gqlerrors.QueryError) {
 		end := time.Now()
 		if !trivial && typeName != "Query" {
 			statusColor := green
