@@ -3,7 +3,7 @@ package interfaces
 import (
 	"context"
 
-	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/auth/domain"
+	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/domain"
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 )
 

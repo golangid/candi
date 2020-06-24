@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/domain"
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/repository/interfaces"
-	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/auth/domain"
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 	"agungdwiprasetyo.com/backend-microservices/pkg/utils"
 )
