@@ -6,6 +6,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/domain"
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/repository"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
+	"agungdwiprasetyo.com/backend-microservices/pkg/utils"
 )
 
 type pushNotifUsecaseImpl struct {
@@ -20,6 +21,8 @@ func NewPushNotifUsecase(repo *repository.Repository) PushNotifUsecase {
 }
 
 func (uc *pushNotifUsecaseImpl) SendNotification(ctx context.Context, request *domain.PushNotifRequestPayload) (err error) {
+	trace := utils.StartTrace(ctx, "Usecase-SendNotification")
+	defer trace.Finish()
 
 	requestPayload := domain.PushRequest{
 		To: request.To,

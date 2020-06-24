@@ -1,4 +1,11 @@
 ################### PushNotifModule Module Area
 type PushNotifModule {
     hello(): String!
+    push(payload: PushPayload!): String!
+}
+
+input PushPayload {
+    to: String!
+    title: String!
+    message: String!
 }

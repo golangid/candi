@@ -40,7 +40,7 @@ type NoopTracer struct{}
 
 // TraceQuery method
 func (NoopTracer) TraceQuery(ctx context.Context, queryString string, operationName string, variables map[string]interface{}, varTypes map[string]*introspection.Type) (context.Context, trace.TraceQueryFinishFunc) {
-	trace := utils.StartTrace(ctx, fmt.Sprintf("GraphQL:%s", operationName))
+	trace := utils.StartTrace(ctx, fmt.Sprintf("GraphQL-Root:%s", operationName))
 
 	tags := trace.Tags()
 	tags["graphql.query"] = queryString

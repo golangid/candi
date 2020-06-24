@@ -34,7 +34,7 @@ func NewModule(deps dependency.Dependency) *Module {
 	var mod Module
 	mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware(), uc)
 	mod.grpcHandler = grpchandler.NewGRPCHandler(deps.GetMiddleware())
-	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware())
+	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware(), uc)
 
 	mod.workerHandlers = map[constant.Worker]interfaces.WorkerHandler{
 		constant.Kafka: workerhandler.NewKafkaHandler(uc), // example worker
