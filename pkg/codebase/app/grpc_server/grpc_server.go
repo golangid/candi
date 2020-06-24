@@ -37,7 +37,7 @@ func (s *grpcServer) Serve() {
 		panic(err)
 	}
 
-	fmt.Printf("⇨ GRPC server run at port [::]%s\n\n", grpcPort)
+	fmt.Printf("\x1b[34;1m⇨ GRPC server run at port [::]%s\x1b[0m\n\n", grpcPort)
 
 	// register all module
 	for _, m := range s.service.GetModules() {

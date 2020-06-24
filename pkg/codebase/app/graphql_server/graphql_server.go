@@ -69,7 +69,7 @@ func (s *graphqlServer) Serve() {
 	s.httpEngine.Addr = fmt.Sprintf(":%d", config.BaseEnv().GraphQLPort)
 	s.httpEngine.Handler = mux
 
-	fmt.Printf("⇨ GraphQL server run at port [::]%s\n\n", s.httpEngine.Addr)
+	fmt.Printf("\x1b[34;1m⇨ GraphQL server run at port [::]%s\x1b[0m\n\n", s.httpEngine.Addr)
 	if err := s.httpEngine.ListenAndServe(); err != nil {
 		switch e := err.(type) {
 		case *net.OpError:
