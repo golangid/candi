@@ -11,7 +11,6 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/protobuf v1.3.2
 	github.com/gomodule/redigo v2.0.0+incompatible
-	github.com/google/martian v2.1.0+incompatible // indirect
 	github.com/graph-gophers/graphql-go v0.0.0-20200309224638-dae41bde9ef9
 	github.com/joho/godotenv v1.3.0
 	github.com/labstack/echo v3.3.10+incompatible

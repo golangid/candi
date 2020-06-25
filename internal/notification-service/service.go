@@ -5,6 +5,7 @@ import (
 
 	"agungdwiprasetyo.com/backend-microservices/config"
 	"agungdwiprasetyo.com/backend-microservices/config/broker"
+	"agungdwiprasetyo.com/backend-microservices/config/database"
 	pushnotif "agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
@@ -32,6 +33,11 @@ func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 		func(context.Context) interfaces.Closer {
 			d := broker.InitKafkaBroker(config.BaseEnv().Kafka.ClientID)
 			depsOptions = append(depsOptions, dependency.SetBroker(d))
+			return d
+		},
+		func(context.Context) interfaces.Closer {
+			d := database.InitRedis()
+			depsOptions = append(depsOptions, dependency.SetRedisPool(d))
 			return d
 		},
 		// ... add some dependencies

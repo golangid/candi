@@ -27,6 +27,8 @@ type Env struct {
 	UseKafkaConsumer bool
 	// UseCronScheduler env
 	UseCronScheduler bool
+	// UseRedisSubscriber env
+	UseRedisSubscriber bool
 
 	// Development env checking, this env for debug purpose
 	Development string
@@ -97,6 +99,12 @@ func loadBaseEnv(serviceLocation string, targetEnv *Env) {
 		panic("missing USE_CRON_SCHEDULER environment")
 	}
 	env.UseCronScheduler, _ = strconv.ParseBool(useCronScheduler)
+
+	useRedisSubs, ok := os.LookupEnv("USE_REDIS_SUBSCRIBER")
+	if !ok {
+		panic("missing USE_REDIS_SUBSCRIBER environment")
+	}
+	env.UseRedisSubscriber, _ = strconv.ParseBool(useRedisSubs)
 
 	// ------------------------------------
 

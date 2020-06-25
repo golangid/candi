@@ -13,6 +13,7 @@ import (
 	graphqlserver "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/graphql_server"
 	grpcserver "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/grpc_server"
 	kafkaworker "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/kafka_worker"
+	redisworker "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/redis_worker"
 	restserver "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/rest_server"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
@@ -52,6 +53,10 @@ func New(service factory.ServiceFactory) *App {
 
 	if config.BaseEnv().UseCronScheduler {
 		appInstance.servers = append(appInstance.servers, cronworker.NewWorker(service))
+	}
+
+	if config.BaseEnv().UseRedisSubscriber {
+		appInstance.servers = append(appInstance.servers, redisworker.NewWorker(service))
 	}
 
 	return appInstance
