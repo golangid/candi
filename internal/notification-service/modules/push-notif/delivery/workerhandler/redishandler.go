@@ -2,8 +2,10 @@ package workerhandler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/domain"
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
@@ -20,7 +22,7 @@ type RedisHandler struct {
 func NewRedisHandler(modName constant.Module, uc usecase.PushNotifUsecase) *RedisHandler {
 	return &RedisHandler{
 		topics: []string{
-			helper.BuildRedisPubSubKeyTopic(string(modName), "push-notif"),
+			helper.BuildRedisPubSubKeyTopic(string(modName), "scheduled-push-notif"),
 			helper.BuildRedisPubSubKeyTopic(string(modName), "push"),
 		},
 		uc: uc,
@@ -38,7 +40,10 @@ func (h *RedisHandler) ProcessMessage(ctx context.Context, topic string, message
 
 	var err error
 	switch topic {
-	case "push-notif":
+	case "scheduled-push-notif":
+		var payload domain.PushNotifRequestPayload
+		json.Unmarshal(message, &payload)
+		err = h.uc.SendNotification(ctx, &payload)
 		fmt.Println("mantab")
 	case "push":
 		fmt.Println("wkwkwk")
