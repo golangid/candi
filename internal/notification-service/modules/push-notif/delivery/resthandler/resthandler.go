@@ -8,6 +8,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/utils"
 	"agungdwiprasetyo.com/backend-microservices/pkg/wrapper"
 	"github.com/labstack/echo"
 )
@@ -42,18 +43,26 @@ func (h *RestHandler) hello(c echo.Context) error {
 }
 
 func (h *RestHandler) push(c echo.Context) error {
+	trace := utils.StartTrace(c.Request().Context(), "Delivery-ScheduledNotification")
+	defer trace.Finish()
+	ctx := trace.Context()
+
 	var payload domain.PushNotifRequestPayload
 	if err := c.Bind(&payload); err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, "Failed parse body payload", err).JSON(c.Response())
 	}
 
-	if err := h.uc.SendNotification(c.Request().Context(), &payload); err != nil {
+	if err := h.uc.SendNotification(ctx, &payload); err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, "Failed send push notification").JSON(c.Response())
 	}
 	return wrapper.NewHTTPResponse(http.StatusOK, "Success send push notification").JSON(c.Response())
 }
 
 func (h *RestHandler) scheduledNotification(c echo.Context) error {
+	trace := utils.StartTrace(c.Request().Context(), "Delivery-ScheduledNotification")
+	defer trace.Finish()
+	ctx := trace.Context()
+
 	var payload struct {
 		ScheduledAt string                         `json:"scheduledAt"`
 		Data        domain.PushNotifRequestPayload `json:"data"`
@@ -71,7 +80,7 @@ func (h *RestHandler) scheduledNotification(c echo.Context) error {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, "Scheduled time must in future").JSON(c.Response())
 	}
 
-	if err := h.uc.SendScheduledNotification(c.Request().Context(), scheduledAt, &payload.Data); err != nil {
+	if err := h.uc.SendScheduledNotification(ctx, scheduledAt, &payload.Data); err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, "Failed set scheduled push notification").JSON(c.Response())
 	}
 	return wrapper.NewHTTPResponse(http.StatusOK, "Success set scheduled push notification, scheduled at: "+payload.ScheduledAt).JSON(c.Response())

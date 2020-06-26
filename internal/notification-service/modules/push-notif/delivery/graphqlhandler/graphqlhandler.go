@@ -52,7 +52,11 @@ func (h *GraphQLHandler) Push(ctx context.Context, input pushInputResolver) (str
 
 // ScheduledNotification resolver
 func (h *GraphQLHandler) ScheduledNotification(ctx context.Context, input scheduleNotifInputResolver) (string, error) {
+	trace := utils.StartTrace(ctx, "Delivery-ScheduledNotification")
+	defer trace.Finish()
 	h.mw.GraphQLBasicAuth(ctx)
+
+	ctx = trace.Context()
 
 	scheduledAt, err := time.Parse(time.RFC3339, input.Payload.ScheduledAt)
 	if err != nil {

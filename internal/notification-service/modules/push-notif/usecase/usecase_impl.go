@@ -29,6 +29,7 @@ func NewPushNotifUsecase(modName constant.Module, repo *repository.Repository) P
 func (uc *pushNotifUsecaseImpl) SendNotification(ctx context.Context, request *domain.PushNotifRequestPayload) (err error) {
 	trace := utils.StartTrace(ctx, "Usecase-SendNotification")
 	defer trace.Finish()
+	ctx = trace.Context()
 
 	requestPayload := domain.PushRequest{
 		To: request.To,
@@ -53,6 +54,9 @@ func (uc *pushNotifUsecaseImpl) SendNotification(ctx context.Context, request *d
 }
 
 func (uc *pushNotifUsecaseImpl) SendScheduledNotification(ctx context.Context, scheduledAt time.Time, request *domain.PushNotifRequestPayload) (err error) {
+	trace := utils.StartTrace(ctx, "Usecase-SendScheduledNotification")
+	defer trace.Finish()
+	ctx = trace.Context()
 
 	redisTopicKey := helper.BuildRedisPubSubKeyTopic(string(uc.modName), "scheduled-push-notif")
 	data, _ := json.Marshal(request)
