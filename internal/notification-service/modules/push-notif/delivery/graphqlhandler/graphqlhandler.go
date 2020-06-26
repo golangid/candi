@@ -2,6 +2,8 @@ package graphqlhandler
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
@@ -46,4 +48,24 @@ func (h *GraphQLHandler) Push(ctx context.Context, input pushInputResolver) (str
 	}
 
 	return "Ok", nil
+}
+
+// ScheduledNotification resolver
+func (h *GraphQLHandler) ScheduledNotification(ctx context.Context, input scheduleNotifInputResolver) (string, error) {
+	h.mw.GraphQLBasicAuth(ctx)
+
+	scheduledAt, err := time.Parse(time.RFC3339, input.Payload.ScheduledAt)
+	if err != nil {
+		return "Failed parse scheduled time format", err
+	}
+
+	if scheduledAt.Before(time.Now()) {
+		return "", errors.New("Scheduled time must in future")
+	}
+
+	if err := h.uc.SendScheduledNotification(ctx, scheduledAt, input.Payload.Data); err != nil {
+		return "Failed set scheduled push notification", err
+	}
+
+	return "Success set scheduled push notification, scheduled at: " + input.Payload.ScheduledAt, nil
 }

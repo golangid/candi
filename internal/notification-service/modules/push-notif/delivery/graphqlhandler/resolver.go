@@ -5,3 +5,10 @@ import "agungdwiprasetyo.com/backend-microservices/internal/notification-service
 type pushInputResolver struct {
 	Payload *domain.PushNotifRequestPayload
 }
+
+type scheduleNotifInputResolver struct {
+	Payload struct {
+		ScheduledAt string
+		Data        *domain.PushNotifRequestPayload
+	}
+}

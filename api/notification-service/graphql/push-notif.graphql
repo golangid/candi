@@ -2,10 +2,16 @@
 type PushNotifModule {
     hello(): String!
     push(payload: PushPayload!): String!
+    scheduledNotification(payload: ScheduledNotifPayload!): String!
 }
 
 input PushPayload {
     to: String!
     title: String!
     message: String!
+}
+
+input ScheduledNotifPayload {
+    scheduledAt: String!
+    data: PushPayload!
 }
