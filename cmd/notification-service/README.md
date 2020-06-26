@@ -18,6 +18,7 @@ Body:
 
 ### Via GraphQL
 
+Open GraphQL playground -> `{{host}}/graphql/playground`
 ```
 query {
     pushnotif {
@@ -43,15 +44,16 @@ Body:
 {
     "scheduledAt": "2020-06-26T00:00:00+07:00",
     "data" : {
-        to: "deviceID", 
-        title: "Hallo", 
-        message: "hai"
+        "to": "deviceID", 
+        "title": "Hallo", 
+        "message": "hai"
     }
 }
 ```
 
 ### Via GraphQL
 
+Open GraphQL playground -> `{{host}}/graphql/playground`
 ```
 query {
     pushnotif {
