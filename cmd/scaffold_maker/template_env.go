@@ -3,9 +3,11 @@ package main
 const envTemplate = `# Basic env configuration
 
 # Service Handlers
+## Server
 USE_REST=true
 USE_GRPC=true
 USE_GRAPHQL=true
+## Worker
 USE_KAFKA_CONSUMER=true
 USE_CRON_SCHEDULER=true
 USE_REDIS_SUBSCRIBER=true

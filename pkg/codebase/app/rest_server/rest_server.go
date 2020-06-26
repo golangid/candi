@@ -57,7 +57,8 @@ func (h *restServer) Serve() {
 	})
 	for _, route := range httpRoutes {
 		if !strings.Contains(route.Name, "(*Group)") {
-			routes.WriteString(helper.StringGreen(fmt.Sprintf("[REST-ROUTE] %-6s %-30s --> %s\n", route.Method, route.Path, route.Name)))
+			routeName := strings.TrimPrefix(route.Name, fmt.Sprintf("agungdwiprasetyo.com/backend-microservices/internal/%s/", h.service.Name()))
+			routes.WriteString(helper.StringGreen(fmt.Sprintf("[REST-ROUTE] %-6s %-30s --> %s\n", route.Method, route.Path, routeName)))
 		}
 	}
 	fmt.Print(routes.String())

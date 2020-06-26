@@ -16,7 +16,7 @@ const (
 func main() {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Printf("Failed to start %s service: %v\n", serviceName, r)
+			fmt.Printf("\x1b[31;1mFailed to start %s service: %v\x1b[0m\n", serviceName, r)
 			fmt.Printf("Stack trace: \n%s\n", debug.Stack())
 		}
 	}()
