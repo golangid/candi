@@ -3,10 +3,11 @@ package database
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
+	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -21,8 +22,15 @@ func (m *mongoInstance) ReadDB() *mongo.Database {
 func (m *mongoInstance) WriteDB() *mongo.Database {
 	return m.write
 }
-func (m *mongoInstance) Disconnect(ctx context.Context) error {
-	defer log.Println("mongo: success disconnect")
+func (m *mongoInstance) Disconnect(ctx context.Context) (err error) {
+	fmt.Printf("%s mongodb: disconnect... ", time.Now().Format(helper.TimeFormatLogger))
+	defer func() {
+		if err != nil {
+			fmt.Println("\x1b[31;1mERROR\x1b[0m")
+		} else {
+			fmt.Println("\x1b[32;1mSUCCESS\x1b[0m")
+		}
+	}()
 	if err := m.write.Client().Disconnect(ctx); err != nil {
 		return err
 	}
@@ -31,8 +39,10 @@ func (m *mongoInstance) Disconnect(ctx context.Context) error {
 
 // InitMongoDB return mongo db read & write instance
 func InitMongoDB(ctx context.Context) interfaces.MongoDatabase {
-	dbInstance := new(mongoInstance)
+	fmt.Printf("%s Load MongoDB connection... ", time.Now().Format(helper.TimeFormatLogger))
+	defer fmt.Println()
 
+	dbInstance := new(mongoInstance)
 	dbName, ok := os.LookupEnv("MONGODB_DATABASE_NAME")
 	if !ok {
 		panic("missing MONGODB_DATABASE_NAME environment")
@@ -60,6 +70,6 @@ func InitMongoDB(ctx context.Context) interfaces.MongoDatabase {
 	}
 	dbInstance.read = client.Database(dbName)
 
-	log.Println("Success load Mongo connection")
+	fmt.Print("\x1b[32;1mSUCCESS\x1b[0m")
 	return dbInstance
 }

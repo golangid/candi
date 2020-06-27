@@ -13,6 +13,9 @@ const (
 	// TokenKey const
 	TokenKey = "18608c7d-b319-0xc000165c80-0xc0000da000-11478e4e2650"
 
+	// TimeFormatLogger const
+	TimeFormatLogger = "2006/01/02 15:04:05"
+
 	// V1 const
 	V1 = "/v1"
 	// V2 const

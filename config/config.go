@@ -64,6 +64,7 @@ func (c *Config) Exit() {
 	// set timeout for close all configuration
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
+	fmt.Println()
 
 	result := make(chan error)
 	go func() {

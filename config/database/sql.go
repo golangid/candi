@@ -4,10 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
+	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 )
 
 type sqlInstance struct {
@@ -20,8 +21,15 @@ func (s *sqlInstance) ReadDB() *sql.DB {
 func (s *sqlInstance) WriteDB() *sql.DB {
 	return s.write
 }
-func (s *sqlInstance) Disconnect(ctx context.Context) error {
-	defer log.Println("sql: success disconnect")
+func (s *sqlInstance) Disconnect(ctx context.Context) (err error) {
+	fmt.Printf("%s sql: disconnect... ", time.Now().Format(helper.TimeFormatLogger))
+	defer func() {
+		if err != nil {
+			fmt.Println("\x1b[31;1mERROR\x1b[0m")
+		} else {
+			fmt.Println("\x1b[32;1mSUCCESS\x1b[0m")
+		}
+	}()
 	if err := s.read.Close(); err != nil {
 		return err
 	}
@@ -30,6 +38,8 @@ func (s *sqlInstance) Disconnect(ctx context.Context) error {
 
 // InitSQLDatabase return sql db read & write instance
 func InitSQLDatabase() interfaces.SQLDatabase {
+	fmt.Printf("%s Load SQL connection... ", time.Now().Format(helper.TimeFormatLogger))
+	defer fmt.Println()
 
 	inst := new(sqlInstance)
 
@@ -53,6 +63,6 @@ func InitSQLDatabase() interfaces.SQLDatabase {
 		panic("SQL Write: " + err.Error())
 	}
 
-	log.Println("Success load SQL connection")
+	fmt.Print("\x1b[32;1mSUCCESS\x1b[0m")
 	return inst
 }

@@ -3,11 +3,12 @@ package database
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -23,8 +24,15 @@ func (m *redisInstance) WritePool() *redis.Pool {
 	return m.write
 }
 
-func (m *redisInstance) Disconnect(ctx context.Context) error {
-	defer log.Println("redis: success disconnect")
+func (m *redisInstance) Disconnect(ctx context.Context) (err error) {
+	fmt.Printf("%s redis: disconnect... ", time.Now().Format(helper.TimeFormatLogger))
+	defer func() {
+		if err != nil {
+			fmt.Println("\x1b[31;1mERROR\x1b[0m")
+		} else {
+			fmt.Println("\x1b[32;1mSUCCESS\x1b[0m")
+		}
+	}()
 	if err := m.read.Close(); err != nil {
 		return err
 	}
@@ -33,6 +41,9 @@ func (m *redisInstance) Disconnect(ctx context.Context) error {
 
 // InitRedis connection
 func InitRedis() interfaces.RedisPool {
+	fmt.Printf("%s Load Redis connection... ", time.Now().Format(helper.TimeFormatLogger))
+	defer fmt.Println()
+
 	inst := new(redisInstance)
 
 	hostRead, portRead, passRead := os.Getenv("REDIS_READ_HOST"), os.Getenv("REDIS_READ_PORT"), os.Getenv("REDIS_READ_AUTH")
@@ -66,6 +77,6 @@ func InitRedis() interfaces.RedisPool {
 		panic("redis write: " + err.Error())
 	}
 
-	log.Println("Success load Redis connection")
+	fmt.Print("\x1b[32;1mSUCCESS\x1b[0m")
 	return inst
 }
