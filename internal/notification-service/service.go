@@ -13,6 +13,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
 	authsdk "agungdwiprasetyo.com/backend-microservices/pkg/sdk/auth-service"
+	"agungdwiprasetyo.com/backend-microservices/pkg/validator"
 )
 
 // Service model
@@ -27,6 +28,7 @@ func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 	// See all optionn in dependency package
 	var depsOptions = []dependency.Option{
 		dependency.SetMiddleware(middleware.NewMiddleware(authsdk.NewAuthServiceGRPC())),
+		dependency.SetValidator(validator.NewJSONSchemaValidator(serviceName)),
 	}
 
 	cfg.Load(

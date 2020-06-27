@@ -1,4 +1,4 @@
-package api
+package validator
 
 import (
 	"encoding/json"
@@ -16,12 +16,13 @@ import (
 var notShowErrorListType = map[string]bool{
 	"condition_else": true, "condition_then": true,
 }
-var jsonSchemaList = map[string]*gojsonschema.Schema{}
 
-// LoadJSONSchema all schema from given path
-func LoadJSONSchema(serviceName string) error {
+var inMemStorage = map[string]*gojsonschema.Schema{}
 
-	here := fmt.Sprintf("api/jsonschema/%s/", serviceName)
+// loadJSONSchemaLocalFiles all json schema from given path
+func loadJSONSchemaLocalFiles(serviceName string) error {
+
+	here := fmt.Sprintf("api/%s/jsonschema/", serviceName)
 	return filepath.Walk(here, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -45,7 +46,8 @@ func LoadJSONSchema(serviceName string) error {
 			if !ok {
 				id = strings.Trim(strings.TrimSuffix(strings.TrimPrefix(p, here), ".json"), "/") // take filename without extension
 			}
-			jsonSchemaList[id], err = gojsonschema.NewSchema(gojsonschema.NewBytesLoader(s))
+			fmt.Println(id)
+			inMemStorage[id], err = gojsonschema.NewSchema(gojsonschema.NewBytesLoader(s))
 			if err != nil {
 				return fmt.Errorf("%s: %v", fileName, err)
 			}
@@ -54,46 +56,38 @@ func LoadJSONSchema(serviceName string) error {
 	})
 }
 
-// Get json schema by ID
-func Get(schemaID string) (*gojsonschema.Schema, error) {
-	schema, ok := jsonSchemaList[schemaID]
+// JSONSchemaValidator validator
+type JSONSchemaValidator struct {
+}
+
+// NewJSONSchemaValidator constructor
+func NewJSONSchemaValidator(serviceName string) *JSONSchemaValidator {
+	if err := loadJSONSchemaLocalFiles(serviceName); err != nil {
+		panic(err)
+	}
+	return &JSONSchemaValidator{}
+}
+
+func (v *JSONSchemaValidator) getSchema(schemaID string) (schema *gojsonschema.Schema, err error) {
+	s, ok := inMemStorage[schemaID]
 	if !ok {
 		return nil, fmt.Errorf("schema '%s' not found", schemaID)
 	}
 
-	return schema, nil
+	return s, nil
 }
 
-// Validate from Go data type
-func Validate(schemaID string, input interface{}) error {
+// ValidateDocument based on schema id
+func (v *JSONSchemaValidator) ValidateDocument(schemaID string, documentSource []byte) error {
+
 	multiError := helper.NewMultiError()
 
-	schema, err := Get(schemaID)
+	schema, err := v.getSchema(schemaID)
 	if err != nil {
-		multiError.Append("getSchema", err)
-		return multiError
+		return err
 	}
 
-	document := gojsonschema.NewGoLoader(input)
-	return validate(schema, document)
-}
-
-// ValidateDocument document
-func ValidateDocument(schemaID string, jsonByte []byte) error {
-	multiError := helper.NewMultiError()
-
-	schema, err := Get(schemaID)
-	if err != nil {
-		multiError.Append("getSchema", err)
-		return multiError
-	}
-
-	document := gojsonschema.NewBytesLoader(jsonByte)
-	return validate(schema, document)
-}
-
-func validate(schema *gojsonschema.Schema, document gojsonschema.JSONLoader) error {
-	multiError := helper.NewMultiError()
+	document := gojsonschema.NewBytesLoader(documentSource)
 
 	result, err := schema.Validate(document)
 	if err != nil {
