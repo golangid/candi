@@ -25,28 +25,25 @@ type Service struct {
 
 // NewService in this service
 func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
-	// See all optionn in dependency package
-	var depsOptions = []dependency.Option{
-		dependency.SetMiddleware(middleware.NewMiddleware(authsdk.NewAuthServiceGRPC())),
-		dependency.SetValidator(validator.NewJSONSchemaValidator(serviceName)),
-	}
+	// See all option in dependency package
+	var deps dependency.Dependency
 
-	cfg.Load(
-		func(context.Context) interfaces.Closer {
-			d := broker.InitKafkaBroker(config.BaseEnv().Kafka.ClientID)
-			depsOptions = append(depsOptions, dependency.SetBroker(d))
-			return d
-		},
-		func(context.Context) interfaces.Closer {
-			d := database.InitRedis()
-			depsOptions = append(depsOptions, dependency.SetRedisPool(d))
-			return d
-		},
-		// ... add some dependencies
-	)
+	cfg.LoadFunc(func(ctx context.Context) []interfaces.Closer {
+		kafkaDeps := broker.InitKafkaBroker(config.BaseEnv().Kafka.ClientID)
+		redisDeps := database.InitRedis()
+		mongoDeps := database.InitMongoDB(ctx)
 
-	// inject all service dependencies
-	deps := dependency.InitDependency(depsOptions...)
+		// inject all service dependencies
+		deps = dependency.InitDependency(
+			dependency.SetMiddleware(middleware.NewMiddleware(authsdk.NewAuthServiceGRPC())),
+			dependency.SetValidator(validator.NewJSONSchemaValidator(serviceName)),
+			dependency.SetBroker(kafkaDeps),
+			dependency.SetRedisPool(redisDeps),
+			dependency.SetMongoDatabase(mongoDeps),
+			// ... add more dependencies
+		)
+		return []interfaces.Closer{kafkaDeps, redisDeps, mongoDeps} // throw back to config for close connection when application shutdown
+	})
 
 	modules := []factory.ModuleFactory{
 		pushnotif.NewModule(deps),

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,7 +47,6 @@ func loadJSONSchemaLocalFiles(serviceName string) error {
 			if !ok {
 				id = strings.Trim(strings.TrimSuffix(strings.TrimPrefix(p, here), ".json"), "/") // take filename without extension
 			}
-			fmt.Println(id)
 			inMemStorage[id], err = gojsonschema.NewSchema(gojsonschema.NewBytesLoader(s))
 			if err != nil {
 				return fmt.Errorf("%s: %v", fileName, err)
@@ -63,7 +63,7 @@ type JSONSchemaValidator struct {
 // NewJSONSchemaValidator constructor
 func NewJSONSchemaValidator(serviceName string) *JSONSchemaValidator {
 	if err := loadJSONSchemaLocalFiles(serviceName); err != nil {
-		panic(err)
+		log.Println("warning: failed load json schema")
 	}
 	return &JSONSchemaValidator{}
 }

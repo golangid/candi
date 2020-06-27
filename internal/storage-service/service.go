@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"agungdwiprasetyo.com/backend-microservices/config"
-	"agungdwiprasetyo.com/backend-microservices/config/broker"
 	"agungdwiprasetyo.com/backend-microservices/config/database"
 	"agungdwiprasetyo.com/backend-microservices/internal/storage-service/modules/storage"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
@@ -13,6 +12,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
 	authsdk "agungdwiprasetyo.com/backend-microservices/pkg/sdk/auth-service"
+	"agungdwiprasetyo.com/backend-microservices/pkg/validator"
 )
 
 // Service model
@@ -24,25 +24,21 @@ type Service struct {
 
 // NewService in this service
 func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
-	var depsOptions = []dependency.Option{
-		dependency.SetMiddleware(middleware.NewMiddleware(authsdk.NewAuthServiceGRPC())),
-	}
+	// See all option in dependency package
+	var deps dependency.Dependency
 
-	cfg.Load(
-		func(ctx context.Context) interfaces.Closer {
-			d := database.InitMongoDB(ctx)
-			depsOptions = append(depsOptions, dependency.SetMongoDatabase(d))
-			return d
-		},
-		func(context.Context) interfaces.Closer {
-			d := broker.InitKafkaBroker(config.BaseEnv().Kafka.ClientID)
-			depsOptions = append(depsOptions, dependency.SetBroker(d))
-			return d
-		},
-	)
+	cfg.LoadFunc(func(ctx context.Context) []interfaces.Closer {
+		redisDeps := database.InitRedis()
 
-	// init all service dependencies
-	deps := dependency.InitDependency(depsOptions...)
+		// inject all service dependencies
+		deps = dependency.InitDependency(
+			dependency.SetMiddleware(middleware.NewMiddleware(authsdk.NewAuthServiceGRPC())),
+			dependency.SetValidator(validator.NewJSONSchemaValidator(serviceName)),
+			dependency.SetRedisPool(redisDeps),
+			// ... add more dependencies
+		)
+		return []interfaces.Closer{redisDeps} // throw back to config for close connection when application shutdown
+	})
 
 	modules := []factory.ModuleFactory{
 		storage.NewModule(deps),

@@ -9,6 +9,8 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 )
 
+const timeout int64 = 10 // in seconds
+
 var env Env
 
 // Config app
@@ -27,14 +29,14 @@ func BaseEnv() Env {
 	return env
 }
 
-// Load load selected dependency with context timeout
-func (c *Config) Load(selectedDepsFunc ...func(ctx context.Context) interfaces.Closer) {
+// LoadFunc load selected dependency with context timeout
+func (c *Config) LoadFunc(depsFunc func(context.Context) []interfaces.Closer) {
 	// set timeout for init configuration
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
 	result := make(chan error)
-	go func(loaderFuncs ...func(ctx context.Context) interfaces.Closer) {
+	go func() {
 		defer func() {
 			if r := recover(); r != nil {
 				result <- fmt.Errorf("Failed init configuration :=> %v", r)
@@ -42,10 +44,8 @@ func (c *Config) Load(selectedDepsFunc ...func(ctx context.Context) interfaces.C
 			close(result)
 		}()
 
-		for _, fn := range loaderFuncs {
-			c.closers = append(c.closers, fn(ctx))
-		}
-	}(selectedDepsFunc...)
+		c.closers = depsFunc(ctx)
+	}()
 
 	// with timeout to init configuration
 	select {
@@ -62,14 +62,32 @@ func (c *Config) Load(selectedDepsFunc ...func(ctx context.Context) interfaces.C
 // Exit close all connection
 func (c *Config) Exit() {
 	// set timeout for close all configuration
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
-	for _, cl := range c.closers {
-		if cl != nil {
+	result := make(chan error)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				result <- fmt.Errorf("Failed close connection :=> %v", r)
+			}
+			close(result)
+		}()
+
+		for _, cl := range c.closers {
 			cl.Disconnect(ctx)
 		}
-	}
+	}()
 
-	log.Println("\x1b[32;1mConfig: Success close all connection\x1b[0m")
+	// with timeout to close all configuration
+	select {
+	case <-ctx.Done():
+		panic(fmt.Errorf("Timeout to close all selected dependencies connection: %v", ctx.Err()))
+	case err := <-result:
+		if err != nil {
+			panic(err)
+		}
+		log.Println("\x1b[32;1mConfig: Success close all connection\x1b[0m")
+		return
+	}
 }
