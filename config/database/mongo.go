@@ -40,7 +40,13 @@ func (m *mongoInstance) Disconnect(ctx context.Context) (err error) {
 // InitMongoDB return mongo db read & write instance
 func InitMongoDB(ctx context.Context) interfaces.MongoDatabase {
 	fmt.Printf("%s Load MongoDB connection... ", time.Now().Format(helper.TimeFormatLogger))
-	defer fmt.Println()
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("\x1b[31;1mERROR\x1b[0m")
+			panic(r)
+		}
+		fmt.Println("\x1b[32;1mSUCCESS\x1b[0m")
+	}()
 
 	dbInstance := new(mongoInstance)
 	dbName, ok := os.LookupEnv("MONGODB_DATABASE_NAME")
@@ -70,6 +76,5 @@ func InitMongoDB(ctx context.Context) interfaces.MongoDatabase {
 	}
 	dbInstance.read = client.Database(dbName)
 
-	fmt.Print("\x1b[32;1mSUCCESS\x1b[0m")
 	return dbInstance
 }

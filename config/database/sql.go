@@ -39,7 +39,13 @@ func (s *sqlInstance) Disconnect(ctx context.Context) (err error) {
 // InitSQLDatabase return sql db read & write instance
 func InitSQLDatabase() interfaces.SQLDatabase {
 	fmt.Printf("%s Load SQL connection... ", time.Now().Format(helper.TimeFormatLogger))
-	defer fmt.Println()
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("\x1b[31;1mERROR\x1b[0m")
+			panic(r)
+		}
+		fmt.Println("\x1b[32;1mSUCCESS\x1b[0m")
+	}()
 
 	inst := new(sqlInstance)
 
@@ -63,6 +69,5 @@ func InitSQLDatabase() interfaces.SQLDatabase {
 		panic("SQL Write: " + err.Error())
 	}
 
-	fmt.Print("\x1b[32;1mSUCCESS\x1b[0m")
 	return inst
 }

@@ -42,7 +42,13 @@ func (m *redisInstance) Disconnect(ctx context.Context) (err error) {
 // InitRedis connection
 func InitRedis() interfaces.RedisPool {
 	fmt.Printf("%s Load Redis connection... ", time.Now().Format(helper.TimeFormatLogger))
-	defer fmt.Println()
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("\x1b[31;1mERROR\x1b[0m")
+			panic(r)
+		}
+		fmt.Println("\x1b[32;1mSUCCESS\x1b[0m")
+	}()
 
 	inst := new(redisInstance)
 
@@ -77,6 +83,5 @@ func InitRedis() interfaces.RedisPool {
 		panic("redis write: " + err.Error())
 	}
 
-	fmt.Print("\x1b[32;1mSUCCESS\x1b[0m")
 	return inst
 }
