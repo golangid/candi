@@ -12,6 +12,7 @@ type Dependency interface {
 	GetMongoDatabase() interfaces.MongoDatabase
 	GetRedisPool() interfaces.RedisPool
 	GetKey() interfaces.Key
+	GetValidator() interfaces.Validator
 }
 
 // Option func type
@@ -24,6 +25,7 @@ type deps struct {
 	mongoDB   interfaces.MongoDatabase
 	redisPool interfaces.RedisPool
 	key       interfaces.Key
+	validator interfaces.Validator
 }
 
 // SetMiddleware option func
@@ -68,6 +70,13 @@ func SetKey(key interfaces.Key) Option {
 	}
 }
 
+// SetValidator option func
+func SetValidator(validator interfaces.Validator) Option {
+	return func(d *deps) {
+		d.validator = validator
+	}
+}
+
 // InitDependency constructor
 func InitDependency(opts ...Option) Dependency {
 	opt := new(deps)
@@ -96,4 +105,7 @@ func (d *deps) GetRedisPool() interfaces.RedisPool {
 }
 func (d *deps) GetKey() interfaces.Key {
 	return d.key
+}
+func (d *deps) GetValidator() interfaces.Validator {
+	return d.validator
 }
