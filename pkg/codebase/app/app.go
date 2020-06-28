@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -81,7 +82,7 @@ func (a *App) Run() {
 
 // graceful shutdown all server, panic if there is still a process running when the request exceed given timeout in context
 func (a *App) shutdown() {
-	println("Graceful shutdown...")
+	fmt.Println("\x1b[34;1mGracefully shutdown... (press Ctrl+C again to force)\x1b[0m")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
@@ -90,5 +91,5 @@ func (a *App) shutdown() {
 		server.Shutdown(ctx)
 	}
 
-	log.Println("Success shutdown all server & worker")
+	log.Println("\x1b[32;1mSuccess shutdown all server & worker\x1b[0m")
 }

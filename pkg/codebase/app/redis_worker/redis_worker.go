@@ -5,12 +5,12 @@ package redisworker
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -67,6 +67,8 @@ func (r *redisWorker) Serve() {
 }
 
 func (r *redisWorker) Shutdown(ctx context.Context) {
-	log.Println("Stopping redis subscriber worker...")
+	deferFunc := logger.LogWithDefer("Stopping redis subscriber worker...")
+	defer deferFunc()
+
 	// TODO: handling graceful stop all channel from redis subscriber
 }

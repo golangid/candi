@@ -21,10 +21,10 @@ var notShowErrorListType = map[string]bool{
 var inMemStorage = map[string]*gojsonschema.Schema{}
 
 // loadJSONSchemaLocalFiles all json schema from given path
-func loadJSONSchemaLocalFiles(serviceName string) error {
+func loadJSONSchemaLocalFiles(serviceName string) (string, error) {
 
 	here := fmt.Sprintf("api/%s/jsonschema/", serviceName)
-	return filepath.Walk(here, func(p string, info os.FileInfo, err error) error {
+	return here, filepath.Walk(here, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -62,8 +62,8 @@ type JSONSchemaValidator struct {
 
 // NewJSONSchemaValidator constructor
 func NewJSONSchemaValidator(serviceName string) *JSONSchemaValidator {
-	if err := loadJSONSchemaLocalFiles(serviceName); err != nil {
-		log.Println("warning: failed load json schema")
+	if path, err := loadJSONSchemaLocalFiles(serviceName); err != nil {
+		log.Println(helper.StringYellow("Validator: warning, failed load json schema in path " + path))
 	}
 	return &JSONSchemaValidator{}
 }

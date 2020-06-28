@@ -11,6 +11,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"github.com/Shopify/sarama"
 )
 
@@ -53,12 +54,12 @@ func (h *kafkaWorker) Serve() {
 		handlers: handlers,
 	}
 
-	fmt.Printf("\x1b[34;1m⇨ Kafka consumer is active. Brokers: " + strings.Join(config.BaseEnv().Kafka.Brokers, ", ") + "\x1b[0m\n")
 	var consumeTopics []string
 	for topic, handlerNames := range topicInfo {
-		fmt.Println(helper.StringYellow(fmt.Sprintf("[KAFKA-CONSUMER] (topic): %-8s  (consumed by modules)--> [%s]\n", topic, strings.Join(handlerNames, ", "))))
+		fmt.Println(helper.StringYellow(fmt.Sprintf("[KAFKA-CONSUMER] (topic): %-8s  (consumed by modules)--> [%s]", topic, strings.Join(handlerNames, ", "))))
 		consumeTopics = append(consumeTopics, topic)
 	}
+	fmt.Printf("\x1b[34;1m⇨ Kafka consumer is active. Brokers: " + strings.Join(config.BaseEnv().Kafka.Brokers, ", ") + "\x1b[0m\n\n")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -69,7 +70,9 @@ func (h *kafkaWorker) Serve() {
 }
 
 func (h *kafkaWorker) Shutdown(ctx context.Context) {
-	log.Println("Stopping Kafka consumer...")
+	deferFunc := logger.LogWithDefer("Stopping Kafka consumer worker...")
+	defer deferFunc()
+
 	h.engine.Close()
 }
 

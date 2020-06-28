@@ -9,6 +9,7 @@ import (
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -41,14 +42,8 @@ func (m *redisInstance) Disconnect(ctx context.Context) (err error) {
 
 // InitRedis connection
 func InitRedis() interfaces.RedisPool {
-	fmt.Printf("%s Load Redis connection... ", time.Now().Format(helper.TimeFormatLogger))
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("\x1b[31;1mERROR\x1b[0m")
-			panic(r)
-		}
-		fmt.Println("\x1b[32;1mSUCCESS\x1b[0m")
-	}()
+	deferFunc := logger.LogWithDefer("Load Redis connection...")
+	defer deferFunc()
 
 	inst := new(redisInstance)
 

@@ -3,10 +3,11 @@ package publisher
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"fmt"
 	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/config"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"github.com/Shopify/sarama"
 )
 
@@ -20,13 +21,13 @@ func NewKafkaPublisher(cfg *sarama.Config) *KafkaPublisher {
 
 	brokers := config.BaseEnv().Kafka.Brokers
 	if len(brokers) == 0 || (len(brokers) == 1 && brokers[0] == "") {
-		log.Printf("Kafka publisher: warning, missing kafka broker for publish message. Should be panicked when using kafka publisher")
+		fmt.Printf(helper.StringYellow("(Kafka publisher: warning, missing kafka broker for publish message. Should be panicked when using kafka publisher.) "))
 		return nil
 	}
 
 	producer, err := sarama.NewSyncProducer(brokers, cfg)
 	if err != nil {
-		log.Printf("Kafka publisher: warning, %v. Should be panicked when using kafka publisher", err)
+		fmt.Printf(helper.StringYellow("(Kafka publisher: warning, %v. Should be panicked when using kafka publisher.) "), err)
 		return nil
 	}
 

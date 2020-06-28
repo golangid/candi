@@ -3,7 +3,6 @@ package restserver
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"sort"
@@ -13,6 +12,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/config"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"agungdwiprasetyo.com/backend-microservices/pkg/wrapper"
 	"github.com/labstack/echo"
 	echoMidd "github.com/labstack/echo/middleware"
@@ -76,7 +76,9 @@ func (h *restServer) Serve() {
 }
 
 func (h *restServer) Shutdown(ctx context.Context) {
-	log.Println("Stopping REST HTTP server...")
+	deferFunc := logger.LogWithDefer("Stopping REST HTTP server...")
+	defer deferFunc()
+
 	if err := h.serverEngine.Shutdown(ctx); err != nil {
 		panic(err)
 	}

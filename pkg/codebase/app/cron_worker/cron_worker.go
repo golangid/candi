@@ -13,6 +13,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 )
 
 type cronWorker struct {
@@ -73,7 +74,8 @@ func (c *cronWorker) Serve() {
 }
 
 func (c *cronWorker) Shutdown(ctx context.Context) {
-	log.Println("Stopping cron job scheduler...")
+	deferFunc := logger.LogWithDefer("Stopping cron job scheduler worker...")
+	defer deferFunc()
 	// TODO: handling graceful stop all channel from jobs ticker
 }
 

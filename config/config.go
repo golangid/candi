@@ -88,7 +88,7 @@ func (c *Config) Exit() {
 		if err != nil {
 			panic(err)
 		}
-		log.Println("\x1b[32;1mConfig: Success close all connection\x1b[0m")
+		log.Println("\x1b[32;1mSuccess close all config connection\x1b[0m")
 		return
 	}
 }

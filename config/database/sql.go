@@ -9,6 +9,7 @@ import (
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 )
 
 type sqlInstance struct {
@@ -38,14 +39,8 @@ func (s *sqlInstance) Disconnect(ctx context.Context) (err error) {
 
 // InitSQLDatabase return sql db read & write instance
 func InitSQLDatabase() interfaces.SQLDatabase {
-	fmt.Printf("%s Load SQL connection... ", time.Now().Format(helper.TimeFormatLogger))
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("\x1b[31;1mERROR\x1b[0m")
-			panic(r)
-		}
-		fmt.Println("\x1b[32;1mSUCCESS\x1b[0m")
-	}()
+	deferFunc := logger.LogWithDefer("Load SQL connection...")
+	defer deferFunc()
 
 	inst := new(sqlInstance)
 

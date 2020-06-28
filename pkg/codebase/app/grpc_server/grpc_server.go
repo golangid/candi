@@ -9,6 +9,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/config"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"google.golang.org/grpc"
 )
 
@@ -53,6 +54,8 @@ func (s *grpcServer) Serve() {
 }
 
 func (s *grpcServer) Shutdown(ctx context.Context) {
-	log.Println("Stopping GRPC server...")
+	deferFunc := logger.LogWithDefer("Stopping GRPC server...")
+	defer deferFunc()
+
 	s.serverEngine.GracefulStop()
 }
