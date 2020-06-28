@@ -4,6 +4,7 @@ import (
 	"context"
 
 	proto "agungdwiprasetyo.com/backend-microservices/api/auth-service/proto/token"
+	"agungdwiprasetyo.com/backend-microservices/internal/auth-service/modules/token/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"google.golang.org/grpc"
 )
@@ -11,12 +12,14 @@ import (
 // GRPCHandler rpc handler
 type GRPCHandler struct {
 	mw interfaces.Middleware
+	uc usecase.TokenUsecase
 }
 
 // NewGRPCHandler func
-func NewGRPCHandler(mw interfaces.Middleware) *GRPCHandler {
+func NewGRPCHandler(mw interfaces.Middleware, uc usecase.TokenUsecase) *GRPCHandler {
 	return &GRPCHandler{
 		mw: mw,
+		uc: uc,
 	}
 }
 
@@ -34,6 +37,12 @@ func (h *GRPCHandler) Hello(ctx context.Context, req *proto.Request) (*proto.Res
 
 // ValidateToken rpc
 func (h *GRPCHandler) ValidateToken(ctx context.Context, req *proto.PayloadValidate) (*proto.ResponseValidation, error) {
+
+	result := <-h.uc.Validate(ctx, req.Token)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
 	return &proto.ResponseValidation{
 		Success: true,
 		Claim: &proto.ResponseValidation_ClaimData{

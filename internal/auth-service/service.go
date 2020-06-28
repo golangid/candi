@@ -6,6 +6,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/config"
 	"agungdwiprasetyo.com/backend-microservices/config/broker"
 	"agungdwiprasetyo.com/backend-microservices/config/database"
+	"agungdwiprasetyo.com/backend-microservices/config/key"
 	"agungdwiprasetyo.com/backend-microservices/internal/auth-service/modules/token"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
@@ -30,6 +31,7 @@ func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 	cfg.LoadFunc(func(ctx context.Context) []interfaces.Closer {
 		kafkaDeps := broker.InitKafkaBroker(config.BaseEnv().Kafka.ClientID)
 		redisDeps := database.InitRedis()
+		rsaKey := key.LoadRSAKey()
 
 		// inject all service dependencies
 		deps = dependency.InitDependency(
@@ -37,6 +39,7 @@ func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 			dependency.SetValidator(validator.NewJSONSchemaValidator(serviceName)),
 			dependency.SetBroker(kafkaDeps),
 			dependency.SetRedisPool(redisDeps),
+			dependency.SetKey(rsaKey),
 			// ... add more dependencies
 		)
 		return []interfaces.Closer{kafkaDeps, redisDeps} // throw back to config for close connection when application shutdown

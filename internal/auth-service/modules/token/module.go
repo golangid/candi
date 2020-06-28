@@ -5,6 +5,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/auth-service/modules/token/delivery/grpchandler"
 	"agungdwiprasetyo.com/backend-microservices/internal/auth-service/modules/token/delivery/resthandler"
 	"agungdwiprasetyo.com/backend-microservices/internal/auth-service/modules/token/delivery/workerhandler"
+	"agungdwiprasetyo.com/backend-microservices/internal/auth-service/modules/token/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
@@ -26,9 +27,11 @@ type Module struct {
 
 // NewModule module constructor
 func NewModule(deps dependency.Dependency) *Module {
+	uc := usecase.NewTokenUsecase(deps.GetKey().PublicKey(), deps.GetKey().PrivateKey())
+
 	var mod Module
 	mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware())
-	mod.grpcHandler = grpchandler.NewGRPCHandler(deps.GetMiddleware())
+	mod.grpcHandler = grpchandler.NewGRPCHandler(deps.GetMiddleware(), uc)
 	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware())
 
 	mod.workerHandlers = map[constant.Worker]interfaces.WorkerHandler{
