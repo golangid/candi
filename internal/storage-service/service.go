@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"os"
 
 	"agungdwiprasetyo.com/backend-microservices/config"
 	"agungdwiprasetyo.com/backend-microservices/config/database"
@@ -30,9 +31,11 @@ func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 	cfg.LoadFunc(func(ctx context.Context) []interfaces.Closer {
 		redisDeps := database.InitRedis()
 
+		authService := authsdk.NewAuthServiceGRPC(os.Getenv("AUTH_SERVICE_GRPC_HOST"), os.Getenv("AUTH_SERVICE_GRPC_KEY"))
+
 		// inject all service dependencies
 		deps = dependency.InitDependency(
-			dependency.SetMiddleware(middleware.NewMiddleware(authsdk.NewAuthServiceGRPC())),
+			dependency.SetMiddleware(middleware.NewMiddleware(authService)),
 			dependency.SetValidator(validator.NewJSONSchemaValidator(serviceName)),
 			dependency.SetRedisPool(redisDeps),
 			// ... add more dependencies

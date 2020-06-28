@@ -2,6 +2,7 @@ package userservice
 
 import (
 	"context"
+	"os"
 
 	"agungdwiprasetyo.com/backend-microservices/config"
 	"agungdwiprasetyo.com/backend-microservices/config/broker"
@@ -36,9 +37,11 @@ func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 		mongoDeps := database.InitMongoDB(ctx)
 		sqlDeps := database.InitSQLDatabase()
 
+		authService := authsdk.NewAuthServiceGRPC(os.Getenv("AUTH_SERVICE_GRPC_HOST"), os.Getenv("AUTH_SERVICE_GRPC_KEY"))
+
 		// inject all service dependencies
 		deps = dependency.InitDependency(
-			dependency.SetMiddleware(middleware.NewMiddleware(authsdk.NewAuthServiceGRPC())),
+			dependency.SetMiddleware(middleware.NewMiddleware(authService)),
 			dependency.SetValidator(validator.NewJSONSchemaValidator(serviceName)),
 			dependency.SetBroker(kafkaDeps),
 			dependency.SetRedisPool(redisDeps),

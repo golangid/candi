@@ -1,8 +1,6 @@
-package token
+package domain
 
-import (
-	"github.com/dgrijalva/jwt-go"
-)
+import "github.com/dgrijalva/jwt-go"
 
 const (
 

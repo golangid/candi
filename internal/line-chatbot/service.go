@@ -2,6 +2,7 @@ package linechatbot
 
 import (
 	"context"
+	"os"
 
 	"agungdwiprasetyo.com/backend-microservices/config"
 	"agungdwiprasetyo.com/backend-microservices/config/broker"
@@ -33,9 +34,11 @@ func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 		kafkaDeps := broker.InitKafkaBroker(config.BaseEnv().Kafka.ClientID)
 		mongoDeps := database.InitMongoDB(ctx)
 
+		authService := authsdk.NewAuthServiceGRPC(os.Getenv("AUTH_SERVICE_GRPC_HOST"), os.Getenv("AUTH_SERVICE_GRPC_KEY"))
+
 		// inject all service dependencies
 		deps = dependency.InitDependency(
-			dependency.SetMiddleware(middleware.NewMiddleware(authsdk.NewAuthServiceGRPC())),
+			dependency.SetMiddleware(middleware.NewMiddleware(authService)),
 			dependency.SetValidator(validator.NewJSONSchemaValidator(serviceName)),
 			dependency.SetBroker(kafkaDeps),
 			dependency.SetMongoDatabase(mongoDeps),
