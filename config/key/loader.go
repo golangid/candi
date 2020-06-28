@@ -3,9 +3,9 @@ package key
 import (
 	"crypto/rsa"
 	"io/ioutil"
-	"log"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
+	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"github.com/dgrijalva/jwt-go"
 )
 
@@ -23,10 +23,12 @@ func (k *key) PublicKey() *rsa.PublicKey {
 
 // LoadRSAKey load rsa private key
 func LoadRSAKey() interfaces.Key {
+	deferFunc := logger.LogWithDefer("Load RSA keys...")
+	defer deferFunc()
 
 	signBytes, err := ioutil.ReadFile("config/key/private.key")
 	if err != nil {
-		panic("Error when load private key. " + err.Error())
+		panic("Error when load private key. " + err.Error() + ". Please generate RSA keys")
 	}
 	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(signBytes)
 	if err != nil {
@@ -35,14 +37,13 @@ func LoadRSAKey() interfaces.Key {
 
 	verifyBytes, err := ioutil.ReadFile("config/key/public.pem")
 	if err != nil {
-		panic("Error when load public key. " + err.Error())
+		panic("Error when load public key. " + err.Error() + ". Please generate RSA keys")
 	}
 	publicKey, err := jwt.ParseRSAPublicKeyFromPEM(verifyBytes)
 	if err != nil {
 		panic("Error when load public key. " + err.Error())
 	}
 
-	log.Println("Success load RSA Key")
 	return &key{
 		private: privateKey, public: publicKey,
 	}
