@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
@@ -80,8 +83,15 @@ func (c *Config) Exit() {
 		}
 	}()
 
+	// for force exit
+	quitSignal := make(chan os.Signal, 1)
+	signal.Notify(quitSignal, os.Interrupt, syscall.SIGTERM)
+
 	// with timeout to close all configuration
 	select {
+	case <-quitSignal:
+		log.Println("\x1b[31;1mForce exit\x1b[0m")
+		os.Exit(1)
 	case <-ctx.Done():
 		panic(fmt.Errorf("Timeout to close all selected dependencies connection: %v", ctx.Err()))
 	case err := <-result:
