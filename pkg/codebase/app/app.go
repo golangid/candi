@@ -69,6 +69,8 @@ func (a *App) Run() {
 		panic("No server handler running")
 	}
 
+	defer a.shutdown()
+
 	for _, server := range a.servers {
 		go server.Serve()
 	}
@@ -76,8 +78,6 @@ func (a *App) Run() {
 	quitSignal := make(chan os.Signal, 1)
 	signal.Notify(quitSignal, os.Interrupt, syscall.SIGTERM)
 	<-quitSignal
-
-	a.shutdown()
 }
 
 // graceful shutdown all server, panic if there is still a process running when the request exceed given timeout in context
