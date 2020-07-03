@@ -5,6 +5,7 @@ package redisworker
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
@@ -17,6 +18,8 @@ import (
 type redisWorker struct {
 	pubSubConn func() redis.PubSubConn
 	service    factory.ServiceFactory
+	shutdown   chan struct{}
+	wg         sync.WaitGroup
 }
 
 // NewWorker create new redis subscriber
@@ -34,6 +37,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 
 			return psc
 		},
+		shutdown: make(chan struct{}),
 	}
 }
 
@@ -42,6 +46,7 @@ func (r *redisWorker) Serve() {
 	for _, m := range r.service.GetModules() {
 		if h := m.WorkerHandler(constant.RedisSubscriber); h != nil {
 			for _, topic := range h.GetTopics() {
+				fmt.Println(helper.StringYellow(fmt.Sprintf(`[REDIS-SUBSCRIBER] (key prefix): "%-10s"  (processed by module): %s`, topic, m.Name())))
 				handlers[topic] = h
 			}
 		}
@@ -49,19 +54,35 @@ func (r *redisWorker) Serve() {
 
 	psc := r.pubSubConn()
 
-	fmt.Printf("\x1b[34;1m⇨ Redis pubsub worker running\x1b[0m\n\n")
+	// listen redis subscriber
+	messageReceiver := make(chan []byte)
+	go func() {
+		for {
+			switch msg := psc.Receive().(type) {
+			case redis.Message:
+				messageReceiver <- msg.Data
+			case error:
+				// if network connection error, create new connection from pool
+				psc = r.pubSubConn()
+			}
+		}
+	}()
+
+	// run worker with listen shutdown channel
+	fmt.Printf("\x1b[34;1m⇨ Redis pubsub worker running with %d keys\x1b[0m\n\n", len(handlers))
 	for {
-		switch msg := psc.Receive().(type) {
-		case redis.Message:
-			func() {
+		select {
+		case message := <-messageReceiver:
+			r.wg.Add(1)
+			go func() {
+				defer r.wg.Done()
 				defer func() { recover() }()
-				modName, handlerName, messageData := helper.ParseRedisPubSubKeyTopic(string(msg.Data))
+
+				modName, handlerName, messageData := helper.ParseRedisPubSubKeyTopic(string(message))
 				handlers[modName].ProcessMessage(context.Background(), handlerName, []byte(messageData))
 			}()
-		case error:
-
-			// if network connection error, create new connection from pool
-			psc = r.pubSubConn()
+		case <-r.shutdown:
+			break
 		}
 	}
 }
@@ -70,5 +91,18 @@ func (r *redisWorker) Shutdown(ctx context.Context) {
 	deferFunc := logger.LogWithDefer("Stopping redis subscriber worker...")
 	defer deferFunc()
 
-	// TODO: handling graceful stop all channel from redis subscriber
+	r.shutdown <- struct{}{}
+
+	done := make(chan struct{})
+	go func() {
+		r.wg.Wait()
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-ctx.Done():
+		fmt.Print("redis-subscriber: force shutdown ")
+	case <-done:
+		fmt.Print("redis-subscriber: success waiting all job until done ")
+	}
 }
