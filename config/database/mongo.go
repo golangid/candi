@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
-	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -24,14 +22,9 @@ func (m *mongoInstance) WriteDB() *mongo.Database {
 	return m.write
 }
 func (m *mongoInstance) Disconnect(ctx context.Context) (err error) {
-	fmt.Printf("%s mongodb: disconnect... ", time.Now().Format(helper.TimeFormatLogger))
-	defer func() {
-		if err != nil {
-			fmt.Println("\x1b[31;1mERROR\x1b[0m")
-		} else {
-			fmt.Println("\x1b[32;1mSUCCESS\x1b[0m")
-		}
-	}()
+	deferFunc := logger.LogWithDefer("mongodb: disconnect......")
+	defer deferFunc()
+
 	if err := m.write.Client().Disconnect(ctx); err != nil {
 		return err
 	}

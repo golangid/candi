@@ -5,10 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
-	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 )
 
@@ -23,14 +21,9 @@ func (s *sqlInstance) WriteDB() *sql.DB {
 	return s.write
 }
 func (s *sqlInstance) Disconnect(ctx context.Context) (err error) {
-	fmt.Printf("%s sql: disconnect... ", time.Now().Format(helper.TimeFormatLogger))
-	defer func() {
-		if err != nil {
-			fmt.Println("\x1b[31;1mERROR\x1b[0m")
-		} else {
-			fmt.Println("\x1b[32;1mSUCCESS\x1b[0m")
-		}
-	}()
+	deferFunc := logger.LogWithDefer("sql: disconnect......")
+	defer deferFunc()
+
 	if err := s.read.Close(); err != nil {
 		return err
 	}

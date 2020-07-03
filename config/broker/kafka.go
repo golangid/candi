@@ -2,11 +2,10 @@ package broker
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
-	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"agungdwiprasetyo.com/backend-microservices/pkg/publisher"
 	"github.com/Shopify/sarama"
 )
@@ -28,9 +27,8 @@ func (b *kafkaBroker) Disconnect(ctx context.Context) error {
 
 // InitKafkaBroker init kafka broker configuration
 func InitKafkaBroker(clientID string) interfaces.Broker {
-
-	fmt.Printf("%s Load Kafka configuration... ", time.Now().Format(helper.TimeFormatLogger))
-	defer fmt.Println("\x1b[32;1mSUCCESS\x1b[0m")
+	deferFunc := logger.LogWithDefer("Load Kafka configuration...")
+	defer deferFunc()
 
 	kafkaConfig := sarama.NewConfig()
 	kafkaConfig.Version, _ = sarama.ParseKafkaVersion("2.1.1")
