@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"sync"
 	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
@@ -17,13 +18,16 @@ import (
 )
 
 type cronWorker struct {
-	service factory.ServiceFactory
+	service  factory.ServiceFactory
+	shutdown chan struct{}
+	wg       sync.WaitGroup
 }
 
 // NewWorker create new cron worker
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	return &cronWorker{
-		service: service,
+		service:  service,
+		shutdown: make(chan struct{}),
 	}
 }
 
@@ -58,15 +62,28 @@ func (c *cronWorker) Serve() {
 		return
 	}
 
-	fmt.Printf("\x1b[34;1m⇨ Cron worker running with %d jobs\x1b[0m\n\n", len(schedulerChannels))
+	// add shutdown channel to last index
+	schedulerChannels = append(schedulerChannels, reflect.SelectCase{
+		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(c.shutdown),
+	})
+
+	fmt.Printf("\x1b[34;1m⇨ Cron worker running with %d jobs\x1b[0m\n\n", len(jobs))
 	for {
 		chosen, _, ok := reflect.Select(schedulerChannels)
 		if !ok {
 			continue
 		}
 
+		// if shutdown channel captured, break loop (no more jobs will run)
+		if chosen == len(schedulerChannels)-1 {
+			break
+		}
+
+		c.wg.Add(1)
 		go func(selected int) {
+			defer c.wg.Done()
 			defer func() { recover() }()
+
 			job := jobs[selected]
 			job.handler.ProcessMessage(context.Background(), job.handlerName, []byte(job.params))
 		}(chosen)
@@ -76,7 +93,21 @@ func (c *cronWorker) Serve() {
 func (c *cronWorker) Shutdown(ctx context.Context) {
 	deferFunc := logger.LogWithDefer("Stopping cron job scheduler worker...")
 	defer deferFunc()
-	// TODO: handling graceful stop all channel from jobs ticker
+
+	c.shutdown <- struct{}{}
+
+	done := make(chan struct{})
+	go func() {
+		c.wg.Wait()
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-ctx.Done():
+		fmt.Print("cronjob: force shutdown ")
+	case <-done:
+		fmt.Print("cronjob: success waiting all job until done ")
+	}
 }
 
 type schedulerJob struct {
