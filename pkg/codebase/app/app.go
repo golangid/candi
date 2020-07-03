@@ -69,8 +69,6 @@ func (a *App) Run() {
 		panic("No server handler running")
 	}
 
-	defer a.shutdown()
-
 	for _, server := range a.servers {
 		go server.Serve()
 	}
@@ -78,18 +76,31 @@ func (a *App) Run() {
 	quitSignal := make(chan os.Signal, 1)
 	signal.Notify(quitSignal, os.Interrupt, syscall.SIGTERM)
 	<-quitSignal
+
+	a.shutdown(quitSignal)
 }
 
 // graceful shutdown all server, panic if there is still a process running when the request exceed given timeout in context
-func (a *App) shutdown() {
+func (a *App) shutdown(forceShutdown chan os.Signal) {
 	fmt.Println("\x1b[34;1mGracefully shutdown... (press Ctrl+C again to force)\x1b[0m")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
-	for _, server := range a.servers {
-		server.Shutdown(ctx)
-	}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for _, server := range a.servers {
+			server.Shutdown(ctx)
+		}
+		done <- struct{}{}
+	}()
 
-	log.Println("\x1b[32;1mSuccess shutdown all server & worker\x1b[0m")
+	select {
+	case <-done:
+		log.Println("\x1b[32;1mSuccess shutdown all server & worker\x1b[0m")
+	case <-forceShutdown:
+		fmt.Println("\x1b[31;1mForce shutdown server & worker\x1b[0m")
+		cancel()
+	}
 }
