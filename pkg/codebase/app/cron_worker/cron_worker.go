@@ -18,9 +18,10 @@ import (
 )
 
 type cronWorker struct {
-	service  factory.ServiceFactory
-	shutdown chan struct{}
-	wg       sync.WaitGroup
+	service   factory.ServiceFactory
+	isHaveJob bool
+	shutdown  chan struct{}
+	wg        sync.WaitGroup
 }
 
 // NewWorker create new cron worker
@@ -58,9 +59,11 @@ func (c *cronWorker) Serve() {
 	}
 
 	if len(jobs) == 0 {
-		log.Println("No scheduler handler found")
+		log.Println("cronjob: no scheduler handler found")
 		return
 	}
+
+	c.isHaveJob = true
 
 	// add shutdown channel to last index
 	schedulerChannels = append(schedulerChannels, reflect.SelectCase{
@@ -93,6 +96,10 @@ func (c *cronWorker) Serve() {
 func (c *cronWorker) Shutdown(ctx context.Context) {
 	deferFunc := logger.LogWithDefer("Stopping cron job scheduler worker...")
 	defer deferFunc()
+
+	if !c.isHaveJob {
+		return
+	}
 
 	c.shutdown <- struct{}{}
 

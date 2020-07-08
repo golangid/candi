@@ -5,6 +5,7 @@ package redisworker
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
@@ -17,6 +18,7 @@ import (
 
 type redisWorker struct {
 	pubSubConn func() redis.PubSubConn
+	isHaveJob  bool
 	service    factory.ServiceFactory
 	shutdown   chan struct{}
 	wg         sync.WaitGroup
@@ -51,6 +53,12 @@ func (r *redisWorker) Serve() {
 			}
 		}
 	}
+
+	if len(handlers) == 0 {
+		log.Println("redis subscriber: no topic provided")
+		return
+	}
+	r.isHaveJob = true
 
 	psc := r.pubSubConn()
 
@@ -90,6 +98,10 @@ func (r *redisWorker) Serve() {
 func (r *redisWorker) Shutdown(ctx context.Context) {
 	deferFunc := logger.LogWithDefer("Stopping redis subscriber worker...")
 	defer deferFunc()
+
+	if !r.isHaveJob {
+		return
+	}
 
 	r.shutdown <- struct{}{}
 
