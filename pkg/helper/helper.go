@@ -106,13 +106,15 @@ func ToStringPtr(str string) *string {
 }
 
 // CronJobKeyToString helper
+// with interval format that can be accepted by time.ParseDuration param (ex 10s, 5h, etc)
+// or can also be a format HH:mm:ss
 func CronJobKeyToString(jobName string, interval string) string {
-	return fmt.Sprintf("%s:%s", jobName, interval)
+	return fmt.Sprintf("%s~%s", jobName, interval)
 }
 
 // ParseCronJobKey helper
 func ParseCronJobKey(str string) (jobName string, interval string) {
-	split := strings.Split(str, ":")
+	split := strings.Split(str, "~")
 	jobName = split[0]
 	interval = split[1]
 	return

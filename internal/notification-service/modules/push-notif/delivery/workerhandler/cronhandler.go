@@ -3,6 +3,7 @@ package workerhandler
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
@@ -19,7 +20,7 @@ type CronHandler struct {
 func NewCronHandler(uc usecase.PushNotifUsecase) *CronHandler {
 	return &CronHandler{
 		topics: []string{
-			helper.CronJobKeyToString("push-notif", "10s"),
+			helper.CronJobKeyToString("push-notif", "23:30:17"),
 			helper.CronJobKeyToString("push", "2s"),
 		},
 		uc: uc,
@@ -41,6 +42,8 @@ func (h *CronHandler) ProcessMessage(ctx context.Context, topic string, message 
 		fmt.Println("mantab")
 	case "push":
 		fmt.Println("wkwkwk")
+		time.Sleep(50 * time.Second)
+		fmt.Println("wkwkwk done")
 	}
 
 	if err != nil {

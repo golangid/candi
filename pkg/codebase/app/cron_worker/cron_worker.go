@@ -38,17 +38,22 @@ func (c *cronWorker) Serve() {
 	for _, m := range c.service.GetModules() {
 		if h := m.WorkerHandler(constant.Scheduler); h != nil {
 			for _, topic := range h.GetTopics() {
+				var job schedulerJob
+
 				funcName, interval := helper.ParseCronJobKey(topic)
 				duration, err := time.ParseDuration(interval)
 				if err != nil {
-					panic(err)
+					durationParser, nextDuration, err := parseAtTime(interval)
+					if err != nil {
+						panic(err)
+					}
+					job.nextDuration = &nextDuration
+					duration = durationParser
 				}
 
-				job := schedulerJob{
-					handlerName: funcName,
-					ticker:      time.NewTicker(duration),
-					handler:     h,
-				}
+				job.handlerName = funcName
+				job.ticker = time.NewTicker(duration)
+				job.handler = h
 
 				schedulerChannels = append(schedulerChannels, reflect.SelectCase{
 					Dir: reflect.SelectRecv, Chan: reflect.ValueOf(job.ticker.C),
@@ -82,14 +87,22 @@ func (c *cronWorker) Serve() {
 			break
 		}
 
+		job := jobs[chosen]
+		if job.nextDuration != nil {
+			job.ticker.Stop()
+			job.ticker = time.NewTicker(*job.nextDuration)
+			schedulerChannels[chosen].Chan = reflect.ValueOf(job.ticker.C)
+			jobs[chosen].nextDuration = nil
+		}
+
 		c.wg.Add(1)
-		go func(selected int) {
+		go func(job schedulerJob) {
 			defer c.wg.Done()
 			defer func() { recover() }()
 
-			job := jobs[selected]
 			job.handler.ProcessMessage(context.Background(), job.handlerName, []byte(job.params))
-		}(chosen)
+		}(job)
+
 	}
 }
 
@@ -118,8 +131,9 @@ func (c *cronWorker) Shutdown(ctx context.Context) {
 }
 
 type schedulerJob struct {
-	ticker      *time.Ticker
-	handlerName string
-	handler     interfaces.WorkerHandler
-	params      string
+	ticker       *time.Ticker
+	nextDuration *time.Duration
+	handlerName  string
+	handler      interfaces.WorkerHandler
+	params       string
 }
