@@ -9,6 +9,7 @@ import (
 )
 
 type helloSaidSubscriber struct {
+	id     string
 	stop   <-chan struct{}
 	events chan<- *domain.HelloSaidEvent
 }
@@ -22,17 +23,10 @@ func (uc *pushNotifUsecaseImpl) runSubscriberListener() {
 		case id := <-unsubscribe:
 			delete(subscribers, id)
 		case s := <-uc.helloSaidSubscriber:
-			subscribers[strconv.Itoa(int(time.Now().Unix()))] = s
+			subscribers[s.id] = s
 		case e := <-uc.helloSaidEvents:
 			for id, subs := range subscribers {
 				go func(id string, subs *helloSaidSubscriber) {
-					select {
-					case <-subs.stop:
-						unsubscribe <- id
-						return
-					default:
-					}
-
 					select {
 					case <-subs.stop:
 						unsubscribe <- id
@@ -49,7 +43,9 @@ func (uc *pushNotifUsecaseImpl) AddSubscriber(ctx context.Context) <-chan *domai
 	c := make(chan *domain.HelloSaidEvent)
 
 	uc.helloSaidSubscriber <- &helloSaidSubscriber{
-		events: c, stop: ctx.Done(),
+		id:     strconv.Itoa(int(time.Now().Unix())),
+		events: c,
+		stop:   ctx.Done(),
 	}
 
 	return c
