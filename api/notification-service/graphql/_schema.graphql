@@ -5,11 +5,11 @@ schema {
 }
 
 type Query {
-	pushnotif: PushNotifQueryModule
+	pushNotif: PushNotifQueryModule
 }
 
 type Mutation {
-	pushnotif: PushNotifMutationModule
+	pushNotif: PushNotifMutationModule
 }
 
 type Subscription {

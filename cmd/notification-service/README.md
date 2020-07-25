@@ -20,8 +20,8 @@ Body:
 
 Open GraphQL playground -> `{{host}}/graphql/playground`
 ```
-query {
-    pushnotif {
+mutation {
+    pushNotif {
         push(payload: {
             to: "deviceID", 
             title: "Hallo", 
@@ -55,8 +55,8 @@ Body:
 
 Open GraphQL playground -> `{{host}}/graphql/playground`
 ```
-query {
-    pushnotif {
+mutation {
+    pushNotif {
         scheduledNotification(payload: {
             scheduledAt: "2020-06-26T00:00:00+07:00",
             data: {
@@ -66,5 +66,29 @@ query {
             }
         })
     }
+}
+```
+
+## Subscription
+
+Setup GraphQL subscription
+```
+subscription onSubs {
+  pushNotif {
+    helloSaid {
+      id, msg
+    }
+  }
+}
+```
+
+Broadcast message
+```
+mutation {
+  pushNotif {
+    sayHello(msg: "Hai") {
+      id, msg
+    }
+  }
 }
 ```
