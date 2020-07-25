@@ -3,14 +3,14 @@ package storage
 import (
 	"agungdwiprasetyo.com/backend-microservices/internal/storage-service/modules/storage/delivery/grpchandler"
 	"agungdwiprasetyo.com/backend-microservices/internal/storage-service/modules/storage/usecase"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 )
 
 const (
 	// Name service name
-	Name constant.Module = "storage"
+	Name types.Module = "storage"
 )
 
 // Module model
@@ -39,25 +39,16 @@ func (m *Module) GRPCHandler() interfaces.GRPCHandler {
 }
 
 // GraphQLHandler method
-func (m *Module) GraphQLHandler() (name string, resolver interface{}) {
-	return string(Name), nil
+func (m *Module) GraphQLHandler() interfaces.GraphQLHandler {
+	return nil
 }
 
 // WorkerHandler method
-func (m *Module) WorkerHandler(workerType constant.Worker) interfaces.WorkerHandler {
-	switch workerType {
-	case constant.Kafka:
-		return nil
-	case constant.RedisSubscriber:
-		return nil
-	case constant.RabbitMQ:
-		return nil
-	default:
-		return nil
-	}
+func (m *Module) WorkerHandler(workerType types.Worker) interfaces.WorkerHandler {
+	return nil
 }
 
 // Name get module name
-func (m *Module) Name() constant.Module {
+func (m *Module) Name() types.Module {
 	return Name
 }
