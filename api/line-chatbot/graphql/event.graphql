@@ -1,6 +1,12 @@
 ################### EventModule Module Area
-type EventModule {
+type EventQueryModule {
     getAll(filter: Filter!): Events
+}
+
+type EventMutationModule {
+}
+
+type EventSubscriptionModule {
 }
 
 type Events {

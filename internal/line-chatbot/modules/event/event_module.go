@@ -5,14 +5,14 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/line-chatbot/modules/event/delivery/grpchandler"
 	"agungdwiprasetyo.com/backend-microservices/internal/line-chatbot/modules/event/repository"
 	"agungdwiprasetyo.com/backend-microservices/internal/line-chatbot/modules/event/usecase"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 )
 
 const (
 	// Event service name
-	Event constant.Module = "Event"
+	Event types.Module = "Event"
 )
 
 // Module model
@@ -27,7 +27,7 @@ func NewModule(deps dependency.Dependency) *Module {
 	uc := usecase.NewEventUsecase(repo)
 
 	var mod Module
-	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware(), uc)
+	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(string(Event), deps.GetMiddleware(), uc)
 	mod.grpcHandler = grpchandler.NewGRPCHandler(uc)
 	return &mod
 }
@@ -43,16 +43,16 @@ func (m *Module) GRPCHandler() interfaces.GRPCHandler {
 }
 
 // GraphQLHandler method
-func (m *Module) GraphQLHandler() (name string, resolver interface{}) {
-	return string(Event), m.graphqlHandler
+func (m *Module) GraphQLHandler() interfaces.GraphQLHandler {
+	return m.graphqlHandler
 }
 
 // WorkerHandler method
-func (m *Module) WorkerHandler(workerType constant.Worker) interfaces.WorkerHandler {
+func (m *Module) WorkerHandler(workerType types.Worker) interfaces.WorkerHandler {
 	return nil
 }
 
 // Name get module name
-func (m *Module) Name() constant.Module {
+func (m *Module) Name() types.Module {
 	return Event
 }

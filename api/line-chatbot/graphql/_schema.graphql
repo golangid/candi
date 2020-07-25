@@ -1,14 +1,19 @@
 schema {
     query: Query
     mutation: Mutation
+	subscription: Subscription
 }
 
 type Query {
-    event: EventModule
+    event: EventQueryModule
 }
 
 type Mutation {
-    event: EventModule
+    event: EventMutationModule
+}
+
+type Subscription {
+    event: EventSubscriptionModule
 }
 
 scalar Time

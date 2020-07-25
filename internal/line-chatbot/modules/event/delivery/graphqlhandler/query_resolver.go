@@ -8,25 +8,16 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 )
 
-// GraphQLHandler model
-type GraphQLHandler struct {
+type queryResolver struct {
 	uc usecase.EventUsecase
 	mw interfaces.Middleware
 }
 
-// NewGraphQLHandler delivery
-func NewGraphQLHandler(mw interfaces.Middleware, uc usecase.EventUsecase) *GraphQLHandler {
-	return &GraphQLHandler{
-		uc: uc,
-		mw: mw,
-	}
-}
+// Hello resolver
+func (q *queryResolver) GetAll(ctx context.Context, filter struct{ *shared.Filter }) (*EventListResolver, error) {
+	q.mw.GraphQLBasicAuth(ctx)
 
-// GetAll handler
-func (h *GraphQLHandler) GetAll(ctx context.Context, filter struct{ *shared.Filter }) (*EventListResolver, error) {
-	h.mw.GraphQLBasicAuth(ctx)
-
-	events, meta, err := h.uc.FindAll(ctx, filter.Filter)
+	events, meta, err := q.uc.FindAll(ctx, filter.Filter)
 	if err != nil {
 		return nil, err
 	}
