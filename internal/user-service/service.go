@@ -11,8 +11,8 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/customer"
 	"agungdwiprasetyo.com/backend-microservices/internal/user-service/modules/member"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/middleware"
 	authsdk "agungdwiprasetyo.com/backend-microservices/pkg/sdk/auth-service"
@@ -23,7 +23,7 @@ import (
 type Service struct {
 	deps    dependency.Dependency
 	modules []factory.ModuleFactory
-	name    constant.Service
+	name    types.Service
 }
 
 // NewService starting service
@@ -32,7 +32,7 @@ func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 	var deps dependency.Dependency
 
 	cfg.LoadFunc(func(ctx context.Context) []interfaces.Closer {
-		kafkaDeps := broker.InitKafkaBroker(config.BaseEnv().Kafka.ClientID)
+		kafkaDeps := broker.InitKafkaBroker(config.BaseEnv().Kafka.Brokers, config.BaseEnv().Kafka.ClientID)
 		redisDeps := database.InitRedis()
 		mongoDeps := database.InitMongoDB(ctx)
 		sqlDeps := database.InitSQLDatabase()
@@ -42,7 +42,7 @@ func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 		// inject all service dependencies
 		deps = dependency.InitDependency(
 			dependency.SetMiddleware(middleware.NewMiddleware(authService)),
-			dependency.SetValidator(validator.NewJSONSchemaValidator(serviceName)),
+			dependency.SetValidator(validator.NewValidator()),
 			dependency.SetBroker(kafkaDeps),
 			dependency.SetRedisPool(redisDeps),
 			dependency.SetMongoDatabase(mongoDeps),
@@ -61,7 +61,7 @@ func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 	return &Service{
 		deps:    deps,
 		modules: modules,
-		name:    constant.Service(serviceName),
+		name:    types.Service(serviceName),
 	}
 }
 
@@ -76,6 +76,6 @@ func (s *Service) GetModules() []factory.ModuleFactory {
 }
 
 // Name method
-func (s *Service) Name() constant.Service {
+func (s *Service) Name() types.Service {
 	return s.name
 }
