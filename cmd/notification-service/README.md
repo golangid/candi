@@ -1,5 +1,29 @@
 # Notification Service
 
+## Subscription
+
+Setup GraphQL subscription
+```
+subscription onSubs {
+  pushNotif {
+    helloSaid {
+      id, msg
+    }
+  }
+}
+```
+
+Broadcast message
+```
+mutation {
+  pushNotif {
+    sayHello(msg: "Hai") {
+      id, msg
+    }
+  }
+}
+```
+
 ## Push Notification (using firebase)
 
 ### Via REST
@@ -66,29 +90,5 @@ mutation {
             }
         })
     }
-}
-```
-
-## Subscription
-
-Setup GraphQL subscription
-```
-subscription onSubs {
-  pushNotif {
-    helloSaid {
-      id, msg
-    }
-  }
-}
-```
-
-Broadcast message
-```
-mutation {
-  pushNotif {
-    sayHello(msg: "Hai") {
-      id, msg
-    }
-  }
 }
 ```
