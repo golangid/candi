@@ -1,12 +1,17 @@
 schema {
 	query: Query
 	mutation: Mutation
+	subscription: Subscription
 }
 
 type Query {
-	pushnotif: PushNotifModule
+	pushnotif: PushNotifQueryModule
 }
 
 type Mutation {
-	pushnotif: PushNotifModule
+	pushnotif: PushNotifMutationModule
+}
+
+type Subscription {
+	pushNotif: PushNotifSubscriptionModule
 }

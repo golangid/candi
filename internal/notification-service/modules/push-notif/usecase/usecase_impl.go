@@ -7,27 +7,41 @@ import (
 
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/domain"
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/repository"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
-	"agungdwiprasetyo.com/backend-microservices/pkg/utils"
+	"agungdwiprasetyo.com/backend-microservices/pkg/tracer"
 )
 
 type pushNotifUsecaseImpl struct {
-	modName constant.Module
+	modName types.Module
 	repo    *repository.Repository
+
+	// for subscriber listener
+	helloSaidEvents     chan *domain.HelloSaidEvent
+	helloSaidSubscriber chan *helloSaidSubscriber
 }
 
 // NewPushNotifUsecase constructor
-func NewPushNotifUsecase(modName constant.Module, repo *repository.Repository) PushNotifUsecase {
-	return &pushNotifUsecaseImpl{
+func NewPushNotifUsecase(modName types.Module, repo *repository.Repository) PushNotifUsecase {
+	helloEvent := make(chan *domain.HelloSaidEvent)
+	helloSubscriber := make(chan *helloSaidSubscriber)
+
+	uc := &pushNotifUsecaseImpl{
 		modName: modName,
 		repo:    repo,
+
+		helloSaidEvents:     helloEvent,
+		helloSaidSubscriber: helloSubscriber,
 	}
+
+	go uc.runSubscriberListener()
+
+	return uc
 }
 
 func (uc *pushNotifUsecaseImpl) SendNotification(ctx context.Context, request *domain.PushNotifRequestPayload) (err error) {
-	trace := utils.StartTrace(ctx, "Usecase-SendNotification")
+	trace := tracer.StartTrace(ctx, "Usecase-SendNotification")
 	defer trace.Finish()
 	ctx = trace.Context()
 
@@ -54,7 +68,7 @@ func (uc *pushNotifUsecaseImpl) SendNotification(ctx context.Context, request *d
 }
 
 func (uc *pushNotifUsecaseImpl) SendScheduledNotification(ctx context.Context, scheduledAt time.Time, request *domain.PushNotifRequestPayload) (err error) {
-	trace := utils.StartTrace(ctx, "Usecase-SendScheduledNotification")
+	trace := tracer.StartTrace(ctx, "Usecase-SendScheduledNotification")
 	defer trace.Finish()
 	ctx = trace.Context()
 
@@ -62,4 +76,14 @@ func (uc *pushNotifUsecaseImpl) SendScheduledNotification(ctx context.Context, s
 	data, _ := json.Marshal(request)
 	exp := scheduledAt.Sub(time.Now())
 	return uc.repo.Schedule.SaveScheduledNotification(ctx, redisTopicKey, data, exp)
+}
+
+func (uc *pushNotifUsecaseImpl) SayHello(ctx context.Context, event *domain.HelloSaidEvent) *domain.HelloSaidEvent {
+	go func() {
+		select {
+		case uc.helloSaidEvents <- event:
+		case <-time.After(1 * time.Second):
+		}
+	}()
+	return event
 }

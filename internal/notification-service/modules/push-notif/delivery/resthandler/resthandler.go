@@ -8,7 +8,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
-	"agungdwiprasetyo.com/backend-microservices/pkg/utils"
+	"agungdwiprasetyo.com/backend-microservices/pkg/tracer"
 	"agungdwiprasetyo.com/backend-microservices/pkg/wrapper"
 	"github.com/labstack/echo"
 )
@@ -43,7 +43,7 @@ func (h *RestHandler) hello(c echo.Context) error {
 }
 
 func (h *RestHandler) push(c echo.Context) error {
-	trace := utils.StartTrace(c.Request().Context(), "Delivery-ScheduledNotification")
+	trace := tracer.StartTrace(c.Request().Context(), "Delivery-ScheduledNotification")
 	defer trace.Finish()
 	ctx := trace.Context()
 
@@ -59,7 +59,7 @@ func (h *RestHandler) push(c echo.Context) error {
 }
 
 func (h *RestHandler) scheduledNotification(c echo.Context) error {
-	trace := utils.StartTrace(c.Request().Context(), "Delivery-ScheduledNotification")
+	trace := tracer.StartTrace(c.Request().Context(), "Delivery-ScheduledNotification")
 	defer trace.Finish()
 	ctx := trace.Context()
 

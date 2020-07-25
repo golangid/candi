@@ -4,52 +4,48 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/domain"
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/usecase"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
-	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 )
 
 // RedisHandler struct
 type RedisHandler struct {
-	topics []string
-	uc     usecase.PushNotifUsecase
+	modName string
+	uc      usecase.PushNotifUsecase
 }
 
 // NewRedisHandler constructor
-func NewRedisHandler(modName constant.Module, uc usecase.PushNotifUsecase) *RedisHandler {
+func NewRedisHandler(modName types.Module, uc usecase.PushNotifUsecase) *RedisHandler {
 	return &RedisHandler{
-		topics: []string{
-			helper.BuildRedisPubSubKeyTopic(string(modName), "scheduled-push-notif"),
-			helper.BuildRedisPubSubKeyTopic(string(modName), "push"),
-		},
-		uc: uc,
+		modName: string(modName),
+		uc:      uc,
 	}
 }
 
-// GetTopics from redis worker
-func (h *RedisHandler) GetTopics() []string {
-	return h.topics
+// MountHandlers return map topic to handler func
+func (h *RedisHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
+
+	return map[string]types.WorkerHandlerFunc{
+		helper.BuildRedisPubSubKeyTopic(h.modName, "scheduled-push-notif"): h.handleScheduledNotif,
+		helper.BuildRedisPubSubKeyTopic(h.modName, "push"):                 h.handlePush,
+	}
 }
 
-// ProcessMessage from redis worker
-func (h *RedisHandler) ProcessMessage(ctx context.Context, topic string, message []byte) {
-	logger.LogIf("PushNotif module: redis subscriber run on topic: %s, message: %s", topic, string(message))
+func (h *RedisHandler) handleScheduledNotif(ctx context.Context, message []byte) error {
+	var payload domain.PushNotifRequestPayload
+	json.Unmarshal(message, &payload)
+	err := h.uc.SendNotification(ctx, &payload)
+	fmt.Println("mantab")
+	return err
+}
 
-	var err error
-	switch topic {
-	case "scheduled-push-notif":
-		var payload domain.PushNotifRequestPayload
-		json.Unmarshal(message, &payload)
-		err = h.uc.SendNotification(ctx, &payload)
-		fmt.Println("mantab")
-	case "push":
-		fmt.Println("wkwkwk")
-	}
-
-	if err != nil {
-		logger.LogE(err.Error())
-	}
+func (h *RedisHandler) handlePush(ctx context.Context, message []byte) error {
+	fmt.Println("check")
+	time.Sleep(50 * time.Second) // heavy process
+	fmt.Println("check done")
+	return nil
 }

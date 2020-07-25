@@ -1,8 +1,21 @@
 ################### PushNotifModule Module Area
-type PushNotifModule {
+type PushNotifQueryModule {
     hello(): String!
+}
+
+type PushNotifMutationModule {
     push(payload: PushPayload!): String!
     scheduledNotification(payload: ScheduledNotifPayload!): String!
+    sayHello(msg: String!): HelloSaidEvent!
+}
+
+type PushNotifSubscriptionModule {
+    helloSaid(): HelloSaidEvent!
+}
+
+type HelloSaidEvent {
+    id: String!
+    msg: String!
 }
 
 input PushPayload {

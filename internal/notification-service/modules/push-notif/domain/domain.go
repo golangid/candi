@@ -23,3 +23,9 @@ type PushResponse struct {
 	Error bool        `json:"error"`
 	Body  interface{} `json:"body"`
 }
+
+// HelloSaidEvent domain
+type HelloSaidEvent struct {
+	ID  string
+	Msg string
+}

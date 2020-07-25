@@ -7,14 +7,14 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/delivery/workerhandler"
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/repository"
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/usecase"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 )
 
 const (
 	// Name service name
-	Name constant.Module = "PushNotif"
+	Name types.Module = "PushNotif"
 )
 
 // Module model
@@ -23,7 +23,7 @@ type Module struct {
 	grpcHandler    *grpchandler.GRPCHandler
 	graphqlHandler *graphqlhandler.GraphQLHandler
 
-	workerHandlers map[constant.Worker]interfaces.WorkerHandler
+	workerHandlers map[types.Worker]interfaces.WorkerHandler
 }
 
 // NewModule module constructor
@@ -34,13 +34,13 @@ func NewModule(deps dependency.Dependency) *Module {
 	var mod Module
 	mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware(), uc)
 	mod.grpcHandler = grpchandler.NewGRPCHandler(deps.GetMiddleware())
-	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware(), uc)
+	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(string(Name), deps.GetMiddleware(), uc)
 
-	mod.workerHandlers = map[constant.Worker]interfaces.WorkerHandler{
-		constant.Kafka: workerhandler.NewKafkaHandler(uc), // example worker
+	mod.workerHandlers = map[types.Worker]interfaces.WorkerHandler{
+		types.Kafka: workerhandler.NewKafkaHandler(uc), // example worker
 		// add more worker type from delivery, implement "interfaces.WorkerHandler"
-		constant.Scheduler:       workerhandler.NewCronHandler(uc),
-		constant.RedisSubscriber: workerhandler.NewRedisHandler(Name, uc),
+		types.Scheduler:       workerhandler.NewCronHandler(uc),
+		types.RedisSubscriber: workerhandler.NewRedisHandler(Name, uc),
 	}
 
 	return &mod
@@ -57,16 +57,16 @@ func (m *Module) GRPCHandler() interfaces.GRPCHandler {
 }
 
 // GraphQLHandler method
-func (m *Module) GraphQLHandler() (name string, resolver interface{}) {
-	return string(Name), m.graphqlHandler
+func (m *Module) GraphQLHandler() interfaces.GraphQLHandler {
+	return m.graphqlHandler
 }
 
 // WorkerHandler method
-func (m *Module) WorkerHandler(workerType constant.Worker) interfaces.WorkerHandler {
+func (m *Module) WorkerHandler(workerType types.Worker) interfaces.WorkerHandler {
 	return m.workerHandlers[workerType]
 }
 
 // Name get module name
-func (m *Module) Name() constant.Module {
+func (m *Module) Name() types.Module {
 	return Name
 }

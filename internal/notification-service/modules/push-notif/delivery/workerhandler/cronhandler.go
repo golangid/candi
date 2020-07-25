@@ -6,47 +6,39 @@ import (
 	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/usecase"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
-	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 )
 
 // CronHandler struct
 type CronHandler struct {
-	topics []string
-	uc     usecase.PushNotifUsecase
+	uc usecase.PushNotifUsecase
 }
 
 // NewCronHandler constructor
 func NewCronHandler(uc usecase.PushNotifUsecase) *CronHandler {
 	return &CronHandler{
-		topics: []string{
-			helper.CronJobKeyToString("push-notif", "23:30:17"),
-			helper.CronJobKeyToString("push", "2s"),
-		},
 		uc: uc,
 	}
 }
 
-// GetTopics from cron worker
-func (h *CronHandler) GetTopics() []string {
-	return h.topics
+// MountHandlers return map topic to handler func
+func (h *CronHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
+
+	return map[string]types.WorkerHandlerFunc{
+		helper.CronJobKeyToString("push-notif", "00:00:00"): h.handleScheduledMidnight,
+		helper.CronJobKeyToString("push", "10s"):            h.handleCheck,
+	}
 }
 
-// ProcessMessage from cron worker
-func (h *CronHandler) ProcessMessage(ctx context.Context, topic string, message []byte) {
-	logger.LogIf("PushNotif module: scheduler run on topic: %s, message: %s\n", topic, string(message))
+func (h *CronHandler) handleScheduledMidnight(ctx context.Context, message []byte) error {
+	fmt.Println("execute scheduled midnight")
+	return nil
+}
 
-	var err error
-	switch topic {
-	case "push-notif":
-		fmt.Println("mantab")
-	case "push":
-		fmt.Println("wkwkwk")
-		time.Sleep(50 * time.Second)
-		fmt.Println("wkwkwk done")
-	}
-
-	if err != nil {
-		logger.LogE(err.Error())
-	}
+func (h *CronHandler) handleCheck(ctx context.Context, message []byte) error {
+	fmt.Println("check")
+	time.Sleep(50 * time.Second) // heavy process
+	fmt.Println("check done")
+	return nil
 }
