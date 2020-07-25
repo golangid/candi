@@ -8,6 +8,7 @@ import (
 
 	"agungdwiprasetyo.com/backend-microservices/config"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -16,7 +17,7 @@ import (
 // GRPCBasicAuth function,
 // or Unary interceptor
 // additional security for our GRPC server
-func (m *mw) GRPCBasicAuth(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+func (m *Middleware) GRPCBasicAuth(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	start := time.Now()
 	defer func() {
 		m.grpcLog(start, err, info.FullMethod, "GRPC")
@@ -32,7 +33,7 @@ func (m *mw) GRPCBasicAuth(ctx context.Context, req interface{}, info *grpc.Unar
 }
 
 // GRPCBasicAuthStream interceptor
-func (m *mw) GRPCBasicAuthStream(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+func (m *Middleware) GRPCBasicAuthStream(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
 	start := time.Now()
 	defer func() {
 		m.grpcLog(start, err, info.FullMethod, "GRPC-STREAM")
@@ -46,7 +47,7 @@ func (m *mw) GRPCBasicAuthStream(srv interface{}, stream grpc.ServerStream, info
 }
 
 // validateGrpcAuth auth from incoming context
-func (m *mw) validateGrpcAuth(ctx context.Context) error {
+func (m *Middleware) validateGrpcAuth(ctx context.Context) error {
 	meta, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return grpc.Errorf(codes.Unauthenticated, "missing context metadata")
@@ -66,7 +67,7 @@ func (m *mw) validateGrpcAuth(ctx context.Context) error {
 }
 
 // Log incoming grpc request
-func (m *mw) grpcLog(startTime time.Time, err error, fullMethod string, reqType string) {
+func (m *Middleware) grpcLog(startTime time.Time, err error, fullMethod string, reqType string) {
 	end := time.Now()
 	var status = "OK"
 	statusColor := helper.Green

@@ -11,7 +11,7 @@ type Dependency interface {
 	GetSQLDatabase() interfaces.SQLDatabase
 	GetMongoDatabase() interfaces.MongoDatabase
 	GetRedisPool() interfaces.RedisPool
-	GetKey() interfaces.Key
+	GetKey() interfaces.RSAKey
 	GetValidator() interfaces.Validator
 }
 
@@ -24,7 +24,7 @@ type deps struct {
 	sqlDB     interfaces.SQLDatabase
 	mongoDB   interfaces.MongoDatabase
 	redisPool interfaces.RedisPool
-	key       interfaces.Key
+	key       interfaces.RSAKey
 	validator interfaces.Validator
 }
 
@@ -64,7 +64,7 @@ func SetRedisPool(db interfaces.RedisPool) Option {
 }
 
 // SetKey option func
-func SetKey(key interfaces.Key) Option {
+func SetKey(key interfaces.RSAKey) Option {
 	return func(d *deps) {
 		d.key = key
 	}
@@ -103,7 +103,7 @@ func (d *deps) GetMongoDatabase() interfaces.MongoDatabase {
 func (d *deps) GetRedisPool() interfaces.RedisPool {
 	return d.redisPool
 }
-func (d *deps) GetKey() interfaces.Key {
+func (d *deps) GetKey() interfaces.RSAKey {
 	return d.key
 }
 func (d *deps) GetValidator() interfaces.Validator {

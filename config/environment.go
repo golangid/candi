@@ -30,8 +30,16 @@ type Env struct {
 	// UseRedisSubscriber env
 	UseRedisSubscriber bool
 
+	// GraphQLSchemaDir env
+	GraphQLSchemaDir string
+	// JSONSchemaDir env
+	JSONSchemaDir string
+
 	// Development env checking, this env for debug purpose
 	Development string
+
+	// Env on application
+	Environment string
 
 	// RESTPort config
 	RESTPort uint16
@@ -175,4 +183,13 @@ func loadBaseEnv(serviceLocation string, targetEnv *Env) {
 		}
 	}
 
+	env.GraphQLSchemaDir, ok = os.LookupEnv("GRAPHQL_SCHEMA_DIR")
+	if env.UseGraphQL && !ok {
+		panic("GRAPHQL is active, missing GRAPHQL_SCHEMA_DIR environment")
+	}
+
+	env.JSONSchemaDir, ok = os.LookupEnv("JSON_SCHEMA_DIR")
+	if !ok {
+		panic("missing JSON_SCHEMA_DIR environment")
+	}
 }

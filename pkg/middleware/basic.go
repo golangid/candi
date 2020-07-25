@@ -9,11 +9,16 @@ import (
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 	"agungdwiprasetyo.com/backend-microservices/pkg/wrapper"
+
 	"github.com/labstack/echo"
 )
 
+const (
+	Basic = "basic"
+)
+
 // Basic function basic auth
-func (m *mw) Basic(ctx context.Context, key string) error {
+func (m *Middleware) Basic(ctx context.Context, key string) error {
 
 	isValid := func() bool {
 		data, err := base64.StdEncoding.DecodeString(key)
@@ -42,12 +47,12 @@ func (m *mw) Basic(ctx context.Context, key string) error {
 }
 
 // HTTPBasicAuth http basic auth middleware
-func (m *mw) HTTPBasicAuth(showAlert bool) echo.MiddlewareFunc {
+func (m *Middleware) HTTPBasicAuth(showAlert bool) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 
 			if showAlert {
-				c.Response().Header().Set("WWW-Authenticate", `Basic realm=""`)
+				c.Response().Header().Set(echo.HeaderWWWAuthenticate, `Basic realm=""`)
 			}
 
 			authorization := c.Request().Header.Get(echo.HeaderAuthorization)
@@ -57,7 +62,7 @@ func (m *mw) HTTPBasicAuth(showAlert bool) echo.MiddlewareFunc {
 
 			authValues := strings.Split(authorization, " ")
 			authType := strings.ToLower(authValues[0])
-			if authType != "basic" || len(authValues) != 2 {
+			if authType != Basic || len(authValues) != 2 {
 				return wrapper.NewHTTPResponse(http.StatusUnauthorized, "Invalid authorization").JSON(c.Response())
 			}
 
@@ -71,13 +76,13 @@ func (m *mw) HTTPBasicAuth(showAlert bool) echo.MiddlewareFunc {
 	}
 }
 
-func (m *mw) GraphQLBasicAuth(ctx context.Context) {
+func (m *Middleware) GraphQLBasicAuth(ctx context.Context) {
 	headers := ctx.Value(shared.ContextKey("headers")).(http.Header)
-	authorization := headers.Get("Authorization")
+	authorization := headers.Get(echo.HeaderAuthorization)
 
 	authValues := strings.Split(authorization, " ")
 	authType := strings.ToLower(authValues[0])
-	if authType != "basic" || len(authValues) != 2 {
+	if authType != Basic || len(authValues) != 2 {
 		panic("Invalid authorization")
 	}
 

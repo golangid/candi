@@ -1,7 +1,7 @@
 package factory
 
 import (
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 )
 
@@ -9,7 +9,7 @@ import (
 type ModuleFactory interface {
 	RestHandler() interfaces.EchoRestHandler
 	GRPCHandler() interfaces.GRPCHandler
-	GraphQLHandler() (name string, resolver interface{})
-	WorkerHandler(workerType constant.Worker) interfaces.WorkerHandler
-	Name() constant.Module
+	GraphQLHandler() interfaces.GraphQLHandler
+	WorkerHandler(workerType types.Worker) interfaces.WorkerHandler
+	Name() types.Module
 }

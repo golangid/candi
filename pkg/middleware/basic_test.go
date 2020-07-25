@@ -9,19 +9,19 @@ import (
 
 func TestBasicAuth(t *testing.T) {
 
-	midd := &mw{
+	midd := &Middleware{
 		username: "user", password: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 	}
 
 	t.Run("Test With Valid Auth", func(t *testing.T) {
 
-		err := midd.Basic(context.Background(), "Basic dXNlcjpkYTFjMjVkOC0zN2M4LTQxYjEtYWZlMi00MmRkNDgyNWJmZWE=")
+		err := midd.Basic(context.Background(), "dXNlcjpkYTFjMjVkOC0zN2M4LTQxYjEtYWZlMi00MmRkNDgyNWJmZWE=")
 		assert.NoError(t, err)
 	})
 
 	t.Run("Test With Invalid Auth #1", func(t *testing.T) {
 
-		err := midd.Basic(context.Background(), "Basic MjIyMjphc2RzZA==")
+		err := midd.Basic(context.Background(), "MjIyMjphc2RzZA==")
 		assert.Error(t, err)
 	})
 
@@ -39,7 +39,7 @@ func TestBasicAuth(t *testing.T) {
 
 	t.Run("Test With Invalid Auth #4", func(t *testing.T) {
 
-		err := midd.Basic(context.Background(), "Basic zzzzzzz")
+		err := midd.Basic(context.Background(), "zzzzzzz")
 		assert.Error(t, err)
 	})
 

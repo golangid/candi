@@ -1,4 +1,6 @@
-package constant
+package types
+
+import "context"
 
 // Worker is the type returned by a classifier worker (kafka, redis subscriber, rabbitmq, scheduler)
 type Worker int
@@ -13,3 +15,6 @@ const (
 	// Scheduler worker
 	Scheduler
 )
+
+// WorkerHandlerFunc types
+type WorkerHandlerFunc func(context.Context, []byte) error

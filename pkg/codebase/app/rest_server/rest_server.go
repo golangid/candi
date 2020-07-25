@@ -9,32 +9,43 @@ import (
 	"strings"
 	"time"
 
+	"github.com/labstack/echo"
+	echoMidd "github.com/labstack/echo/middleware"
+
 	"agungdwiprasetyo.com/backend-microservices/config"
+	graphqlserver "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/graphql_server"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
+	"agungdwiprasetyo.com/backend-microservices/pkg/tracer"
 	"agungdwiprasetyo.com/backend-microservices/pkg/wrapper"
-	"github.com/labstack/echo"
-	echoMidd "github.com/labstack/echo/middleware"
 )
 
 type restServer struct {
-	serverEngine *echo.Echo
-	service      factory.ServiceFactory
+	serverEngine   *echo.Echo
+	service        factory.ServiceFactory
+	graphqlHandler graphqlserver.Handler
 }
 
 // NewServer create new REST server
 func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
-	return &restServer{
+	server := &restServer{
 		serverEngine: echo.New(),
 		service:      service,
 	}
+
+	// inject graphql handler, delete/comment this code if you want separate graphql server from echo rest server
+	if config.BaseEnv().UseGraphQL {
+		server.graphqlHandler = graphqlserver.NewHandler(service)
+	}
+
+	return server
 }
 
 func (h *restServer) Serve() {
 
 	h.serverEngine.HTTPErrorHandler = wrapper.CustomHTTPErrorHandler
-	h.serverEngine.Use(echoMidd.Logger(), echoMidd.CORS())
+	h.serverEngine.Use(echoMidd.CORS())
 
 	h.serverEngine.GET("/", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{
@@ -43,11 +54,19 @@ func (h *restServer) Serve() {
 		})
 	})
 
-	rootPath := h.serverEngine.Group("")
+	restRootPath := h.serverEngine.Group("",
+		tracer.EchoRestTracerMiddleware, echoMidd.Logger(),
+	)
 	for _, m := range h.service.GetModules() {
 		if h := m.RestHandler(); h != nil {
-			h.Mount(rootPath)
+			h.Mount(restRootPath)
 		}
+	}
+
+	if h.graphqlHandler != nil {
+		h.serverEngine.POST("/graphql", echo.WrapHandler(h.graphqlHandler.ServeGraphQL()))
+		h.serverEngine.GET("/graphql/playground", echo.WrapHandler(http.HandlerFunc(h.graphqlHandler.ServePlayground)))
+		h.serverEngine.GET("/graphql/voyager", echo.WrapHandler(http.HandlerFunc(h.graphqlHandler.ServeVoyager)))
 	}
 
 	var routes strings.Builder
@@ -57,8 +76,7 @@ func (h *restServer) Serve() {
 	})
 	for _, route := range httpRoutes {
 		if !strings.Contains(route.Name, "(*Group)") {
-			routeName := strings.TrimPrefix(route.Name, fmt.Sprintf("agungdwiprasetyo.com/backend-microservices/internal/%s/", h.service.Name()))
-			routes.WriteString(helper.StringGreen(fmt.Sprintf("[REST-ROUTE] %-6s %-30s --> %s\n", route.Method, route.Path, routeName)))
+			routes.WriteString(helper.StringGreen(fmt.Sprintf("[REST-ROUTE] %-6s %-30s --> %s\n", route.Method, route.Path, route.Name)))
 		}
 	}
 	fmt.Print(routes.String())

@@ -21,7 +21,7 @@ func (r *recvWrapper) Context() context.Context {
 func TestMiddleware_GRPCAuth(t *testing.T) {
 
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
-		md := metadata.Pairs("authorization", "Basic dXNlcjpkYTFjMjVkOC0zN2M4LTQxYjEtYWZlMi00MmRkNDgyNWJmZWE=")
+		md := metadata.Pairs("authorization", "dXNlcjpkYTFjMjVkOC0zN2M4LTQxYjEtYWZlMi00MmRkNDgyNWJmZWE=")
 		ctx := metadata.NewIncomingContext(context.Background(), md)
 
 		unaryInfo := &grpc.UnaryServerInfo{
@@ -31,7 +31,7 @@ func TestMiddleware_GRPCAuth(t *testing.T) {
 			return "user-service", nil
 		}
 
-		mw := &mw{
+		mw := &Middleware{
 			username: "user", password: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
 		_, err := mw.GRPCBasicAuth(ctx, "testing", unaryInfo, unaryHandler)
@@ -49,7 +49,7 @@ func TestMiddleware_GRPCAuth(t *testing.T) {
 			return "user-service", nil
 		}
 
-		mw := &mw{
+		mw := &Middleware{
 			username: "user", password: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
 		_, err := mw.GRPCBasicAuth(ctx, "testing", unaryInfo, unaryHandler)
@@ -60,7 +60,7 @@ func TestMiddleware_GRPCAuth(t *testing.T) {
 func TestMiddleware_GRPCAuthStream(t *testing.T) {
 
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
-		md := metadata.Pairs("authorization", "Basic dXNlcjpkYTFjMjVkOC0zN2M4LTQxYjEtYWZlMi00MmRkNDgyNWJmZWE=")
+		md := metadata.Pairs("authorization", "dXNlcjpkYTFjMjVkOC0zN2M4LTQxYjEtYWZlMi00MmRkNDgyNWJmZWE=")
 		ctx := metadata.NewIncomingContext(context.Background(), md)
 
 		stream := &recvWrapper{
@@ -73,7 +73,7 @@ func TestMiddleware_GRPCAuthStream(t *testing.T) {
 			return nil
 		}
 
-		mw := &mw{
+		mw := &Middleware{
 			username: "user", password: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
 		err := mw.GRPCBasicAuthStream("test", stream, streamInfo, streamHandler)
@@ -93,7 +93,7 @@ func TestMiddleware_GRPCAuthStream(t *testing.T) {
 			return nil
 		}
 
-		mw := &mw{
+		mw := &Middleware{
 			username: "user", password: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
 		err := mw.GRPCBasicAuthStream("test", stream, streamInfo, streamHandler)
@@ -101,7 +101,7 @@ func TestMiddleware_GRPCAuthStream(t *testing.T) {
 	})
 
 	t.Run("Testcase #3: Negative, multiple authorization keys", func(t *testing.T) {
-		md := metadata.Pairs("authorization", "Basic dXNlcjpkYTFjMjVkOC0zN2M4LTQxYjEtYWZlMi00MmRkNDgyNWJmZWE=", "authorization", "double")
+		md := metadata.Pairs("authorization", "dXNlcjpkYTFjMjVkOC0zN2M4LTQxYjEtYWZlMi00MmRkNDgyNWJmZWE=", "authorization", "double")
 		ctx := metadata.NewIncomingContext(context.Background(), md)
 
 		stream := &recvWrapper{
@@ -114,7 +114,7 @@ func TestMiddleware_GRPCAuthStream(t *testing.T) {
 			return nil
 		}
 
-		mw := &mw{
+		mw := &Middleware{
 			username: "user", password: "da1c25d8-37c8-41b1-afe2-42dd4825bfea",
 		}
 		err := mw.GRPCBasicAuthStream("test", stream, streamInfo, streamHandler)

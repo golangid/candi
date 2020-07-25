@@ -9,12 +9,18 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 	"agungdwiprasetyo.com/backend-microservices/pkg/wrapper"
+
 	"github.com/labstack/echo"
 )
 
+const (
+	Bearer = "bearer"
+)
+
 // Bearer token validator
-func (m *mw) Bearer(ctx context.Context, tokenString string) (*shared.TokenClaim, error) {
+func (m *Middleware) Bearer(ctx context.Context, tokenString string) (*shared.TokenClaim, error) {
 	resp := <-m.tokenValidator.Validate(ctx, tokenString)
+
 	if resp.Error != nil {
 		return nil, resp.Error
 	}
@@ -28,7 +34,7 @@ func (m *mw) Bearer(ctx context.Context, tokenString string) (*shared.TokenClaim
 }
 
 // HTTPBearerAuth http jwt token middleware
-func (m *mw) HTTPBearerAuth() echo.MiddlewareFunc {
+func (m *Middleware) HTTPBearerAuth() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 
@@ -39,7 +45,7 @@ func (m *mw) HTTPBearerAuth() echo.MiddlewareFunc {
 
 			authValues := strings.Split(authorization, " ")
 			authType := strings.ToLower(authValues[0])
-			if authType != "bearer" || len(authValues) != 2 {
+			if authType != Bearer || len(authValues) != 2 {
 				return wrapper.NewHTTPResponse(http.StatusUnauthorized, "Invalid authorization").JSON(c.Response())
 			}
 
@@ -55,16 +61,13 @@ func (m *mw) HTTPBearerAuth() echo.MiddlewareFunc {
 	}
 }
 
-func (m *mw) GraphQLBearerAuth(ctx context.Context) *shared.TokenClaim {
+func (m *Middleware) GraphQLBearerAuth(ctx context.Context) *shared.TokenClaim {
 	headers := ctx.Value(shared.ContextKey("headers")).(http.Header)
-	authorization := headers.Get("Authorization")
-	if authorization == "" {
-		panic("Invalid authorization")
-	}
+	authorization := headers.Get(echo.HeaderAuthorization)
 
 	authValues := strings.Split(authorization, " ")
 	authType := strings.ToLower(authValues[0])
-	if authType != "bearer" || len(authValues) != 2 {
+	if authType != Bearer || len(authValues) != 2 {
 		panic("Invalid authorization")
 	}
 

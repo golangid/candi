@@ -11,23 +11,26 @@ import (
 )
 
 type kafkaBroker struct {
-	cfg *sarama.Config
-	pub interfaces.Publisher
+	client sarama.Client
+	pub    interfaces.Publisher
 }
 
-func (b *kafkaBroker) GetConfig() *sarama.Config {
-	return b.cfg
+func (b *kafkaBroker) GetClient() sarama.Client {
+	return b.client
 }
 func (b *kafkaBroker) Publisher() interfaces.Publisher {
 	return b.pub
 }
 func (b *kafkaBroker) Disconnect(ctx context.Context) error {
-	return nil
+	deferFunc := logger.LogWithDefer("kafka: disconnect...")
+	defer deferFunc()
+
+	return b.client.Close()
 }
 
 // InitKafkaBroker init kafka broker configuration
-func InitKafkaBroker(clientID string) interfaces.Broker {
-	deferFunc := logger.LogWithDefer("Load Kafka configuration...")
+func InitKafkaBroker(brokers []string, clientID string) interfaces.Broker {
+	deferFunc := logger.LogWithDefer("Load Kafka configuration... ")
 	defer deferFunc()
 
 	kafkaConfig := sarama.NewConfig()
@@ -43,8 +46,13 @@ func InitKafkaBroker(clientID string) interfaces.Broker {
 	// Consumer config
 	kafkaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
 
+	saramaClient, err := sarama.NewClient(brokers, kafkaConfig)
+	if err != nil {
+		panic(err)
+	}
+
 	return &kafkaBroker{
-		cfg: kafkaConfig,
-		pub: publisher.NewKafkaPublisher(kafkaConfig),
+		client: saramaClient,
+		pub:    publisher.NewKafkaPublisher(saramaClient),
 	}
 }

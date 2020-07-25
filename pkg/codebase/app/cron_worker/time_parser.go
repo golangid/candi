@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	oneDay = 24 * time.Hour
+	oneDay = 24 * time.Hour // TODO parse from interval argument
 )
 
 // parseAtTime with input format HH:mm:ss, will repeat every day (24 hours) in the same time
@@ -46,6 +46,11 @@ func parseAtTime(t string) (duration, nextDuration time.Duration, err error) {
 	} else {
 		duration = oneDay - now.Sub(atTime)
 	}
+
+	if duration < 0 {
+		duration *= -1
+	}
+
 	nextDuration = oneDay
 
 	return

@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -18,7 +19,7 @@ import (
 	restserver "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/rest_server"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
-	"agungdwiprasetyo.com/backend-microservices/pkg/utils"
+	"agungdwiprasetyo.com/backend-microservices/pkg/tracer"
 )
 
 // App service
@@ -27,11 +28,17 @@ type App struct {
 }
 
 // New service app
+// New service app
 func New(service factory.ServiceFactory) *App {
 	log.Printf("Starting \x1b[32;1m%s\x1b[0m service\n\n", service.Name())
 
+	// init service name tracer
+	serviceName := string(service.Name())
+	if config.BaseEnv().Environment != "" {
+		serviceName = fmt.Sprintf("%s-%s", serviceName, strings.ToLower(config.BaseEnv().Environment))
+	}
 	// init tracer
-	utils.InitTracer(config.BaseEnv().JaegerTracingHost, string(service.Name()))
+	tracer.InitOpenTracing(config.BaseEnv().JaegerTracingHost, serviceName)
 	// init logger
 	logger.InitZap()
 
@@ -44,7 +51,7 @@ func New(service factory.ServiceFactory) *App {
 		appInstance.servers = append(appInstance.servers, grpcserver.NewServer(service))
 	}
 
-	if config.BaseEnv().UseGraphQL {
+	if !config.BaseEnv().UseREST && config.BaseEnv().UseGraphQL {
 		appInstance.servers = append(appInstance.servers, graphqlserver.NewServer(service))
 	}
 
@@ -65,8 +72,9 @@ func New(service factory.ServiceFactory) *App {
 
 // Run start app
 func (a *App) Run() {
+
 	if len(a.servers) == 0 {
-		panic("No server handler running")
+		panic("No server/worker running")
 	}
 
 	for _, server := range a.servers {
@@ -102,5 +110,8 @@ func (a *App) shutdown(forceShutdown chan os.Signal) {
 	case <-forceShutdown:
 		fmt.Println("\x1b[31;1mForce shutdown server & worker\x1b[0m")
 		cancel()
+	case <-ctx.Done():
+		fmt.Println("\x1b[31;1mContext timeout\x1b[0m")
+		return
 	}
 }

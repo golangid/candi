@@ -36,6 +36,13 @@ const (
  / _, _/ /___/ /_/ // / ___/ / 
 /_/ |_/_____/_____/___//____/                                
 `
+
+	// Byte ...
+	Byte uint64 = 1
+	// KByte ...
+	KByte = Byte * 1024
+	// MByte ...
+	MByte = KByte * 1024
 )
 
 var (
@@ -60,13 +67,6 @@ var (
 	ErrTokenFormat = errors.New("Invalid token format")
 	// ErrTokenExpired var
 	ErrTokenExpired = errors.New("Token is expired")
-
-	// Byte ...
-	Byte uint64 = 1
-	// KByte ...
-	KByte = Byte * 1024
-	// MByte ...
-	MByte = KByte * 1024
 
 	// AsiaJakartaLocalTime location
 	AsiaJakartaLocalTime *time.Location

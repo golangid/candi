@@ -122,16 +122,15 @@ func ParseCronJobKey(str string) (jobName string, interval string) {
 
 // BuildRedisPubSubKeyTopic helper
 func BuildRedisPubSubKeyTopic(modName, handlerName string) string {
-	return fmt.Sprintf("%s:%s", modName, handlerName)
+	return fmt.Sprintf("%s~%s", modName, handlerName)
 }
 
 // ParseRedisPubSubKeyTopic helper
-func ParseRedisPubSubKeyTopic(str string) (modName, handlerName, messageData string) {
+func ParseRedisPubSubKeyTopic(str string) (handlerName, messageData string) {
 	defer func() { recover() }()
 
-	split := strings.Split(str, ":")
-	modName = strings.Join(split[:2], ":")
-	handlerName = split[1]
-	messageData = strings.Join(split[2:], ":")
+	split := strings.Split(str, "~")
+	handlerName = strings.Join(split[:2], "~")
+	messageData = strings.Join(split[2:], "~")
 	return
 }

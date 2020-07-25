@@ -1,4 +1,4 @@
-package constant
+package types
 
 // Database enum
 type Database int

@@ -14,7 +14,7 @@ import (
 
 const (
 	// Name service name
-	Name constant.Module = "{{clean (upper $.module)}}"
+	Name types.Module = "{{clean (upper $.module)}}"
 )
 
 // Module model
@@ -23,7 +23,7 @@ type Module struct {
 	grpcHandler    *grpchandler.GRPCHandler
 	graphqlHandler *graphqlhandler.GraphQLHandler
 
-	workerHandlers map[constant.Worker]interfaces.WorkerHandler
+	workerHandlers map[types.Worker]interfaces.WorkerHandler
 }
 
 // NewModule module constructor
@@ -33,8 +33,8 @@ func NewModule(deps dependency.Dependency) *Module {
 	mod.grpcHandler = grpchandler.NewGRPCHandler(deps.GetMiddleware())
 	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware())
 
-	mod.workerHandlers = map[constant.Worker]interfaces.WorkerHandler{
-		constant.Kafka: workerhandler.NewKafkaHandler(), // example worker
+	mod.workerHandlers = map[types.Worker]interfaces.WorkerHandler{
+		types.Kafka: workerhandler.NewKafkaHandler(), // example worker
 		// add more worker type from delivery, implement "interfaces.WorkerHandler"
 	}
 
@@ -57,12 +57,12 @@ func (m *Module) GraphQLHandler() (name string, resolver interface{}) {
 }
 
 // WorkerHandler method
-func (m *Module) WorkerHandler(workerType constant.Worker) interfaces.WorkerHandler {
+func (m *Module) WorkerHandler(workerType types.Worker) interfaces.WorkerHandler {
 	return m.workerHandlers[workerType]
 }
 
 // Name get module name
-func (m *Module) Name() constant.Module {
+func (m *Module) Name() types.Module {
 	return Name
 }
 `

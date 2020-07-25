@@ -22,7 +22,7 @@ func (k *key) PublicKey() *rsa.PublicKey {
 }
 
 // LoadRSAKey load rsa private key
-func LoadRSAKey() interfaces.Key {
+func LoadRSAKey() interfaces.RSAKey {
 	deferFunc := logger.LogWithDefer("Load RSA keys...")
 	defer deferFunc()
 

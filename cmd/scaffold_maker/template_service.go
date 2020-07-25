@@ -24,7 +24,7 @@ import (
 type Service struct {
 	deps    dependency.Dependency
 	modules []factory.ModuleFactory
-	name    constant.Service
+	name    types.Service
 }
 
 // NewService in this service
@@ -58,7 +58,7 @@ func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 	return &Service{
 		deps:    deps,
 		modules: modules,
-		name:    constant.Service(serviceName),
+		name:    types.Service(serviceName),
 	}
 }
 
@@ -73,7 +73,7 @@ func (s *Service) GetModules() []factory.ModuleFactory {
 }
 
 // Name method
-func (s *Service) Name() constant.Service {
+func (s *Service) Name() types.Service {
 	return s.name
 }
 

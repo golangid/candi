@@ -22,6 +22,7 @@ type Middleware interface {
 type HTTPMiddleware interface {
 	HTTPBasicAuth(showAlert bool) echo.MiddlewareFunc
 	HTTPBearerAuth() echo.MiddlewareFunc
+	HTTPMultipleAuth() echo.MiddlewareFunc
 }
 
 // GRPCMiddleware interface, common middleware for grpc handler

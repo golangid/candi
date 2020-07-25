@@ -1,8 +1,7 @@
 package interfaces
 
 import (
-	"context"
-
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
 	"github.com/labstack/echo"
 	"google.golang.org/grpc"
 )
@@ -17,8 +16,16 @@ type GRPCHandler interface {
 	Register(server *grpc.Server)
 }
 
+// GraphQLHandler delivery factory for graphql resolver handler
+type GraphQLHandler interface {
+	RootName() string
+	// waiting https://github.com/graph-gophers/graphql-go/issues/145 if include subscription in schema
+	Query() interface{}
+	Mutation() interface{}
+	Subscription() interface{}
+}
+
 // WorkerHandler delivery factory for all worker handler
 type WorkerHandler interface {
-	GetTopics() []string
-	ProcessMessage(ctx context.Context, topic string, message []byte)
+	MountHandlers() map[string]types.WorkerHandlerFunc
 }

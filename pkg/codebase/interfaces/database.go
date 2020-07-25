@@ -1,7 +1,6 @@
 package interfaces
 
 import (
-	"context"
 	"database/sql"
 
 	"github.com/gomodule/redigo/redis"
@@ -12,19 +11,19 @@ import (
 type SQLDatabase interface {
 	ReadDB() *sql.DB
 	WriteDB() *sql.DB
-	Disconnect(ctx context.Context) error
+	Closer
 }
 
 // MongoDatabase abstraction
 type MongoDatabase interface {
 	ReadDB() *mongo.Database
 	WriteDB() *mongo.Database
-	Disconnect(ctx context.Context) error
+	Closer
 }
 
 // RedisPool abstraction
 type RedisPool interface {
 	ReadPool() *redis.Pool
 	WritePool() *redis.Pool
-	Disconnect(ctx context.Context) error
+	Closer
 }

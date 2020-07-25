@@ -9,10 +9,10 @@ import (
 	"sync"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/constant"
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
+	"agungdwiprasetyo.com/backend-microservices/pkg/tracer"
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -44,12 +44,12 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 }
 
 func (r *redisWorker) Serve() {
-	handlers := make(map[string]interfaces.WorkerHandler)
+	handlers := make(map[string]types.WorkerHandlerFunc)
 	for _, m := range r.service.GetModules() {
-		if h := m.WorkerHandler(constant.RedisSubscriber); h != nil {
-			for _, topic := range h.GetTopics() {
+		if h := m.WorkerHandler(types.RedisSubscriber); h != nil {
+			for topic, handlerFunc := range h.MountHandlers() {
 				fmt.Println(helper.StringYellow(fmt.Sprintf(`[REDIS-SUBSCRIBER] (key prefix): "%-10s"  (processed by module): %s`, topic, m.Name())))
-				handlers[topic] = h
+				handlers[helper.BuildRedisPubSubKeyTopic(string(m.Name()), topic)] = handlerFunc
 			}
 		}
 	}
@@ -82,13 +82,25 @@ func (r *redisWorker) Serve() {
 		select {
 		case message := <-messageReceiver:
 			r.wg.Add(1)
-			go func() {
+			go tracer.WithTraceFunc(context.Background(), "RedisSubscriber", func(ctx context.Context, tags map[string]interface{}) {
 				defer r.wg.Done()
-				defer func() { recover() }()
+				defer func() {
+					if r := recover(); r != nil {
+						tracer.SetError(ctx, fmt.Errorf("%v", r))
+					}
+					logger.LogGreen(tracer.GetTraceURL(ctx))
+				}()
+				tags["message"] = string(message)
 
-				modName, handlerName, messageData := helper.ParseRedisPubSubKeyTopic(string(message))
-				handlers[modName].ProcessMessage(context.Background(), handlerName, []byte(messageData))
-			}()
+				handlerName, messageData := helper.ParseRedisPubSubKeyTopic(string(message))
+				handlerFunc, ok := handlers[handlerName]
+				if !ok {
+					return
+				}
+				if err := handlerFunc(ctx, []byte(messageData)); err != nil {
+					panic(err)
+				}
+			})
 		case <-r.shutdown:
 			break
 		}

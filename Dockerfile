@@ -28,6 +28,5 @@ COPY --from=0 /usr/app/.env .
 COPY --from=0 /usr/app/api /root/api
 COPY --from=0 /usr/app/cmd/${SERVICE_NAME} /root/cmd/${SERVICE_NAME}
 COPY --from=0 /usr/app/config/key /root/config/key
-COPY --from=0 /usr/app/web /root/web
 
 ENTRYPOINT ["sh", "-c", "./bin"]

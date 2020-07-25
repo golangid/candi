@@ -1,48 +1,26 @@
-package utils
+package tracer
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
-	"math"
+	"net/http"
+	"net/url"
 	"runtime/debug"
 	"strconv"
 	"strings"
-	"time"
 
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
-	"github.com/uber/jaeger-client-go/config"
+	opentracing "github.com/opentracing/opentracing-go"
+	ext "github.com/opentracing/opentracing-go/ext"
 )
 
-// InitTracer with agent host and service name
-func InitTracer(agentHost, serviceName string) {
-	cfg := &config.Configuration{
-		Sampler: &config.SamplerConfig{
-			Type:  "const",
-			Param: 1,
-		},
-		Reporter: &config.ReporterConfig{
-			LogSpans:            true,
-			BufferFlushInterval: 1 * time.Second,
-			LocalAgentHostPort:  agentHost,
-		},
-		ServiceName: serviceName,
-	}
-	tracer, _, err := cfg.NewTracer(config.MaxTagValueLength(math.MaxInt32))
-	if err != nil {
-		log.Panicf("ERROR: cannot init tracer connection: %v\n", err)
-	}
-	opentracing.SetGlobalTracer(tracer)
-}
-
-// Tracer abstraction
+// Tracer for trace
 type Tracer interface {
 	Context() context.Context
 	Tags() map[string]interface{}
+	InjectHTTPHeader(req *http.Request)
 	SetError(err error)
-	Finish()
+	Finish(additionalTags ...map[string]interface{})
 }
 
 type tracerImpl struct {
@@ -55,6 +33,7 @@ type tracerImpl struct {
 func StartTrace(ctx context.Context, operationName string) Tracer {
 	span := opentracing.SpanFromContext(ctx)
 	if span == nil {
+		// init new span
 		span, ctx = opentracing.StartSpanFromContext(ctx, operationName)
 	} else {
 		span = opentracing.GlobalTracer().StartSpan(operationName, opentracing.ChildOf(span.Context()))
@@ -77,18 +56,65 @@ func (t *tracerImpl) Tags() map[string]interface{} {
 	return t.tags
 }
 
+// InjectHTTPHeader to continue tracer to http request host
+func (t *tracerImpl) InjectHTTPHeader(req *http.Request) {
+	ext.SpanKindRPCClient.Set(t.span)
+	t.span.Tracer().Inject(
+		t.span.Context(),
+		opentracing.HTTPHeaders,
+		opentracing.HTTPHeadersCarrier(req.Header),
+	)
+}
+
 // SetError set error in span
 func (t *tracerImpl) SetError(err error) {
 	SetError(t.ctx, err)
 }
 
 // Finish trace with additional tags data, must in deferred function
-func (t *tracerImpl) Finish() {
+func (t *tracerImpl) Finish(tags ...map[string]interface{}) {
 	defer t.span.Finish()
+
+	if tags != nil && t.tags == nil {
+		t.tags = make(map[string]interface{})
+	}
+
+	for _, tag := range tags {
+		for k, v := range tag {
+			t.tags[k] = v
+		}
+	}
 
 	for k, v := range t.tags {
 		t.span.SetTag(k, toString(v))
 	}
+}
+
+// Log trace
+func Log(ctx context.Context, event string, payload ...interface{}) {
+	span := opentracing.SpanFromContext(ctx)
+	if span == nil {
+		return
+	}
+
+	if payload != nil {
+		for _, p := range payload {
+			if e, ok := p.(error); ok && e != nil {
+				ext.Error.Set(span, true)
+			}
+			span.LogEventWithPayload(event, toString(p))
+		}
+	} else {
+		span.LogEvent(event)
+	}
+}
+
+// WithTraceFunc functional with context and tags in function params
+func WithTraceFunc(ctx context.Context, operationName string, fn func(context.Context, map[string]interface{})) {
+	t := StartTrace(ctx, operationName)
+	defer t.Finish()
+
+	fn(t.Context(), t.Tags())
 }
 
 func toString(v interface{}) (s string) {
@@ -105,15 +131,11 @@ func toString(v interface{}) (s string) {
 		b, _ := json.Marshal(val)
 		s = string(b)
 	}
+
+	if len(s) >= maxPacketSize {
+		s = fmt.Sprintf("overflow, size is: %d, max: %d", len(s), maxPacketSize)
+	}
 	return
-}
-
-// WithTraceFunc functional with context and tags in function params
-func WithTraceFunc(ctx context.Context, operationName string, fn func(context.Context, map[string]interface{})) {
-	t := StartTrace(ctx, operationName)
-	defer t.Finish()
-
-	fn(t.Context(), t.Tags())
 }
 
 // GetTraceID func
@@ -142,4 +164,14 @@ func SetError(ctx context.Context, err error) {
 	ext.Error.Set(span, true)
 	span.SetTag("error.message", err.Error())
 	span.SetTag("stacktrace", string(debug.Stack()))
+}
+
+// GetTraceURL log trace url
+func GetTraceURL(ctx context.Context) (u string) {
+	defer func() { recover() }()
+	urlAgent, err := url.Parse("//" + agent)
+	if err == nil {
+		u = fmt.Sprintf("> tracing_url: %s:16686/trace/%s", urlAgent.Hostname(), GetTraceID(ctx))
+	}
+	return
 }
