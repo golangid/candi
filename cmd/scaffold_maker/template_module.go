@@ -8,12 +8,12 @@ import (
 	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{$.module}}/delivery/resthandler"
 	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{$.module}}/delivery/workerhandler"
 	"{{$.PackageName}}/pkg/codebase/factory/dependency"
-	"{{$.PackageName}}/pkg/codebase/factory/constant"
 	"{{$.PackageName}}/pkg/codebase/interfaces"
+	"{{$.PackageName}}/pkg/codebase/factory/types"
 )
 
 const (
-	// Name service name
+	// Name module name
 	Name types.Module = "{{clean (upper $.module)}}"
 )
 
@@ -31,11 +31,12 @@ func NewModule(deps dependency.Dependency) *Module {
 	var mod Module
 	mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware())
 	mod.grpcHandler = grpchandler.NewGRPCHandler(deps.GetMiddleware())
-	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware())
+	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(string(Name), deps.GetMiddleware())
 
 	mod.workerHandlers = map[types.Worker]interfaces.WorkerHandler{
-		types.Kafka: workerhandler.NewKafkaHandler(), // example worker
-		// add more worker type from delivery, implement "interfaces.WorkerHandler"
+		types.Kafka:           workerhandler.NewKafkaHandler(),
+		types.Scheduler:       workerhandler.NewCronHandler(),
+		types.RedisSubscriber: workerhandler.NewRedisHandler(string(Name)),
 	}
 
 	return &mod
@@ -52,8 +53,8 @@ func (m *Module) GRPCHandler() interfaces.GRPCHandler {
 }
 
 // GraphQLHandler method
-func (m *Module) GraphQLHandler() (name string, resolver interface{}) {
-	return string(Name), m.graphqlHandler
+func (m *Module) GraphQLHandler() interfaces.GraphQLHandler {
+	return m.graphqlHandler
 }
 
 // WorkerHandler method

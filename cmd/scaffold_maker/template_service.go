@@ -12,11 +12,10 @@ import (
 	"{{$.PackageName}}/internal/{{$.ServiceName}}/modules/{{$module}}"
 {{- end }}
 	"{{$.PackageName}}/pkg/codebase/factory"
-	"{{$.PackageName}}/pkg/codebase/factory/constant"
 	"{{$.PackageName}}/pkg/codebase/factory/dependency"
+	"{{$.PackageName}}/pkg/codebase/factory/types"
 	"{{$.PackageName}}/pkg/codebase/interfaces"
 	"{{$.PackageName}}/pkg/middleware"
-	authsdk "{{$.PackageName}}/pkg/sdk/auth-service"
 	"{{$.PackageName}}/pkg/validator"
 )
 
@@ -33,14 +32,14 @@ func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 	var deps dependency.Dependency
 
 	cfg.LoadFunc(func(ctx context.Context) []interfaces.Closer {
-		kafkaDeps := broker.InitKafkaBroker(config.BaseEnv().Kafka.ClientID)
+		kafkaDeps := broker.InitKafkaBroker(config.BaseEnv().Kafka.Brokers, config.BaseEnv().Kafka.ClientID)
 		redisDeps := database.InitRedis()
 		mongoDeps := database.InitMongoDB(ctx)
 
 		// inject all service dependencies
 		deps = dependency.InitDependency(
-			dependency.SetMiddleware(middleware.NewMiddleware(authsdk.NewAuthServiceGRPC())),
-			dependency.SetValidator(validator.NewJSONSchemaValidator(serviceName)),
+			dependency.SetMiddleware(middleware.NewMiddleware(nil)),
+			dependency.SetValidator(validator.NewValidator()),
 			dependency.SetBroker(kafkaDeps),
 			dependency.SetRedisPool(redisDeps),
 			dependency.SetMongoDatabase(mongoDeps),

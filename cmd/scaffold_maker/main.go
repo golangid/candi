@@ -118,7 +118,10 @@ func main() {
 				TargetDir: "delivery/", IsDir: true,
 				Childs: []FileStructure{
 					{TargetDir: "graphqlhandler/", IsDir: true, Childs: []FileStructure{
-						{FromTemplate: true, DataSource: dataSource, Source: deliveryGraphqlTemplate, FileName: "graphqlhandler.go"},
+						{FromTemplate: true, DataSource: dataSource, Source: deliveryGraphqlRootTemplate, FileName: "root_resolver.go"},
+						{FromTemplate: true, DataSource: dataSource, Source: deliveryGraphqlQueryTemplate, FileName: "query_resolver.go"},
+						{FromTemplate: true, DataSource: dataSource, Source: deliveryGraphqlMutationTemplate, FileName: "mutation_resolver.go"},
+						{FromTemplate: true, DataSource: dataSource, Source: deliveryGraphqlSubscriptionTemplate, FileName: "subscription_resolver.go"},
 					}},
 					{TargetDir: "grpchandler/", IsDir: true, Childs: []FileStructure{
 						{FromTemplate: true, DataSource: dataSource, Source: deliveryGRPCTemplate, FileName: "grpchandler.go"},
@@ -128,6 +131,8 @@ func main() {
 					}},
 					{TargetDir: "workerhandler/", IsDir: true, Childs: []FileStructure{
 						{FromTemplate: true, DataSource: dataSource, Source: deliveryKafkaTemplate, FileName: "kafkahandler.go"},
+						{FromTemplate: true, DataSource: dataSource, Source: deliveryRedisTemplate, FileName: "redishandler.go"},
+						{FromTemplate: true, DataSource: dataSource, Source: deliveryCronTemplate, FileName: "cronhandler.go"},
 					}},
 				},
 			},
