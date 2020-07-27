@@ -83,18 +83,9 @@ func NewHandler(service factory.ServiceFactory) Handler {
 			rootName := resolverModule.RootName()
 			query, mutation, subscription := resolverModule.Query(), resolverModule.Mutation(), resolverModule.Subscription()
 
-			queryResolverFields = append(queryResolverFields, reflect.StructField{
-				Name: rootName,
-				Type: reflect.TypeOf(query),
-			})
-			mutationResolverFields = append(mutationResolverFields, reflect.StructField{
-				Name: rootName,
-				Type: reflect.TypeOf(mutation),
-			})
-			subscriptionResolverFields = append(subscriptionResolverFields, reflect.StructField{
-				Name: rootName,
-				Type: reflect.TypeOf(subscription),
-			})
+			appendStructField(rootName, query, &queryResolverFields)
+			appendStructField(rootName, mutation, &mutationResolverFields)
+			appendStructField(rootName, subscription, &subscriptionResolverFields)
 
 			queryResolverValues[rootName] = query
 			mutationResolverValues[rootName] = mutation
@@ -102,25 +93,9 @@ func NewHandler(service factory.ServiceFactory) Handler {
 		}
 	}
 
-	queryResolverStruct := reflect.New(reflect.StructOf(queryResolverFields)).Elem()
-	for k, v := range queryResolverValues {
-		val := queryResolverStruct.FieldByName(k)
-		val.Set(reflect.ValueOf(v))
-	}
-	mutationResolverStruct := reflect.New(reflect.StructOf(mutationResolverFields)).Elem()
-	for k, v := range mutationResolverValues {
-		val := mutationResolverStruct.FieldByName(k)
-		val.Set(reflect.ValueOf(v))
-	}
-	subscriptionResolverStruct := reflect.New(reflect.StructOf(subscriptionResolverFields)).Elem()
-	for k, v := range subscriptionResolverValues {
-		val := subscriptionResolverStruct.FieldByName(k)
-		val.Set(reflect.ValueOf(v))
-	}
-
-	root.rootQuery = queryResolverStruct.Addr().Interface()
-	root.rootMutation = mutationResolverStruct.Addr().Interface()
-	root.rootSubscription = subscriptionResolverStruct.Addr().Interface()
+	root.rootQuery = constructStruct(queryResolverFields, queryResolverValues)
+	root.rootMutation = constructStruct(mutationResolverFields, mutationResolverValues)
+	root.rootSubscription = constructStruct(subscriptionResolverFields, subscriptionResolverValues)
 	gqlSchema := helper.LoadAllFile(config.BaseEnv().GraphQLSchemaDir, ".graphql")
 
 	schema := graphql.MustParseSchema(string(gqlSchema), &root,
