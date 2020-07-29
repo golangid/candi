@@ -2,51 +2,100 @@ package usecase
 
 import (
 	"context"
-	"strconv"
-	"time"
+	"fmt"
 
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/domain"
+	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 )
 
-type helloSaidSubscriber struct {
-	id     string
-	stop   <-chan struct{}
-	events chan<- *domain.HelloSaidEvent
-}
-
 func (uc *pushNotifUsecaseImpl) runSubscriberListener() {
-	subscribers := map[string]*helloSaidSubscriber{}
-	unsubscribe := make(chan string)
+
+	subsChannel := make(map[string]*domain.Subscriber)
 
 	for {
 		select {
-		case id := <-unsubscribe:
-			delete(subscribers, id)
-		case s := <-uc.helloSaidSubscriber:
-			subscribers[s.id] = s
-		case e := <-uc.helloSaidEvents:
-			for id, subs := range subscribers {
-				go func(id string, subs *helloSaidSubscriber) {
-					select {
-					case <-subs.stop:
-						unsubscribe <- id
-					case subs.events <- e:
-					case <-time.After(time.Second):
+		case leave := <-uc.closer:
+			logger.LogIf("unsubscribe topic: %s, userID: %s", leave.Topic, leave.ID)
+			uc.repo.Subscriber.RemoveSubscriber(context.Background(), leave)
+			delete(subsChannel, fmt.Sprintf("%s~%s", leave.Topic, leave.ID))
+
+		case subs := <-uc.subscribers:
+
+			newSubscriber := domain.Subscriber{ID: subs.ID, Topic: subs.Topic, IsActive: true}
+			go uc.registerNewSubscriberInTopic(context.Background(), subs.Topic, &newSubscriber)
+			key := fmt.Sprintf("%s~%s", newSubscriber.Topic, newSubscriber.ID)
+			fmt.Println(key)
+			subsChannel[key] = subs
+
+		case e := <-uc.events:
+
+			repoRes := <-uc.repo.Subscriber.FindTopic(context.Background(), domain.Topic{Name: e.ToTopic})
+			if repoRes.Error != nil {
+				logger.LogE(repoRes.Error.Error())
+				continue
+			}
+
+			topic := repoRes.Data.(domain.Topic)
+			for _, subs := range topic.Subscribers {
+				subs.Topic = topic.Name
+				go func(subs *domain.Subscriber) {
+					subscriber, ok := subsChannel[fmt.Sprintf("%s~%s", subs.Topic, subs.ID)]
+					if !ok {
+						return
 					}
-				}(id, subs)
+
+					subscriber.Events <- e
+				}(subs)
 			}
 		}
 	}
 }
 
-func (uc *pushNotifUsecaseImpl) AddSubscriber(ctx context.Context) <-chan *domain.HelloSaidEvent {
-	c := make(chan *domain.HelloSaidEvent)
+func (uc *pushNotifUsecaseImpl) AddSubscriber(ctx context.Context, clientID, topic string) <-chan *domain.Event {
+	event := make(chan *domain.Event)
 
-	uc.helloSaidSubscriber <- &helloSaidSubscriber{
-		id:     strconv.Itoa(int(time.Now().Unix())),
-		events: c,
-		stop:   ctx.Done(),
+	newSubs := &domain.Subscriber{
+		ID:     clientID,
+		Topic:  topic,
+		Events: event,
 	}
 
-	return c
+	uc.subscribers <- newSubs
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			uc.closer <- newSubs
+		}
+	}()
+
+	return event
+}
+
+func (uc *pushNotifUsecaseImpl) PublishMessageToTopic(ctx context.Context, event *domain.Event) *domain.Event {
+	uc.events <- event
+
+	// save message to database
+
+	return event
+}
+
+func (uc *pushNotifUsecaseImpl) registerNewSubscriberInTopic(ctx context.Context, topicName string, subscriber *domain.Subscriber) {
+	topic := domain.Topic{Name: topicName}
+	repoRes := <-uc.repo.Subscriber.FindTopic(ctx, topic)
+	if repoRes.Error != nil {
+		logger.LogE(repoRes.Error.Error())
+	} else {
+		topic = repoRes.Data.(domain.Topic)
+	}
+
+	repoRes = <-uc.repo.Subscriber.FindSubscriber(ctx, topicName, subscriber)
+	if repoRes.Error != nil {
+		subscriber.Topic = topicName
+		topic.Subscribers = append(topic.Subscribers, subscriber)
+	}
+
+	if err := <-uc.repo.Subscriber.Save(ctx, &topic); err != nil {
+		logger.LogE(err.Error())
+	}
 }

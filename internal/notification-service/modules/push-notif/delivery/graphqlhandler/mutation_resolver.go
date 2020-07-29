@@ -3,7 +3,6 @@ package graphqlhandler
 import (
 	"context"
 	"errors"
-	"strconv"
 	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/domain"
@@ -57,7 +56,13 @@ func (m *mutationResolver) ScheduledNotification(ctx context.Context, input sche
 	return "Success set scheduled push notification, scheduled at: " + input.Payload.ScheduledAt, nil
 }
 
-func (m *mutationResolver) SayHello(ctx context.Context, args struct{ Msg string }) *domain.HelloSaidEvent {
-	e := &domain.HelloSaidEvent{Msg: args.Msg, ID: strconv.Itoa(int((time.Now().Unix())))}
-	return m.uc.SayHello(ctx, e)
+func (m *mutationResolver) PublishMessageToTopic(ctx context.Context, args struct {
+	Msg     string
+	ToTopic string
+}) *domain.Event {
+
+	tokenClaim := m.mw.GraphQLBearerAuth(ctx)
+
+	e := &domain.Event{Msg: args.Msg, ToTopic: args.ToTopic, ID: tokenClaim.Audience}
+	return m.uc.PublishMessageToTopic(ctx, e)
 }

@@ -12,3 +12,8 @@ type scheduleNotifInputResolver struct {
 		Data        *domain.PushNotifRequestPayload
 	}
 }
+
+type subscribeInputResolver struct {
+	Token string
+	Topic string
+}

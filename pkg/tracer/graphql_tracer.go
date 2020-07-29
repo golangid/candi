@@ -15,6 +15,10 @@ import (
 	"github.com/golangid/graphql-go/trace"
 )
 
+var gqlTypeNotShowLog = map[string]bool{
+	"Query": true, "Mutation": true, "Subscription": true, "__Type": true, "__Schema": true,
+}
+
 // GraphQLTracer struct
 type GraphQLTracer struct{}
 
@@ -49,7 +53,7 @@ func (GraphQLTracer) TraceField(ctx context.Context, label, typeName, fieldName 
 	start := time.Now()
 	return ctx, func(err *gqlerrors.QueryError) {
 		end := time.Now()
-		if !trivial && typeName != "Query" {
+		if !trivial && !gqlTypeNotShowLog[typeName] {
 			statusColor := helper.Green
 			status := " OK  "
 			if err != nil {

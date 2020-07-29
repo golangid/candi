@@ -6,16 +6,18 @@ type PushNotifQueryModule {
 type PushNotifMutationModule {
     push(payload: PushPayload!): String!
     scheduledNotification(payload: ScheduledNotifPayload!): String!
-    sayHello(msg: String!): HelloSaidEvent!
+    publishMessageToTopic(msg: String!, toTopic: String!): SubscriberEvent!
 }
 
 type PushNotifSubscriptionModule {
-    helloSaid(): HelloSaidEvent!
+    listenTopic(token: String!, topic: String!): SubscriberEvent!
 }
 
-type HelloSaidEvent {
+type SubscriberEvent {
+    toTopic: String!
     id: String!
     msg: String!
+    timestamp: Int!
 }
 
 input PushPayload {

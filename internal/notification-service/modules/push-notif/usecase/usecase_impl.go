@@ -18,21 +18,24 @@ type pushNotifUsecaseImpl struct {
 	repo    *repository.Repository
 
 	// for subscriber listener
-	helloSaidEvents     chan *domain.HelloSaidEvent
-	helloSaidSubscriber chan *helloSaidSubscriber
+	events      chan *domain.Event
+	subscribers chan *domain.Subscriber
+	closer      chan *domain.Subscriber
 }
 
 // NewPushNotifUsecase constructor
 func NewPushNotifUsecase(modName types.Module, repo *repository.Repository) PushNotifUsecase {
-	helloEvent := make(chan *domain.HelloSaidEvent)
-	helloSubscriber := make(chan *helloSaidSubscriber)
+	events := make(chan *domain.Event)
+	subscribers := make(chan *domain.Subscriber)
+	closer := make(chan *domain.Subscriber)
 
 	uc := &pushNotifUsecaseImpl{
 		modName: modName,
 		repo:    repo,
 
-		helloSaidEvents:     helloEvent,
-		helloSaidSubscriber: helloSubscriber,
+		events:      events,
+		subscribers: subscribers,
+		closer:      closer,
 	}
 
 	go uc.runSubscriberListener()
@@ -58,6 +61,10 @@ func (uc *pushNotifUsecaseImpl) SendNotification(ctx context.Context, request *d
 		},
 		Data: map[string]interface{}{"type": "type"},
 	}
+
+	// send to internal subscriber
+	uc.events <- &domain.Event{}
+
 	result := <-uc.repo.PushNotif.Push(ctx, requestPayload)
 	if result.Error != nil {
 		return result.Error
@@ -76,14 +83,4 @@ func (uc *pushNotifUsecaseImpl) SendScheduledNotification(ctx context.Context, s
 	data, _ := json.Marshal(request)
 	exp := scheduledAt.Sub(time.Now())
 	return uc.repo.Schedule.SaveScheduledNotification(ctx, redisTopicKey, data, exp)
-}
-
-func (uc *pushNotifUsecaseImpl) SayHello(ctx context.Context, event *domain.HelloSaidEvent) *domain.HelloSaidEvent {
-	go func() {
-		select {
-		case uc.helloSaidEvents <- event:
-		case <-time.After(1 * time.Second):
-		}
-	}()
-	return event
 }

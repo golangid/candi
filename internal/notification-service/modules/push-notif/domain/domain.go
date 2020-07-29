@@ -24,8 +24,10 @@ type PushResponse struct {
 	Body  interface{} `json:"body"`
 }
 
-// HelloSaidEvent domain
-type HelloSaidEvent struct {
-	ID  string
-	Msg string
+// Event domain
+type Event struct {
+	ToTopic   string
+	ID        string
+	Msg       string
+	Timestamp int
 }
