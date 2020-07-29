@@ -6,7 +6,7 @@ Setup GraphQL subscription
 ```
 subscription onSubs {
   pushNotif {
-    helloSaid {
+    listenTopic(token: "token", topic: "order") {
       id, msg
     }
   }
@@ -17,7 +17,7 @@ Broadcast message
 ```
 mutation {
   pushNotif {
-    sayHello(msg: "Hai") {
+    publishMessageToTopic(msg: "Order has arrived", toTopic: "order") {
       id, msg
     }
   }
