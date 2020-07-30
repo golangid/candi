@@ -63,6 +63,6 @@ func (m *mutationResolver) PublishMessageToTopic(ctx context.Context, args struc
 
 	tokenClaim := m.mw.GraphQLBearerAuth(ctx)
 
-	e := &domain.Event{Msg: args.Msg, ToTopic: args.ToTopic, ID: tokenClaim.Audience}
+	e := &domain.Event{Msg: args.Msg, ToTopic: args.ToTopic, ID: tokenClaim.User.Username}
 	return m.uc.PublishMessageToTopic(ctx, e)
 }

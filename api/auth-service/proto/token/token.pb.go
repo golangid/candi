@@ -34,7 +34,7 @@ func (m *Request) Reset()         { *m = Request{} }
 func (m *Request) String() string { return proto.CompactTextString(m) }
 func (*Request) ProtoMessage()    {}
 func (*Request) Descriptor() ([]byte, []int) {
-	return fileDescriptor_token_93424b2924ebe966, []int{0}
+	return fileDescriptor_token_b893318d168aec2b, []int{0}
 }
 func (m *Request) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Request.Unmarshal(m, b)
@@ -72,7 +72,7 @@ func (m *Response) Reset()         { *m = Response{} }
 func (m *Response) String() string { return proto.CompactTextString(m) }
 func (*Response) ProtoMessage()    {}
 func (*Response) Descriptor() ([]byte, []int) {
-	return fileDescriptor_token_93424b2924ebe966, []int{1}
+	return fileDescriptor_token_b893318d168aec2b, []int{1}
 }
 func (m *Response) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Response.Unmarshal(m, b)
@@ -99,7 +99,7 @@ func (m *Response) GetMessage() string {
 	return ""
 }
 
-// Validate token model
+// Validate token payload
 type PayloadValidate struct {
 	Token                string   `protobuf:"bytes,1,opt,name=Token,proto3" json:"Token,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -111,7 +111,7 @@ func (m *PayloadValidate) Reset()         { *m = PayloadValidate{} }
 func (m *PayloadValidate) String() string { return proto.CompactTextString(m) }
 func (*PayloadValidate) ProtoMessage()    {}
 func (*PayloadValidate) Descriptor() ([]byte, []int) {
-	return fileDescriptor_token_93424b2924ebe966, []int{2}
+	return fileDescriptor_token_b893318d168aec2b, []int{2}
 }
 func (m *PayloadValidate) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PayloadValidate.Unmarshal(m, b)
@@ -150,7 +150,7 @@ func (m *ResponseValidation) Reset()         { *m = ResponseValidation{} }
 func (m *ResponseValidation) String() string { return proto.CompactTextString(m) }
 func (*ResponseValidation) ProtoMessage()    {}
 func (*ResponseValidation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_token_93424b2924ebe966, []int{3}
+	return fileDescriptor_token_b893318d168aec2b, []int{3}
 }
 func (m *ResponseValidation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResponseValidation.Unmarshal(m, b)
@@ -185,24 +185,24 @@ func (m *ResponseValidation) GetClaim() *ResponseValidation_ClaimData {
 }
 
 type ResponseValidation_ClaimData struct {
-	Audience             string                                 `protobuf:"bytes,1,opt,name=Audience,proto3" json:"Audience,omitempty"`
-	ExpiresAt            int64                                  `protobuf:"varint,2,opt,name=ExpiresAt,proto3" json:"ExpiresAt,omitempty"`
-	IssuedAt             int64                                  `protobuf:"varint,3,opt,name=IssuedAt,proto3" json:"IssuedAt,omitempty"`
-	Issuer               string                                 `protobuf:"bytes,4,opt,name=Issuer,proto3" json:"Issuer,omitempty"`
-	NotBefore            int64                                  `protobuf:"varint,5,opt,name=NotBefore,proto3" json:"NotBefore,omitempty"`
-	Subject              string                                 `protobuf:"bytes,6,opt,name=Subject,proto3" json:"Subject,omitempty"`
-	DeviceID             string                                 `protobuf:"bytes,7,opt,name=DeviceID,proto3" json:"DeviceID,omitempty"`
-	User                 *ResponseValidation_ClaimData_UserData `protobuf:"bytes,8,opt,name=User,proto3" json:"User,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}                               `json:"-"`
-	XXX_unrecognized     []byte                                 `json:"-"`
-	XXX_sizecache        int32                                  `json:"-"`
+	Audience             string    `protobuf:"bytes,1,opt,name=Audience,proto3" json:"Audience,omitempty"`
+	ExpiresAt            int64     `protobuf:"varint,2,opt,name=ExpiresAt,proto3" json:"ExpiresAt,omitempty"`
+	IssuedAt             int64     `protobuf:"varint,3,opt,name=IssuedAt,proto3" json:"IssuedAt,omitempty"`
+	Issuer               string    `protobuf:"bytes,4,opt,name=Issuer,proto3" json:"Issuer,omitempty"`
+	NotBefore            int64     `protobuf:"varint,5,opt,name=NotBefore,proto3" json:"NotBefore,omitempty"`
+	Subject              string    `protobuf:"bytes,6,opt,name=Subject,proto3" json:"Subject,omitempty"`
+	DeviceID             string    `protobuf:"bytes,7,opt,name=DeviceID,proto3" json:"DeviceID,omitempty"`
+	User                 *UserData `protobuf:"bytes,8,opt,name=User,proto3" json:"User,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
+	XXX_unrecognized     []byte    `json:"-"`
+	XXX_sizecache        int32     `json:"-"`
 }
 
 func (m *ResponseValidation_ClaimData) Reset()         { *m = ResponseValidation_ClaimData{} }
 func (m *ResponseValidation_ClaimData) String() string { return proto.CompactTextString(m) }
 func (*ResponseValidation_ClaimData) ProtoMessage()    {}
 func (*ResponseValidation_ClaimData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_token_93424b2924ebe966, []int{3, 0}
+	return fileDescriptor_token_b893318d168aec2b, []int{3, 0}
 }
 func (m *ResponseValidation_ClaimData) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResponseValidation_ClaimData.Unmarshal(m, b)
@@ -271,47 +271,241 @@ func (m *ResponseValidation_ClaimData) GetDeviceID() string {
 	return ""
 }
 
-func (m *ResponseValidation_ClaimData) GetUser() *ResponseValidation_ClaimData_UserData {
+func (m *ResponseValidation_ClaimData) GetUser() *UserData {
 	if m != nil {
 		return m.User
 	}
 	return nil
 }
 
-type ResponseValidation_ClaimData_UserData struct {
+type ResponseGenerate struct {
+	Success              bool                    `protobuf:"varint,1,opt,name=Success,proto3" json:"Success,omitempty"`
+	Data                 *ResponseGenerate_Token `protobuf:"bytes,2,opt,name=Data,proto3" json:"Data,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
+	XXX_unrecognized     []byte                  `json:"-"`
+	XXX_sizecache        int32                   `json:"-"`
+}
+
+func (m *ResponseGenerate) Reset()         { *m = ResponseGenerate{} }
+func (m *ResponseGenerate) String() string { return proto.CompactTextString(m) }
+func (*ResponseGenerate) ProtoMessage()    {}
+func (*ResponseGenerate) Descriptor() ([]byte, []int) {
+	return fileDescriptor_token_b893318d168aec2b, []int{4}
+}
+func (m *ResponseGenerate) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ResponseGenerate.Unmarshal(m, b)
+}
+func (m *ResponseGenerate) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ResponseGenerate.Marshal(b, m, deterministic)
+}
+func (dst *ResponseGenerate) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResponseGenerate.Merge(dst, src)
+}
+func (m *ResponseGenerate) XXX_Size() int {
+	return xxx_messageInfo_ResponseGenerate.Size(m)
+}
+func (m *ResponseGenerate) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResponseGenerate.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResponseGenerate proto.InternalMessageInfo
+
+func (m *ResponseGenerate) GetSuccess() bool {
+	if m != nil {
+		return m.Success
+	}
+	return false
+}
+
+func (m *ResponseGenerate) GetData() *ResponseGenerate_Token {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+
+type ResponseGenerate_Token struct {
+	Token                string     `protobuf:"bytes,1,opt,name=Token,proto3" json:"Token,omitempty"`
+	Claim                *ClaimData `protobuf:"bytes,2,opt,name=Claim,proto3" json:"Claim,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
+	XXX_unrecognized     []byte     `json:"-"`
+	XXX_sizecache        int32      `json:"-"`
+}
+
+func (m *ResponseGenerate_Token) Reset()         { *m = ResponseGenerate_Token{} }
+func (m *ResponseGenerate_Token) String() string { return proto.CompactTextString(m) }
+func (*ResponseGenerate_Token) ProtoMessage()    {}
+func (*ResponseGenerate_Token) Descriptor() ([]byte, []int) {
+	return fileDescriptor_token_b893318d168aec2b, []int{4, 0}
+}
+func (m *ResponseGenerate_Token) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ResponseGenerate_Token.Unmarshal(m, b)
+}
+func (m *ResponseGenerate_Token) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ResponseGenerate_Token.Marshal(b, m, deterministic)
+}
+func (dst *ResponseGenerate_Token) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResponseGenerate_Token.Merge(dst, src)
+}
+func (m *ResponseGenerate_Token) XXX_Size() int {
+	return xxx_messageInfo_ResponseGenerate_Token.Size(m)
+}
+func (m *ResponseGenerate_Token) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResponseGenerate_Token.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResponseGenerate_Token proto.InternalMessageInfo
+
+func (m *ResponseGenerate_Token) GetToken() string {
+	if m != nil {
+		return m.Token
+	}
+	return ""
+}
+
+func (m *ResponseGenerate_Token) GetClaim() *ClaimData {
+	if m != nil {
+		return m.Claim
+	}
+	return nil
+}
+
+type ClaimData struct {
+	Audience             string    `protobuf:"bytes,1,opt,name=Audience,proto3" json:"Audience,omitempty"`
+	ExpiresAt            int64     `protobuf:"varint,2,opt,name=ExpiresAt,proto3" json:"ExpiresAt,omitempty"`
+	IssuedAt             int64     `protobuf:"varint,3,opt,name=IssuedAt,proto3" json:"IssuedAt,omitempty"`
+	Issuer               string    `protobuf:"bytes,4,opt,name=Issuer,proto3" json:"Issuer,omitempty"`
+	NotBefore            int64     `protobuf:"varint,5,opt,name=NotBefore,proto3" json:"NotBefore,omitempty"`
+	Subject              string    `protobuf:"bytes,6,opt,name=Subject,proto3" json:"Subject,omitempty"`
+	DeviceID             string    `protobuf:"bytes,7,opt,name=DeviceID,proto3" json:"DeviceID,omitempty"`
+	User                 *UserData `protobuf:"bytes,8,opt,name=User,proto3" json:"User,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
+	XXX_unrecognized     []byte    `json:"-"`
+	XXX_sizecache        int32     `json:"-"`
+}
+
+func (m *ClaimData) Reset()         { *m = ClaimData{} }
+func (m *ClaimData) String() string { return proto.CompactTextString(m) }
+func (*ClaimData) ProtoMessage()    {}
+func (*ClaimData) Descriptor() ([]byte, []int) {
+	return fileDescriptor_token_b893318d168aec2b, []int{5}
+}
+func (m *ClaimData) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ClaimData.Unmarshal(m, b)
+}
+func (m *ClaimData) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ClaimData.Marshal(b, m, deterministic)
+}
+func (dst *ClaimData) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ClaimData.Merge(dst, src)
+}
+func (m *ClaimData) XXX_Size() int {
+	return xxx_messageInfo_ClaimData.Size(m)
+}
+func (m *ClaimData) XXX_DiscardUnknown() {
+	xxx_messageInfo_ClaimData.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ClaimData proto.InternalMessageInfo
+
+func (m *ClaimData) GetAudience() string {
+	if m != nil {
+		return m.Audience
+	}
+	return ""
+}
+
+func (m *ClaimData) GetExpiresAt() int64 {
+	if m != nil {
+		return m.ExpiresAt
+	}
+	return 0
+}
+
+func (m *ClaimData) GetIssuedAt() int64 {
+	if m != nil {
+		return m.IssuedAt
+	}
+	return 0
+}
+
+func (m *ClaimData) GetIssuer() string {
+	if m != nil {
+		return m.Issuer
+	}
+	return ""
+}
+
+func (m *ClaimData) GetNotBefore() int64 {
+	if m != nil {
+		return m.NotBefore
+	}
+	return 0
+}
+
+func (m *ClaimData) GetSubject() string {
+	if m != nil {
+		return m.Subject
+	}
+	return ""
+}
+
+func (m *ClaimData) GetDeviceID() string {
+	if m != nil {
+		return m.DeviceID
+	}
+	return ""
+}
+
+func (m *ClaimData) GetUser() *UserData {
+	if m != nil {
+		return m.User
+	}
+	return nil
+}
+
+type UserData struct {
 	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	Username             string   `protobuf:"bytes,2,opt,name=Username,proto3" json:"Username,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ResponseValidation_ClaimData_UserData) Reset()         { *m = ResponseValidation_ClaimData_UserData{} }
-func (m *ResponseValidation_ClaimData_UserData) String() string { return proto.CompactTextString(m) }
-func (*ResponseValidation_ClaimData_UserData) ProtoMessage()    {}
-func (*ResponseValidation_ClaimData_UserData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_token_93424b2924ebe966, []int{3, 0, 0}
+func (m *UserData) Reset()         { *m = UserData{} }
+func (m *UserData) String() string { return proto.CompactTextString(m) }
+func (*UserData) ProtoMessage()    {}
+func (*UserData) Descriptor() ([]byte, []int) {
+	return fileDescriptor_token_b893318d168aec2b, []int{6}
 }
-func (m *ResponseValidation_ClaimData_UserData) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ResponseValidation_ClaimData_UserData.Unmarshal(m, b)
+func (m *UserData) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_UserData.Unmarshal(m, b)
 }
-func (m *ResponseValidation_ClaimData_UserData) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ResponseValidation_ClaimData_UserData.Marshal(b, m, deterministic)
+func (m *UserData) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_UserData.Marshal(b, m, deterministic)
 }
-func (dst *ResponseValidation_ClaimData_UserData) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ResponseValidation_ClaimData_UserData.Merge(dst, src)
+func (dst *UserData) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UserData.Merge(dst, src)
 }
-func (m *ResponseValidation_ClaimData_UserData) XXX_Size() int {
-	return xxx_messageInfo_ResponseValidation_ClaimData_UserData.Size(m)
+func (m *UserData) XXX_Size() int {
+	return xxx_messageInfo_UserData.Size(m)
 }
-func (m *ResponseValidation_ClaimData_UserData) XXX_DiscardUnknown() {
-	xxx_messageInfo_ResponseValidation_ClaimData_UserData.DiscardUnknown(m)
+func (m *UserData) XXX_DiscardUnknown() {
+	xxx_messageInfo_UserData.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ResponseValidation_ClaimData_UserData proto.InternalMessageInfo
+var xxx_messageInfo_UserData proto.InternalMessageInfo
 
-func (m *ResponseValidation_ClaimData_UserData) GetID() string {
+func (m *UserData) GetID() string {
 	if m != nil {
 		return m.ID
+	}
+	return ""
+}
+
+func (m *UserData) GetUsername() string {
+	if m != nil {
+		return m.Username
 	}
 	return ""
 }
@@ -322,7 +516,10 @@ func init() {
 	proto.RegisterType((*PayloadValidate)(nil), "token.PayloadValidate")
 	proto.RegisterType((*ResponseValidation)(nil), "token.ResponseValidation")
 	proto.RegisterType((*ResponseValidation_ClaimData)(nil), "token.ResponseValidation.ClaimData")
-	proto.RegisterType((*ResponseValidation_ClaimData_UserData)(nil), "token.ResponseValidation.ClaimData.UserData")
+	proto.RegisterType((*ResponseGenerate)(nil), "token.ResponseGenerate")
+	proto.RegisterType((*ResponseGenerate_Token)(nil), "token.ResponseGenerate.Token")
+	proto.RegisterType((*ClaimData)(nil), "token.ClaimData")
+	proto.RegisterType((*UserData)(nil), "token.UserData")
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -339,6 +536,7 @@ const _ = grpc.SupportPackageIsVersion4
 type TokenHandlerClient interface {
 	Hello(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Response, error)
 	ValidateToken(ctx context.Context, in *PayloadValidate, opts ...grpc.CallOption) (*ResponseValidation, error)
+	GenerateToken(ctx context.Context, in *UserData, opts ...grpc.CallOption) (*ResponseGenerate, error)
 }
 
 type tokenHandlerClient struct {
@@ -367,10 +565,20 @@ func (c *tokenHandlerClient) ValidateToken(ctx context.Context, in *PayloadValid
 	return out, nil
 }
 
+func (c *tokenHandlerClient) GenerateToken(ctx context.Context, in *UserData, opts ...grpc.CallOption) (*ResponseGenerate, error) {
+	out := new(ResponseGenerate)
+	err := c.cc.Invoke(ctx, "/token.TokenHandler/GenerateToken", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TokenHandlerServer is the server API for TokenHandler service.
 type TokenHandlerServer interface {
 	Hello(context.Context, *Request) (*Response, error)
 	ValidateToken(context.Context, *PayloadValidate) (*ResponseValidation, error)
+	GenerateToken(context.Context, *UserData) (*ResponseGenerate, error)
 }
 
 func RegisterTokenHandlerServer(s *grpc.Server, srv TokenHandlerServer) {
@@ -413,6 +621,24 @@ func _TokenHandler_ValidateToken_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TokenHandler_GenerateToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UserData)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TokenHandlerServer).GenerateToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/token.TokenHandler/GenerateToken",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TokenHandlerServer).GenerateToken(ctx, req.(*UserData))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _TokenHandler_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "token.TokenHandler",
 	HandlerType: (*TokenHandlerServer)(nil),
@@ -425,40 +651,49 @@ var _TokenHandler_serviceDesc = grpc.ServiceDesc{
 			MethodName: "ValidateToken",
 			Handler:    _TokenHandler_ValidateToken_Handler,
 		},
+		{
+			MethodName: "GenerateToken",
+			Handler:    _TokenHandler_GenerateToken_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "api/auth-service/proto/token/token.proto",
 }
 
 func init() {
-	proto.RegisterFile("api/auth-service/proto/token/token.proto", fileDescriptor_token_93424b2924ebe966)
+	proto.RegisterFile("api/auth-service/proto/token/token.proto", fileDescriptor_token_b893318d168aec2b)
 }
 
-var fileDescriptor_token_93424b2924ebe966 = []byte{
-	// 386 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x52, 0x4d, 0x4b, 0xeb, 0x40,
-	0x14, 0xa5, 0x69, 0xd3, 0xa6, 0xf7, 0xbd, 0xd7, 0xc2, 0xf0, 0x28, 0xf3, 0xc2, 0x5b, 0x94, 0x56,
-	0x30, 0x0b, 0x4d, 0xa1, 0xae, 0xdc, 0xd9, 0x1a, 0xa1, 0x59, 0x28, 0x12, 0x3f, 0xf6, 0xd3, 0xe4,
-	0xaa, 0xd1, 0x98, 0x89, 0x99, 0x89, 0x28, 0xf8, 0x3f, 0xfc, 0x11, 0xfe, 0x49, 0xc9, 0x4c, 0x12,
-	0xa1, 0xa2, 0xb8, 0x29, 0x3d, 0x37, 0xe7, 0x9e, 0x73, 0xe7, 0xdc, 0x0b, 0x0e, 0xcb, 0xe2, 0x19,
-	0x2b, 0xe4, 0xcd, 0xae, 0xc0, 0xfc, 0x31, 0x0e, 0x71, 0x96, 0xe5, 0x5c, 0xf2, 0x99, 0xe4, 0x77,
-	0x98, 0xea, 0x5f, 0x57, 0x55, 0x88, 0xa9, 0xc0, 0x64, 0x0a, 0xbd, 0x00, 0x1f, 0x0a, 0x14, 0x92,
-	0x50, 0xe8, 0x1d, 0xa3, 0x10, 0xec, 0x1a, 0x69, 0x6b, 0xdc, 0x72, 0xfa, 0x41, 0x0d, 0x27, 0x5b,
-	0x60, 0x05, 0x28, 0x32, 0x9e, 0x0a, 0xfc, 0x86, 0xb5, 0x0d, 0xc3, 0x53, 0xf6, 0x9c, 0x70, 0x16,
-	0x5d, 0xb2, 0x24, 0x8e, 0x98, 0x44, 0xf2, 0x17, 0xcc, 0xf3, 0xd2, 0xa6, 0xa2, 0x6a, 0x30, 0x79,
-	0x6d, 0x03, 0xa9, 0xf5, 0x2a, 0x6a, 0xcc, 0xd3, 0x52, 0xf9, 0xac, 0x08, 0x43, 0x14, 0x42, 0xd1,
-	0xad, 0xa0, 0x86, 0x64, 0x1f, 0xcc, 0xc3, 0x84, 0xc5, 0xf7, 0xd4, 0x18, 0xb7, 0x9c, 0x5f, 0xf3,
-	0xa9, 0xab, 0x1f, 0xf2, 0x59, 0xc3, 0x55, 0x34, 0x8f, 0x49, 0x16, 0xe8, 0x0e, 0xfb, 0xcd, 0x80,
-	0x7e, 0x53, 0x24, 0x36, 0x58, 0x8b, 0x22, 0x8a, 0x31, 0x0d, 0xeb, 0xe9, 0x1b, 0x4c, 0xfe, 0x43,
-	0xff, 0xe8, 0x29, 0x8b, 0x73, 0x14, 0x0b, 0xa9, 0x8c, 0xda, 0xc1, 0x47, 0xa1, 0xec, 0xf4, 0x85,
-	0x28, 0x30, 0x5a, 0x48, 0xda, 0x56, 0x1f, 0x1b, 0x4c, 0x46, 0xd0, 0x55, 0xff, 0x73, 0xda, 0x51,
-	0x9a, 0x15, 0x2a, 0x15, 0x4f, 0xb8, 0x5c, 0xe2, 0x15, 0xcf, 0x91, 0x9a, 0x5a, 0xb1, 0x29, 0xe8,
-	0xe7, 0xae, 0x6f, 0x31, 0x94, 0xb4, 0xab, 0x83, 0xac, 0x60, 0xe9, 0xe5, 0x61, 0xb9, 0x3c, 0xdf,
-	0xa3, 0x3d, 0x3d, 0x65, 0x8d, 0xc9, 0x01, 0x74, 0x2e, 0x04, 0xe6, 0xd4, 0x52, 0x49, 0xec, 0xfc,
-	0x20, 0x09, 0xb7, 0xe4, 0xab, 0x48, 0x54, 0xa7, 0x6d, 0x83, 0x55, 0x57, 0xc8, 0x00, 0x0c, 0xdf,
-	0xab, 0x92, 0x30, 0x7c, 0x6f, 0xfe, 0x02, 0xbf, 0xd5, 0x8a, 0x56, 0x2c, 0x8d, 0x12, 0xcc, 0x89,
-	0x03, 0xe6, 0x0a, 0x93, 0x84, 0x93, 0x41, 0x63, 0xa4, 0x6e, 0xc5, 0x1e, 0x6e, 0x18, 0x93, 0x25,
-	0xfc, 0xa9, 0xb7, 0xae, 0x14, 0xc8, 0xa8, 0x62, 0x6c, 0x9c, 0x84, 0xfd, 0xef, 0xcb, 0x91, 0xd7,
-	0x5d, 0x75, 0x99, 0x7b, 0xef, 0x01, 0x00, 0x00, 0xff, 0xff, 0x5a, 0x31, 0x38, 0xcd, 0xc5, 0x02,
+var fileDescriptor_token_b893318d168aec2b = []byte{
+	// 466 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe4, 0x54, 0xdd, 0x6e, 0xd3, 0x30,
+	0x14, 0x56, 0xba, 0xa6, 0x4d, 0x0f, 0x6c, 0x9d, 0x2c, 0x34, 0x4c, 0x04, 0xd2, 0x94, 0x22, 0xe8,
+	0x0d, 0xad, 0x18, 0x12, 0xd2, 0x2e, 0x3b, 0x32, 0xb1, 0x5e, 0x80, 0x50, 0xf8, 0xb9, 0xf7, 0x92,
+	0x03, 0x04, 0xd2, 0xb8, 0xc4, 0x0e, 0x82, 0x17, 0xe2, 0x15, 0x78, 0x1b, 0x1e, 0x82, 0x27, 0x40,
+	0x3e, 0xb6, 0x83, 0x08, 0x94, 0x17, 0xd8, 0x4d, 0xd5, 0xef, 0xf8, 0xf3, 0x67, 0x9f, 0xef, 0xf3,
+	0x09, 0xcc, 0xc5, 0xb6, 0x5c, 0x8a, 0x56, 0xbf, 0x7f, 0xa0, 0xb0, 0xf9, 0x5c, 0xe6, 0xb8, 0xdc,
+	0x36, 0x52, 0xcb, 0xa5, 0x96, 0x1f, 0xb1, 0xb6, 0xbf, 0x0b, 0xaa, 0xb0, 0x90, 0x40, 0x32, 0x83,
+	0x71, 0x86, 0x9f, 0x5a, 0x54, 0x9a, 0x71, 0x18, 0x3f, 0x43, 0xa5, 0xc4, 0x3b, 0xe4, 0xc1, 0x71,
+	0x30, 0x9f, 0x64, 0x1e, 0x26, 0x77, 0x21, 0xca, 0x50, 0x6d, 0x65, 0xad, 0xf0, 0x3f, 0xac, 0xfb,
+	0x30, 0x7d, 0x21, 0xbe, 0x56, 0x52, 0x14, 0x6f, 0x44, 0x55, 0x16, 0x42, 0x23, 0xbb, 0x01, 0xe1,
+	0x2b, 0x73, 0x8c, 0xa3, 0x5a, 0x90, 0xfc, 0x18, 0x00, 0xf3, 0x7a, 0x8e, 0x5a, 0xca, 0xda, 0x28,
+	0xbf, 0x6c, 0xf3, 0x1c, 0x95, 0x22, 0x7a, 0x94, 0x79, 0xc8, 0x4e, 0x21, 0x7c, 0x52, 0x89, 0x72,
+	0xc3, 0x07, 0xc7, 0xc1, 0xfc, 0xda, 0xc9, 0x6c, 0x61, 0x1b, 0xf9, 0x5b, 0x63, 0x41, 0xb4, 0x54,
+	0x68, 0x91, 0xd9, 0x1d, 0xf1, 0xcf, 0x00, 0x26, 0x5d, 0x91, 0xc5, 0x10, 0xad, 0xda, 0xa2, 0xc4,
+	0x3a, 0xf7, 0xb7, 0xef, 0x30, 0xbb, 0x0d, 0x93, 0xf3, 0x2f, 0xdb, 0xb2, 0x41, 0xb5, 0xd2, 0x74,
+	0xd0, 0x5e, 0xf6, 0xbb, 0x60, 0x76, 0xae, 0x95, 0x6a, 0xb1, 0x58, 0x69, 0xbe, 0x47, 0x8b, 0x1d,
+	0x66, 0x47, 0x30, 0xa2, 0xff, 0x0d, 0x1f, 0x92, 0xa6, 0x43, 0x46, 0xf1, 0xb9, 0xd4, 0x67, 0xf8,
+	0x56, 0x36, 0xc8, 0x43, 0xab, 0xd8, 0x15, 0x6c, 0xbb, 0x97, 0x1f, 0x30, 0xd7, 0x7c, 0x64, 0x8d,
+	0x74, 0xd0, 0x9c, 0x95, 0xa2, 0x09, 0x6f, 0x9d, 0xf2, 0xb1, 0xbd, 0xa5, 0xc7, 0x6c, 0x06, 0xc3,
+	0xd7, 0x0a, 0x1b, 0x1e, 0x91, 0x13, 0x53, 0xe7, 0x84, 0x29, 0x51, 0xd7, 0xb4, 0x98, 0x7c, 0x0b,
+	0xe0, 0xd0, 0x9b, 0xf3, 0x14, 0x6b, 0x6c, 0x4c, 0x16, 0xbb, 0xed, 0x7d, 0x08, 0x43, 0xb3, 0xd9,
+	0xb9, 0x7b, 0xa7, 0xe7, 0xae, 0x17, 0x58, 0x50, 0x78, 0x19, 0x51, 0xe3, 0x73, 0x17, 0xec, 0xbf,
+	0x13, 0x66, 0xf7, 0xfe, 0x0c, 0xec, 0xd0, 0x49, 0xf6, 0xd3, 0x49, 0xae, 0x64, 0x3a, 0x8f, 0x21,
+	0xf2, 0x15, 0x76, 0x00, 0x83, 0x75, 0xea, 0x9a, 0x1d, 0xac, 0x53, 0x23, 0x6e, 0xd6, 0x6a, 0xb1,
+	0x41, 0xea, 0x72, 0x92, 0x75, 0xf8, 0xe4, 0x7b, 0x00, 0xd7, 0xc9, 0xde, 0x0b, 0x51, 0x17, 0x15,
+	0x36, 0x6c, 0x0e, 0xe1, 0x05, 0x56, 0x95, 0x64, 0x07, 0x5d, 0x64, 0x34, 0xc9, 0xf1, 0xb4, 0x17,
+	0x21, 0x3b, 0x83, 0x7d, 0x3f, 0x93, 0x36, 0xa0, 0x23, 0xc7, 0xe8, 0x0d, 0x6c, 0x7c, 0x6b, 0xe7,
+	0x68, 0xb1, 0x53, 0xd8, 0xf7, 0x4f, 0xc1, 0x6a, 0xf4, 0xdb, 0x8b, 0x6f, 0xee, 0x78, 0x39, 0x97,
+	0x23, 0xfa, 0xe4, 0x3c, 0xfa, 0x15, 0x00, 0x00, 0xff, 0xff, 0xbe, 0x3f, 0xc0, 0xfe, 0x9e, 0x04,
 	0x00, 0x00,
 }

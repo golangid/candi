@@ -26,7 +26,8 @@ func NewKafkaHandler(uc usecase.PushNotifUsecase) *KafkaHandler {
 func (h *KafkaHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
 
 	return map[string]types.WorkerHandlerFunc{
-		"push-notif": h.handlePushNotif,
+		"push-notif":      h.handlePushNotif,
+		"notif-broadcast": h.handleNotifBroadcast,
 	}
 }
 
@@ -41,4 +42,12 @@ func (h *KafkaHandler) handlePushNotif(ctx context.Context, message []byte) (err
 	}
 
 	return err
+}
+
+func (h *KafkaHandler) handleNotifBroadcast(ctx context.Context, message []byte) (err error) {
+	var payload domain.Event
+	json.Unmarshal(message, &payload)
+	h.uc.PublishMessageToTopic(ctx, &payload)
+
+	return
 }

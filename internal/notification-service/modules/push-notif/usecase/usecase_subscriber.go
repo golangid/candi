@@ -10,22 +10,23 @@ import (
 
 func (uc *pushNotifUsecaseImpl) runSubscriberListener() {
 
-	subsChannel := make(map[string]*domain.Subscriber)
+	eventChannel := make(map[string]chan<- *domain.Event)
+	channelKey := func(topic, subscriberID string) string {
+		return fmt.Sprintf("%s~%s", topic, subscriberID)
+	}
 
 	for {
 		select {
 		case leave := <-uc.closer:
 			logger.LogIf("unsubscribe topic: %s, userID: %s", leave.Topic, leave.ID)
 			uc.repo.Subscriber.RemoveSubscriber(context.Background(), leave)
-			delete(subsChannel, fmt.Sprintf("%s~%s", leave.Topic, leave.ID))
+			delete(eventChannel, channelKey(leave.Topic, leave.ID))
 
 		case subs := <-uc.subscribers:
 
 			newSubscriber := domain.Subscriber{ID: subs.ID, Topic: subs.Topic, IsActive: true}
 			go uc.registerNewSubscriberInTopic(context.Background(), subs.Topic, &newSubscriber)
-			key := fmt.Sprintf("%s~%s", newSubscriber.Topic, newSubscriber.ID)
-			fmt.Println(key)
-			subsChannel[key] = subs
+			eventChannel[channelKey(newSubscriber.Topic, newSubscriber.ID)] = subs.Events
 
 		case e := <-uc.events:
 
@@ -39,12 +40,12 @@ func (uc *pushNotifUsecaseImpl) runSubscriberListener() {
 			for _, subs := range topic.Subscribers {
 				subs.Topic = topic.Name
 				go func(subs *domain.Subscriber) {
-					subscriber, ok := subsChannel[fmt.Sprintf("%s~%s", subs.Topic, subs.ID)]
+					subscriber, ok := eventChannel[channelKey(subs.Topic, subs.ID)]
 					if !ok {
 						return
 					}
 
-					subscriber.Events <- e
+					subscriber <- e
 				}(subs)
 			}
 		}

@@ -60,6 +60,7 @@ func (a *authServiceGRPC) Validate(ctx context.Context, token string) <-chan sha
 		sharedClaim.NotBefore = resp.Claim.NotBefore
 		sharedClaim.Subject = resp.Claim.Subject
 		sharedClaim.User.ID = resp.Claim.User.ID
+		sharedClaim.User.Username = resp.Claim.User.Username
 
 		output <- shared.Result{
 			Data: &sharedClaim,

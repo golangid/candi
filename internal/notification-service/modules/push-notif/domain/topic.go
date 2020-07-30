@@ -18,6 +18,5 @@ type Subscriber struct {
 	CreatedAt  time.Time `bson:"createdAt" json:"createdAt"`
 	ModifiedAt time.Time `bson:"modifiedAt" json:"modifiedAt"`
 
-	Stop   <-chan struct{} `bson:"-" json:"-"`
-	Events chan<- *Event   `bson:"-" json:"-"`
+	Events chan<- *Event `bson:"-" json:"-"`
 }

@@ -8,6 +8,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 	"agungdwiprasetyo.com/backend-microservices/pkg/tracer"
 	"agungdwiprasetyo.com/backend-microservices/pkg/wrapper"
 	"github.com/labstack/echo"
@@ -36,6 +37,7 @@ func (h *RestHandler) Mount(root *echo.Group) {
 	pushnotif.GET("", h.hello)
 	pushnotif.POST("/push", h.push, h.mw.HTTPBasicAuth(false))
 	pushnotif.POST("/schedule", h.scheduledNotification, h.mw.HTTPBasicAuth(false))
+	pushnotif.POST("/publish-message", h.publishMessageToTopic, h.mw.HTTPBearerAuth())
 }
 
 func (h *RestHandler) hello(c echo.Context) error {
@@ -84,4 +86,18 @@ func (h *RestHandler) scheduledNotification(c echo.Context) error {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, "Failed set scheduled push notification").JSON(c.Response())
 	}
 	return wrapper.NewHTTPResponse(http.StatusOK, "Success set scheduled push notification, scheduled at: "+payload.ScheduledAt).JSON(c.Response())
+}
+
+func (h *RestHandler) publishMessageToTopic(c echo.Context) error {
+
+	tokenClaim := c.Get(helper.TokenClaimKey).(*shared.TokenClaim)
+
+	var eventPayload domain.Event
+	if err := c.Bind(&eventPayload); err != nil {
+		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
+	}
+
+	eventPayload.ID = tokenClaim.User.Username
+	event := h.uc.PublishMessageToTopic(c.Request().Context(), &eventPayload)
+	return wrapper.NewHTTPResponse(http.StatusOK, "Success publish message", event).JSON(c.Response())
 }

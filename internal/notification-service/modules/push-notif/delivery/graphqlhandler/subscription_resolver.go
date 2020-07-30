@@ -2,7 +2,6 @@ package graphqlhandler
 
 import (
 	"context"
-	"fmt"
 
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/domain"
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/usecase"
@@ -23,7 +22,6 @@ func (s *subscriptionResolver) ListenTopic(ctx context.Context, input subscribeI
 		return nil, err
 	}
 
-	clientID := tokenClaim.Audience
-	fmt.Println(clientID)
-	return s.uc.AddSubscriber(ctx, input.Token, input.Topic), nil
+	clientID := tokenClaim.User.Username
+	return s.uc.AddSubscriber(ctx, clientID, input.Topic), nil
 }

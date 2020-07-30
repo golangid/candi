@@ -26,14 +26,14 @@ func NewTokenUsecase(publicKey *rsa.PublicKey, privateKey *rsa.PrivateKey) Token
 }
 
 // Generate token
-func (uc *tokenUsecaseImpl) Generate(ctx context.Context, payload *shared.TokenClaim, expired time.Duration) <-chan shared.Result {
+func (uc *tokenUsecaseImpl) Generate(ctx context.Context, payload *shared.TokenClaim) <-chan shared.Result {
 	output := make(chan shared.Result)
 
 	go func() {
 		defer close(output)
 
 		now := time.Now()
-		exp := now.Add(expired)
+		exp := now.Add(60 * time.Hour)
 
 		var key interface{}
 		var token = new(jwt.Token)
@@ -119,6 +119,8 @@ func (uc *tokenUsecaseImpl) Validate(ctx context.Context, tokenString string) <-
 		tokenClaim.DeviceID, _ = mapClaims["did"].(string)
 		tokenClaim.Audience, _ = mapClaims["aud"].(string)
 		tokenClaim.Id, _ = mapClaims["jti"].(string)
+		exp, _ := mapClaims["exp"].(float64)
+		tokenClaim.ExpiresAt = int64(exp)
 		userData, _ := mapClaims["user"].(map[string]interface{})
 		tokenClaim.User.ID, _ = userData["id"].(string)
 		tokenClaim.User.Username, _ = userData["username"].(string)
