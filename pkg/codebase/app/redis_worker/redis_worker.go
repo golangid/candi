@@ -49,7 +49,7 @@ func (r *redisWorker) Serve() {
 		if h := m.WorkerHandler(types.RedisSubscriber); h != nil {
 			for topic, handlerFunc := range h.MountHandlers() {
 				fmt.Println(helper.StringYellow(fmt.Sprintf(`[REDIS-SUBSCRIBER] (key prefix): "%-10s"  (processed by module): %s`, topic, m.Name())))
-				handlers[helper.BuildRedisPubSubKeyTopic(string(m.Name()), topic)] = handlerFunc
+				handlers[topic] = handlerFunc
 			}
 		}
 	}
