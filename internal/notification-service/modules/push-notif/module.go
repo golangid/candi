@@ -40,7 +40,7 @@ func NewModule(deps dependency.Dependency) *Module {
 		types.Kafka: workerhandler.NewKafkaHandler(uc), // example worker
 		// add more worker type from delivery, implement "interfaces.WorkerHandler"
 		types.Scheduler:       workerhandler.NewCronHandler(uc),
-		types.RedisSubscriber: workerhandler.NewRedisHandler(Name, uc),
+		types.RedisSubscriber: workerhandler.NewRedisHandler(uc),
 	}
 
 	return &mod

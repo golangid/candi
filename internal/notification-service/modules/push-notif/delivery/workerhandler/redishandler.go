@@ -9,20 +9,17 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/domain"
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/usecase"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
-	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 )
 
 // RedisHandler struct
 type RedisHandler struct {
-	modName string
-	uc      usecase.PushNotifUsecase
+	uc usecase.PushNotifUsecase
 }
 
 // NewRedisHandler constructor
-func NewRedisHandler(modName types.Module, uc usecase.PushNotifUsecase) *RedisHandler {
+func NewRedisHandler(uc usecase.PushNotifUsecase) *RedisHandler {
 	return &RedisHandler{
-		modName: string(modName),
-		uc:      uc,
+		uc: uc,
 	}
 }
 
@@ -30,9 +27,9 @@ func NewRedisHandler(modName types.Module, uc usecase.PushNotifUsecase) *RedisHa
 func (h *RedisHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
 
 	return map[string]types.WorkerHandlerFunc{
-		helper.BuildRedisPubSubKeyTopic(h.modName, "scheduled-push-notif"): h.handleScheduledNotif,
-		helper.BuildRedisPubSubKeyTopic(h.modName, "push"):                 h.handlePush,
-		helper.BuildRedisPubSubKeyTopic(h.modName, "broadcast-topic"):      h.publishMessageToTopic,
+		"scheduled-push-notif": h.handleScheduledNotif,
+		"push":                 h.handlePush,
+		"broadcast-topic":      h.publishMessageToTopic,
 	}
 }
 
