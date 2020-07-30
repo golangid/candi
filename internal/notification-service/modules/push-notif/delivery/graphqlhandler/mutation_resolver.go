@@ -56,13 +56,39 @@ func (m *mutationResolver) ScheduledNotification(ctx context.Context, input sche
 	return "Success set scheduled push notification, scheduled at: " + input.Payload.ScheduledAt, nil
 }
 
-func (m *mutationResolver) PublishMessageToTopic(ctx context.Context, args struct {
-	Msg     string
-	ToTopic string
-}) *domain.Event {
+// ScheduledBroadcastEvent resolver
+func (m *mutationResolver) ScheduledBroadcastEvent(ctx context.Context, input struct {
+	ScheduledAt string
+	Event       inputTopicEvent
+}) (string, error) {
+	trace := tracer.StartTrace(ctx, "Delivery-ScheduledBroadcastEvent")
+	defer trace.Finish()
+	// m.mw.GraphQLBasicAuth(ctx)
+
+	ctx = trace.Context()
+
+	scheduledAt, err := time.Parse(time.RFC3339, input.ScheduledAt)
+	if err != nil {
+		return "Failed parse scheduled time format", err
+	}
+
+	if scheduledAt.Before(time.Now()) {
+		return "", errors.New("Scheduled time must in future")
+	}
+
+	if err := m.uc.SendScheduledEvent(ctx, scheduledAt, &domain.Event{
+		ID: input.Event.ID, Msg: input.Event.Msg, ToTopic: input.Event.ToTopic,
+	}); err != nil {
+		return "Failed set scheduled event", err
+	}
+
+	return "Success set scheduled event, scheduled at: " + input.ScheduledAt, nil
+}
+
+func (m *mutationResolver) PublishMessageToTopic(ctx context.Context, input *inputTopicEvent) *domain.Event {
 
 	tokenClaim := m.mw.GraphQLBearerAuth(ctx)
 
-	e := &domain.Event{Msg: args.Msg, ToTopic: args.ToTopic, ID: tokenClaim.User.Username}
+	e := &domain.Event{Msg: input.Msg, ToTopic: input.ToTopic, ID: tokenClaim.User.Username}
 	return m.uc.PublishMessageToTopic(ctx, e)
 }

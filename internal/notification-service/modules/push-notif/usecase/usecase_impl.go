@@ -84,3 +84,14 @@ func (uc *pushNotifUsecaseImpl) SendScheduledNotification(ctx context.Context, s
 	exp := scheduledAt.Sub(time.Now())
 	return uc.repo.Schedule.SaveScheduledNotification(ctx, redisTopicKey, data, exp)
 }
+
+func (uc *pushNotifUsecaseImpl) SendScheduledEvent(ctx context.Context, scheduledAt time.Time, request *domain.Event) (err error) {
+	trace := tracer.StartTrace(ctx, "Usecase-SendScheduledEvent")
+	defer trace.Finish()
+	ctx = trace.Context()
+
+	redisTopicKey := helper.BuildRedisPubSubKeyTopic(string(uc.modName), "broadcast-topic")
+	data, _ := json.Marshal(request)
+	exp := scheduledAt.Sub(time.Now())
+	return uc.repo.Schedule.SaveScheduledNotification(ctx, redisTopicKey, data, exp)
+}

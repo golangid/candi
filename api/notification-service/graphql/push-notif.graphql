@@ -7,6 +7,7 @@ type PushNotifMutationModule {
     push(payload: PushPayload!): String!
     scheduledNotification(payload: ScheduledNotifPayload!): String!
     publishMessageToTopic(msg: String!, toTopic: String!): SubscriberEvent!
+    scheduledBroadcastEvent(scheduledAt: String!, event: EventPayload!): String!
 }
 
 type PushNotifSubscriptionModule {
@@ -29,4 +30,10 @@ input PushPayload {
 input ScheduledNotifPayload {
     scheduledAt: String!
     data: PushPayload!
+}
+
+input EventPayload {
+    id: String!
+    msg: String!
+    toTopic: String!
 }

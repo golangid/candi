@@ -17,3 +17,9 @@ type subscribeInputResolver struct {
 	Token string
 	Topic string
 }
+
+type inputTopicEvent struct {
+	ID      string
+	Msg     string
+	ToTopic string
+}

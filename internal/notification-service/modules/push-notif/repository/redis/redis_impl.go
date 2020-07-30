@@ -22,7 +22,7 @@ func (r *RedisRepo) SaveScheduledNotification(ctx context.Context, key string, d
 	conn := r.pool.Get()
 	defer conn.Close()
 
-	key += ":" + string(data)
+	key += "~" + string(data)
 
 	_, err := conn.Do("SETEX", key, int(exp.Seconds()), "")
 	if err != nil {

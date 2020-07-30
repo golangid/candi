@@ -32,6 +32,7 @@ func (h *RedisHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
 	return map[string]types.WorkerHandlerFunc{
 		helper.BuildRedisPubSubKeyTopic(h.modName, "scheduled-push-notif"): h.handleScheduledNotif,
 		helper.BuildRedisPubSubKeyTopic(h.modName, "push"):                 h.handlePush,
+		helper.BuildRedisPubSubKeyTopic(h.modName, "broadcast-topic"):      h.publishMessageToTopic,
 	}
 }
 
@@ -47,5 +48,13 @@ func (h *RedisHandler) handlePush(ctx context.Context, message []byte) error {
 	fmt.Println("check")
 	time.Sleep(50 * time.Second) // heavy process
 	fmt.Println("check done")
+	return nil
+}
+
+func (h *RedisHandler) publishMessageToTopic(ctx context.Context, message []byte) error {
+
+	var eventPayload domain.Event
+	json.Unmarshal(message, &eventPayload)
+	h.uc.PublishMessageToTopic(ctx, &eventPayload)
 	return nil
 }
