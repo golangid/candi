@@ -12,6 +12,7 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	ext "github.com/opentracing/opentracing-go/ext"
+	"google.golang.org/grpc/metadata"
 )
 
 // Tracer for trace
@@ -19,6 +20,7 @@ type Tracer interface {
 	Context() context.Context
 	Tags() map[string]interface{}
 	InjectHTTPHeader(req *http.Request)
+	InjectGRPCMetadata(md metadata.MD)
 	SetError(err error)
 	Finish(additionalTags ...map[string]interface{})
 }
@@ -63,6 +65,16 @@ func (t *tracerImpl) InjectHTTPHeader(req *http.Request) {
 		t.span.Context(),
 		opentracing.HTTPHeaders,
 		opentracing.HTTPHeadersCarrier(req.Header),
+	)
+}
+
+// InjectGRPCMetaData to continue tracer to grpc metadata context
+func (t *tracerImpl) InjectGRPCMetadata(md metadata.MD) {
+	ext.SpanKindRPCClient.Set(t.span)
+	t.span.Tracer().Inject(
+		t.span.Context(),
+		opentracing.HTTPHeaders,
+		GRPCMetadataReaderWriter(md),
 	)
 }
 
@@ -115,6 +127,14 @@ func WithTraceFunc(ctx context.Context, operationName string, fn func(context.Co
 	defer t.Finish()
 
 	fn(t.Context(), t.Tags())
+}
+
+// WithTraceFuncTracer functional with Tracer in function params
+func WithTraceFuncTracer(ctx context.Context, operationName string, fn func(t Tracer)) {
+	t := StartTrace(ctx, operationName)
+	defer t.Finish()
+
+	fn(t)
 }
 
 func toString(v interface{}) (s string) {
@@ -174,4 +194,31 @@ func GetTraceURL(ctx context.Context) (u string) {
 		u = fmt.Sprintf("> tracing_url: %s:16686/trace/%s", urlAgent.Hostname(), GetTraceID(ctx))
 	}
 	return
+}
+
+// GRPCMetadataReaderWriter grpc metadata
+type GRPCMetadataReaderWriter metadata.MD
+
+// ForeachKey method
+func (mrw GRPCMetadataReaderWriter) ForeachKey(handler func(string, string) error) error {
+	for key, values := range mrw {
+		for _, value := range values {
+			dk, dv, err := metadata.DecodeKeyValue(key, value)
+			if err != nil {
+				return err
+			}
+
+			if err := handler(dk, dv); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// Set method
+func (mrw GRPCMetadataReaderWriter) Set(key, value string) {
+	// headers should be lowercase
+	k := strings.ToLower(key)
+	mrw[k] = append(mrw[k], value)
 }
