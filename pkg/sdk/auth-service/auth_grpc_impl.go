@@ -7,6 +7,7 @@ import (
 	pb "agungdwiprasetyo.com/backend-microservices/api/auth-service/proto/token"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
+	"agungdwiprasetyo.com/backend-microservices/pkg/tracer"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -34,10 +35,13 @@ func NewAuthServiceGRPC(authGRPCHost, authServiceKey string) Auth {
 func (a *authServiceGRPC) Validate(ctx context.Context, token string) <-chan shared.Result {
 	output := make(chan shared.Result)
 
-	go func() {
+	go tracer.WithTraceFuncTracer(ctx, "AuthServiceGRPC-Validate", func(trace tracer.Tracer) {
 		defer close(output)
+		ctx = trace.Context()
 
 		md := metadata.Pairs("authorization", a.authKey)
+		trace.InjectGRPCMetadata(md)
+
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		resp, err := a.client.ValidateToken(ctx, &pb.PayloadValidate{
 			Token: token,
@@ -65,7 +69,7 @@ func (a *authServiceGRPC) Validate(ctx context.Context, token string) <-chan sha
 		output <- shared.Result{
 			Data: &sharedClaim,
 		}
-	}()
+	})
 
 	return output
 }

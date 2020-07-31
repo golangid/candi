@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"context"
+	"errors"
+	"strings"
 
 	"agungdwiprasetyo.com/backend-microservices/config"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
@@ -33,4 +35,13 @@ func NewMiddleware(tokenValidator interfaces.TokenValidator) *Middleware {
 	}
 
 	return mw
+}
+
+func extractAuthType(prefix, authorization string) (string, error) {
+	authValues := strings.Split(authorization, " ")
+	if len(authValues) == 2 && strings.ToLower(authValues[0]) == prefix {
+		return authValues[1], nil
+	}
+
+	return "", errors.New("Invalid authorization")
 }

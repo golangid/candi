@@ -9,6 +9,7 @@ import (
 	pb "agungdwiprasetyo.com/backend-microservices/api/storage-service/proto"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
+	"agungdwiprasetyo.com/backend-microservices/pkg/tracer"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -43,19 +44,23 @@ func NewStorageServiceGRPC(host string, authKey string, streamLimitSize int64) (
 }
 
 func (u *storageGRPCImpl) Upload(ctx context.Context, param *UploadParam) (res Response, err error) {
+	trace := tracer.StartTrace(ctx, "StorageGRPCClient-Upload")
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("%v", r)
 		}
+		trace.Finish()
 	}()
+	ctx = trace.Context()
 
 	md := metadata.Pairs("authorization", u.authKey,
 		"filename", param.Filename,
 		"folder", param.Folder,
 		"contentType", param.ContentType,
 		"size", strconv.Itoa(int(param.Size)))
-	ctx = metadata.NewOutgoingContext(ctx, md)
+	trace.InjectGRPCMetadata(md)
 
+	ctx = metadata.NewOutgoingContext(ctx, md)
 	stream, err := u.client.Upload(ctx)
 	if err != nil {
 		logger.LogE(err.Error())

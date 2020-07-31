@@ -9,11 +9,15 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 	"agungdwiprasetyo.com/backend-microservices/pkg/wrapper"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/labstack/echo"
 )
 
 const (
+	// Bearer constanta
 	Bearer = "bearer"
 )
 
@@ -39,18 +43,12 @@ func (m *Middleware) HTTPBearerAuth() echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 
 			authorization := c.Request().Header.Get(echo.HeaderAuthorization)
-			if authorization == "" {
-				return wrapper.NewHTTPResponse(http.StatusUnauthorized, "Invalid authorization").JSON(c.Response())
+			tokenValue, err := extractAuthType(Bearer, authorization)
+			if err != nil {
+				return wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(c.Response())
 			}
 
-			authValues := strings.Split(authorization, " ")
-			authType := strings.ToLower(authValues[0])
-			if authType != Bearer || len(authValues) != 2 {
-				return wrapper.NewHTTPResponse(http.StatusUnauthorized, "Invalid authorization").JSON(c.Response())
-			}
-
-			tokenString := authValues[1]
-			tokenClaim, err := m.Bearer(c.Request().Context(), tokenString)
+			tokenClaim, err := m.Bearer(c.Request().Context(), tokenValue)
 			if err != nil {
 				return wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(c.Response())
 			}
@@ -61,6 +59,7 @@ func (m *Middleware) HTTPBearerAuth() echo.MiddlewareFunc {
 	}
 }
 
+// GraphQLBearerAuth for graphql resolver
 func (m *Middleware) GraphQLBearerAuth(ctx context.Context) *shared.TokenClaim {
 	headers := ctx.Value(shared.ContextKey("headers")).(http.Header)
 	authorization := headers.Get(echo.HeaderAuthorization)
@@ -72,6 +71,28 @@ func (m *Middleware) GraphQLBearerAuth(ctx context.Context) *shared.TokenClaim {
 	}
 
 	tokenClaim, err := m.Bearer(ctx, authValues[1])
+	if err != nil {
+		panic(err)
+	}
+
+	return tokenClaim
+}
+
+// GRPCBearerAuth method
+func (m *Middleware) GRPCBearerAuth(ctx context.Context) *shared.TokenClaim {
+
+	meta, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		panic("missing context metadata")
+	}
+
+	authorizationMap := meta["authorization"]
+	if len(authorizationMap) != 1 {
+		panic(grpc.Errorf(codes.Unauthenticated, "Invalid authorization"))
+	}
+
+	authorization := authorizationMap[0]
+	tokenClaim, err := m.Bearer(ctx, authorization)
 	if err != nil {
 		panic(err)
 	}

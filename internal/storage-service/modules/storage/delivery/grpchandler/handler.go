@@ -8,6 +8,7 @@ import (
 	pb "agungdwiprasetyo.com/backend-microservices/api/storage-service/proto"
 	"agungdwiprasetyo.com/backend-microservices/internal/storage-service/modules/storage/domain"
 	"agungdwiprasetyo.com/backend-microservices/internal/storage-service/modules/storage/usecase"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -16,13 +17,14 @@ import (
 // GRPCHandler rpc stream
 type GRPCHandler struct {
 	uc usecase.StorageUsecase
+	mw interfaces.Middleware
 }
 
 // NewGRPCHandler func
-func NewGRPCHandler(uc usecase.StorageUsecase) *GRPCHandler {
+func NewGRPCHandler(uc usecase.StorageUsecase, mw interfaces.Middleware) *GRPCHandler {
 
 	return &GRPCHandler{
-		uc: uc,
+		uc: uc, mw: mw,
 	}
 }
 
@@ -33,6 +35,7 @@ func (h *GRPCHandler) Register(server *grpc.Server) {
 
 // Upload method
 func (h *GRPCHandler) Upload(stream pb.StorageService_UploadServer) (err error) {
+	h.mw.GRPCBasicAuth(stream.Context())
 
 	ctx := stream.Context()
 	meta, ok := metadata.FromIncomingContext(ctx)

@@ -24,7 +24,7 @@ func NewModule(deps dependency.Dependency) *Module {
 
 	var mod Module
 
-	mod.grpchandler = grpchandler.NewGRPCHandler(uc)
+	mod.grpchandler = grpchandler.NewGRPCHandler(uc, deps.GetMiddleware())
 	return &mod
 }
 

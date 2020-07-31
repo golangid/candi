@@ -61,6 +61,7 @@ func (h *GRPCHandler) GenerateToken(ctx context.Context, req *proto.UserData) (*
 
 // ValidateToken rpc
 func (h *GRPCHandler) ValidateToken(ctx context.Context, req *proto.PayloadValidate) (*proto.ResponseValidation, error) {
+	h.mw.GRPCBasicAuth(ctx)
 
 	result := <-h.uc.Validate(ctx, req.Token)
 	if result.Error != nil {

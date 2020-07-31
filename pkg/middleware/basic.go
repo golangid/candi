@@ -9,11 +9,15 @@ import (
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 	"agungdwiprasetyo.com/backend-microservices/pkg/wrapper"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/labstack/echo"
 )
 
 const (
+	// Basic constanta
 	Basic = "basic"
 )
 
@@ -60,13 +64,11 @@ func (m *Middleware) HTTPBasicAuth(showAlert bool) echo.MiddlewareFunc {
 				return wrapper.NewHTTPResponse(http.StatusUnauthorized, "Invalid authorization").JSON(c.Response())
 			}
 
-			authValues := strings.Split(authorization, " ")
-			authType := strings.ToLower(authValues[0])
-			if authType != Basic || len(authValues) != 2 {
-				return wrapper.NewHTTPResponse(http.StatusUnauthorized, "Invalid authorization").JSON(c.Response())
+			key, err := extractAuthType(Basic, authorization)
+			if err != nil {
+				return wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(c.Response())
 			}
 
-			key := authValues[1]
 			if err := m.Basic(c.Request().Context(), key); err != nil {
 				return wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(c.Response())
 			}
@@ -76,17 +78,41 @@ func (m *Middleware) HTTPBasicAuth(showAlert bool) echo.MiddlewareFunc {
 	}
 }
 
+// GraphQLBasicAuth for graphql resolver
 func (m *Middleware) GraphQLBasicAuth(ctx context.Context) {
 	headers := ctx.Value(shared.ContextKey("headers")).(http.Header)
 	authorization := headers.Get(echo.HeaderAuthorization)
 
-	authValues := strings.Split(authorization, " ")
-	authType := strings.ToLower(authValues[0])
-	if authType != Basic || len(authValues) != 2 {
-		panic("Invalid authorization")
+	key, err := extractAuthType(Basic, authorization)
+	if err != nil {
+		panic(err)
 	}
 
-	if err := m.Basic(ctx, authValues[1]); err != nil {
+	if err := m.Basic(ctx, key); err != nil {
+		panic(err)
+	}
+}
+
+// GRPCBasicAuth method
+func (m *Middleware) GRPCBasicAuth(ctx context.Context) {
+
+	meta, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		panic("missing context metadata")
+	}
+
+	authorizationMap := meta["authorization"]
+	if len(authorizationMap) != 1 {
+		panic(grpc.Errorf(codes.Unauthenticated, "Invalid authorization"))
+	}
+
+	authorization := authorizationMap[0]
+	key, err := extractAuthType(Basic, authorization)
+	if err != nil {
+		panic(err)
+	}
+
+	if err := m.Basic(ctx, key); err != nil {
 		panic(err)
 	}
 }

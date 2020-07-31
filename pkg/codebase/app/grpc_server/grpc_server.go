@@ -24,8 +24,16 @@ func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
 	return &grpcServer{
 		serverEngine: grpc.NewServer(
 			grpc.MaxSendMsgSize(200*int(helper.MByte)), grpc.MaxRecvMsgSize(200*int(helper.MByte)),
-			grpc.UnaryInterceptor(service.GetDependency().GetMiddleware().GRPCBasicAuth),
-			grpc.StreamInterceptor(service.GetDependency().GetMiddleware().GRPCBasicAuthStream),
+			grpc.UnaryInterceptor(chainUnaryServer(
+				unaryTracerInterceptor,
+				unaryLogInterceptor,
+				unaryPanicInterceptor,
+			)),
+			grpc.StreamInterceptor(chainStreamServer(
+				streamTracerInterceptor,
+				streamLogInterceptor,
+				streamPanicInterceptor,
+			)),
 		),
 		service: service,
 	}

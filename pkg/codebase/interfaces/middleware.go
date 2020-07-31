@@ -5,7 +5,6 @@ import (
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 	"github.com/labstack/echo"
-	"google.golang.org/grpc"
 )
 
 // Middleware abstraction
@@ -27,8 +26,8 @@ type HTTPMiddleware interface {
 
 // GRPCMiddleware interface, common middleware for grpc handler
 type GRPCMiddleware interface {
-	GRPCBasicAuth(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error)
-	GRPCBasicAuthStream(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error)
+	GRPCBasicAuth(ctx context.Context)
+	GRPCBearerAuth(ctx context.Context) *shared.TokenClaim
 }
 
 // GraphQLMiddleware interface, common middleware for graphql handler, as directive in graphql schema
