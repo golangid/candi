@@ -43,7 +43,7 @@ KAFKA_BROKERS=localhost:9092
 KAFKA_CLIENT_ID={{.ServiceName}}
 KAFKA_CONSUMER_GROUP={{.ServiceName}}
 
-JAEGER_TRACING_HOST=[string]
+JAEGER_TRACING_HOST=127.0.0.1:5775
 GRAPHQL_SCHEMA_DIR="api/{{.ServiceName}}/graphql"
 JSON_SCHEMA_DIR="api/{{.ServiceName}}/jsonschema"
 

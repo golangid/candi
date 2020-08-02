@@ -74,18 +74,15 @@ import (
 	"fmt"
 
 	"{{.PackageName}}/pkg/codebase/factory/types"
-	"{{.PackageName}}/pkg/helper"
 )
 
 // RedisHandler struct
 type RedisHandler struct {
-	modName string
 }
 
 // NewRedisHandler constructor
-func NewRedisHandler(modName string) *RedisHandler {
+func NewRedisHandler() *RedisHandler {
 	return &RedisHandler{
-		modName: modName,
 	}
 }
 
@@ -93,7 +90,7 @@ func NewRedisHandler(modName string) *RedisHandler {
 func (h *RedisHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
 
 	return map[string]types.WorkerHandlerFunc{
-		helper.BuildRedisPubSubKeyTopic(h.modName, "sample"): h.handleSample,
+		"sample": h.handleSample,
 	}
 }
 

@@ -36,7 +36,7 @@ func NewModule(deps dependency.Dependency) *Module {
 	mod.workerHandlers = map[types.Worker]interfaces.WorkerHandler{
 		types.Kafka:           workerhandler.NewKafkaHandler(),
 		types.Scheduler:       workerhandler.NewCronHandler(),
-		types.RedisSubscriber: workerhandler.NewRedisHandler(string(Name)),
+		types.RedisSubscriber: workerhandler.NewRedisHandler(),
 	}
 
 	return &mod
