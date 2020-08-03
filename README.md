@@ -39,3 +39,6 @@ make docker service={{service_name}}
 * [**Notification Service**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/notification-service)
 * [**Storage Service**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/storage-service)
 * [**User Service**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/user-service)
+
+## Todo
+- [ ] Add task queue worker like celery
