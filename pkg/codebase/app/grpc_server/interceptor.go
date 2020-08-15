@@ -57,6 +57,12 @@ func unaryTracerInterceptor(ctx context.Context, req interface{}, info *grpc.Una
 	}
 	defer span.Finish()
 
+	if meta, ok := metadata.FromIncomingContext(ctx); ok {
+		span.SetTag("metadata", string(helper.ToBytes(meta)))
+	}
+
+	span.SetTag("req.body", req)
+
 	resp, err = handler(ctx, req)
 	if err != nil {
 		ext.Error.Set(span, true)
@@ -127,6 +133,10 @@ func streamTracerInterceptor(srv interface{}, stream grpc.ServerStream, info *gr
 		ext.SpanKindRPCClient.Set(span)
 	}
 	defer span.Finish()
+
+	if meta, ok := metadata.FromIncomingContext(ctx); ok {
+		span.SetTag("metadata", string(helper.ToBytes(meta)))
+	}
 
 	err = handler(srv, stream)
 	if err != nil {
