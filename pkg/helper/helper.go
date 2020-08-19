@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -105,32 +106,15 @@ func ToStringPtr(str string) *string {
 	return &str
 }
 
-// CronJobKeyToString helper
-// with interval format that can be accepted by time.ParseDuration param (ex 10s, 5h, etc)
-// or can also be a format HH:mm:ss
-func CronJobKeyToString(jobName string, interval string) string {
-	return fmt.Sprintf("%s~%s", jobName, interval)
-}
-
-// ParseCronJobKey helper
-func ParseCronJobKey(str string) (jobName string, interval string) {
-	split := strings.Split(str, "~")
-	jobName = split[0]
-	interval = split[1]
-	return
-}
-
-// BuildRedisPubSubKeyTopic helper
-func BuildRedisPubSubKeyTopic(modName, handlerName string) string {
-	return fmt.Sprintf("%s~%s", modName, handlerName)
-}
-
-// ParseRedisPubSubKeyTopic helper
-func ParseRedisPubSubKeyTopic(str string) (handlerName, messageData string) {
-	defer func() { recover() }()
-
-	split := strings.Split(str, "~")
-	handlerName = strings.Join(split[:2], "~")
-	messageData = strings.Join(split[2:], "~")
+// ToBytes convert all types to bytes
+func ToBytes(i interface{}) (b []byte) {
+	switch t := i.(type) {
+	case []byte:
+		b = t
+	case string:
+		b = []byte(t)
+	default:
+		b, _ = json.Marshal(i)
+	}
 	return
 }

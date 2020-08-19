@@ -1,0 +1,49 @@
+package helper
+
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+)
+
+type cronJobKey struct {
+	JobName  string `json:"jobName"`
+	Interval string `json:"interval"`
+}
+
+// CronJobKeyToString helper
+/*
+Allowed interval:
+* standard time duration string, example: 2s, 10m
+* custom start time and repeat duration, example:
+	- 23:00@daily, will repeated at 23:00 every day
+	- 23:00@weekly, will repeated at 23:00 every week
+*/
+func CronJobKeyToString(jobName string, interval string) string {
+	b, _ := json.Marshal(cronJobKey{
+		JobName: jobName, Interval: interval,
+	})
+	return string(b)
+}
+
+// ParseCronJobKey helper
+func ParseCronJobKey(str string) (string, string) {
+	var cronKey cronJobKey
+	json.Unmarshal([]byte(str), &cronKey)
+	return cronKey.JobName, cronKey.Interval
+}
+
+// BuildRedisPubSubKeyTopic helper
+func BuildRedisPubSubKeyTopic(handlerName string, payload interface{}) string {
+	return fmt.Sprintf("%s~%s", strings.Replace(handlerName, "~", "", -1), ToBytes(payload))
+}
+
+// ParseRedisPubSubKeyTopic helper
+func ParseRedisPubSubKeyTopic(str string) (handlerName, messageData string) {
+	defer func() { recover() }()
+
+	split := strings.Split(str, "~")
+	handlerName = split[0]
+	messageData = strings.Join(split[1:], "~")
+	return
+}

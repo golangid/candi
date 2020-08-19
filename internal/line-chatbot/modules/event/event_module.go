@@ -27,7 +27,7 @@ func NewModule(deps dependency.Dependency) *Module {
 	uc := usecase.NewEventUsecase(repo)
 
 	var mod Module
-	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(string(Event), deps.GetMiddleware(), uc)
+	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware(), uc)
 	mod.grpcHandler = grpchandler.NewGRPCHandler(uc)
 	return &mod
 }

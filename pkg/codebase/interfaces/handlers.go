@@ -18,7 +18,6 @@ type GRPCHandler interface {
 
 // GraphQLHandler delivery factory for graphql resolver handler
 type GraphQLHandler interface {
-	RootName() string
 	// waiting https://github.com/graph-gophers/graphql-go/issues/145 if include subscription in schema
 	Query() interface{}
 	Mutation() interface{}

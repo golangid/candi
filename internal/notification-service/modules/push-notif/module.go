@@ -29,12 +29,12 @@ type Module struct {
 // NewModule module constructor
 func NewModule(deps dependency.Dependency) *Module {
 	repo := repository.NewRepository(deps.GetRedisPool().WritePool(), deps.GetMongoDatabase().ReadDB(), deps.GetMongoDatabase().WriteDB())
-	uc := usecase.NewPushNotifUsecase(Name, repo)
+	uc := usecase.NewPushNotifUsecase(Name, repo, deps.GetSDK())
 
 	var mod Module
 	mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware(), uc)
 	mod.grpcHandler = grpchandler.NewGRPCHandler(deps.GetMiddleware())
-	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(string(Name), deps.GetMiddleware(), uc)
+	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware(), uc)
 
 	mod.workerHandlers = map[types.Worker]interfaces.WorkerHandler{
 		types.Kafka: workerhandler.NewKafkaHandler(uc), // example worker

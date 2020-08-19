@@ -7,28 +7,21 @@ import (
 
 // GraphQLHandler model
 type GraphQLHandler struct {
-	rootName     string
 	query        *queryResolver
 	mutation     *mutationResolver
 	subscription *subscriptionResolver
 }
 
 // NewGraphQLHandler delivery
-func NewGraphQLHandler(rootName string, mw interfaces.Middleware, uc usecase.TokenUsecase) *GraphQLHandler {
+func NewGraphQLHandler(mw interfaces.Middleware, uc usecase.TokenUsecase) *GraphQLHandler {
 
 	h := &GraphQLHandler{
-		rootName:     rootName,
 		query:        &queryResolver{},
 		mutation:     &mutationResolver{},
 		subscription: &subscriptionResolver{},
 	}
 
 	return h
-}
-
-// RootName resolver field
-func (h *GraphQLHandler) RootName() string {
-	return h.rootName
 }
 
 // Query method

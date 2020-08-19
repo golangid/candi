@@ -47,6 +47,9 @@ func constructStruct(structFields []reflect.StructField, structValue map[string]
 
 	structType := reflect.New(reflect.StructOf(structFields)).Elem()
 	for fieldName, fieldValue := range structValue {
+		if fieldValue == nil {
+			continue
+		}
 		val := structType.FieldByName(fieldName)
 		val.Set(reflect.ValueOf(fieldValue))
 	}

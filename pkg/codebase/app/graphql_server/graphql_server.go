@@ -80,7 +80,7 @@ func NewHandler(service factory.ServiceFactory) Handler {
 	var queryResolverFields, mutationResolverFields, subscriptionResolverFields []reflect.StructField
 	for _, m := range service.GetModules() {
 		if resolverModule := m.GraphQLHandler(); resolverModule != nil {
-			rootName := resolverModule.RootName()
+			rootName := string(m.Name())
 			query, mutation, subscription := resolverModule.Query(), resolverModule.Mutation(), resolverModule.Subscription()
 
 			appendStructField(rootName, query, &queryResolverFields)

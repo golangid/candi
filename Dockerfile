@@ -1,9 +1,11 @@
 # Stage 1
 FROM golang:1.12.7-alpine3.10 AS dependency_builder
 
-RUN apk add bash ca-certificates git make gcc g++ libc-dev
 WORKDIR /go/src
 ENV GO111MODULE=on
+
+RUN apk update
+RUN apk add --no-cache bash ca-certificates git make
 
 COPY go.mod .
 COPY go.sum .
