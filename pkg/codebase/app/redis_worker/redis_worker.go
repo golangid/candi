@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
@@ -48,8 +49,8 @@ func (r *redisWorker) Serve() {
 	for _, m := range r.service.GetModules() {
 		if h := m.WorkerHandler(types.RedisSubscriber); h != nil {
 			for topic, handlerFunc := range h.MountHandlers() {
-				fmt.Println(helper.StringYellow(fmt.Sprintf(`[REDIS-SUBSCRIBER] (key prefix): "%-10s"  (processed by module): %s`, topic, m.Name())))
-				handlers[helper.BuildRedisPubSubKeyTopic(string(m.Name()), topic)] = handlerFunc
+				logger.LogYellow(fmt.Sprintf(`[REDIS-SUBSCRIBER] (key prefix): "%s" (processed by module): %s`, topic, m.Name()))
+				handlers[strings.Replace(topic, "~", "", -1)] = handlerFunc
 			}
 		}
 	}
@@ -63,12 +64,27 @@ func (r *redisWorker) Serve() {
 	psc := r.pubSubConn()
 
 	// listen redis subscriber
-	messageReceiver := make(chan []byte)
+	handlerReceiver := make(chan struct {
+		handlerName string
+		message     []byte
+	})
 	go func() {
 		for {
 			switch msg := psc.Receive().(type) {
 			case redis.Message:
-				messageReceiver <- msg.Data
+
+				handlerName, messageData := helper.ParseRedisPubSubKeyTopic(string(msg.Data))
+				_, ok := handlers[handlerName]
+				if ok {
+					handlerReceiver <- struct {
+						handlerName string
+						message     []byte
+					}{
+						handlerName: handlerName,
+						message:     []byte(messageData),
+					}
+				}
+
 			case error:
 				// if network connection error, create new connection from pool
 				psc = r.pubSubConn()
@@ -80,7 +96,7 @@ func (r *redisWorker) Serve() {
 	fmt.Printf("\x1b[34;1m⇨ Redis pubsub worker running with %d keys\x1b[0m\n\n", len(handlers))
 	for {
 		select {
-		case message := <-messageReceiver:
+		case handler := <-handlerReceiver:
 			r.wg.Add(1)
 			go tracer.WithTraceFunc(context.Background(), "RedisSubscriber", func(ctx context.Context, tags map[string]interface{}) {
 				defer r.wg.Done()
@@ -90,19 +106,18 @@ func (r *redisWorker) Serve() {
 					}
 					logger.LogGreen(tracer.GetTraceURL(ctx))
 				}()
-				tags["message"] = string(message)
 
-				handlerName, messageData := helper.ParseRedisPubSubKeyTopic(string(message))
-				handlerFunc, ok := handlers[handlerName]
-				if !ok {
-					return
-				}
-				if err := handlerFunc(ctx, []byte(messageData)); err != nil {
+				tags["handler_name"] = handler.handlerName
+				tags["message"] = string(handler.message)
+
+				handlerFunc := handlers[handler.handlerName]
+				if err := handlerFunc(ctx, handler.message); err != nil {
 					panic(err)
 				}
 			})
+
 		case <-r.shutdown:
-			break
+			return
 		}
 	}
 }

@@ -90,7 +90,7 @@ func NewRedisHandler() *RedisHandler {
 func (h *RedisHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
 
 	return map[string]types.WorkerHandlerFunc{
-		"sample": h.handleSample,
+		"{{$.module}}-sample": h.handleSample,
 	}
 }
 
