@@ -41,6 +41,7 @@ func NewModule(deps dependency.Dependency) *Module {
 		// add more worker type from delivery, implement "interfaces.WorkerHandler"
 		types.Scheduler:       workerhandler.NewCronHandler(uc),
 		types.RedisSubscriber: workerhandler.NewRedisHandler(uc),
+		types.TaskQueue:       workerhandler.NewTaskQueueHandler(uc),
 	}
 
 	return &mod
