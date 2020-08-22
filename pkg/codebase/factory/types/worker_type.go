@@ -14,6 +14,8 @@ const (
 	RabbitMQ
 	// Scheduler worker
 	Scheduler
+	// TaskQueue worker
+	TaskQueue
 )
 
 // WorkerHandlerFunc types

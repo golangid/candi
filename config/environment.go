@@ -29,6 +29,8 @@ type Env struct {
 	UseCronScheduler bool
 	// UseRedisSubscriber env
 	UseRedisSubscriber bool
+	// UseTaskQueueWorker env
+	UseTaskQueueWorker bool
 
 	// GraphQLSchemaDir env
 	GraphQLSchemaDir string
@@ -113,6 +115,12 @@ func loadBaseEnv(serviceLocation string, targetEnv *Env) {
 		panic("missing USE_REDIS_SUBSCRIBER environment")
 	}
 	env.UseRedisSubscriber, _ = strconv.ParseBool(useRedisSubs)
+
+	useTaskQueueWorker, ok := os.LookupEnv("USE_TASK_QUEUE_WORKER")
+	if !ok {
+		panic("missing USE_TASK_QUEUE_WORKER environment")
+	}
+	env.UseTaskQueueWorker, _ = strconv.ParseBool(useTaskQueueWorker)
 
 	// ------------------------------------
 

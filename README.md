@@ -41,4 +41,4 @@ make docker service={{service_name}}
 * [**User Service**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/user-service)
 
 ## Todo
-- [ ] Add task queue worker like celery
+- [x] Add task queue worker like celery

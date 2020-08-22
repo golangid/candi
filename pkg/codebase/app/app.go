@@ -17,6 +17,7 @@ import (
 	kafkaworker "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/kafka_worker"
 	redisworker "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/redis_worker"
 	restserver "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/rest_server"
+	taskqueueworker "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/task_queue_worker"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"agungdwiprasetyo.com/backend-microservices/pkg/tracer"
@@ -65,6 +66,10 @@ func New(service factory.ServiceFactory) *App {
 
 	if config.BaseEnv().UseRedisSubscriber {
 		appInstance.servers = append(appInstance.servers, redisworker.NewWorker(service))
+	}
+
+	if config.BaseEnv().UseTaskQueueWorker {
+		appInstance.servers = append(appInstance.servers, taskqueueworker.NewWorker(service))
 	}
 
 	return appInstance
