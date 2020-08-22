@@ -130,9 +130,10 @@ func main() {
 						{FromTemplate: true, DataSource: dataSource, Source: deliveryRestTemplate, FileName: "resthandler.go"},
 					}},
 					{TargetDir: "workerhandler/", IsDir: true, Childs: []FileStructure{
-						{FromTemplate: true, DataSource: dataSource, Source: deliveryKafkaTemplate, FileName: "kafkahandler.go"},
-						{FromTemplate: true, DataSource: dataSource, Source: deliveryRedisTemplate, FileName: "redishandler.go"},
-						{FromTemplate: true, DataSource: dataSource, Source: deliveryCronTemplate, FileName: "cronhandler.go"},
+						{FromTemplate: true, DataSource: dataSource, Source: deliveryKafkaTemplate, FileName: "kafka_handler.go"},
+						{FromTemplate: true, DataSource: dataSource, Source: deliveryRedisTemplate, FileName: "redis_handler.go"},
+						{FromTemplate: true, DataSource: dataSource, Source: deliveryCronTemplate, FileName: "cron_handler.go"},
+						{FromTemplate: true, DataSource: dataSource, Source: deliveryTaskQueueTemplate, FileName: "taskqueue_handler.go"},
 					}},
 				},
 			},

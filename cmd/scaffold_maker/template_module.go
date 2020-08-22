@@ -37,6 +37,7 @@ func NewModule(deps dependency.Dependency) *Module {
 		types.Kafka:           workerhandler.NewKafkaHandler(),
 		types.Scheduler:       workerhandler.NewCronHandler(),
 		types.RedisSubscriber: workerhandler.NewRedisHandler(),
+		types.TaskQueue:       workerhandler.NewTaskQueueHandler(),
 	}
 
 	return &mod

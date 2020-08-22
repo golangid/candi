@@ -147,8 +147,8 @@ func (c *taskQueueWorker) Shutdown(ctx context.Context) {
 
 	select {
 	case <-ctx.Done():
-		fmt.Print("nqueue_worker: force shutdown ")
+		fmt.Print("queue_worker: force shutdown ")
 	case <-done:
-		fmt.Print("nqueue_worker: success waiting all task until done ")
+		fmt.Print("queue_worker: success waiting all task until done ")
 	}
 }

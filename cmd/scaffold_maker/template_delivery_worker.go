@@ -99,4 +99,48 @@ func (h *RedisHandler) handleSample(ctx context.Context, message []byte) error {
 	return nil
 }
 `
+
+	deliveryTaskQueueTemplate = `package workerhandler
+
+import (
+	"context"
+	"time"
+
+	taskqueueworker "{{.PackageName}}/pkg/codebase/app/task_queue_worker"
+	"{{.PackageName}}/pkg/codebase/factory/types"
+)
+
+// TaskQueueHandler struct
+type TaskQueueHandler struct {
+}
+
+// NewTaskQueueHandler constructor
+func NewTaskQueueHandler() *TaskQueueHandler {
+	return &TaskQueueHandler{
+	}
+}
+
+// MountHandlers return map topic to handler func
+func (h *TaskQueueHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
+
+	return map[string]types.WorkerHandlerFunc{
+		"{{$.module}}-task-one": h.taskOne,
+		"{{$.module}}-task-two": h.taskTwo,
+	}
+}
+
+func (h *TaskQueueHandler) taskOne(ctx context.Context, message []byte) error {
+	return &taskqueueworker.ErrorRetrier{
+		Delay:   10 * time.Second,
+		Message: "Error one",
+	}
+}
+
+func (h *TaskQueueHandler) taskTwo(ctx context.Context, message []byte) error {
+	return &taskqueueworker.ErrorRetrier{
+		Delay:   3 * time.Second,
+		Message: "Error two",
+	}
+}
+`
 )
