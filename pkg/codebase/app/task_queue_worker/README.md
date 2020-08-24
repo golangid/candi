@@ -65,12 +65,12 @@ import (
 
 func someUsecase() {
 	// add task queue for `task-one` with 5 retry
-	if err := taskqueueworker.AddJob("task-one", 5, `{"params": "test"}`); err != nil {
+	if err := taskqueueworker.AddJob("task-one", 5, `{"params": "test-one"}`); err != nil {
 		log.Println(err)
 	}
 
 	// add task queue for `task-two` with 5 retry
-	if err := taskqueueworker.AddJob("task-one", 5, `{"params": "test"}`); err != nil {
+	if err := taskqueueworker.AddJob("task-two", 5, `{"params": "test-two"}`); err != nil {
 		log.Println(err)
 	}
 }
