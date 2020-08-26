@@ -1,15 +1,13 @@
 # Example
 
+## Create delivery handler
+
 ```go
 package workerhandler
 
 import (
 	"context"
-	"encoding/json"
 	"time"
-
-	"example.service/internal/modules/push-notif/domain"
-	"example.service/internal/modules/push-notif/usecase"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
@@ -17,14 +15,11 @@ import (
 
 // RedisHandler struct
 type RedisHandler struct {
-	uc usecase.PushNotifUsecase
 }
 
 // NewRedisHandler constructor
-func NewRedisHandler(modName types.Module, uc usecase.PushNotifUsecase) *RedisHandler {
-	return &RedisHandler{
-		uc: uc,
-	}
+func NewRedisHandler() *RedisHandler {
+	return &RedisHandler{}
 }
 
 // MountHandlers return group map topic key to handler func
@@ -36,9 +31,7 @@ func (h *RedisHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
 }
 
 func (h *RedisHandler) handleScheduledPushNotif(ctx context.Context, message []byte) error {
-	var payload domain.PushNotifRequestPayload
-	json.Unmarshal(message, &payload)
-	err := h.uc.SendNotification(ctx, &payload)
+	// process usecase
 	logger.LogIf("success handling message: %s", string(message))
 	return err
 }
@@ -49,4 +42,36 @@ func (h *RedisHandler) handleHeavyPush(ctx context.Context, message []byte) erro
 	logger.LogI("heavy push done")
 	return nil
 }
+```
+
+## Register in module
+
+```go
+package examplemodule
+
+import (
+
+	"example.service/internal/modules/examplemodule/delivery/workerhandler"
+
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
+)
+
+type Module struct {
+	// ...another delivery handler
+	workerHandlers map[types.Worker]interfaces.WorkerHandler
+}
+
+func NewModules(deps dependency.Dependency) *Module {
+	return &Module{
+		workerHandlers: map[types.Worker]interfaces.WorkerHandler{
+			// ...another worker handler
+			// ...
+			types.RedisSubscriber: workerhandler.NewRedisHandler(),
+		},
+	}
+}
+
+// ...another method
 ```

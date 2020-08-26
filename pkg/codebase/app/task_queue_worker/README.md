@@ -20,8 +20,7 @@ type TaskQueueHandler struct {
 
 // NewTaskQueueHandler constructor
 func NewTaskQueueHandler() *TaskQueueHandler {
-	return &TaskQueueHandler{
-	}
+	return &TaskQueueHandler{}
 }
 
 // MountHandlers return map topic to handler func
@@ -49,6 +48,38 @@ func (h *TaskQueueHandler) taskTwo(ctx context.Context, message []byte) error {
 	}
 }
 
+```
+
+## Register in module
+
+```go
+package examplemodule
+
+import (
+
+	"example.service/internal/modules/examplemodule/delivery/workerhandler"
+
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
+)
+
+type Module struct {
+	// ...another delivery handler
+	workerHandlers map[types.Worker]interfaces.WorkerHandler
+}
+
+func NewModules(deps dependency.Dependency) *Module {
+	return &Module{
+		workerHandlers: map[types.Worker]interfaces.WorkerHandler{
+			// ...another worker handler
+			// ...
+			types.TaskQueue: workerhandler.NewTaskQueueHandler(),
+		},
+	}
+}
+
+// ...another method
 ```
 
 ## Add task in each usecase module

@@ -1,14 +1,13 @@
 # Example
 
+## Create delivery handler
+
 ```go
 package workerhandler
 
 import (
 	"context"
 	"encoding/json"
-
-	"example.service/internal/modules/push-notif/domain"
-	"example.service/internal/modules/push-notif/usecase"
 	
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
 	"agungdwiprasetyo.com/backend-microservices/pkg/tracer"
@@ -16,14 +15,11 @@ import (
 
 // KafkaHandler struct
 type KafkaHandler struct {
-	uc usecase.PushNotifUsecase
 }
 
 // NewKafkaHandler constructor
-func NewKafkaHandler(uc usecase.PushNotifUsecase) *KafkaHandler {
-	return &KafkaHandler{
-		uc: uc,
-	}
+func NewKafkaHandler() *KafkaHandler {
+	return &KafkaHandler{}
 }
 
 // MountHandlers return group map topic to handler func
@@ -37,8 +33,39 @@ func (h *KafkaHandler) handlePushNotif(ctx context.Context, message []byte) erro
 	trace := tracer.StartTrace(ctx, "KafkaDelivery-HandlePushNotif")
 	defer trace.Finish()
 
-	var payload domain.PushNotifRequestPayload
-	json.Unmarshal(message, &payload)
-	return h.uc.SendNotification(ctx, &payload)
+	// process usecase
+	return nil
 }
+```
+
+## Register in module
+
+```go
+package examplemodule
+
+import (
+
+	"example.service/internal/modules/examplemodule/delivery/workerhandler"
+
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
+)
+
+type Module struct {
+	// ...another delivery handler
+	workerHandlers map[types.Worker]interfaces.WorkerHandler
+}
+
+func NewModules(deps dependency.Dependency) *Module {
+	return &Module{
+		workerHandlers: map[types.Worker]interfaces.WorkerHandler{
+			// ...another worker handler
+			// ...
+			types.Kafka: workerhandler.NewKafkaHandler(),
+		},
+	}
+}
+
+// ...another method
 ```

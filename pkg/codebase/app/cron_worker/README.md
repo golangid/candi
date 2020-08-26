@@ -1,5 +1,7 @@
 # Example
 
+## Create delivery handler
+
 ```go
 package workerhandler
 
@@ -7,8 +9,6 @@ import (
 	"context"
 	"fmt"
 	"time"
-
-	"example.service/internal/modules/push-notif/usecase"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
@@ -18,14 +18,11 @@ import (
 
 // CronHandler struct
 type CronHandler struct {
-	uc usecase.PushNotifUsecase
 }
 
 // NewCronHandler constructor
-func NewCronHandler(uc usecase.PushNotifUsecase) *CronHandler {
-	return &CronHandler{
-		uc: uc,
-	}
+func NewCronHandler() *CronHandler {
+	return &CronHandler{}
 }
 
 // MountHandlers return group map topic key to handler func
@@ -55,4 +52,36 @@ func (h *CronHandler) handleHeavyPush(ctx context.Context, message []byte) error
 	return nil
 }
 
+```
+
+## Register in module
+
+```go
+package examplemodule
+
+import (
+
+	"example.service/internal/modules/examplemodule/delivery/workerhandler"
+
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/dependency"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
+)
+
+type Module struct {
+	// ...another delivery handler
+	workerHandlers map[types.Worker]interfaces.WorkerHandler
+}
+
+func NewModules(deps dependency.Dependency) *Module {
+	return &Module{
+		workerHandlers: map[types.Worker]interfaces.WorkerHandler{
+			// ...another worker handler
+			// ...
+			types.Scheduler: workerhandler.NewCronHandler(),
+		},
+	}
+}
+
+// ...another method
 ```
