@@ -10,18 +10,22 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
-	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
-	"agungdwiprasetyo.com/backend-microservices/pkg/tracer"
 )
 
 var (
-	registeredJob      map[string]types.WorkerHandlerFunc
-	workers            []reflect.SelectCase
+	registeredTask map[string]struct {
+		handlerFunc types.WorkerHandlerFunc
+		workerIndex int
+	}
+
+	workers         []reflect.SelectCase
+	workerIndexTask map[int]*struct {
+		taskID         string
+		activeInterval *time.Ticker
+	}
+	queue              QueueStorage
 	refreshWorkerNotif chan struct{}
 	mutex              sync.Mutex
-	taskQueue          map[int]*shared.Queue
-	workerJobIndex     map[int]string
-	workerIndexJob     map[string]int
 )
 
 type taskQueueWorker struct {
@@ -34,39 +38,65 @@ type taskQueueWorker struct {
 // NewWorker create new cron worker
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	refreshWorkerNotif = make(chan struct{})
-	registeredJob = make(map[string]types.WorkerHandlerFunc)
-	workerJobIndex = make(map[int]string)
-	workerIndexJob = make(map[string]int)
-	taskQueue = make(map[int]*shared.Queue)
+	registeredTask = make(map[string]struct {
+		handlerFunc types.WorkerHandlerFunc
+		workerIndex int
+	})
+	workerIndexTask = make(map[int]*struct {
+		taskID         string
+		activeInterval *time.Ticker
+	})
+	queue = NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
+
 	return &taskQueueWorker{
 		service:  service,
 		shutdown: make(chan struct{}),
 	}
 }
 
-func (c *taskQueueWorker) Serve() {
+func (t *taskQueueWorker) Serve() {
 
 	// add shutdown channel to first index
 	workers = append(workers, reflect.SelectCase{
-		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(c.shutdown),
+		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(t.shutdown),
 	})
 	// add refresh worker channel to second index
 	workers = append(workers, reflect.SelectCase{
 		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(refreshWorkerNotif),
 	})
 
-	for _, m := range c.service.GetModules() {
+	for _, m := range t.service.GetModules() {
 		if h := m.WorkerHandler(types.TaskQueue); h != nil {
-			for jobID, handler := range h.MountHandlers() {
-				registeredJob[jobID] = handler
-				workerIndexJob[jobID] = len(workers)
+			for taskID, handlerFunc := range h.MountHandlers() {
+				workerIndex := len(workers)
+				registeredTask[taskID] = struct {
+					handlerFunc types.WorkerHandlerFunc
+					workerIndex int
+				}{
+					handlerFunc: handlerFunc, workerIndex: workerIndex,
+				}
+				workerIndexTask[workerIndex] = &struct {
+					taskID         string
+					activeInterval *time.Ticker
+				}{
+					taskID: taskID,
+				}
+
 				workers = append(workers, reflect.SelectCase{Dir: reflect.SelectRecv})
-				logger.LogYellow(fmt.Sprintf(`[TASK-QUEUE-WORKER] job_name: %s~%s`, m.Name(), jobID))
+
+				logger.LogYellow(fmt.Sprintf(`[TASK-QUEUE-WORKER] Task name: %s`, taskID))
 			}
 		}
 	}
 
-	fmt.Printf("\x1b[34;1m⇨ Task queue worker running with %d jobs\x1b[0m\n\n", len(registeredJob))
+	// get current queue
+	for taskID, registered := range registeredTask {
+		for _, job := range queue.GetAllJobs(taskID) {
+			registerJobToWorker(job, registered.workerIndex)
+		}
+	}
+
+	fmt.Printf("\x1b[34;1m⇨ Task queue worker running with %d task\x1b[0m\n\n", len(registeredTask))
 	for {
 		chosen, _, ok := reflect.Select(workers)
 		if !ok {
@@ -83,65 +113,33 @@ func (c *taskQueueWorker) Serve() {
 			continue
 		}
 
-		c.wg.Add(1)
-		c.runningJob++
+		t.wg.Add(1)
+		t.runningJob++
 		go func(chosen int) {
-			defer c.wg.Done()
+			defer t.wg.Done()
+			t.runningJob--
 
-			trace := tracer.StartTrace(context.Background(), "TaskQueueWorker")
-			defer trace.Finish()
-			ctx := trace.Context()
-
-			defer func() {
-				if r := recover(); r != nil {
-					trace.SetError(fmt.Errorf("%v", r))
-				}
-				c.runningJob--
-				logger.LogGreen(tracer.GetTraceURL(ctx))
-			}()
-
-			job := getTaskQueue(chosen)
-			job.Retries++
-
-			tags := trace.Tags()
-			tags["job_id"] = job.ID
-			tags["job_args"] = string(job.Args)
-			tags["retries"] = job.Retries
-			tags["max_retry"] = job.MaxRetry
-
-			if err := job.HandlerFunc(ctx, job.Args); err != nil {
-				switch e := err.(type) {
-				case *ErrorRetrier:
-					if job.Retries >= job.MaxRetry {
-						panic("give up, error: " + e.Error())
-					}
-
-					job.interval = time.NewTicker(time.Duration(job.Retries) * e.Delay)
-					registerJobInWorker(job)
-				default:
-					panic(e)
-				}
-			}
+			execJob(chosen)
 		}(chosen)
 	}
 }
 
-func (c *taskQueueWorker) Shutdown(ctx context.Context) {
+func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 	deferFunc := logger.LogWithDefer("Stopping task queue worker...")
 	defer deferFunc()
 
-	if len(registeredJob) == 0 {
+	if len(registeredTask) == 0 {
 		return
 	}
 
-	c.shutdown <- struct{}{}
+	t.shutdown <- struct{}{}
 
 	done := make(chan struct{})
 	go func() {
-		if c.runningJob != 0 {
-			fmt.Printf("\nqueue_worker: waiting %d job... ", c.runningJob)
+		if t.runningJob != 0 {
+			fmt.Printf("\nqueue_worker: waiting %d job... ", t.runningJob)
 		}
-		c.wg.Wait()
+		t.wg.Wait()
 		done <- struct{}{}
 	}()
 

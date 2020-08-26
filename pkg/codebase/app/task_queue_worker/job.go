@@ -1,76 +1,115 @@
 package taskqueueworker
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"time"
 
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
-	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
+	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
+	"agungdwiprasetyo.com/backend-microservices/pkg/tracer"
 )
 
 // Job model
 type Job struct {
-	ID           string                  `json:"id"`
-	HandlerFunc  types.WorkerHandlerFunc `json:"-"`
-	Args         []byte                  `json:"args"`
-	WorkerIndex  int                     `json:"worker_index"`
-	Retries      int                     `json:"retries"`
-	MaxRetry     int                     `json:"max_retry"`
-	interval     *time.Ticker
-	nextInterval *time.Duration
+	ID       string `json:"id"`
+	Args     []byte `json:"args"`
+	Retries  int    `json:"retries"`
+	MaxRetry int    `json:"max_retry"`
+	Interval string `json:"interval"`
 }
 
 // AddJob public function
 func AddJob(jobID string, maxRetry int, args interface{}) error {
 
-	jobFunc, ok := registeredJob[jobID]
+	task, ok := registeredTask[jobID]
 	if !ok {
 		return errors.New("job unregistered")
 	}
 
 	var newJob Job
 	newJob.ID = jobID
-	newJob.HandlerFunc = jobFunc
 	newJob.Args = helper.ToBytes(args)
 	newJob.MaxRetry = maxRetry
-	newJob.interval = time.NewTicker(time.Second)
+	newJob.Interval = "1s"
 
-	registerJobInWorker(&newJob)
+	isRefresh := workerIndexTask[task.workerIndex].activeInterval == nil
+	registerJobToWorker(&newJob, task.workerIndex)
 
+	queue.PushJob(&newJob)
+
+	if isRefresh {
+		refreshWorkerNotif <- struct{}{}
+	}
 	return nil
 }
 
-func registerJobInWorker(job *Job) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	job.WorkerIndex = workerIndexJob[job.ID]
-	workers[job.WorkerIndex].Chan = reflect.ValueOf(job.interval.C)
-	queue := taskQueue[job.WorkerIndex]
-	if queue == nil {
-		queue = shared.NewQueue()
-		taskQueue[job.WorkerIndex] = queue
-	}
-	queue.Push(job)
-
-	refreshWorkerNotif <- struct{}{}
+func registerJobToWorker(job *Job, workerIndex int) {
+	interval, _ := time.ParseDuration(job.Interval)
+	taskIndex := workerIndexTask[workerIndex]
+	taskIndex.activeInterval = time.NewTicker(interval)
+	workers[workerIndex].Chan = reflect.ValueOf(taskIndex.activeInterval.C)
 }
 
-func getTaskQueue(workerIndex int) *Job {
-	mutex.Lock()
-	defer mutex.Unlock()
+func execJob(workerIndex int) {
+	trace := tracer.StartTrace(context.Background(), "TaskQueueWorker")
+	defer trace.Finish()
+	ctx := trace.Context()
 
-	queue := taskQueue[workerIndex]
-	job := queue.Pop().(*Job)
-	job.interval.Stop()
-
-	func() {
-		defer func() { recover() }()
-		nextJob := queue.Peek()
-		workers[workerIndex].Chan = reflect.ValueOf(nextJob.(*Job).interval.C)
+	defer func() {
+		if r := recover(); r != nil {
+			trace.SetError(fmt.Errorf("%v", r))
+		}
 		refreshWorkerNotif <- struct{}{}
+		logger.LogGreen(tracer.GetTraceURL(ctx))
 	}()
-	return job
+
+	taskIndex := workerIndexTask[workerIndex]
+	taskIndex.activeInterval.Stop()
+	taskIndex.activeInterval = nil
+
+	job := queue.PopJob(taskIndex.taskID)
+	job.Retries++
+
+	tags := trace.Tags()
+	tags["job_id"] = job.ID
+	tags["job_args"] = string(job.Args)
+	tags["retries"] = job.Retries
+	tags["max_retry"] = job.MaxRetry
+
+	nextJob := queue.NextJob(taskIndex.taskID)
+	if nextJob != nil {
+		registerJobToWorker(nextJob, workerIndex)
+	}
+
+	if err := registeredTask[job.ID].handlerFunc(ctx, job.Args); err != nil {
+		switch e := err.(type) {
+		case *ErrorRetrier:
+			if job.Retries >= job.MaxRetry {
+				fmt.Printf("\x1b[31;1mTaskQueueWorker: GIVE UP: %s\x1b[0m\n", job.ID)
+				panic("give up, error: " + e.Error())
+			}
+
+			trace.SetError(e)
+			tags["is_retry"] = true
+
+			delay := e.Delay
+			if nextJob != nil && nextJob.Retries == 0 {
+				delay, _ = time.ParseDuration(nextJob.Interval)
+			}
+
+			interval := time.Duration(job.Retries) * delay
+			taskIndex.activeInterval = time.NewTicker(interval)
+			workers[workerIndex].Chan = reflect.ValueOf(taskIndex.activeInterval.C)
+
+			tags["next_retry"] = time.Now().Add(interval).Format(time.RFC3339)
+
+			job.Interval = interval.String()
+			queue.PushJob(job)
+		default:
+			panic(e)
+		}
+	}
 }
