@@ -22,7 +22,12 @@ type Job struct {
 }
 
 // AddJob public function
-func AddJob(jobID string, maxRetry int, args interface{}) error {
+func AddJob(jobID string, maxRetry int, args interface{}) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%v", r)
+		}
+	}()
 
 	task, ok := registeredTask[jobID]
 	if !ok {
