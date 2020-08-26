@@ -77,7 +77,7 @@ func (m *mutationResolver) ScheduledBroadcastEvent(ctx context.Context, input st
 	}
 
 	if err := m.uc.SendScheduledEvent(ctx, scheduledAt, &domain.Event{
-		ID: input.Event.ID, Msg: input.Event.Msg, ToTopic: input.Event.ToTopic,
+		ID: input.Event.ID, Message: input.Event.Message, Topic: input.Event.Topic,
 	}); err != nil {
 		return "Failed set scheduled event", err
 	}
@@ -89,6 +89,7 @@ func (m *mutationResolver) PublishMessageToTopic(ctx context.Context, input *inp
 
 	tokenClaim := m.mw.GraphQLBearerAuth(ctx)
 
-	e := &domain.Event{Msg: input.Msg, ToTopic: input.ToTopic, ID: tokenClaim.User.Username}
-	return m.uc.PublishMessageToTopic(ctx, e)
+	e := &domain.Event{Message: input.Message, Topic: input.Topic, ID: tokenClaim.User.Username}
+	e, _ = m.uc.PublishMessageToTopic(ctx, e)
+	return e
 }

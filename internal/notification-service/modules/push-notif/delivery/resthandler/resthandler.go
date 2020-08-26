@@ -98,6 +98,6 @@ func (h *RestHandler) publishMessageToTopic(c echo.Context) error {
 	}
 
 	eventPayload.ID = tokenClaim.User.Username
-	event := h.uc.PublishMessageToTopic(c.Request().Context(), &eventPayload)
+	event, _ := h.uc.PublishMessageToTopic(c.Request().Context(), &eventPayload)
 	return wrapper.NewHTTPResponse(http.StatusOK, "Success publish message", event).JSON(c.Response())
 }

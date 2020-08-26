@@ -26,8 +26,8 @@ type PushResponse struct {
 
 // Event domain
 type Event struct {
-	ToTopic   string `json:"toTopic"`
 	ID        string `json:"id"`
-	Msg       string `json:"msg"`
+	Topic     string `json:"topic"`
+	Message   string `json:"message"`
 	Timestamp int    `json:"timestamp"`
 }

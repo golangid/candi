@@ -29,7 +29,7 @@ type Module struct {
 // NewModule module constructor
 func NewModule(deps dependency.Dependency) *Module {
 	repo := repository.NewRepository(deps.GetRedisPool().WritePool(), deps.GetMongoDatabase().ReadDB(), deps.GetMongoDatabase().WriteDB())
-	uc := usecase.NewPushNotifUsecase(Name, repo, deps.GetSDK())
+	uc := usecase.NewPushNotifUsecase(Name, repo)
 
 	var mod Module
 	mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware(), uc)

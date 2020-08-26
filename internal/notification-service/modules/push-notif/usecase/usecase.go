@@ -13,6 +13,6 @@ type PushNotifUsecase interface {
 	SendScheduledNotification(ctx context.Context, scheduledAt time.Time, request *domain.PushNotifRequestPayload) (err error)
 	SendScheduledEvent(ctx context.Context, scheduledAt time.Time, request *domain.Event) (err error)
 
-	PublishMessageToTopic(ctx context.Context, event *domain.Event) *domain.Event
+	PublishMessageToTopic(ctx context.Context, event *domain.Event) (*domain.Event, error)
 	AddSubscriber(ctx context.Context, clientID, topic string) <-chan *domain.Event
 }

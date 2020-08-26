@@ -18,27 +18,18 @@ type pushNotifUsecaseImpl struct {
 	repo    *repository.Repository
 
 	// for subscriber listener
-	events      chan *domain.Event
-	subscribers chan *domain.Subscriber
-	closer      chan *domain.Subscriber
+	eventChannelSubscribers map[string]chan<- *domain.Event
 }
 
 // NewPushNotifUsecase constructor
 func NewPushNotifUsecase(modName types.Module, repo *repository.Repository) PushNotifUsecase {
-	events := make(chan *domain.Event)
-	subscribers := make(chan *domain.Subscriber)
-	closer := make(chan *domain.Subscriber)
 
 	uc := &pushNotifUsecaseImpl{
 		modName: modName,
 		repo:    repo,
 
-		events:      events,
-		subscribers: subscribers,
-		closer:      closer,
+		eventChannelSubscribers: make(map[string]chan<- *domain.Event),
 	}
-
-	go uc.runSubscriberListener()
 
 	return uc
 }
@@ -63,7 +54,7 @@ func (uc *pushNotifUsecaseImpl) SendNotification(ctx context.Context, request *d
 	}
 
 	// send to internal subscriber
-	uc.events <- &domain.Event{}
+	go uc.PublishMessageToTopic(ctx, &domain.Event{})
 
 	result := <-uc.repo.PushNotif.Push(ctx, requestPayload)
 	if result.Error != nil {

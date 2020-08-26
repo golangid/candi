@@ -20,6 +20,6 @@ type subscribeInputResolver struct {
 
 type inputTopicEvent struct {
 	ID      string
-	Msg     string
-	ToTopic string
+	Message string
+	Topic   string
 }

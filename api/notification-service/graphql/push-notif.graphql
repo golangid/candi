@@ -1,13 +1,13 @@
 ################### PushNotifModule Module Area
 type PushNotifQueryModule {
-    hello(): String!
+    hello(jobName: String!, maxRetry: Int!, args: String!): String!
 }
 
 type PushNotifMutationModule {
     push(payload: PushPayload!): String!
     scheduledNotification(payload: ScheduledNotifPayload!): String!
-    publishMessageToTopic(msg: String!, toTopic: String!): SubscriberEvent!
-    scheduledBroadcastEvent(scheduledAt: String!, event: EventPayload!): String!
+    publishMessageToTopic(message: String!, topic: String!): SubscriberEvent!
+    scheduledBroadcastEvent(scheduled_at: String!, event: EventPayload!): String!
 }
 
 type PushNotifSubscriptionModule {
@@ -15,9 +15,9 @@ type PushNotifSubscriptionModule {
 }
 
 type SubscriberEvent {
-    toTopic: String!
+    topic: String!
     id: String!
-    msg: String!
+    message: String!
     timestamp: Int!
 }
 
@@ -34,6 +34,6 @@ input ScheduledNotifPayload {
 
 input EventPayload {
     id: String!
-    msg: String!
-    toTopic: String!
+    topic: String!
+    message: String!
 }
