@@ -2,7 +2,7 @@ package types
 
 import "context"
 
-// Worker is the type returned by a classifier worker (kafka, redis subscriber, rabbitmq, scheduler)
+// Worker is the type returned by a classifier worker (kafka, redis subscriber, rabbitmq, scheduler, task queue)
 type Worker int
 
 const (

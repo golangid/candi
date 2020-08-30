@@ -6,9 +6,10 @@ import (
 	"strings"
 )
 
-type cronJobKey struct {
+type jobKey struct {
 	JobName  string `json:"jobName"`
-	Interval string `json:"interval"`
+	Interval string `json:"interval,omitempty"`
+	MaxRetry int    `json:"maxRetry,omitempty"`
 }
 
 // CronJobKeyToString helper
@@ -20,7 +21,7 @@ Allowed interval:
 	- 23:00@weekly, will repeated at 23:00 every week
 */
 func CronJobKeyToString(jobName string, interval string) string {
-	b, _ := json.Marshal(cronJobKey{
+	b, _ := json.Marshal(jobKey{
 		JobName: jobName, Interval: interval,
 	})
 	return string(b)
@@ -28,7 +29,7 @@ func CronJobKeyToString(jobName string, interval string) string {
 
 // ParseCronJobKey helper
 func ParseCronJobKey(str string) (string, string) {
-	var cronKey cronJobKey
+	var cronKey jobKey
 	json.Unmarshal([]byte(str), &cronKey)
 	return cronKey.JobName, cronKey.Interval
 }

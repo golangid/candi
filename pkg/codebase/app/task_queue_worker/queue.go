@@ -24,9 +24,6 @@ type inMemQueue struct {
 // NewInMemQueue init inmem queue
 func NewInMemQueue() QueueStorage {
 	q := &inMemQueue{queue: make(map[string]*shared.Queue)}
-	for taskID := range registeredTask {
-		q.queue[taskID] = shared.NewQueue()
-	}
 	return q
 }
 
@@ -35,14 +32,19 @@ func (i *inMemQueue) GetAllJobs(taskID string) (jobs []*Job) {
 }
 func (i *inMemQueue) PushJob(job *Job) {
 	defer func() { recover() }()
-	i.queue[job.ID].Push(job)
+	queue := i.queue[job.TaskID]
+	if queue == nil {
+		queue = shared.NewQueue()
+	}
+	queue.Push(job)
 }
 func (i *inMemQueue) PopJob(taskID string) *Job {
 	defer func() { recover() }()
 	return i.queue[taskID].Pop().(*Job)
 }
 func (i *inMemQueue) NextJob(taskID string) *Job {
-	return nil
+	defer func() { recover() }()
+	return i.queue[taskID].Peek().(*Job)
 }
 
 // redisQueue queue
@@ -76,7 +78,7 @@ func (r *redisQueue) PushJob(job *Job) {
 	conn := r.pool.Get()
 	defer conn.Close()
 
-	conn.Do("RPUSH", job.ID, helper.ToBytes(job))
+	conn.Do("RPUSH", job.TaskID, helper.ToBytes(job))
 }
 func (r *redisQueue) PopJob(taskID string) *Job {
 	conn := r.pool.Get()

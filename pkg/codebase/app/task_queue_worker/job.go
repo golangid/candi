@@ -2,40 +2,48 @@ package taskqueueworker
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"agungdwiprasetyo.com/backend-microservices/pkg/tracer"
+	"github.com/google/uuid"
 )
 
 // Job model
 type Job struct {
-	ID       string `json:"id"`
-	Args     []byte `json:"args"`
-	Retries  int    `json:"retries"`
-	MaxRetry int    `json:"max_retry"`
-	Interval string `json:"interval"`
+	ID       string   `json:"id"`
+	TaskID   string   `json:"task_id"`
+	Args     []byte   `json:"args"`
+	Retries  int      `json:"retries"`
+	MaxRetry int      `json:"max_retry"`
+	Interval string   `json:"interval"`
+	Errors   []string `json:"errors"`
 }
 
 // AddJob public function
-func AddJob(jobID string, maxRetry int, args interface{}) (err error) {
+func AddJob(taskID string, maxRetry int, args interface{}) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("%v", r)
 		}
 	}()
 
-	task, ok := registeredTask[jobID]
+	task, ok := registeredTask[taskID]
 	if !ok {
-		return errors.New("job unregistered")
+		var tasks []string
+		for taskID := range registeredTask {
+			tasks = append(tasks, taskID)
+		}
+		return fmt.Errorf("task '%s' unregistered, task must one of [%s]", taskID, strings.Join(tasks, ", "))
 	}
 
 	var newJob Job
-	newJob.ID = jobID
+	newJob.ID = uuid.New().String()
+	newJob.TaskID = taskID
 	newJob.Args = helper.ToBytes(args)
 	newJob.MaxRetry = maxRetry
 	newJob.Interval = "1s"
@@ -79,7 +87,8 @@ func execJob(workerIndex int) {
 	job.Retries++
 
 	tags := trace.Tags()
-	tags["job_id"] = job.ID
+	tags["id"] = job.ID
+	tags["task_id"] = job.TaskID
 	tags["job_args"] = string(job.Args)
 	tags["retries"] = job.Retries
 	tags["max_retry"] = job.MaxRetry
@@ -89,15 +98,17 @@ func execJob(workerIndex int) {
 		registerJobToWorker(nextJob, workerIndex)
 	}
 
-	if err := registeredTask[job.ID].handlerFunc(ctx, job.Args); err != nil {
+	if err := registeredTask[job.TaskID].handlerFunc(ctx, job.Args); err != nil {
+		trace.SetError(err)
+		job.Errors = append(job.Errors, err.Error())
+		tags["job_errors"] = job.Errors
 		switch e := err.(type) {
 		case *ErrorRetrier:
 			if job.Retries >= job.MaxRetry {
-				fmt.Printf("\x1b[31;1mTaskQueueWorker: GIVE UP: %s\x1b[0m\n", job.ID)
+				fmt.Printf("\x1b[31;1mTaskQueueWorker: GIVE UP: %s\x1b[0m\n", job.TaskID)
 				panic("give up, error: " + e.Error())
 			}
 
-			trace.SetError(e)
 			tags["is_retry"] = true
 
 			delay := e.Delay
