@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -37,16 +36,13 @@ type Env struct {
 	// JSONSchemaDir env
 	JSONSchemaDir string
 
-	// Development env checking, this env for debug purpose
-	Development string
-
 	// Env on application
 	Environment string
 
-	// RESTPort config
-	RESTPort uint16
-	// GraphQLPort config
-	GraphQLPort uint16
+	IsProduction bool
+
+	// HTTPPort config
+	HTTPPort uint16
 	// GRPCPort Config
 	GRPCPort uint16
 
@@ -54,9 +50,6 @@ type Env struct {
 	BasicAuthUsername string
 	// BasicAuthPassword config
 	BasicAuthPassword string
-
-	// CacheExpired config
-	CacheExpired time.Duration
 
 	// JaegerTracingHost env
 	JaegerTracingHost string
@@ -116,23 +109,22 @@ func loadBaseEnv(serviceLocation string, targetEnv *Env) {
 	}
 	env.UseRedisSubscriber, _ = strconv.ParseBool(useRedisSubs)
 
-	useTaskQueueWorker, ok := os.LookupEnv("USE_TASK_QUEUE_WORKER")
+	useTaskQueue, ok := os.LookupEnv("USE_TASK_QUEUE_WORKER")
 	if !ok {
 		panic("missing USE_TASK_QUEUE_WORKER environment")
 	}
-	env.UseTaskQueueWorker, _ = strconv.ParseBool(useTaskQueueWorker)
+	env.UseTaskQueueWorker, _ = strconv.ParseBool(useTaskQueue)
 
 	// ------------------------------------
-
-	if env.UseREST {
-		if restPort, ok := os.LookupEnv("REST_HTTP_PORT"); !ok {
-			panic("missing REST_HTTP_PORT environment")
+	if env.UseREST || env.UseGraphQL {
+		if httpPort, ok := os.LookupEnv("HTTP_PORT"); !ok {
+			panic("missing HTTP_PORT environment")
 		} else {
-			port, err := strconv.Atoi(restPort)
+			port, err := strconv.Atoi(httpPort)
 			if err != nil {
-				panic("REST_HTTP_PORT environment must in integer format")
+				panic("HTTP_PORT environment must in integer format")
 			}
-			env.RESTPort = uint16(port)
+			env.HTTPPort = uint16(port)
 		}
 	}
 
@@ -148,19 +140,9 @@ func loadBaseEnv(serviceLocation string, targetEnv *Env) {
 		}
 	}
 
-	if env.UseGraphQL {
-		if graphqlPort, ok := os.LookupEnv("GRAPHQL_HTTP_PORT"); !ok {
-			panic("missing GRAPHQL_HTTP_PORT environment")
-		} else {
-			port, err := strconv.Atoi(graphqlPort)
-			if err != nil {
-				panic("GRAPHQL_HTTP_PORT environment must in integer format")
-			}
-			env.GraphQLPort = uint16(port)
-		}
-	}
-
 	// ------------------------------------
+	env.Environment = os.Getenv("ENVIRONMENT")
+	env.IsProduction = strings.ToLower(env.Environment) == "production"
 	env.BasicAuthUsername, ok = os.LookupEnv("BASIC_AUTH_USERNAME")
 	if !ok {
 		panic("missing BASIC_AUTH_USERNAME environment")

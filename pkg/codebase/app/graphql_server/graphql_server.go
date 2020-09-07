@@ -41,7 +41,7 @@ func (s *graphqlServer) Serve() {
 	mux.HandleFunc("/graphql/playground", s.httpHandler.ServePlayground)
 	mux.HandleFunc("/graphql/voyager", s.httpHandler.ServeVoyager)
 
-	s.httpEngine.Addr = fmt.Sprintf(":%d", config.BaseEnv().GraphQLPort)
+	s.httpEngine.Addr = fmt.Sprintf(":%d", config.BaseEnv().HTTPPort)
 	s.httpEngine.Handler = mux
 
 	logger.LogYellow("[GraphQL] endpoint : /graphql")
@@ -51,7 +51,7 @@ func (s *graphqlServer) Serve() {
 	if err := s.httpEngine.ListenAndServe(); err != nil {
 		switch e := err.(type) {
 		case *net.OpError:
-			panic(e)
+			panic(fmt.Errorf("gql http server: %v", e))
 		}
 	}
 }

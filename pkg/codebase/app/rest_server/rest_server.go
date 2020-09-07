@@ -83,12 +83,12 @@ func (h *restServer) Serve() {
 
 	h.serverEngine.HideBanner = true
 	h.serverEngine.HidePort = true
-	port := fmt.Sprintf(":%d", config.BaseEnv().RESTPort)
+	port := fmt.Sprintf(":%d", config.BaseEnv().HTTPPort)
 	fmt.Printf("\x1b[34;1m⇨ REST server run at port [::]%s\x1b[0m\n\n", port)
 	if err := h.serverEngine.Start(port); err != nil {
 		switch e := err.(type) {
 		case *net.OpError:
-			panic(e)
+			panic(fmt.Errorf("rest server: %v", e))
 		}
 	}
 }

@@ -23,7 +23,7 @@ func NewKafkaHandler() *KafkaHandler {
 func (h *KafkaHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
 
 	return map[string]types.WorkerHandlerFunc{
-		"test": h.handleTest,
+		"{{$.module}}": h.handleTest,
 	}
 }
 

@@ -12,7 +12,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 )
 
-const timeout int64 = 10 // in seconds
+const timeout time.Duration = 10 * time.Second
 
 var env Env
 
@@ -32,10 +32,15 @@ func BaseEnv() Env {
 	return env
 }
 
+// SetEnv set env for mocking data env
+func SetEnv(newEnv Env) {
+	env = newEnv
+}
+
 // LoadFunc load selected dependency with context timeout
 func (c *Config) LoadFunc(depsFunc func(context.Context) []interfaces.Closer) {
 	// set timeout for init configuration
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	result := make(chan error)
@@ -65,17 +70,17 @@ func (c *Config) LoadFunc(depsFunc func(context.Context) []interfaces.Closer) {
 // Exit close all connection
 func (c *Config) Exit() {
 	// set timeout for close all configuration
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	fmt.Println()
 
-	result := make(chan error)
+	errCloseChan := make(chan error)
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				result <- fmt.Errorf("Failed close connection :=> %v", r)
+				errCloseChan <- fmt.Errorf("Failed close connection :=> %v", r)
 			}
-			close(result)
+			close(errCloseChan)
 		}()
 
 		for _, cl := range c.closers {
@@ -90,15 +95,13 @@ func (c *Config) Exit() {
 	// with timeout to close all configuration
 	select {
 	case <-quitSignal:
-		log.Println("\x1b[31;1mForce exit\x1b[0m")
-		os.Exit(1)
+		fmt.Println("\x1b[31;1mForce exit\x1b[0m")
 	case <-ctx.Done():
 		panic(fmt.Errorf("Timeout to close all selected dependencies connection: %v", ctx.Err()))
-	case err := <-result:
+	case err := <-errCloseChan:
 		if err != nil {
 			panic(err)
 		}
-		log.Println("\x1b[32;1mSuccess close all config connection\x1b[0m")
-		return
+		log.Println("\x1b[32;1mSuccess close all config dependency\x1b[0m")
 	}
 }

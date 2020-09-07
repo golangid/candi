@@ -82,15 +82,27 @@ func (a *App) Run() {
 		panic("No server/worker running")
 	}
 
+	errServe := make(chan error)
 	for _, server := range a.servers {
-		go server.Serve()
+		go func(srv factory.AppServerFactory) {
+			defer func() {
+				if r := recover(); r != nil {
+					errServe <- fmt.Errorf("%v", r)
+				}
+			}()
+			srv.Serve()
+		}(server)
 	}
 
 	quitSignal := make(chan os.Signal, 1)
 	signal.Notify(quitSignal, os.Interrupt, syscall.SIGTERM)
-	<-quitSignal
 
-	a.shutdown(quitSignal)
+	select {
+	case e := <-errServe:
+		panic(e)
+	case <-quitSignal:
+		a.shutdown(quitSignal)
+	}
 }
 
 // graceful shutdown all server, panic if there is still a process running when the request exceed given timeout in context

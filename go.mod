@@ -14,6 +14,7 @@ require (
 	github.com/golang/protobuf v1.3.2
 	github.com/golangid/graphql-go v0.0.2
 	github.com/gomodule/redigo v2.0.0+incompatible
+	github.com/google/uuid v1.1.1
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/graph-gophers/graphql-transport-ws v0.0.0-20190611222414-40c048432299
 	github.com/joho/godotenv v1.3.0
