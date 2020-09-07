@@ -37,4 +37,4 @@ generate-rsa-key:
 	sh scripts/generate_rsa_key.sh
 
 clear:
-	rm main_service.go bin backend-microservices warung wedding
+	rm main_service.go bin backend-microservices

@@ -20,7 +20,7 @@ var (
 
 	workers         []reflect.SelectCase
 	workerIndexTask map[int]*struct {
-		taskID         string
+		taskName       string
 		activeInterval *time.Ticker
 	}
 	queue              QueueStorage
@@ -37,16 +37,21 @@ type taskQueueWorker struct {
 
 // NewWorker create new cron worker
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
+	if service.GetDependency().GetRedisPool() == nil {
+		panic("Task queue worker require redis for queue storage")
+	}
+
+	queue = NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
 	refreshWorkerNotif = make(chan struct{})
 	registeredTask = make(map[string]struct {
 		handlerFunc types.WorkerHandlerFunc
 		workerIndex int
 	})
+
 	workerIndexTask = make(map[int]*struct {
-		taskID         string
+		taskName       string
 		activeInterval *time.Ticker
 	})
-	queue = NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
 
 	return &taskQueueWorker{
 		service:  service,
@@ -67,31 +72,31 @@ func (t *taskQueueWorker) Serve() {
 
 	for _, m := range t.service.GetModules() {
 		if h := m.WorkerHandler(types.TaskQueue); h != nil {
-			for taskID, handlerFunc := range h.MountHandlers() {
+			for taskName, handlerFunc := range h.MountHandlers() {
 				workerIndex := len(workers)
-				registeredTask[taskID] = struct {
+				registeredTask[taskName] = struct {
 					handlerFunc types.WorkerHandlerFunc
 					workerIndex int
 				}{
 					handlerFunc: handlerFunc, workerIndex: workerIndex,
 				}
 				workerIndexTask[workerIndex] = &struct {
-					taskID         string
+					taskName       string
 					activeInterval *time.Ticker
 				}{
-					taskID: taskID,
+					taskName: taskName,
 				}
 
 				workers = append(workers, reflect.SelectCase{Dir: reflect.SelectRecv})
 
-				logger.LogYellow(fmt.Sprintf(`[TASK-QUEUE-WORKER] Task name: %s`, taskID))
+				logger.LogYellow(fmt.Sprintf(`[TASK-QUEUE-WORKER] Task name: %s`, taskName))
 			}
 		}
 	}
 
 	// get current queue
-	for taskID, registered := range registeredTask {
-		for _, job := range queue.GetAllJobs(taskID) {
+	for taskName, registered := range registeredTask {
+		for _, job := range queue.GetAllJobs(taskName) {
 			registerJobToWorker(job, registered.workerIndex)
 		}
 	}

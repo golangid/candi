@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"runtime"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -100,6 +101,9 @@ func (t *tracerImpl) Finish(tags ...map[string]interface{}) {
 	for k, v := range t.tags {
 		t.span.SetTag(k, toString(v))
 	}
+	t.span.SetTag("num_goroutines", runtime.NumGoroutine())
+	t.span.SetTag("num_cpu", runtime.NumCPU())
+	t.span.SetTag("go_version", runtime.Version())
 }
 
 // Log trace

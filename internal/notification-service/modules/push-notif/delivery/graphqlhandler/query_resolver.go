@@ -6,6 +6,7 @@ import (
 	"agungdwiprasetyo.com/backend-microservices/internal/notification-service/modules/push-notif/usecase"
 	taskqueueworker "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/task_queue_worker"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
+	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
 	"agungdwiprasetyo.com/backend-microservices/pkg/tracer"
 )
 
@@ -24,7 +25,7 @@ func (q *queryResolver) Hello(ctx context.Context, input struct {
 	defer trace.Finish()
 
 	// q.mw.GraphQLBasicAuth(ctx)
-	if err := taskqueueworker.AddJob(input.JobName, int(input.MaxRetry), input.Args); err != nil {
+	if err := taskqueueworker.AddJob(input.JobName, int(input.MaxRetry), helper.ToBytes(input.Args)); err != nil {
 		return "", err
 	}
 

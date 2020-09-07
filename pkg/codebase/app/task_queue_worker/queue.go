@@ -10,10 +10,10 @@ import (
 
 // QueueStorage abstraction for queue storage backend
 type QueueStorage interface {
-	GetAllJobs(taskID string) []*Job
+	GetAllJobs(taskName string) []*Job
 	PushJob(job *Job)
-	PopJob(taskID string) *Job
-	NextJob(taskID string) *Job
+	PopJob(taskName string) *Job
+	NextJob(taskName string) *Job
 }
 
 // inMemQueue queue
@@ -27,24 +27,24 @@ func NewInMemQueue() QueueStorage {
 	return q
 }
 
-func (i *inMemQueue) GetAllJobs(taskID string) (jobs []*Job) {
+func (i *inMemQueue) GetAllJobs(taskName string) (jobs []*Job) {
 	return nil
 }
 func (i *inMemQueue) PushJob(job *Job) {
 	defer func() { recover() }()
-	queue := i.queue[job.TaskID]
+	queue := i.queue[job.TaskName]
 	if queue == nil {
 		queue = shared.NewQueue()
 	}
 	queue.Push(job)
 }
-func (i *inMemQueue) PopJob(taskID string) *Job {
+func (i *inMemQueue) PopJob(taskName string) *Job {
 	defer func() { recover() }()
-	return i.queue[taskID].Pop().(*Job)
+	return i.queue[taskName].Pop().(*Job)
 }
-func (i *inMemQueue) NextJob(taskID string) *Job {
+func (i *inMemQueue) NextJob(taskName string) *Job {
 	defer func() { recover() }()
-	return i.queue[taskID].Peek().(*Job)
+	return i.queue[taskName].Peek().(*Job)
 }
 
 // redisQueue queue
@@ -60,11 +60,11 @@ func NewRedisQueue(redisPool *redis.Pool) QueueStorage {
 	return &redisQueue{pool: redisPool}
 }
 
-func (r *redisQueue) GetAllJobs(taskID string) (jobs []*Job) {
+func (r *redisQueue) GetAllJobs(taskName string) (jobs []*Job) {
 	conn := r.pool.Get()
 	defer conn.Close()
 
-	str, _ := conn.Do("LRANGE", taskID, 0, -1)
+	str, _ := conn.Do("LRANGE", taskName, 0, -1)
 	results, _ := str.([]interface{})
 	for _, result := range results {
 		b, _ := result.([]byte)
@@ -78,23 +78,23 @@ func (r *redisQueue) PushJob(job *Job) {
 	conn := r.pool.Get()
 	defer conn.Close()
 
-	conn.Do("RPUSH", job.TaskID, helper.ToBytes(job))
+	conn.Do("RPUSH", job.TaskName, helper.ToBytes(job))
 }
-func (r *redisQueue) PopJob(taskID string) *Job {
+func (r *redisQueue) PopJob(taskName string) *Job {
 	conn := r.pool.Get()
 	defer conn.Close()
 
-	b, _ := redis.Bytes(conn.Do("LPOP", taskID))
+	b, _ := redis.Bytes(conn.Do("LPOP", taskName))
 
 	var job Job
 	json.Unmarshal(b, &job)
 	return &job
 }
-func (r *redisQueue) NextJob(taskID string) *Job {
+func (r *redisQueue) NextJob(taskName string) *Job {
 	conn := r.pool.Get()
 	defer conn.Close()
 
-	b, err := redis.Bytes(conn.Do("LINDEX", taskID, 0))
+	b, err := redis.Bytes(conn.Do("LINDEX", taskName, 0))
 	if err != nil {
 		return nil
 	}
