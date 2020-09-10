@@ -24,13 +24,10 @@ func NewRedisHandler(uc usecase.PushNotifUsecase) *RedisHandler {
 }
 
 // MountHandlers return map topic to handler func
-func (h *RedisHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
-
-	return map[string]types.WorkerHandlerFunc{
-		"scheduled-push-notif": h.handleScheduledNotif,
-		"push":                 h.handlePush,
-		"broadcast-topic":      h.publishMessageToTopic,
-	}
+func (h *RedisHandler) MountHandlers(group *types.WorkerHandlerGroup) {
+	group.Add("scheduled-push-notif", h.handleScheduledNotif)
+	group.Add("push", h.handlePush)
+	group.Add("broadcast-topic", h.publishMessageToTopic)
 }
 
 func (h *RedisHandler) handleScheduledNotif(ctx context.Context, message []byte) error {

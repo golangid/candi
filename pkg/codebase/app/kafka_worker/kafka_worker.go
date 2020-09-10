@@ -15,14 +15,15 @@ import (
 )
 
 type kafkaWorker struct {
-	engine  sarama.ConsumerGroup
-	service factory.ServiceFactory
+	engine          sarama.ConsumerGroup
+	service         factory.ServiceFactory
+	consumerHandler *kafkaConsumer
 }
 
 // NewWorker create new kafka consumer
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	// init kafka consumer
-	kafkaConsumer, err := sarama.NewConsumerGroupFromClient(
+	consumerEngine, err := sarama.NewConsumerGroupFromClient(
 		config.BaseEnv().Kafka.ConsumerGroup,
 		service.GetDependency().GetBroker().GetClient(),
 	)
@@ -30,39 +31,38 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 		log.Panicf("Error creating kafka consumer group client: %v", err)
 	}
 
+	var consumerHandler kafkaConsumer
+	consumerHandler.handlerFuncs = make(map[string]types.WorkerHandlerFunc)
+	for _, m := range service.GetModules() {
+		if h := m.WorkerHandler(types.Kafka); h != nil {
+			var handlerGroup types.WorkerHandlerGroup
+			h.MountHandlers(&handlerGroup)
+			for _, handler := range handlerGroup.Handlers {
+				if _, ok := consumerHandler.handlerFuncs[handler.Pattern]; ok {
+					logger.LogYellow(fmt.Sprintf("Kafka: warning, topic %s has been used in another module, overwrite handler func", handler.Pattern))
+				}
+				consumerHandler.handlerFuncs[handler.Pattern] = handler.HandlerFunc
+				consumerHandler.topics = append(consumerHandler.topics, handler.Pattern)
+				logger.LogYellow(fmt.Sprintf("[KAFKA-CONSUMER] (topic): %-8s  (consumed by module)--> [%s]", handler.Pattern, m.Name()))
+			}
+		}
+	}
+	fmt.Printf("\x1b[34;1m⇨ Kafka consumer is active. Brokers: " + strings.Join(config.BaseEnv().Kafka.Brokers, ", ") + "\x1b[0m\n\n")
+
 	return &kafkaWorker{
-		engine:  kafkaConsumer,
-		service: service,
+		engine:          consumerEngine,
+		service:         service,
+		consumerHandler: &consumerHandler,
 	}
 }
 
 func (h *kafkaWorker) Serve() {
 
-	var consumeTopics []string
-	handlerFuncs := make(map[string]types.WorkerHandlerFunc)
-	for _, m := range h.service.GetModules() {
-		if h := m.WorkerHandler(types.Kafka); h != nil {
-			for topic, handlerFunc := range h.MountHandlers() {
-				if _, ok := handlerFuncs[topic]; ok {
-					logger.LogYellow(fmt.Sprintf("Kafka: warning, topic %s has been used in another module, overwrite handler func", topic))
-				}
-				handlerFuncs[topic] = handlerFunc
-				consumeTopics = append(consumeTopics, topic)
-				logger.LogYellow(fmt.Sprintf("[KAFKA-CONSUMER] (topic): %-8s  (consumed by module)--> [%s]", topic, m.Name()))
-			}
-		}
-	}
-
-	consumer := kafkaConsumer{
-		handlerFuncs: handlerFuncs,
-	}
-
-	fmt.Printf("\x1b[34;1m⇨ Kafka consumer is active. Brokers: " + strings.Join(config.BaseEnv().Kafka.Brokers, ", ") + "\x1b[0m\n\n")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 startConsume:
-	if err := h.engine.Consume(ctx, consumeTopics, &consumer); err != nil {
+	if err := h.engine.Consume(ctx, h.consumerHandler.topics, h.consumerHandler); err != nil {
 		log.Printf("Error from kafka consumer: %v", err)
 		goto startConsume
 	}
@@ -77,6 +77,7 @@ func (h *kafkaWorker) Shutdown(ctx context.Context) {
 
 // kafkaConsumer represents a Sarama consumer group consumer
 type kafkaConsumer struct {
+	topics       []string
 	handlerFuncs map[string]types.WorkerHandlerFunc // mapping topic to handler func in delivery layer
 }
 
@@ -105,7 +106,7 @@ func (c *kafkaConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim 
 				logger.LogGreen(tracer.GetTraceURL(ctx))
 			}()
 
-			log.Printf("Message claimed: timestamp = %v, topic = %s", message.Timestamp, message.Topic)
+			log.Printf("\x1b[35;3mKafka Consumer: message consumed, timestamp = %v, topic = %s\x1b[0m", message.Timestamp, message.Topic)
 
 			tags["topic"] = message.Topic
 			tags["key"] = string(message.Key)

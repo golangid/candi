@@ -21,6 +21,7 @@ type redisWorker struct {
 	pubSubConn func() redis.PubSubConn
 	isHaveJob  bool
 	service    factory.ServiceFactory
+	handlers   map[string]types.WorkerHandlerFunc
 	shutdown   chan struct{}
 	wg         sync.WaitGroup
 }
@@ -29,8 +30,27 @@ type redisWorker struct {
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	redisPool := service.GetDependency().GetRedisPool().WritePool()
 
+	handlers := make(map[string]types.WorkerHandlerFunc)
+	for _, m := range service.GetModules() {
+		if h := m.WorkerHandler(types.RedisSubscriber); h != nil {
+			var handlerGroup types.WorkerHandlerGroup
+			h.MountHandlers(&handlerGroup)
+			for _, handler := range handlerGroup.Handlers {
+				logger.LogYellow(fmt.Sprintf(`[REDIS-SUBSCRIBER] (key prefix): "%s" (processed by module): %s`, handler.Pattern, m.Name()))
+				handlers[strings.Replace(handler.Pattern, "~", "", -1)] = handler.HandlerFunc
+			}
+		}
+	}
+
+	if len(handlers) == 0 {
+		log.Println("redis subscriber: no topic provided")
+	} else {
+		fmt.Printf("\x1b[34;1m⇨ Redis pubsub worker running with %d keys\x1b[0m\n\n", len(handlers))
+	}
+
 	return &redisWorker{
-		service: service,
+		service:  service,
+		handlers: handlers,
 		pubSubConn: func() redis.PubSubConn {
 			conn := redisPool.Get()
 			conn.Do("CONFIG", "SET", "notify-keyspace-events", "Ex")
@@ -40,26 +60,15 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 
 			return psc
 		},
-		shutdown: make(chan struct{}),
+		shutdown:  make(chan struct{}),
+		isHaveJob: len(handlers) != 0,
 	}
 }
 
 func (r *redisWorker) Serve() {
-	handlers := make(map[string]types.WorkerHandlerFunc)
-	for _, m := range r.service.GetModules() {
-		if h := m.WorkerHandler(types.RedisSubscriber); h != nil {
-			for topic, handlerFunc := range h.MountHandlers() {
-				logger.LogYellow(fmt.Sprintf(`[REDIS-SUBSCRIBER] (key prefix): "%s" (processed by module): %s`, topic, m.Name()))
-				handlers[strings.Replace(topic, "~", "", -1)] = handlerFunc
-			}
-		}
-	}
-
-	if len(handlers) == 0 {
-		log.Println("redis subscriber: no topic provided")
+	if !r.isHaveJob {
 		return
 	}
-	r.isHaveJob = true
 
 	psc := r.pubSubConn()
 
@@ -74,7 +83,7 @@ func (r *redisWorker) Serve() {
 			case redis.Message:
 
 				handlerName, messageData := helper.ParseRedisPubSubKeyTopic(string(msg.Data))
-				_, ok := handlers[handlerName]
+				_, ok := r.handlers[handlerName]
 				if ok {
 					handlerReceiver <- struct {
 						handlerName string
@@ -93,7 +102,6 @@ func (r *redisWorker) Serve() {
 	}()
 
 	// run worker with listen shutdown channel
-	fmt.Printf("\x1b[34;1m⇨ Redis pubsub worker running with %d keys\x1b[0m\n\n", len(handlers))
 	for {
 		select {
 		case handler := <-handlerReceiver:
@@ -110,7 +118,9 @@ func (r *redisWorker) Serve() {
 				tags["handler_name"] = handler.handlerName
 				tags["message"] = string(handler.message)
 
-				handlerFunc := handlers[handler.handlerName]
+				log.Printf("\x1b[35;3mRedis Key Expired Subscriber: executing event key '%s'\x1b[0m", handler.handlerName)
+
+				handlerFunc := r.handlers[handler.handlerName]
 				if err := handlerFunc(ctx, handler.message); err != nil {
 					panic(err)
 				}

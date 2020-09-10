@@ -20,11 +20,8 @@ func NewKafkaHandler() *KafkaHandler {
 }
 
 // MountHandlers return map topic to handler func
-func (h *KafkaHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
-
-	return map[string]types.WorkerHandlerFunc{
-		"{{$.module}}": h.handleTest,
-	}
+func (h *KafkaHandler) MountHandlers(group *types.WorkerHandlerGroup) {
+	group.Add("{{$.module}}", h.handleTest)
 }
 
 // ProcessMessage from kafka consumer
@@ -54,11 +51,8 @@ func NewCronHandler() *CronHandler {
 }
 
 // MountHandlers return map topic to handler func
-func (h *CronHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
-
-	return map[string]types.WorkerHandlerFunc{
-		helper.CronJobKeyToString("sample", "10s"): h.handleSample,
-	}
+func (h *CronHandler) MountHandlers(group *types.WorkerHandlerGroup) {
+	group.Add(helper.CronJobKeyToString("sample", "10s"), h.handleSample)
 }
 
 func (h *CronHandler) handleSample(ctx context.Context, message []byte) error {
@@ -87,11 +81,8 @@ func NewRedisHandler() *RedisHandler {
 }
 
 // MountHandlers return map topic to handler func
-func (h *RedisHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
-
-	return map[string]types.WorkerHandlerFunc{
-		"{{$.module}}-sample": h.handleSample,
-	}
+func (h *RedisHandler) MountHandlers(group *types.WorkerHandlerGroup) {
+	group.Add("{{$.module}}-sample", h.handleSample)
 }
 
 func (h *RedisHandler) handleSample(ctx context.Context, message []byte) error {
@@ -121,12 +112,9 @@ func NewTaskQueueHandler() *TaskQueueHandler {
 }
 
 // MountHandlers return map topic to handler func
-func (h *TaskQueueHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
-
-	return map[string]types.WorkerHandlerFunc{
-		"{{$.module}}-task-one": h.taskOne,
-		"{{$.module}}-task-two": h.taskTwo,
-	}
+func (h *TaskQueueHandler) MountHandlers(group *types.WorkerHandlerGroup) {
+	group.Add("{{$.module}}-task-one", h.taskOne)
+	group.Add("{{$.module}}-task-two", h.taskTwo)
 }
 
 func (h *TaskQueueHandler) taskOne(ctx context.Context, message []byte) error {

@@ -5,6 +5,7 @@ package cronworker
 import (
 	"context"
 	"fmt"
+	"log"
 	"reflect"
 	"sync"
 	"time"
@@ -26,32 +27,27 @@ type cronWorker struct {
 // NewWorker create new cron worker
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	refreshWorkerNotif = make(chan struct{})
-	return &cronWorker{
-		service:  service,
-		shutdown: make(chan struct{}),
-	}
-}
-
-func (c *cronWorker) Serve() {
+	shutdown := make(chan struct{})
 
 	// add shutdown channel to first index
 	workers = append(workers, reflect.SelectCase{
-		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(c.shutdown),
+		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(shutdown),
 	})
 	// add refresh worker channel to second index
 	workers = append(workers, reflect.SelectCase{
 		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(refreshWorkerNotif),
 	})
 
-	for _, m := range c.service.GetModules() {
+	for _, m := range service.GetModules() {
 		if h := m.WorkerHandler(types.Scheduler); h != nil {
-			for topic, handler := range h.MountHandlers() {
-
-				funcName, interval := helper.ParseCronJobKey(topic)
+			var handlerGroup types.WorkerHandlerGroup
+			h.MountHandlers(&handlerGroup)
+			for _, handler := range handlerGroup.Handlers {
+				funcName, interval := helper.ParseCronJobKey(handler.Pattern)
 
 				var job Job
 				job.HandlerName = funcName
-				job.HandlerFunc = handler
+				job.HandlerFunc = handler.HandlerFunc
 				job.Interval = interval
 				if err := AddJob(job); err != nil {
 					panic(err)
@@ -61,8 +57,16 @@ func (c *cronWorker) Serve() {
 			}
 		}
 	}
-
 	fmt.Printf("\x1b[34;1m⇨ Cron worker running with %d jobs\x1b[0m\n\n", len(activeJobs))
+
+	return &cronWorker{
+		service:  service,
+		shutdown: shutdown,
+	}
+}
+
+func (c *cronWorker) Serve() {
+
 	for {
 		chosen, _, ok := reflect.Select(workers)
 		if !ok {
@@ -107,6 +111,8 @@ func (c *cronWorker) Serve() {
 
 			tags := trace.Tags()
 			tags["jobName"] = job.HandlerName
+
+			log.Printf("\x1b[35;3mCron Scheduler: executing task '%s' (interval: %s)\x1b[0m", job.HandlerName, job.Interval)
 			if err := job.HandlerFunc(ctx, []byte(job.Params)); err != nil {
 				panic(err)
 			}

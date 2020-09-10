@@ -25,12 +25,10 @@ func NewTaskQueueHandler(uc usecase.PushNotifUsecase) *TaskQueueHandler {
 }
 
 // MountHandlers return map topic to handler func
-func (h *TaskQueueHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
+func (h *TaskQueueHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 
-	return map[string]types.WorkerHandlerFunc{
-		"task-one": h.taskOne,
-		"task-two": h.taskTwo,
-	}
+	group.Add("task-one", h.taskOne)
+	group.Add("task-two", h.taskTwo)
 }
 
 func (h *TaskQueueHandler) taskOne(ctx context.Context, message []byte) error {

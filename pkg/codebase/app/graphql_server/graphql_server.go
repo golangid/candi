@@ -20,34 +20,43 @@ import (
 	"github.com/graph-gophers/graphql-transport-ws/graphqlws"
 )
 
+const (
+	rootGraphQLPath       = "/graphql"
+	rootGraphQLPlayground = "/graphql/playground"
+	rootGraphQLVoyager    = "/graphql/voyager"
+)
+
 type graphqlServer struct {
-	httpEngine  *http.Server
-	httpHandler Handler
-	service     factory.ServiceFactory
+	httpEngine *http.Server
+	httpPort   string
+	service    factory.ServiceFactory
 }
 
 // NewServer create new GraphQL server
 func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
+
+	httpEngine := new(http.Server)
+	httpHandler := NewHandler(service)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc(rootGraphQLPath, httpHandler.ServeGraphQL())
+	mux.HandleFunc(rootGraphQLPlayground, httpHandler.ServePlayground)
+	mux.HandleFunc(rootGraphQLVoyager, httpHandler.ServeVoyager)
+
+	httpEngine.Addr = fmt.Sprintf(":%d", config.BaseEnv().HTTPPort)
+	httpEngine.Handler = mux
+
+	logger.LogYellow("[GraphQL] endpoint : " + rootGraphQLPath)
+	logger.LogYellow("[GraphQL] playground : " + rootGraphQLPlayground)
+	logger.LogYellow("[GraphQL] voyager : " + rootGraphQLVoyager)
+	fmt.Printf("\x1b[34;1m⇨ GraphQL server run at port [::]%s\x1b[0m\n\n", httpEngine.Addr)
+
 	return &graphqlServer{
-		httpHandler: NewHandler(service),
+		httpEngine: httpEngine,
 	}
 }
 
 func (s *graphqlServer) Serve() {
-	s.httpEngine = new(http.Server)
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/graphql", s.httpHandler.ServeGraphQL())
-	mux.HandleFunc("/graphql/playground", s.httpHandler.ServePlayground)
-	mux.HandleFunc("/graphql/voyager", s.httpHandler.ServeVoyager)
-
-	s.httpEngine.Addr = fmt.Sprintf(":%d", config.BaseEnv().HTTPPort)
-	s.httpEngine.Handler = mux
-
-	logger.LogYellow("[GraphQL] endpoint : /graphql")
-	logger.LogYellow("[GraphQL] playground : /graphql/playground")
-	logger.LogYellow("[GraphQL] voyager : /graphql/voyager")
-	fmt.Printf("\x1b[34;1m⇨ GraphQL server run at port [::]%s\x1b[0m\n\n", s.httpEngine.Addr)
 	if err := s.httpEngine.ListenAndServe(); err != nil {
 		switch e := err.(type) {
 		case *net.OpError:

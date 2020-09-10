@@ -26,5 +26,5 @@ type GraphQLHandler interface {
 
 // WorkerHandler delivery factory for all worker handler
 type WorkerHandler interface {
-	MountHandlers() map[string]types.WorkerHandlerFunc
+	MountHandlers(group *types.WorkerHandlerGroup)
 }

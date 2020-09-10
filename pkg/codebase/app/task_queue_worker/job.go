@@ -3,6 +3,7 @@ package taskqueueworker
 import (
 	"context"
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
 	"time"
@@ -102,6 +103,7 @@ func execJob(workerIndex int) {
 		registerJobToWorker(nextJob, workerIndex)
 	}
 
+	log.Printf("\x1b[35;3mTask Queue Worker: executing task '%s'\x1b[0m", job.TaskName)
 	if err := registeredTask[job.TaskName].handlerFunc(ctx, job.Args); err != nil {
 		job.ErrorHistories = append(job.ErrorHistories, errorHistory{
 			Error:   err.Error(),

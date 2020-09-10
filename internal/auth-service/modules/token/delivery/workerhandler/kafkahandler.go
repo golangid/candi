@@ -17,11 +17,9 @@ func NewKafkaHandler() *KafkaHandler {
 }
 
 // MountHandlers return map topic to handler func
-func (h *KafkaHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
+func (h *KafkaHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 
-	return map[string]types.WorkerHandlerFunc{
-		"test": h.handleTest,
-	}
+	group.Add("test", h.handleTest)
 }
 
 // ProcessMessage from kafka consumer

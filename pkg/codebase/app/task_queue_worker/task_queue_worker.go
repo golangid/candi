@@ -23,15 +23,14 @@ var (
 		taskName       string
 		activeInterval *time.Ticker
 	}
-	queue              QueueStorage
-	refreshWorkerNotif chan struct{}
-	mutex              sync.Mutex
+	queue                        QueueStorage
+	refreshWorkerNotif, shutdown chan struct{}
+	mutex                        sync.Mutex
 )
 
 type taskQueueWorker struct {
 	service    factory.ServiceFactory
 	runningJob int
-	shutdown   chan struct{}
 	wg         sync.WaitGroup
 }
 
@@ -42,54 +41,46 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	}
 
 	queue = NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
-	refreshWorkerNotif = make(chan struct{})
+	refreshWorkerNotif, shutdown = make(chan struct{}), make(chan struct{})
 	registeredTask = make(map[string]struct {
 		handlerFunc types.WorkerHandlerFunc
 		workerIndex int
 	})
-
 	workerIndexTask = make(map[int]*struct {
 		taskName       string
 		activeInterval *time.Ticker
 	})
 
-	return &taskQueueWorker{
-		service:  service,
-		shutdown: make(chan struct{}),
-	}
-}
-
-func (t *taskQueueWorker) Serve() {
-
 	// add shutdown channel to first index
 	workers = append(workers, reflect.SelectCase{
-		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(t.shutdown),
+		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(shutdown),
 	})
 	// add refresh worker channel to second index
 	workers = append(workers, reflect.SelectCase{
 		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(refreshWorkerNotif),
 	})
 
-	for _, m := range t.service.GetModules() {
+	for _, m := range service.GetModules() {
 		if h := m.WorkerHandler(types.TaskQueue); h != nil {
-			for taskName, handlerFunc := range h.MountHandlers() {
+			var handlerGroup types.WorkerHandlerGroup
+			h.MountHandlers(&handlerGroup)
+			for _, handler := range handlerGroup.Handlers {
 				workerIndex := len(workers)
-				registeredTask[taskName] = struct {
+				registeredTask[handler.Pattern] = struct {
 					handlerFunc types.WorkerHandlerFunc
 					workerIndex int
 				}{
-					handlerFunc: handlerFunc, workerIndex: workerIndex,
+					handlerFunc: handler.HandlerFunc, workerIndex: workerIndex,
 				}
 				workerIndexTask[workerIndex] = &struct {
 					taskName       string
 					activeInterval *time.Ticker
 				}{
-					taskName: taskName,
+					taskName: handler.Pattern,
 				}
-
 				workers = append(workers, reflect.SelectCase{Dir: reflect.SelectRecv})
 
-				logger.LogYellow(fmt.Sprintf(`[TASK-QUEUE-WORKER] Task name: %s`, taskName))
+				logger.LogYellow(fmt.Sprintf(`[TASK-QUEUE-WORKER] Task name: %s`, handler.Pattern))
 			}
 		}
 	}
@@ -102,6 +93,14 @@ func (t *taskQueueWorker) Serve() {
 	}
 
 	fmt.Printf("\x1b[34;1m⇨ Task queue worker running with %d task\x1b[0m\n\n", len(registeredTask))
+
+	return &taskQueueWorker{
+		service: service,
+	}
+}
+
+func (t *taskQueueWorker) Serve() {
+
 	for {
 		chosen, _, ok := reflect.Select(workers)
 		if !ok {
@@ -137,7 +136,7 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 		return
 	}
 
-	t.shutdown <- struct{}{}
+	shutdown <- struct{}{}
 
 	done := make(chan struct{})
 	go func() {

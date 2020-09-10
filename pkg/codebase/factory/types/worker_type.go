@@ -20,3 +20,21 @@ const (
 
 // WorkerHandlerFunc types
 type WorkerHandlerFunc func(context.Context, []byte) error
+
+// WorkerHandlerGroup group of worker handlers by pattern string
+type WorkerHandlerGroup struct {
+	Handlers []struct {
+		Pattern     string
+		HandlerFunc WorkerHandlerFunc
+	}
+}
+
+// Add method from WorkerHandlerGroup, pattern can contains unique topic name, key, and task name
+func (m *WorkerHandlerGroup) Add(pattern string, handlerFunc WorkerHandlerFunc) {
+	m.Handlers = append(m.Handlers, struct {
+		Pattern     string
+		HandlerFunc WorkerHandlerFunc
+	}{
+		Pattern: pattern, HandlerFunc: handlerFunc,
+	})
+}
