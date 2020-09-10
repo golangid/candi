@@ -23,11 +23,10 @@ func NewRedisHandler() *RedisHandler {
 }
 
 // MountHandlers return group map topic key to handler func
-func (h *RedisHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
-	return map[string]types.WorkerHandlerFunc{
-		"scheduled-push-notif": h.handleScheduledPushNotif,
-		"heavy-push":           h.handleHeavyPush,
-	}
+func (h *RedisHandler) MountHandlers(group *types.WorkerHandlerGroup) {
+	
+	group.Add("scheduled-push-notif", h.handleScheduledPushNotif)
+	group.Add("heavy-push", h.handleHeavyPush)
 }
 
 func (h *RedisHandler) handleScheduledPushNotif(ctx context.Context, message []byte) error {

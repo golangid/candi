@@ -26,11 +26,10 @@ func NewCronHandler() *CronHandler {
 }
 
 // MountHandlers return group map topic key to handler func
-func (h *CronHandler) MountHandlers() map[string]types.WorkerHandlerFunc {
-	return map[string]types.WorkerHandlerFunc{
-		helper.CronJobKeyToString("push-notif", "10s"):            h.handlePushNotif,
-		helper.CronJobKeyToString("heavy-push-notif", "22:43:07"): h.handleHeavyPush,
-	}
+func (h *CronHandler) MountHandlers(group *types.WorkerHandlerGroup) {
+
+	group.Add(helper.CronJobKeyToString("push-notif", "30s"), h.handlePushNotif)
+	group.Add(helper.CronJobKeyToString("heavy-push-notif", "22:43:07"), h.handleHeavyPush)
 }
 
 func (h *CronHandler) handlePushNotif(ctx context.Context, message []byte) error {
