@@ -7,6 +7,7 @@ import (
 	taskqueueworker "agungdwiprasetyo.com/backend-microservices/pkg/codebase/app/task_queue_worker"
 	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
 	"agungdwiprasetyo.com/backend-microservices/pkg/helper"
+	"agungdwiprasetyo.com/backend-microservices/pkg/shared"
 	"agungdwiprasetyo.com/backend-microservices/pkg/tracer"
 )
 
@@ -26,7 +27,9 @@ func (q *queryResolver) Hello(ctx context.Context, input struct {
 
 	// q.mw.GraphQLBasicAuth(ctx)
 	if err := taskqueueworker.AddJob(input.JobName, int(input.MaxRetry), helper.ToBytes(input.Args)); err != nil {
-		return "", err
+		return "", shared.NewGraphQLErrorResolver(err.Error(), map[string]interface{}{
+			"code": "BadRequest",
+		})
 	}
 
 	return "Hello, from service: notification-service, module: push-notif", nil
