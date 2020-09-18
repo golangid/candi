@@ -49,7 +49,7 @@ func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
 	logger.LogYellow("[GraphQL] endpoint : " + rootGraphQLPath)
 	logger.LogYellow("[GraphQL] playground : " + rootGraphQLPlayground)
 	logger.LogYellow("[GraphQL] voyager : " + rootGraphQLVoyager)
-	fmt.Printf("\x1b[34;1m⇨ GraphQL server run at port [::]%s\x1b[0m\n\n", httpEngine.Addr)
+	fmt.Printf("\x1b[34;1m⇨ GraphQL HTTP server run at port [::]%s\x1b[0m\n\n", httpEngine.Addr)
 
 	return &graphqlServer{
 		httpEngine: httpEngine,

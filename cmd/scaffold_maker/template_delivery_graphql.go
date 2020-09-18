@@ -63,12 +63,32 @@ func (q *queryResolver) Hello(ctx context.Context) (string, error) {
 `
 	deliveryGraphqlMutationTemplate = `package graphqlhandler
 
+import "context"
+
 type mutationResolver struct {
 }
+
+// Hello resolver
+func (m *mutationResolver) Hello(ctx context.Context) (string, error) {
+	return "Hello", nil
+}	
 `
 	deliveryGraphqlSubscriptionTemplate = `package graphqlhandler
 
+import "context"
+
 type subscriptionResolver struct {
+}
+
+// Hello resolver
+func (s *subscriptionResolver) Hello(ctx context.Context) <-chan string {
+	output := make(chan string)
+
+	go func() {
+		output <- "Hello"
+	}()
+
+	return output
 }
 `
 
@@ -103,9 +123,11 @@ type {{clean (upper $.module)}}QueryModule {
 }
 
 type {{clean (upper $.module)}}MutationModule {
+    hello(): String!
 }
 
 type {{clean (upper $.module)}}SubscriptionModule {
+    hello(): String!
 }
 `
 )

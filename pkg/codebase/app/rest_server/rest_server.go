@@ -58,12 +58,12 @@ func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
 		return httpRoutes[i].Path < httpRoutes[j].Path
 	})
 	for _, route := range httpRoutes {
-		if !strings.Contains(route.Name, "(*Group)") {
+		if route.Path != "/" && !strings.Contains(route.Name, "(*Group)") {
 			logger.LogGreen(fmt.Sprintf("[REST-ROUTE] %-6s %-30s --> %s", route.Method, route.Path, route.Name))
 		}
 	}
 
-	// inject graphql handler, delete/comment this code if you want separate graphql server from echo rest server
+	// inject graphql handler to rest server
 	if config.BaseEnv().UseGraphQL {
 		graphqlHandler := graphqlserver.NewHandler(service)
 		server.serverEngine.Any("/graphql", echo.WrapHandler(graphqlHandler.ServeGraphQL()))
@@ -75,7 +75,7 @@ func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
 		logger.LogYellow("[GraphQL] voyager : /graphql/voyager")
 	}
 
-	fmt.Printf("\x1b[34;1m⇨ REST server run at port [::]%s\x1b[0m\n\n", server.httpPort)
+	fmt.Printf("\x1b[34;1m⇨ HTTP server run at port [::]%s\x1b[0m\n\n", server.httpPort)
 
 	return server
 }

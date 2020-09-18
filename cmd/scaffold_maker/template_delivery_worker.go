@@ -19,9 +19,9 @@ func NewKafkaHandler() *KafkaHandler {
 	return &KafkaHandler{}
 }
 
-// MountHandlers return map topic to handler func
+// MountHandlers mount handler group
 func (h *KafkaHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	group.Add("{{$.module}}", h.handleTest)
+	group.Add("{{$.module}}", h.handleTest) // handling topic "{{$.module}}"
 }
 
 // ProcessMessage from kafka consumer
@@ -50,13 +50,13 @@ func NewCronHandler() *CronHandler {
 	return &CronHandler{}
 }
 
-// MountHandlers return map topic to handler func
+// MountHandlers mount handler group
 func (h *CronHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	group.Add(helper.CronJobKeyToString("sample", "10s"), h.handleSample)
+	group.Add(helper.CronJobKeyToString("{{$.module}}-scheduler", "10s"), h.handleSample)
 }
 
 func (h *CronHandler) handleSample(ctx context.Context, message []byte) error {
-	fmt.Println("cron: execute sample")
+	fmt.Println("cron: execute in module {{$.module}}")
 	return nil
 }
 `
@@ -80,7 +80,7 @@ func NewRedisHandler() *RedisHandler {
 	}
 }
 
-// MountHandlers return map topic to handler func
+// MountHandlers mount handler group
 func (h *RedisHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 	group.Add("{{$.module}}-sample", h.handleSample)
 }
@@ -111,7 +111,7 @@ func NewTaskQueueHandler() *TaskQueueHandler {
 	}
 }
 
-// MountHandlers return map topic to handler func
+// MountHandlers mount handler group
 func (h *TaskQueueHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 	group.Add("{{$.module}}-task-one", h.taskOne)
 	group.Add("{{$.module}}-task-two", h.taskTwo)
