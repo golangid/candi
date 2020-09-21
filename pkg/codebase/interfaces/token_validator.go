@@ -8,5 +8,5 @@ import (
 
 // TokenValidator abstract interface
 type TokenValidator interface {
-	Validate(ctx context.Context, token string) <-chan shared.Result
+	ValidateToken(ctx context.Context, token string) (*shared.TokenClaim, error)
 }

@@ -32,11 +32,9 @@ func NewAuthServiceGRPC(authGRPCHost, authServiceKey string) Auth {
 	}
 }
 
-func (a *authServiceGRPC) Validate(ctx context.Context, token string) <-chan shared.Result {
-	output := make(chan shared.Result)
+func (a *authServiceGRPC) ValidateToken(ctx context.Context, token string) (cl *shared.TokenClaim, err error) {
 
-	go tracer.WithTraceFuncTracer(ctx, "AuthServiceGRPC-Validate", func(trace tracer.Tracer) {
-		defer close(output)
+	tracer.WithTraceFuncTracer(ctx, "AuthServiceGRPC-Validate", func(trace tracer.Tracer) {
 		ctx = trace.Context()
 
 		md := metadata.Pairs("authorization", a.authKey)
@@ -52,7 +50,6 @@ func (a *authServiceGRPC) Validate(ctx context.Context, token string) <-chan sha
 			if ok {
 				err = errors.New(desc.Message())
 			}
-			output <- shared.Result{Error: err}
 			return
 		}
 
@@ -66,8 +63,39 @@ func (a *authServiceGRPC) Validate(ctx context.Context, token string) <-chan sha
 		sharedClaim.User.ID = resp.Claim.User.ID
 		sharedClaim.User.Username = resp.Claim.User.Username
 
+		cl = &sharedClaim
+	})
+
+	return
+}
+
+func (a *authServiceGRPC) GenerateToken(ctx context.Context, claim *shared.TokenClaim) <-chan shared.Result {
+	output := make(chan shared.Result)
+
+	go tracer.WithTraceFuncTracer(ctx, "AuthServiceGRPC-Validate", func(trace tracer.Tracer) {
+		defer close(output)
+		ctx = trace.Context()
+
+		md := metadata.Pairs("authorization", a.authKey)
+		trace.InjectGRPCMetadata(md)
+
+		ctx = metadata.NewOutgoingContext(ctx, md)
+		resp, err := a.client.GenerateToken(ctx, &pb.UserData{
+			ID:       claim.User.ID,
+			Username: claim.User.Username,
+		})
+		if err != nil {
+			logger.LogE(err.Error())
+			desc, ok := status.FromError(err)
+			if ok {
+				err = errors.New(desc.Message())
+			}
+			output <- shared.Result{Error: err}
+			return
+		}
+
 		output <- shared.Result{
-			Data: &sharedClaim,
+			Data: resp.Data.Token,
 		}
 	})
 

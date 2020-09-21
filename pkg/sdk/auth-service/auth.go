@@ -8,5 +8,6 @@ import (
 
 // Auth service
 type Auth interface {
-	Validate(ctx context.Context, token string) <-chan shared.Result
+	ValidateToken(ctx context.Context, token string) (cl *shared.TokenClaim, err error)
+	GenerateToken(ctx context.Context, claim *shared.TokenClaim) <-chan shared.Result
 }

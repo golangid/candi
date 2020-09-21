@@ -16,7 +16,12 @@ func NewAuthServiceRedis(redisHost string, redisPort int, redisAuth string, useT
 	return &authServiceRedis{}
 }
 
-func (a *authServiceRedis) Validate(ctx context.Context, token string) <-chan shared.Result {
+func (a *authServiceRedis) ValidateToken(ctx context.Context, token string) (cl *shared.TokenClaim, err error) {
+
+	return &shared.TokenClaim{}, nil
+}
+
+func (a *authServiceRedis) GenerateToken(ctx context.Context, claim *shared.TokenClaim) <-chan shared.Result {
 	output := make(chan shared.Result)
 
 	go func() { defer close(output) }()

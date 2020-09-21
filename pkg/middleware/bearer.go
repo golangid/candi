@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strings"
 
@@ -23,15 +22,9 @@ const (
 
 // Bearer token validator
 func (m *Middleware) Bearer(ctx context.Context, tokenString string) (*shared.TokenClaim, error) {
-	resp := <-m.tokenValidator.Validate(ctx, tokenString)
-
-	if resp.Error != nil {
-		return nil, resp.Error
-	}
-
-	tokenClaim, ok := resp.Data.(*shared.TokenClaim)
-	if !ok {
-		return nil, errors.New("Validate token: result is not claim data")
+	tokenClaim, err := m.tokenValidator.ValidateToken(ctx, tokenString)
+	if err != nil {
+		return nil, err
 	}
 
 	return tokenClaim, nil
