@@ -25,13 +25,13 @@ func (uc *pushNotifUsecaseImpl) AddSubscriber(ctx context.Context, clientID, top
 
 	event := make(chan *domain.Event)
 
-	newSubscriber := domain.Subscriber{ID: clientID, Topic: topic, IsActive: true}
-
 	go func() {
+		newSubscriber := domain.Subscriber{ID: clientID, Topic: topic, IsActive: true}
 		uc.registerNewSubscriberInTopic(ctx, &newSubscriber, event)
 
 		select {
 		case <-ctx.Done():
+			close(event)
 			uc.removeSubscriber(context.Background(), &newSubscriber)
 			return
 		}
