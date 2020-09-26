@@ -21,23 +21,34 @@ type redisWorker struct {
 	pubSubConn func() redis.PubSubConn
 	isHaveJob  bool
 	service    factory.ServiceFactory
-	handlers   map[string]types.WorkerHandlerFunc
-	shutdown   chan struct{}
-	wg         sync.WaitGroup
+	handlers   map[string]struct {
+		handlerFunc   types.WorkerHandlerFunc
+		errorHandlers []types.WorkerErrorHandler
+	}
+	shutdown chan struct{}
+	wg       sync.WaitGroup
 }
 
 // NewWorker create new redis subscriber
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	redisPool := service.GetDependency().GetRedisPool().WritePool()
 
-	handlers := make(map[string]types.WorkerHandlerFunc)
+	handlers := make(map[string]struct {
+		handlerFunc   types.WorkerHandlerFunc
+		errorHandlers []types.WorkerErrorHandler
+	})
 	for _, m := range service.GetModules() {
 		if h := m.WorkerHandler(types.RedisSubscriber); h != nil {
 			var handlerGroup types.WorkerHandlerGroup
 			h.MountHandlers(&handlerGroup)
 			for _, handler := range handlerGroup.Handlers {
 				logger.LogYellow(fmt.Sprintf(`[REDIS-SUBSCRIBER] (key prefix): "%s" (processed by module): %s`, handler.Pattern, m.Name()))
-				handlers[strings.Replace(handler.Pattern, "~", "", -1)] = handler.HandlerFunc
+				handlers[strings.Replace(handler.Pattern, "~", "", -1)] = struct {
+					handlerFunc   types.WorkerHandlerFunc
+					errorHandlers []types.WorkerErrorHandler
+				}{
+					handlerFunc: handler.HandlerFunc, errorHandlers: handler.ErrorHandler,
+				}
 			}
 		}
 	}
@@ -104,7 +115,7 @@ func (r *redisWorker) Serve() {
 	// run worker with listen shutdown channel
 	for {
 		select {
-		case handler := <-handlerReceiver:
+		case recv := <-handlerReceiver:
 			r.wg.Add(1)
 			go tracer.WithTraceFunc(context.Background(), "RedisSubscriber", func(ctx context.Context, tags map[string]interface{}) {
 				defer r.wg.Done()
@@ -115,13 +126,16 @@ func (r *redisWorker) Serve() {
 					logger.LogGreen(tracer.GetTraceURL(ctx))
 				}()
 
-				tags["handler_name"] = handler.handlerName
-				tags["message"] = string(handler.message)
+				tags["handler_name"] = recv.handlerName
+				tags["message"] = string(recv.message)
 
-				log.Printf("\x1b[35;3mRedis Key Expired Subscriber: executing event key '%s'\x1b[0m", handler.handlerName)
+				log.Printf("\x1b[35;3mRedis Key Expired Subscriber: executing event key '%s'\x1b[0m", recv.handlerName)
 
-				handlerFunc := r.handlers[handler.handlerName]
-				if err := handlerFunc(ctx, handler.message); err != nil {
+				handler := r.handlers[recv.handlerName]
+				if err := handler.handlerFunc(ctx, recv.message); err != nil {
+					for _, errHandler := range handler.errorHandlers {
+						errHandler(ctx, types.RedisSubscriber, recv.handlerName, recv.message, err)
+					}
 					panic(err)
 				}
 			})

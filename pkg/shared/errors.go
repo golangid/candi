@@ -1,5 +1,12 @@
 package shared
 
+import (
+	"context"
+
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
+	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
+)
+
 // GraphQLErrorResolver graphql error with extensions
 type GraphQLErrorResolver interface {
 	Error() string
@@ -23,4 +30,11 @@ func NewGraphQLErrorResolver(errMesage string, extensions map[string]interface{}
 	return &resolveErrorImpl{
 		message: errMesage, extensions: extensions,
 	}
+}
+
+// WorkerErrorHandler general function for handling error after execute worker handler
+// example in this function can write log to database
+func WorkerErrorHandler(ctx context.Context, workerType types.Worker, workerName string, message []byte, err error) {
+
+	logger.LogYellow(string(workerType) + " - " + workerName + " - " + string(message) + " - handling error: " + string(err.Error()))
 }

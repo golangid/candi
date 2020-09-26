@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/factory/types"
 	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"agungdwiprasetyo.com/backend-microservices/pkg/tracer"
 	"github.com/google/uuid"
@@ -114,7 +115,7 @@ func execJob(workerIndex int) {
 		case *ErrorRetrier:
 			if job.Retries >= job.MaxRetry {
 				fmt.Printf("\x1b[31;1mTaskQueueWorker: GIVE UP: %s\x1b[0m\n", job.TaskName)
-				panic("give up, error: " + e.Error())
+				goto returnErr
 			}
 
 			delay := e.Delay
@@ -132,8 +133,13 @@ func execJob(workerIndex int) {
 
 			job.Interval = interval.String()
 			queue.PushJob(job)
-		default:
-			panic(e)
+			return
 		}
+
+	returnErr:
+		for _, errHandler := range registeredTask[job.TaskName].errorHandlers {
+			errHandler(ctx, types.TaskQueue, job.TaskName, job.Args, err)
+		}
+		panic(err)
 	}
 }

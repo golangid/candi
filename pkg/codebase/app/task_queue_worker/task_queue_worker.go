@@ -14,8 +14,9 @@ import (
 
 var (
 	registeredTask map[string]struct {
-		handlerFunc types.WorkerHandlerFunc
-		workerIndex int
+		handlerFunc   types.WorkerHandlerFunc
+		errorHandlers []types.WorkerErrorHandler
+		workerIndex   int
 	}
 
 	workers         []reflect.SelectCase
@@ -43,8 +44,9 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	queue = NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
 	refreshWorkerNotif, shutdown = make(chan struct{}), make(chan struct{})
 	registeredTask = make(map[string]struct {
-		handlerFunc types.WorkerHandlerFunc
-		workerIndex int
+		handlerFunc   types.WorkerHandlerFunc
+		errorHandlers []types.WorkerErrorHandler
+		workerIndex   int
 	})
 	workerIndexTask = make(map[int]*struct {
 		taskName       string
@@ -67,10 +69,11 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 			for _, handler := range handlerGroup.Handlers {
 				workerIndex := len(workers)
 				registeredTask[handler.Pattern] = struct {
-					handlerFunc types.WorkerHandlerFunc
-					workerIndex int
+					handlerFunc   types.WorkerHandlerFunc
+					errorHandlers []types.WorkerErrorHandler
+					workerIndex   int
 				}{
-					handlerFunc: handler.HandlerFunc, workerIndex: workerIndex,
+					handlerFunc: handler.HandlerFunc, workerIndex: workerIndex, errorHandlers: handler.ErrorHandler,
 				}
 				workerIndexTask[workerIndex] = &struct {
 					taskName       string

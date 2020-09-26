@@ -32,7 +32,10 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	}
 
 	var consumerHandler kafkaConsumer
-	consumerHandler.handlerFuncs = make(map[string]types.WorkerHandlerFunc)
+	consumerHandler.handlerFuncs = make(map[string]struct {
+		handlerFunc   types.WorkerHandlerFunc
+		errorHandlers []types.WorkerErrorHandler
+	})
 	for _, m := range service.GetModules() {
 		if h := m.WorkerHandler(types.Kafka); h != nil {
 			var handlerGroup types.WorkerHandlerGroup
@@ -41,7 +44,12 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 				if _, ok := consumerHandler.handlerFuncs[handler.Pattern]; ok {
 					logger.LogYellow(fmt.Sprintf("Kafka: warning, topic %s has been used in another module, overwrite handler func", handler.Pattern))
 				}
-				consumerHandler.handlerFuncs[handler.Pattern] = handler.HandlerFunc
+				consumerHandler.handlerFuncs[handler.Pattern] = struct {
+					handlerFunc   types.WorkerHandlerFunc
+					errorHandlers []types.WorkerErrorHandler
+				}{
+					handlerFunc: handler.HandlerFunc, errorHandlers: handler.ErrorHandler,
+				}
 				consumerHandler.topics = append(consumerHandler.topics, handler.Pattern)
 				logger.LogYellow(fmt.Sprintf("[KAFKA-CONSUMER] (topic): %-8s  (consumed by module)--> [%s]", handler.Pattern, m.Name()))
 			}
@@ -78,7 +86,10 @@ func (h *kafkaWorker) Shutdown(ctx context.Context) {
 // kafkaConsumer represents a Sarama consumer group consumer
 type kafkaConsumer struct {
 	topics       []string
-	handlerFuncs map[string]types.WorkerHandlerFunc // mapping topic to handler func in delivery layer
+	handlerFuncs map[string]struct { // mapping topic to handler func in delivery layer
+		handlerFunc   types.WorkerHandlerFunc
+		errorHandlers []types.WorkerErrorHandler
+	}
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
@@ -99,10 +110,9 @@ func (c *kafkaConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim 
 		tracer.WithTraceFunc(session.Context(), "KafkaConsumer", func(ctx context.Context, tags map[string]interface{}) {
 			defer func() {
 				if r := recover(); r != nil {
-					tracer.SetError(ctx, fmt.Errorf("%v", r))
-				} else {
-					session.MarkMessage(message, "")
+					tracer.SetError(ctx, fmt.Errorf("%w", r))
 				}
+				session.MarkMessage(message, "")
 				logger.LogGreen(tracer.GetTraceURL(ctx))
 			}()
 
@@ -114,8 +124,11 @@ func (c *kafkaConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim 
 			tags["partition"] = message.Partition
 			tags["offset"] = message.Offset
 
-			handlerFunc := c.handlerFuncs[message.Topic]
-			if err := handlerFunc(ctx, message.Value); err != nil {
+			handler := c.handlerFuncs[message.Topic]
+			if err := handler.handlerFunc(ctx, message.Value); err != nil {
+				for _, errHandler := range handler.errorHandlers {
+					errHandler(ctx, types.Kafka, message.Topic, message.Value, err)
+				}
 				panic(err)
 			}
 		})
