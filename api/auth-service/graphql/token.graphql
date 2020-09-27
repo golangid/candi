@@ -1,4 +1,0 @@
-################### TokenModule Module Area
-type TokenModule {
-    hello(): String!
-}
