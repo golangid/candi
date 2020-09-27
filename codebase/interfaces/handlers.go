@@ -1,0 +1,30 @@
+package interfaces
+
+import (
+	"github.com/labstack/echo"
+	"google.golang.org/grpc"
+	"pkg.agungdwiprasetyo.com/gendon/codebase/factory/types"
+)
+
+// EchoRestHandler delivery factory for echo handler
+type EchoRestHandler interface {
+	Mount(group *echo.Group)
+}
+
+// GRPCHandler delivery factory for grpc handler
+type GRPCHandler interface {
+	Register(server *grpc.Server)
+}
+
+// GraphQLHandler delivery factory for graphql resolver handler
+type GraphQLHandler interface {
+	// waiting https://github.com/graph-gophers/graphql-go/issues/145 if include subscription in schema
+	Query() interface{}
+	Mutation() interface{}
+	Subscription() interface{}
+}
+
+// WorkerHandler delivery factory for all worker handler
+type WorkerHandler interface {
+	MountHandlers(group *types.WorkerHandlerGroup)
+}

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
-	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"pkg.agungdwiprasetyo.com/gendon/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/gendon/logger"
 )
 
 type mongoInstance struct {

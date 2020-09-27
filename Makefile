@@ -1,40 +1,10 @@
-.PHONY : prepare build run
+.PHONY : test
 
-$(eval $(service):;@:)
-ifndef service
-$(error "service" is not set)
-endif
+PACKAGES = $(shell go list ./... | grep -v -e . -e mocks | tr '\n' ',')
 
-init:
-	go run cmd/scaffold_maker/*.go --scope=initservice --servicename=$(service) --modules=$(modules)
-	@$(MAKE) -f $(lastword $(MAKEFILE_LIST)) proto
-
-add-module:
-	go run cmd/scaffold_maker/*.go --scope=addmodule --servicename=$(service) --modules=$(modules)
-	@$(MAKE) -f $(lastword $(MAKEFILE_LIST)) proto
-
-prepare:
-	@if [ ! -d "cmd/$(service)" ]; then  echo "ERROR: service '$(service)' undefined"; exit 1; fi
-	@ln -sf cmd/$(service)/main.go main_service.go
-
-build: prepare
-	go build -o bin
-
-run: build
-	./bin
-
-proto:
-	$(foreach proto_file, $(shell find api/$(service)/proto -name '*.proto'),\
-	protoc -I . $(proto_file) --go_out=plugins=grpc:.;)
-
-docker: prepare
-	docker build --build-arg SERVICE_NAME=$(service) -t $(service):latest .
-
-run-container:
-	docker run --name=$(service) --network="host" -d $(service)
-
-generate-rsa-key:
-	sh scripts/generate_rsa_key.sh
-
-clear:
-	rm main_service.go bin backend-microservices
+# unit test & calculate code coverage
+test:
+	@if [ -f coverage.txt ]; then rm coverage.txt; fi;
+	@echo ">> running unit test and calculate coverage"
+	@go test ./... -cover -coverprofile=coverage.txt -covermode=count -coverpkg=$(PACKAGES)
+	@go tool cover -func=coverage.txt

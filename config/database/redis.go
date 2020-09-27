@@ -6,9 +6,9 @@ import (
 	"os"
 	"strconv"
 
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
-	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"github.com/gomodule/redigo/redis"
+	"pkg.agungdwiprasetyo.com/gendon/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/gendon/logger"
 )
 
 type redisInstance struct {

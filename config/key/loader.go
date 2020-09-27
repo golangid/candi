@@ -4,9 +4,9 @@ import (
 	"crypto/rsa"
 	"io/ioutil"
 
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
-	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
 	"github.com/dgrijalva/jwt-go"
+	"pkg.agungdwiprasetyo.com/gendon/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/gendon/logger"
 )
 
 type key struct {

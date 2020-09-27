@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"agungdwiprasetyo.com/backend-microservices/pkg/codebase/interfaces"
-	"agungdwiprasetyo.com/backend-microservices/pkg/logger"
-	"agungdwiprasetyo.com/backend-microservices/pkg/publisher"
 	"github.com/Shopify/sarama"
+	"pkg.agungdwiprasetyo.com/gendon/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/gendon/logger"
+	"pkg.agungdwiprasetyo.com/gendon/publisher"
 )
 
 type kafkaBroker struct {
