@@ -13,29 +13,22 @@
 
 ### Install `binary` from source
 ```
-$ go get github.com/agungdwiprasetyo/candi
-$ go install github.com/agungdwiprasetyo/candi/cmd/candi
+$ go get pkg.agungdwiprasetyo.com/candi
+$ go install pkg.agungdwiprasetyo.com/candi/cmd/candi
 ```
+
 
 ### Create new service
 ```
-make init service={{service_name}} modules={{module_a}},{{module_b}}
+$ candi --scope=initservice --servicename={{service_name}} --modules={{module_a}},{{module_b}}
 ```
 
-### Run service
-```
-make run service={{service_name}}
-```
 
 ### Add new modules in existing service
 ```
-make add-module service={{service_name}} modules={{module_c}},{{module_d}}
+$ candi --scope=addmodule --servicename={{service_name}} --modules={{module_c}},{{module_d}}
 ```
 
-### Create docker image a service
-```
-make docker service={{service_name}}
-```
 
 ## Service handlers example:
 * [**Example Cron worker in delivery layer**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/pkg/codebase/app/cron_worker)
