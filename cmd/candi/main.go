@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"flag"
 	"fmt"
@@ -12,7 +13,15 @@ import (
 	"text/template"
 )
 
+const (
+	ps1 = "\x1b[32;1m>> \x1b[0m"
+)
+
 const packageName = "pkg.agungdwiprasetyo.com/candi"
+
+var scopeMap = map[string]string{
+	"1": "initservice", "2": "addmodule",
+}
 
 type param struct {
 	PackageName string
@@ -54,6 +63,32 @@ func main() {
 
 	flag.Parse()
 
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Println(`What do you want?
+1> Init service
+2> Add module(s)`)
+
+	cmdInput, _ := reader.ReadString('\n')
+	cmdInput = strings.TrimRight(cmdInput, "\n")
+	var ok bool
+	scope, ok = scopeMap[cmdInput]
+	if !ok {
+		panic("invalid option")
+	}
+
+	if scope == "initservice" && serviceName == "" {
+		fmt.Print(ps1 + "Please input service name: ")
+		cmdInput, _ := reader.ReadString('\n')
+		cmdInput = strings.TrimRight(cmdInput, "\n")
+		serviceName = cmdInput
+	}
+	if modulesFlag == "" {
+		fmt.Print(ps1 + "Please input module names (separated by comma): ")
+		cmdInput, _ := reader.ReadString('\n')
+		cmdInput = strings.TrimRight(cmdInput, "\n")
+		modulesFlag = cmdInput
+	}
+
 	var data param
 	data.PackageName = packageName
 	data.ServiceName = serviceName
@@ -70,15 +105,20 @@ func main() {
 	})
 
 	apiStructure := FileStructure{
-		TargetDir: "api/", IsDir: true, DataSource: data,
+		TargetDir: "api/", IsDir: true,
 	}
 
 	cmdStructure := FileStructure{
-		TargetDir: "cmd/", IsDir: true, DataSource: data,
+		TargetDir: "cmd/", IsDir: true,
 		Childs: []FileStructure{
-			{FromTemplate: true, DataSource: data, Source: cmdMainTemplate, FileName: "main.go"},
-			{FromTemplate: true, DataSource: data, Source: envTemplate, FileName: ".env"},
-			{FromTemplate: true, DataSource: data, Source: envTemplate, FileName: ".env.sample"},
+			{
+				TargetDir: "{{.ServiceName}}/", IsDir: true, DataSource: data,
+				Childs: []FileStructure{
+					{FromTemplate: true, DataSource: data, Source: cmdMainTemplate, FileName: "main.go"},
+					{FromTemplate: true, DataSource: data, Source: envTemplate, FileName: ".env"},
+					{FromTemplate: true, DataSource: data, Source: envTemplate, FileName: ".env.sample"},
+				},
+			},
 		},
 	}
 
@@ -94,7 +134,7 @@ func main() {
 	}
 
 	if scope == "addmodule" {
-		files, err := ioutil.ReadDir("internal/" + serviceName + "/modules")
+		files, err := ioutil.ReadDir("internal/modules")
 		if err != nil {
 			panic(err)
 		}
@@ -207,6 +247,10 @@ func main() {
 	case "initservice":
 		baseDirectoryFile.Childs = []FileStructure{
 			apiStructure, cmdStructure, serviceStructure,
+			{FromTemplate: true, DataSource: data, Source: dockerfileTemplate, FileName: "Dockerfile"},
+			{FromTemplate: true, DataSource: data, Source: makefileTemplate, FileName: "Makefile"},
+			{FromTemplate: true, DataSource: data, Source: gomodTemplate, FileName: "go.mod"},
+			{Source: gitignoreTemplate, FileName: ".gitignore"},
 		}
 
 	case "addmodule":

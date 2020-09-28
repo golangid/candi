@@ -5,10 +5,11 @@ const deliveryRestTemplate = `package resthandler
 import (
 	"net/http"
 
-	"{{.PackageName}}/pkg/codebase/interfaces"
-	"{{.PackageName}}/pkg/helper"
-	"{{.PackageName}}/pkg/wrapper"
 	"github.com/labstack/echo"
+
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
+	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/candi/wrapper"
 )
 
 // RestHandler handler

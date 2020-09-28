@@ -5,18 +5,20 @@ const serviceMainTemplate = `package {{clean $.ServiceName}}
 import (
 	"context"
 
-	"{{$.PackageName}}/config"
-	"{{$.PackageName}}/config/broker"
-	"{{$.PackageName}}/config/database"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/dependency"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/config/broker"
+	"pkg.agungdwiprasetyo.com/candi/config/database"
+	"pkg.agungdwiprasetyo.com/candi/middleware"
+	"pkg.agungdwiprasetyo.com/candi/validator"
+
+
 {{- range $module := .Modules}}
-	"{{$.PackageName}}/internal/{{$.ServiceName}}/modules/{{$module}}"
+	"{{$.ServiceName}}/internal/modules/{{$module}}"
 {{- end }}
-	"{{$.PackageName}}/pkg/codebase/factory"
-	"{{$.PackageName}}/pkg/codebase/factory/dependency"
-	"{{$.PackageName}}/pkg/codebase/factory/types"
-	"{{$.PackageName}}/pkg/codebase/interfaces"
-	"{{$.PackageName}}/pkg/middleware"
-	"{{$.PackageName}}/pkg/validator"
 )
 
 // Service model

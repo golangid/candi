@@ -3,13 +3,14 @@ package main
 const moduleMainTemplate = `package {{clean $.module}}
 
 import (
-	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{$.module}}/delivery/graphqlhandler"
-	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{$.module}}/delivery/grpchandler"
-	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{$.module}}/delivery/resthandler"
-	"{{$.PackageName}}/internal/{{.ServiceName}}/modules/{{$.module}}/delivery/workerhandler"
-	"{{$.PackageName}}/pkg/codebase/factory/dependency"
-	"{{$.PackageName}}/pkg/codebase/interfaces"
-	"{{$.PackageName}}/pkg/codebase/factory/types"
+	"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/graphqlhandler"
+	"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/grpchandler"
+	"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/resthandler"
+	"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/workerhandler"
+
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/dependency"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
 )
 
 const (

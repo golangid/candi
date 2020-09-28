@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"{{.PackageName}}/pkg/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
 )
 
 // KafkaHandler struct
@@ -37,8 +37,8 @@ import (
 	"context"
 	"fmt"
 
-	"{{.PackageName}}/pkg/codebase/factory/types"
-	"{{.PackageName}}/pkg/helper"
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
 )
 
 // CronHandler struct
@@ -67,7 +67,7 @@ import (
 	"context"
 	"fmt"
 
-	"{{.PackageName}}/pkg/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
 )
 
 // RedisHandler struct
@@ -97,8 +97,8 @@ import (
 	"context"
 	"time"
 
-	taskqueueworker "{{.PackageName}}/pkg/codebase/app/task_queue_worker"
-	"{{.PackageName}}/pkg/codebase/factory/types"
+	taskqueueworker "pkg.agungdwiprasetyo.com/candi/codebase/app/task_queue_worker"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
 )
 
 // TaskQueueHandler struct

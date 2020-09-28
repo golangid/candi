@@ -6,9 +6,10 @@ const (
 import (
 	"context"
 
-	proto "{{.PackageName}}/api/{{.ServiceName}}/proto/{{$.module}}"
-	"{{.PackageName}}/pkg/codebase/interfaces"
+	proto "{{.ServiceName}}/api/proto/{{$.module}}"
+
 	"google.golang.org/grpc"
+	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
 )
 
 // GRPCHandler rpc handler
@@ -28,7 +29,7 @@ func (h *GRPCHandler) Register(server *grpc.Server) {
 	proto.Register{{clean (upper $.module)}}HandlerServer(server, h)
 }
 
-// FindAll rpc
+// Hello rpc
 func (h *GRPCHandler) Hello(ctx context.Context, req *proto.Request) (*proto.Response, error) {
 	return &proto.Response{
 		Message: req.Message + "; Hello, from service: {{$.ServiceName}}, module: {{$.module}}",

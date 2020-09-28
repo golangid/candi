@@ -6,14 +6,13 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"{{.PackageName}}/config"
-	service "{{.PackageName}}/internal/{{.ServiceName}}"
-	"{{.PackageName}}/pkg/codebase/app"
+	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/codebase/app"
+
+	service "{{.ServiceName}}/internal"
 )
 
-const (
-	serviceName = "{{.ServiceName}}"
-)
+const serviceName = "{{.ServiceName}}"
 
 func main() {
 	defer func() {

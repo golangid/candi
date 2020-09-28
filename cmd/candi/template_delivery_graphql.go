@@ -4,7 +4,7 @@ const (
 	deliveryGraphqlRootTemplate = `package graphqlhandler
 
 import (
-	"{{.PackageName}}/pkg/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
 )
 
 // GraphQLHandler model
@@ -47,7 +47,7 @@ func (h *GraphQLHandler) Subscription() interface{} {
 import (
 	"context"
 
-	"{{.PackageName}}/pkg/tracer"
+	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
 
 type queryResolver struct {
