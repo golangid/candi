@@ -4,14 +4,14 @@ const envTemplate = `# Basic env configuration
 
 # Service Handlers
 ## Server
-USE_REST=true
-USE_GRPC=true
-USE_GRAPHQL=true
+USE_REST={{$.restHandler}}
+USE_GRPC={{$.grpcHandler}}
+USE_GRAPHQL={{$.graphqlHandler}}
 ## Worker
-USE_KAFKA_CONSUMER=true
-USE_CRON_SCHEDULER=true
-USE_REDIS_SUBSCRIBER=true
-USE_TASK_QUEUE_WORKER=true
+USE_KAFKA_CONSUMER={{$.kafkaHandler}}
+USE_CRON_SCHEDULER={{$.schedulerHandler}}
+USE_REDIS_SUBSCRIBER={{$.redissubsHandler}}
+USE_TASK_QUEUE_WORKER={{$.taskqueueHandler}}
 
 HTTP_PORT=8000
 GRPC_PORT=8002

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"pkg.agungdwiprasetyo.com/candi/config"
 	"pkg.agungdwiprasetyo.com/candi/codebase/app"
+	"pkg.agungdwiprasetyo.com/candi/config"
 
 	service "{{.ServiceName}}/internal"
 )

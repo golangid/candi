@@ -3,25 +3,35 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 )
 
 const (
-	ps1 = "\x1b[32;1m>> \x1b[0m"
+	ps1         = "\x1b[32;1m>>> \x1b[0m"
+	packageName = "pkg.agungdwiprasetyo.com/candi"
+	initService = "initservice"
+	addModule   = "addModule"
 )
 
-const packageName = "pkg.agungdwiprasetyo.com/candi"
-
-var scopeMap = map[string]string{
-	"1": "initservice", "2": "addmodule",
-}
+var (
+	scopeMap = map[string]string{
+		"1": "initservice", "2": "addmodule",
+	}
+	serviceHandlersMap = map[string]string{
+		"1": "restHandler", "2": "grpcHandler", "3": "graphqlHandler",
+	}
+	workerHandlersMap = map[string]string{
+		"1": "kafkaHandler", "2": "schedulerHandler", "3": "redissubsHandler", "4": "taskqueueHandler",
+	}
+	tpl *template.Template
+)
 
 type param struct {
 	PackageName string
@@ -41,68 +51,19 @@ type FileStructure struct {
 	Childs       []FileStructure
 }
 
-var (
-	tpl *template.Template
-)
-
 func main() {
 
-	var scope string
-	var serviceName string
-	var modulesFlag string
-
-	flag.StringVar(&scope, "scope", "initservice", "set scope")
-	flag.StringVar(&serviceName, "servicename", "", "set service name")
-	flag.StringVar(&modulesFlag, "modules", "", "set all modules from service")
-
-	flag.Usage = func() {
-		fmt.Println("-scope | --scope => set scope (initservice or addmodule), example: --scope initservice")
-		fmt.Println("-servicename | --servicename => set service name, example: --servicename auth-service")
-		fmt.Println("-modules | --modules => set modules name, example: --modules user,auth")
-	}
-
-	flag.Parse()
-
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Println(`What do you want?
-1> Init service
-2> Add module(s)`)
-
-	cmdInput, _ := reader.ReadString('\n')
-	cmdInput = strings.TrimRight(cmdInput, "\n")
-	var ok bool
-	scope, ok = scopeMap[cmdInput]
-	if !ok {
-		panic("invalid option")
-	}
-
-	if scope == "initservice" && serviceName == "" {
-		fmt.Print(ps1 + "Please input service name: ")
-		cmdInput, _ := reader.ReadString('\n')
-		cmdInput = strings.TrimRight(cmdInput, "\n")
-		serviceName = cmdInput
-	}
-	if modulesFlag == "" {
-		fmt.Print(ps1 + "Please input module names (separated by comma): ")
-		cmdInput, _ := reader.ReadString('\n')
-		cmdInput = strings.TrimRight(cmdInput, "\n")
-		modulesFlag = cmdInput
-	}
+	scope, serviceName, modules, serviceHandlers, workerHandlers := parseInput()
 
 	var data param
 	data.PackageName = packageName
 	data.ServiceName = serviceName
 
+	dataSourceWithHandler := map[string]string{"PackageName": packageName, "ServiceName": serviceName}
+	mergeMap(dataSourceWithHandler, serviceHandlers)
+	mergeMap(dataSourceWithHandler, workerHandlers)
+
 	tpl = template.New(packageName)
-
-	modules := strings.Split(modulesFlag, ",")
-	if modulesFlag == "" {
-		modules = []string{"module"} // default module name
-	}
-
-	sort.Slice(modules, func(i, j int) bool {
-		return modules[i] < modules[j]
-	})
 
 	apiStructure := FileStructure{
 		TargetDir: "api/", IsDir: true,
@@ -115,8 +76,8 @@ func main() {
 				TargetDir: "{{.ServiceName}}/", IsDir: true, DataSource: data,
 				Childs: []FileStructure{
 					{FromTemplate: true, DataSource: data, Source: cmdMainTemplate, FileName: "main.go"},
-					{FromTemplate: true, DataSource: data, Source: envTemplate, FileName: ".env"},
-					{FromTemplate: true, DataSource: data, Source: envTemplate, FileName: ".env.sample"},
+					{FromTemplate: true, DataSource: dataSourceWithHandler, Source: envTemplate, FileName: ".env"},
+					{FromTemplate: true, DataSource: dataSourceWithHandler, Source: envTemplate, FileName: ".env.sample"},
 				},
 			},
 		},
@@ -133,7 +94,7 @@ func main() {
 		TargetDir: "graphql/", IsDir: true,
 	}
 
-	if scope == "addmodule" {
+	if scope == addModule {
 		files, err := ioutil.ReadDir("internal/modules")
 		if err != nil {
 			panic(err)
@@ -151,7 +112,9 @@ func main() {
 	for _, moduleName := range modules {
 		moduleName = strings.TrimSpace(moduleName)
 		data.Modules = append(data.Modules, moduleName)
-		dataSource := map[string]string{"PackageName": packageName, "ServiceName": serviceName, "module": moduleName}
+		dataSource := map[string]string{"module": moduleName}
+		mergeMap(dataSource, dataSourceWithHandler)
+		fmt.Println("map {}", dataSource)
 
 		cleanArchModuleDir := []FileStructure{
 			{
@@ -244,7 +207,7 @@ func main() {
 	baseDirectoryFile.DataSource = data
 	baseDirectoryFile.IsDir = true
 	switch scope {
-	case "initservice":
+	case initService:
 		baseDirectoryFile.Childs = []FileStructure{
 			apiStructure, cmdStructure, serviceStructure,
 			{FromTemplate: true, DataSource: data, Source: dockerfileTemplate, FileName: "Dockerfile"},
@@ -253,7 +216,7 @@ func main() {
 			{Source: gitignoreTemplate, FileName: ".gitignore"},
 		}
 
-	case "addmodule":
+	case addModule:
 		moduleStructure.Skip = true
 		serviceStructure.Skip = true
 		serviceStructure.Childs = []FileStructure{
@@ -349,5 +312,87 @@ func formatTemplate() template.FuncMap {
 		"upper": func(str string) string {
 			return strings.Title(str)
 		},
+
+		"isHandlerActive": func(str string) string {
+			ok, _ := strconv.ParseBool(str)
+			if ok {
+				return ""
+			}
+			return "// "
+		},
+	}
+}
+
+func parseInput() (scope, serviceName string, modules []string, serviceHandlers, workerHandlers map[string]string) {
+
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Println("\033[1mWhat do you want?\n" +
+		"1) Init service\n" +
+		"2) Add module(s)\033[0m")
+
+	cmdInput, _ := reader.ReadString('\n')
+	cmdInput = strings.TrimRight(cmdInput, "\n")
+	var ok bool
+	scope, ok = scopeMap[cmdInput]
+	if !ok {
+		fmt.Println("invalid option")
+		os.Exit(1)
+	}
+
+	if scope == initService {
+		fmt.Print(ps1 + "\033[1mPlease input service name:\033[0m ")
+		cmdInput, _ := reader.ReadString('\n')
+		cmdInput = strings.TrimRight(cmdInput, "\n")
+		serviceName = cmdInput
+
+	}
+
+	fmt.Print(ps1 + "\033[1mPlease input module names (separated by comma):\033[0m ")
+	cmdInput, _ = reader.ReadString('\n')
+	cmdInput = strings.TrimRight(cmdInput, "\n")
+	modules = strings.Split(cmdInput, ",")
+	sort.Slice(modules, func(i, j int) bool {
+		return modules[i] < modules[j]
+	})
+
+	fmt.Print(ps1 + "\033[1mPlease select service handlers (separated by comma)\n" +
+		"0) all\n" +
+		"1) Rest API\n" +
+		"2) GRPC\n" +
+		"3) GraphQL\033[0m\n")
+	cmdInput, _ = reader.ReadString('\n')
+	cmdInput = strings.TrimRight(cmdInput, "\n")
+
+	serviceHandlers = make(map[string]string, 3)
+	for i := 1; i <= 3; i++ {
+		serviceHandlers[serviceHandlersMap[strconv.Itoa(i)]] = "false"
+	}
+	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
+		serviceHandlers[serviceHandlersMap[strings.TrimSpace(str)]] = "true"
+	}
+
+	fmt.Print(ps1 + "\033[1mPlease select worker handlers (separated by comma)\n" +
+		"0) all\n" +
+		"1) Kafka Consumer\n" +
+		"2) Scheduler\n" +
+		"3) Redis Subscriber\n" +
+		"4) Task Queue\033[0m\n")
+	cmdInput, _ = reader.ReadString('\n')
+	cmdInput = strings.TrimRight(cmdInput, "\n")
+
+	workerHandlers = make(map[string]string, 4)
+	for i := 1; i <= 4; i++ {
+		workerHandlers[workerHandlersMap[strconv.Itoa(i)]] = "false"
+	}
+	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
+		workerHandlers[workerHandlersMap[strings.TrimSpace(str)]] = "true"
+	}
+
+	return
+}
+
+func mergeMap(dest, source map[string]string) {
+	for k, v := range source {
+		dest[k] = v
 	}
 }

@@ -3,9 +3,9 @@ package main
 const moduleMainTemplate = `package {{clean $.module}}
 
 import (
-	"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/graphqlhandler"
-	"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/grpchandler"
-	"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/resthandler"
+	{{isHandlerActive $.graphqlHandler}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/graphqlhandler"
+	{{isHandlerActive $.grpcHandler}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/grpchandler"
+	{{isHandlerActive $.restHandler}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/resthandler"
 	"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/workerhandler"
 
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/dependency"
@@ -14,15 +14,14 @@ import (
 )
 
 const (
-	// Name module name
-	Name types.Module = "{{clean (upper $.module)}}"
+	moduleName types.Module = "{{clean (upper $.module)}}"
 )
 
 // Module model
 type Module struct {
-	restHandler    *resthandler.RestHandler
-	grpcHandler    *grpchandler.GRPCHandler
-	graphqlHandler *graphqlhandler.GraphQLHandler
+	restHandler    interfaces.EchoRestHandler
+	grpcHandler    interfaces.GRPCHandler
+	graphqlHandler interfaces.GraphQLHandler
 
 	workerHandlers map[types.Worker]interfaces.WorkerHandler
 }
@@ -30,15 +29,15 @@ type Module struct {
 // NewModule module constructor
 func NewModule(deps dependency.Dependency) *Module {
 	var mod Module
-	mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware())
-	mod.grpcHandler = grpchandler.NewGRPCHandler(deps.GetMiddleware())
-	mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware())
+	{{isHandlerActive $.restHandler}}mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware())
+	{{isHandlerActive $.grpcHandler}}mod.grpcHandler = grpchandler.NewGRPCHandler(deps.GetMiddleware())
+	{{isHandlerActive $.graphqlHandler}}mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware())
 
 	mod.workerHandlers = map[types.Worker]interfaces.WorkerHandler{
-		types.Kafka:           workerhandler.NewKafkaHandler(),
-		types.Scheduler:       workerhandler.NewCronHandler(),
-		types.RedisSubscriber: workerhandler.NewRedisHandler(),
-		types.TaskQueue:       workerhandler.NewTaskQueueHandler(),
+		{{isHandlerActive $.kafkaHandler}}types.Kafka:           workerhandler.NewKafkaHandler(),
+		{{isHandlerActive $.schedulerHandler}}types.Scheduler:       workerhandler.NewCronHandler(),
+		{{isHandlerActive $.redissubsHandler}}types.RedisSubscriber: workerhandler.NewRedisHandler(),
+		{{isHandlerActive $.taskqueueHandler}}types.TaskQueue:       workerhandler.NewTaskQueueHandler(),
 	}
 
 	return &mod
@@ -66,7 +65,7 @@ func (m *Module) WorkerHandler(workerType types.Worker) interfaces.WorkerHandler
 
 // Name get module name
 func (m *Module) Name() types.Module {
-	return Name
+	return moduleName
 }
 `
 

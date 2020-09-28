@@ -18,16 +18,17 @@ $ go install pkg.agungdwiprasetyo.com/candi/cmd/candi
 ```
 
 
-### Create new service
+### Create new service or add module in existing service
 ```
-$ candi --scope=initservice --servicename={{service_name}} --modules={{module_a}},{{module_b}}
+$ candi
 ```
 
-
-### Add new modules in existing service
+### Build and run service
 ```
-$ candi --scope=addmodule --servicename={{service_name}} --modules={{module_c}},{{module_d}}
+$ cd {{service_name}}
+$ make run
 ```
+If include GRPC handler, run `$ make proto` for generate rpc files from proto
 
 
 ## Service handlers example:
