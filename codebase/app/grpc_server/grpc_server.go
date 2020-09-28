@@ -7,9 +7,9 @@ import (
 	"net"
 
 	"google.golang.org/grpc"
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/config"
-	"pkg.agungdwiprasetyo.com/candi/helper"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
@@ -23,7 +23,7 @@ func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
 
 	return &grpcServer{
 		serverEngine: grpc.NewServer(
-			grpc.MaxSendMsgSize(200*int(helper.MByte)), grpc.MaxRecvMsgSize(200*int(helper.MByte)),
+			grpc.MaxSendMsgSize(200*int(candihelper.MByte)), grpc.MaxRecvMsgSize(200*int(candihelper.MByte)),
 			grpc.UnaryInterceptor(chainUnaryServer(
 				unaryTracerInterceptor,
 				unaryLogInterceptor,

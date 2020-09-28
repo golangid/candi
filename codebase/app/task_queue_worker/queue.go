@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 
 	"github.com/gomodule/redigo/redis"
-	"pkg.agungdwiprasetyo.com/candi/helper"
-	"pkg.agungdwiprasetyo.com/candi/shared"
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
+	"pkg.agungdwiprasetyo.com/candi/candishared"
 )
 
 // QueueStorage abstraction for queue storage backend
@@ -18,12 +18,12 @@ type QueueStorage interface {
 
 // inMemQueue queue
 type inMemQueue struct {
-	queue map[string]*shared.Queue
+	queue map[string]*candishared.Queue
 }
 
 // NewInMemQueue init inmem queue
 func NewInMemQueue() QueueStorage {
-	q := &inMemQueue{queue: make(map[string]*shared.Queue)}
+	q := &inMemQueue{queue: make(map[string]*candishared.Queue)}
 	return q
 }
 
@@ -34,7 +34,7 @@ func (i *inMemQueue) PushJob(job *Job) {
 	defer func() { recover() }()
 	queue := i.queue[job.TaskName]
 	if queue == nil {
-		queue = shared.NewQueue()
+		queue = candishared.NewQueue()
 	}
 	queue.Push(job)
 }
@@ -78,7 +78,7 @@ func (r *redisQueue) PushJob(job *Job) {
 	conn := r.pool.Get()
 	defer conn.Close()
 
-	conn.Do("RPUSH", job.TaskName, helper.ToBytes(job))
+	conn.Do("RPUSH", job.TaskName, candihelper.ToBytes(job))
 }
 func (r *redisQueue) PopJob(taskName string) *Job {
 	conn := r.pool.Get()

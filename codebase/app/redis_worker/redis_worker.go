@@ -10,9 +10,9 @@ import (
 	"sync"
 
 	"github.com/gomodule/redigo/redis"
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/candi/helper"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
@@ -93,7 +93,7 @@ func (r *redisWorker) Serve() {
 			switch msg := psc.Receive().(type) {
 			case redis.Message:
 
-				handlerName, messageData := helper.ParseRedisPubSubKeyTopic(string(msg.Data))
+				handlerName, messageData := candihelper.ParseRedisPubSubKeyTopic(string(msg.Data))
 				_, ok := r.handlers[handlerName]
 				if ok {
 					handlerReceiver <- struct {

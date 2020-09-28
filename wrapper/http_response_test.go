@@ -10,8 +10,8 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
-	"pkg.agungdwiprasetyo.com/candi/helper"
-	"pkg.agungdwiprasetyo.com/candi/shared"
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
+	"pkg.agungdwiprasetyo.com/candi/candishared"
 )
 
 func TestNewHTTPResponse(t *testing.T) {
@@ -19,7 +19,7 @@ func TestNewHTTPResponse(t *testing.T) {
 		ID string `json:"id"`
 	}
 
-	multiError := helper.NewMultiError()
+	multiError := candihelper.NewMultiError()
 	multiError.Append("test", fmt.Errorf("error test"))
 
 	type args struct {
@@ -39,14 +39,14 @@ func TestNewHTTPResponse(t *testing.T) {
 				message: "Fetch all data",
 				params: []interface{}{
 					[]Data{{ID: "061499700032"}, {ID: "061499700033"}},
-					shared.Meta{Page: 1, Limit: 10, TotalPages: 10, TotalRecords: 100},
+					candishared.Meta{Page: 1, Limit: 10, TotalPages: 10, TotalRecords: 100},
 				},
 			},
 			want: &HTTPResponse{
 				Success: true,
 				Code:    200,
 				Message: "Fetch all data",
-				Meta:    shared.Meta{Page: 1, Limit: 10, TotalPages: 10, TotalRecords: 100},
+				Meta:    candishared.Meta{Page: 1, Limit: 10, TotalPages: 10, TotalRecords: 100},
 				Data:    []Data{{ID: "061499700032"}, {ID: "061499700033"}},
 			},
 		},

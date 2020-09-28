@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"pkg.agungdwiprasetyo.com/candi/helper"
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
 )
 
 // LogWithDefer return defer func for status
 func LogWithDefer(str string) (deferFunc func()) {
-	fmt.Printf("%s %s ", time.Now().Format(helper.TimeFormatLogger), str)
+	fmt.Printf("%s %s ", time.Now().Format(candihelper.TimeFormatLogger), str)
 	return func() {
 		if r := recover(); r != nil {
 			fmt.Printf("\x1b[31;1mERROR: %v\x1b[0m\n", r)

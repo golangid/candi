@@ -11,8 +11,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/config"
-	"pkg.agungdwiprasetyo.com/candi/helper"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
 
@@ -58,7 +58,7 @@ func unaryTracerInterceptor(ctx context.Context, req interface{}, info *grpc.Una
 	defer span.Finish()
 
 	if meta, ok := metadata.FromIncomingContext(ctx); ok {
-		span.SetTag("metadata", string(helper.ToBytes(meta)))
+		span.SetTag("metadata", string(candihelper.ToBytes(meta)))
 	}
 
 	span.SetTag("req.body", req)
@@ -135,7 +135,7 @@ func streamTracerInterceptor(srv interface{}, stream grpc.ServerStream, info *gr
 	defer span.Finish()
 
 	if meta, ok := metadata.FromIncomingContext(ctx); ok {
-		span.SetTag("metadata", string(helper.ToBytes(meta)))
+		span.SetTag("metadata", string(candihelper.ToBytes(meta)))
 	}
 
 	err = handler(srv, stream)
@@ -169,16 +169,16 @@ func streamPanicInterceptor(srv interface{}, stream grpc.ServerStream, info *grp
 func logInterceptor(startTime time.Time, err error, fullMethod string, reqType string) {
 	end := time.Now()
 	var status = "OK"
-	statusColor := helper.Green
+	statusColor := candihelper.Green
 	if err != nil {
-		statusColor = helper.Red
+		statusColor = candihelper.Red
 		status = "ERROR"
 	}
 
 	fmt.Fprintf(os.Stdout, "%s[%s]%s :%d %v | %s %-5s %s | %13v | %s\n",
-		helper.Cyan, reqType, helper.Reset, config.BaseEnv().GRPCPort,
+		candihelper.Cyan, reqType, candihelper.Reset, config.BaseEnv().GRPCPort,
 		end.Format("2006/01/02 - 15:04:05"),
-		statusColor, status, helper.Reset,
+		statusColor, status, candihelper.Reset,
 		end.Sub(startTime),
 		fullMethod,
 	)

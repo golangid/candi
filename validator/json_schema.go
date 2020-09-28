@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/xeipuuv/gojsonschema"
-	"pkg.agungdwiprasetyo.com/candi/helper"
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
 )
 
 var notShowErrorListType = map[string]bool{
@@ -62,7 +62,7 @@ type JSONSchemaValidator struct {
 // NewJSONSchemaValidator constructor
 func NewJSONSchemaValidator(schemaRootPath string) *JSONSchemaValidator {
 	if err := loadJSONSchemaLocalFiles(schemaRootPath); err != nil {
-		log.Println(helper.StringYellow("Validator: warning, failed load json schema in path " + schemaRootPath))
+		log.Println(candihelper.StringYellow("Validator: warning, failed load json schema in path " + schemaRootPath))
 	}
 	return &JSONSchemaValidator{}
 }
@@ -79,7 +79,7 @@ func (v *JSONSchemaValidator) getSchema(schemaID string) (schema *gojsonschema.S
 // ValidateDocument based on schema id
 func (v *JSONSchemaValidator) ValidateDocument(schemaID string, documentSource []byte) error {
 
-	multiError := helper.NewMultiError()
+	multiError := candihelper.NewMultiError()
 
 	schema, err := v.getSchema(schemaID)
 	if err != nil {

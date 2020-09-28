@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"pkg.agungdwiprasetyo.com/candi/shared"
+	"pkg.agungdwiprasetyo.com/candi/candishared"
 	"pkg.agungdwiprasetyo.com/candi/wrapper"
 
 	"github.com/labstack/echo"
@@ -80,7 +80,7 @@ func (m *Middleware) HTTPBasicAuth(showAlert bool) echo.MiddlewareFunc {
 
 // GraphQLBasicAuth for graphql resolver
 func (m *Middleware) GraphQLBasicAuth(ctx context.Context) {
-	headers := ctx.Value(shared.ContextKey("headers")).(http.Header)
+	headers := ctx.Value(candishared.ContextKey("headers")).(http.Header)
 	authorization := headers.Get(echo.HeaderAuthorization)
 
 	key, err := extractAuthType(Basic, authorization)

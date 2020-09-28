@@ -7,10 +7,10 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	config "github.com/uber/jaeger-client-go/config"
-	"pkg.agungdwiprasetyo.com/candi/helper"
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
 )
 
-const maxPacketSize = int(65000 * helper.Byte)
+const maxPacketSize = int(65000 * candihelper.Byte)
 
 var agent string
 

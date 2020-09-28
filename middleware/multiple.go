@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/labstack/echo"
-	"pkg.agungdwiprasetyo.com/candi/helper"
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/wrapper"
 )
 
@@ -50,7 +50,7 @@ func (m *Middleware) HTTPMultipleAuth() echo.MiddlewareFunc {
 			}
 
 			if claimData != nil {
-				c.Set(helper.TokenClaimKey, claimData)
+				c.Set(candihelper.TokenClaimKey, claimData)
 			}
 
 			return next(c)

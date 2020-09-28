@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/candi/helper"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
@@ -43,7 +43,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 			var handlerGroup types.WorkerHandlerGroup
 			h.MountHandlers(&handlerGroup)
 			for _, handler := range handlerGroup.Handlers {
-				funcName, interval := helper.ParseCronJobKey(handler.Pattern)
+				funcName, interval := candihelper.ParseCronJobKey(handler.Pattern)
 
 				var job Job
 				job.HandlerName = funcName

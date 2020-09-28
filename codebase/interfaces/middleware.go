@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"github.com/labstack/echo"
-	"pkg.agungdwiprasetyo.com/candi/shared"
+	"pkg.agungdwiprasetyo.com/candi/candishared"
 )
 
 // Middleware abstraction
 type Middleware interface {
 	Basic(context.Context, string) error
-	Bearer(context.Context, string) (*shared.TokenClaim, error)
+	Bearer(context.Context, string) (*candishared.TokenClaim, error)
 
 	HTTPMiddleware
 	GRPCMiddleware
@@ -27,11 +27,11 @@ type HTTPMiddleware interface {
 // GRPCMiddleware interface, common middleware for grpc handler
 type GRPCMiddleware interface {
 	GRPCBasicAuth(ctx context.Context)
-	GRPCBearerAuth(ctx context.Context) *shared.TokenClaim
+	GRPCBearerAuth(ctx context.Context) *candishared.TokenClaim
 }
 
 // GraphQLMiddleware interface, common middleware for graphql handler, as directive in graphql schema
 type GraphQLMiddleware interface {
 	GraphQLBasicAuth(ctx context.Context)
-	GraphQLBearerAuth(ctx context.Context) *shared.TokenClaim
+	GraphQLBearerAuth(ctx context.Context) *candishared.TokenClaim
 }

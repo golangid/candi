@@ -8,8 +8,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"pkg.agungdwiprasetyo.com/candi/helper"
-	"pkg.agungdwiprasetyo.com/candi/shared"
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
+	"pkg.agungdwiprasetyo.com/candi/candishared"
 	"pkg.agungdwiprasetyo.com/candi/wrapper"
 
 	"github.com/labstack/echo"
@@ -21,7 +21,7 @@ const (
 )
 
 // Bearer token validator
-func (m *Middleware) Bearer(ctx context.Context, tokenString string) (*shared.TokenClaim, error) {
+func (m *Middleware) Bearer(ctx context.Context, tokenString string) (*candishared.TokenClaim, error) {
 	tokenClaim, err := m.tokenValidator.ValidateToken(ctx, tokenString)
 	if err != nil {
 		return nil, err
@@ -46,15 +46,15 @@ func (m *Middleware) HTTPBearerAuth() echo.MiddlewareFunc {
 				return wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(c.Response())
 			}
 
-			c.Set(helper.TokenClaimKey, tokenClaim)
+			c.Set(candihelper.TokenClaimKey, tokenClaim)
 			return next(c)
 		}
 	}
 }
 
 // GraphQLBearerAuth for graphql resolver
-func (m *Middleware) GraphQLBearerAuth(ctx context.Context) *shared.TokenClaim {
-	headers := ctx.Value(shared.ContextKey("headers")).(http.Header)
+func (m *Middleware) GraphQLBearerAuth(ctx context.Context) *candishared.TokenClaim {
+	headers := ctx.Value(candishared.ContextKey("headers")).(http.Header)
 	authorization := headers.Get(echo.HeaderAuthorization)
 
 	authValues := strings.Split(authorization, " ")
@@ -72,7 +72,7 @@ func (m *Middleware) GraphQLBearerAuth(ctx context.Context) *shared.TokenClaim {
 }
 
 // GRPCBearerAuth method
-func (m *Middleware) GRPCBearerAuth(ctx context.Context) *shared.TokenClaim {
+func (m *Middleware) GRPCBearerAuth(ctx context.Context) *candishared.TokenClaim {
 
 	meta, ok := metadata.FromIncomingContext(ctx)
 	if !ok {

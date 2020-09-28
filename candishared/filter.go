@@ -1,4 +1,4 @@
-package shared
+package candishared
 
 // Filter data
 type Filter struct {

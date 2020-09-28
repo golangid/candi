@@ -10,7 +10,7 @@ import (
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	idTranslations "github.com/go-playground/validator/v10/translations/id"
-	"pkg.agungdwiprasetyo.com/candi/helper"
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
 )
 
 const (
@@ -104,7 +104,7 @@ func (v *StructValidator) setTranslationOverride(tag string, message string) {
 	// override error
 	err := v.validator.RegisterTranslation(tag, v.translator, v.registerFunc(tag, message), v.translationFunc(tag))
 	if err != nil {
-		log.Println(helper.StringYellow(fmt.Sprintf("Struct Validator: warning, failed set translation validator on tag [%s]", tag)))
+		log.Println(candihelper.StringYellow(fmt.Sprintf("Struct Validator: warning, failed set translation validator on tag [%s]", tag)))
 	}
 }
 
@@ -169,7 +169,7 @@ func checkRegex(fl validator.FieldLevel) bool {
 
 // ValidateStruct function
 func (v *StructValidator) ValidateStruct(data interface{}) error {
-	multiError := helper.NewMultiError()
+	multiError := candihelper.NewMultiError()
 
 	err := v.validator.Struct(data)
 	if err != nil {

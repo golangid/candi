@@ -26,7 +26,7 @@ func NewRestHandler(mw interfaces.Middleware) *RestHandler {
 // Mount handler with root "/"
 // handling version in here
 func (h *RestHandler) Mount(root *echo.Group) {
-	v1Root := root.Group(helper.V1)
+	v1Root := root.Group(candihelper.V1)
 
 	{{clean $.module}} := v1Root.Group("/{{clean $.module}}")
 	{{clean $.module}}.GET("", h.hello)

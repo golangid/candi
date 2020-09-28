@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/candi/helper"
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
@@ -28,8 +28,8 @@ func NewCronHandler() *CronHandler {
 // MountHandlers return group map topic key to handler func
 func (h *CronHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 
-	group.Add(helper.CronJobKeyToString("push-notif", "30s"), h.handlePushNotif)
-	group.Add(helper.CronJobKeyToString("heavy-push-notif", "22:43:07"), h.handleHeavyPush)
+	group.Add(candihelper.CronJobKeyToString("push-notif", "30s"), h.handlePushNotif)
+	group.Add(candihelper.CronJobKeyToString("heavy-push-notif", "22:43:07"), h.handleHeavyPush)
 }
 
 func (h *CronHandler) handlePushNotif(ctx context.Context, message []byte) error {

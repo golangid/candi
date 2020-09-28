@@ -52,7 +52,7 @@ func NewCronHandler() *CronHandler {
 
 // MountHandlers mount handler group
 func (h *CronHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	group.Add(helper.CronJobKeyToString("{{$.module}}-scheduler", "10s"), h.handleSample)
+	group.Add(candihelper.CronJobKeyToString("{{$.module}}-scheduler", "10s"), h.handleSample)
 }
 
 func (h *CronHandler) handleSample(ctx context.Context, message []byte) error {

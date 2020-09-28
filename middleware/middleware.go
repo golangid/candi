@@ -5,16 +5,16 @@ import (
 	"errors"
 	"strings"
 
+	"pkg.agungdwiprasetyo.com/candi/candishared"
 	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
 	"pkg.agungdwiprasetyo.com/candi/config"
-	"pkg.agungdwiprasetyo.com/candi/shared"
 )
 
 // Middleware impl
 type Middleware struct {
 	tokenValidator      interfaces.TokenValidator
 	username, password  string
-	authTypeCheckerFunc map[string]func(context.Context, string) (*shared.TokenClaim, error)
+	authTypeCheckerFunc map[string]func(context.Context, string) (*candishared.TokenClaim, error)
 }
 
 // NewMiddleware create new middleware instance
@@ -25,11 +25,11 @@ func NewMiddleware(tokenValidator interfaces.TokenValidator) *Middleware {
 		password:       config.BaseEnv().BasicAuthPassword,
 	}
 
-	mw.authTypeCheckerFunc = map[string]func(context.Context, string) (*shared.TokenClaim, error){
-		Basic: func(ctx context.Context, key string) (*shared.TokenClaim, error) {
+	mw.authTypeCheckerFunc = map[string]func(context.Context, string) (*candishared.TokenClaim, error){
+		Basic: func(ctx context.Context, key string) (*candishared.TokenClaim, error) {
 			return nil, mw.Basic(ctx, key)
 		},
-		Bearer: func(ctx context.Context, token string) (*shared.TokenClaim, error) {
+		Bearer: func(ctx context.Context, token string) (*candishared.TokenClaim, error) {
 			return mw.Bearer(ctx, token)
 		},
 	}

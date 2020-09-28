@@ -11,7 +11,7 @@ import (
 	gqlerrors "github.com/golangid/graphql-go/errors"
 	"github.com/golangid/graphql-go/introspection"
 	"github.com/golangid/graphql-go/trace"
-	"pkg.agungdwiprasetyo.com/candi/helper"
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
@@ -54,21 +54,21 @@ func (GraphQLTracer) TraceField(ctx context.Context, label, typeName, fieldName 
 	return ctx, func(err *gqlerrors.QueryError) {
 		end := time.Now()
 		if !trivial && !gqlTypeNotShowLog[typeName] {
-			statusColor := helper.Green
+			statusColor := candihelper.Green
 			status := " OK  "
 			if err != nil {
-				statusColor = helper.Red
+				statusColor = candihelper.Red
 				status = "ERROR"
 			}
 
 			arg, _ := json.Marshal(args)
 			fmt.Fprintf(os.Stdout, "%s[GRAPHQL]%s => %s %10s %s | %v | %s %s %s | %13v | %s %s %s | %s\n",
-				helper.White, helper.Reset,
-				helper.Blue, typeName, helper.Reset,
+				candihelper.White, candihelper.Reset,
+				candihelper.Blue, typeName, candihelper.Reset,
 				end.Format("2006/01/02 - 15:04:05"),
-				statusColor, status, helper.Reset,
+				statusColor, status, candihelper.Reset,
 				end.Sub(start),
-				helper.Magenta, label, helper.Reset,
+				candihelper.Magenta, label, candihelper.Reset,
 				arg,
 			)
 		}

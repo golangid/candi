@@ -9,11 +9,11 @@ import (
 	"net/http"
 	"reflect"
 
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
+	"pkg.agungdwiprasetyo.com/candi/candishared"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/config"
-	"pkg.agungdwiprasetyo.com/candi/helper"
 	"pkg.agungdwiprasetyo.com/candi/logger"
-	"pkg.agungdwiprasetyo.com/candi/shared"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 
 	graphql "github.com/golangid/graphql-go"
@@ -105,7 +105,7 @@ func NewHandler(service factory.ServiceFactory) Handler {
 	root.rootQuery = constructStruct(queryResolverFields, queryResolverValues)
 	root.rootMutation = constructStruct(mutationResolverFields, mutationResolverValues)
 	root.rootSubscription = constructStruct(subscriptionResolverFields, subscriptionResolverValues)
-	gqlSchema := helper.LoadAllFile(config.BaseEnv().GraphQLSchemaDir, ".graphql")
+	gqlSchema := candihelper.LoadAllFile(config.BaseEnv().GraphQLSchemaDir, ".graphql")
 
 	schema := graphql.MustParseSchema(string(gqlSchema), &root,
 		graphql.UseStringDescriptions(),
@@ -147,7 +147,7 @@ func (s *handlerImpl) ServeGraphQL() http.HandlerFunc {
 		}
 		req.Header.Set("X-Real-IP", ip)
 
-		ctx := context.WithValue(req.Context(), shared.ContextKey("headers"), req.Header)
+		ctx := context.WithValue(req.Context(), candishared.ContextKey("headers"), req.Header)
 		response := s.schema.Exec(ctx, params.Query, params.OperationName, params.Variables)
 		responseJSON, err := json.Marshal(response)
 		if err != nil {

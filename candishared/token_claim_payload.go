@@ -1,4 +1,4 @@
-package shared
+package candishared
 
 import "github.com/dgrijalva/jwt-go"
 

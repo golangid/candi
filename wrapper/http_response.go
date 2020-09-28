@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"reflect"
 
-	"pkg.agungdwiprasetyo.com/candi/helper"
-	"pkg.agungdwiprasetyo.com/candi/shared"
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
+	"pkg.agungdwiprasetyo.com/candi/candishared"
 )
 
 // HTTPResponse format
@@ -26,9 +26,9 @@ func NewHTTPResponse(code int, message string, params ...interface{}) *HTTPRespo
 
 	for _, param := range params {
 		switch e := param.(type) {
-		case *helper.MultiError:
+		case *candihelper.MultiError:
 		case error:
-			param = helper.NewMultiError().Append("detail", e)
+			param = candihelper.NewMultiError().Append("detail", e)
 		}
 
 		// get value param if type is pointer
@@ -39,9 +39,9 @@ func NewHTTPResponse(code int, message string, params ...interface{}) *HTTPRespo
 		param = refValue.Interface()
 
 		switch val := param.(type) {
-		case shared.Meta:
+		case candishared.Meta:
 			commonResponse.Meta = val
-		case helper.MultiError:
+		case candihelper.MultiError:
 			commonResponse.Errors = val.ToMap()
 		default:
 			commonResponse.Data = param
