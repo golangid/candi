@@ -9,12 +9,12 @@ import (
 	"net/http"
 	"reflect"
 
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory"
-	"pkg.agungdwiprasetyo.com/gendon/config"
-	"pkg.agungdwiprasetyo.com/gendon/helper"
-	"pkg.agungdwiprasetyo.com/gendon/logger"
-	"pkg.agungdwiprasetyo.com/gendon/shared"
-	"pkg.agungdwiprasetyo.com/gendon/tracer"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
+	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/helper"
+	"pkg.agungdwiprasetyo.com/candi/logger"
+	"pkg.agungdwiprasetyo.com/candi/shared"
+	"pkg.agungdwiprasetyo.com/candi/tracer"
 
 	graphql "github.com/golangid/graphql-go"
 	"github.com/graph-gophers/graphql-transport-ws/graphqlws"

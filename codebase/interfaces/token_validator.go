@@ -3,7 +3,7 @@ package interfaces
 import (
 	"context"
 
-	"pkg.agungdwiprasetyo.com/gendon/shared"
+	"pkg.agungdwiprasetyo.com/candi/shared"
 )
 
 // TokenValidator abstract interface

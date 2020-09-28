@@ -9,8 +9,8 @@ import (
 	"context"
 	"encoding/json"
 	
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/gendon/tracer"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
 
 // KafkaHandler struct
@@ -46,9 +46,9 @@ import (
 
 	"example.service/internal/modules/examplemodule/delivery/workerhandler"
 
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory/dependency"
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/gendon/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/dependency"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
 )
 
 type Module struct {

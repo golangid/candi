@@ -11,7 +11,7 @@ import (
 	"github.com/labstack/echo"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
-	"pkg.agungdwiprasetyo.com/gendon/logger"
+	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
 type httpResponseWriter struct {

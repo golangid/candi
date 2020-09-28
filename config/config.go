@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"pkg.agungdwiprasetyo.com/gendon/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
 )
 
 const timeout time.Duration = 10 * time.Second

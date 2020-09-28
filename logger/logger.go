@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"pkg.agungdwiprasetyo.com/gendon/helper"
+	"pkg.agungdwiprasetyo.com/candi/helper"
 )
 
 // LogWithDefer return defer func for status

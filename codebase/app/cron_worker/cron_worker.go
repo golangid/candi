@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory"
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/gendon/helper"
-	"pkg.agungdwiprasetyo.com/gendon/logger"
-	"pkg.agungdwiprasetyo.com/gendon/tracer"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/helper"
+	"pkg.agungdwiprasetyo.com/candi/logger"
+	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
 
 type cronWorker struct {

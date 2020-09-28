@@ -7,8 +7,8 @@ import (
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"pkg.agungdwiprasetyo.com/gendon/codebase/interfaces"
-	"pkg.agungdwiprasetyo.com/gendon/logger"
+	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
 type mongoInstance struct {

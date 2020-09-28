@@ -3,8 +3,8 @@ package shared
 import (
 	"context"
 
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/gendon/logger"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
 // GraphQLErrorResolver graphql error with extensions

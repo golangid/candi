@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	"pkg.agungdwiprasetyo.com/gendon/logger"
-	"pkg.agungdwiprasetyo.com/gendon/tracer"
+	"pkg.agungdwiprasetyo.com/candi/logger"
+	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
 
 // KafkaPublisher kafka

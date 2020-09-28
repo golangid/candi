@@ -11,9 +11,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"pkg.agungdwiprasetyo.com/gendon/config"
-	"pkg.agungdwiprasetyo.com/gendon/helper"
-	"pkg.agungdwiprasetyo.com/gendon/tracer"
+	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/helper"
+	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
 
 // for unary server

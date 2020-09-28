@@ -7,10 +7,10 @@ import (
 	"net"
 
 	"google.golang.org/grpc"
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory"
-	"pkg.agungdwiprasetyo.com/gendon/config"
-	"pkg.agungdwiprasetyo.com/gendon/helper"
-	"pkg.agungdwiprasetyo.com/gendon/logger"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
+	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/helper"
+	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
 type grpcServer struct {

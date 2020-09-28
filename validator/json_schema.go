@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/xeipuuv/gojsonschema"
-	"pkg.agungdwiprasetyo.com/gendon/helper"
+	"pkg.agungdwiprasetyo.com/candi/helper"
 )
 
 var notShowErrorListType = map[string]bool{

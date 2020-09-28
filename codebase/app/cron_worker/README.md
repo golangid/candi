@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"time"
 
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/gendon/helper"
-	"pkg.agungdwiprasetyo.com/gendon/logger"
-	"pkg.agungdwiprasetyo.com/gendon/tracer"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/helper"
+	"pkg.agungdwiprasetyo.com/candi/logger"
+	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
 
 // CronHandler struct
@@ -62,9 +62,9 @@ import (
 
 	"example.service/internal/modules/examplemodule/delivery/workerhandler"
 
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory/dependency"
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/gendon/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/dependency"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
 )
 
 type Module struct {

@@ -1,6 +1,6 @@
 package validator
 
-import "pkg.agungdwiprasetyo.com/gendon/config"
+import "pkg.agungdwiprasetyo.com/candi/config"
 
 // Validator instance
 type Validator struct {

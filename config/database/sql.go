@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"pkg.agungdwiprasetyo.com/gendon/codebase/interfaces"
-	"pkg.agungdwiprasetyo.com/gendon/logger"
+	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
 type sqlInstance struct {

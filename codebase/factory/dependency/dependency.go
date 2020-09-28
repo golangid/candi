@@ -1,7 +1,7 @@
 package dependency
 
 import (
-	"pkg.agungdwiprasetyo.com/gendon/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
 )
 
 // Dependency base

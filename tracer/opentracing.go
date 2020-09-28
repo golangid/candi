@@ -7,7 +7,7 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	config "github.com/uber/jaeger-client-go/config"
-	"pkg.agungdwiprasetyo.com/gendon/helper"
+	"pkg.agungdwiprasetyo.com/candi/helper"
 )
 
 const maxPacketSize = int(65000 * helper.Byte)

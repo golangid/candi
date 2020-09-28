@@ -1,4 +1,4 @@
-# Backend Microservices
+# Candi, a framework for `Membangun Candi` project in Golang
 
 ## Made with
 <p align="center">
@@ -10,7 +10,12 @@
   <img src="https://storage.googleapis.com/agungdp/static/logo/kafka.png" height="80" alt="kafka logo" />
 </p>
 
-This repository explain implementation of Go for building multiple microservices using a single codebase. Using [Standard Golang Project Layout](https://github.com/golang-standards/project-layout) and [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
+
+### Install `binary` from source
+```
+$ go get github.com/agungdwiprasetyo/candi
+$ go install github.com/agungdwiprasetyo/candi/cmd/candi
+```
 
 ### Create new service
 ```
@@ -31,14 +36,6 @@ make add-module service={{service_name}} modules={{module_c}},{{module_d}}
 ```
 make docker service={{service_name}}
 ```
-
-## Services
-
-* [**Auth Service**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/auth-service)
-* [**Line Chatbot**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/line-chatbot#line-chatbot-service)
-* [**Notification Service**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/notification-service)
-* [**Storage Service**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/storage-service)
-* [**User Service**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/cmd/user-service)
 
 ## Service handlers example:
 * [**Example Cron worker in delivery layer**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/pkg/codebase/app/cron_worker)

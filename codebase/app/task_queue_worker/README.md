@@ -9,9 +9,9 @@ import (
 	"context"
 	"time"
 
-	taskqueueworker "pkg.agungdwiprasetyo.com/gendon/codebase/app/task_queue_worker"
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/gendon/logger"
+	taskqueueworker "pkg.agungdwiprasetyo.com/candi/codebase/app/task_queue_worker"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
 // TaskQueueHandler struct
@@ -57,9 +57,9 @@ import (
 
 	"example.service/internal/modules/examplemodule/delivery/workerhandler"
 
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory/dependency"
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/gendon/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/dependency"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
 )
 
 type Module struct {
@@ -89,7 +89,7 @@ import (
 	"context"
 	"log"
 
-	taskqueueworker "pkg.agungdwiprasetyo.com/gendon/codebase/app/task_queue_worker"
+	taskqueueworker "pkg.agungdwiprasetyo.com/candi/codebase/app/task_queue_worker"
 )
 
 func someUsecase() {

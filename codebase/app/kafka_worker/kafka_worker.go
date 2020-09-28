@@ -7,11 +7,11 @@ import (
 	"strings"
 
 	"github.com/Shopify/sarama"
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory"
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/gendon/config"
-	"pkg.agungdwiprasetyo.com/gendon/logger"
-	"pkg.agungdwiprasetyo.com/gendon/tracer"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/logger"
+	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
 
 type kafkaWorker struct {

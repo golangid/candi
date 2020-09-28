@@ -1,4 +1,4 @@
-module pkg.agungdwiprasetyo.com/gendon
+module pkg.agungdwiprasetyo.com/candi
 
 go 1.12
 

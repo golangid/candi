@@ -12,12 +12,12 @@ import (
 	"github.com/labstack/echo"
 	echoMidd "github.com/labstack/echo/middleware"
 
-	graphqlserver "pkg.agungdwiprasetyo.com/gendon/codebase/app/graphql_server"
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory"
-	"pkg.agungdwiprasetyo.com/gendon/config"
-	"pkg.agungdwiprasetyo.com/gendon/logger"
-	"pkg.agungdwiprasetyo.com/gendon/tracer"
-	"pkg.agungdwiprasetyo.com/gendon/wrapper"
+	graphqlserver "pkg.agungdwiprasetyo.com/candi/codebase/app/graphql_server"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
+	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/logger"
+	"pkg.agungdwiprasetyo.com/candi/tracer"
+	"pkg.agungdwiprasetyo.com/candi/wrapper"
 )
 
 type restServer struct {

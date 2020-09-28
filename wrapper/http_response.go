@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"reflect"
 
-	"pkg.agungdwiprasetyo.com/gendon/helper"
-	"pkg.agungdwiprasetyo.com/gendon/shared"
+	"pkg.agungdwiprasetyo.com/candi/helper"
+	"pkg.agungdwiprasetyo.com/candi/shared"
 )
 
 // HTTPResponse format

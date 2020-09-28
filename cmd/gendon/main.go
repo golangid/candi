@@ -12,7 +12,7 @@ import (
 	"text/template"
 )
 
-const packageName = "pkg.agungdwiprasetyo.com/gendon"
+const packageName = "pkg.agungdwiprasetyo.com/candi"
 
 type param struct {
 	PackageName string
@@ -70,11 +70,11 @@ func main() {
 	})
 
 	apiStructure := FileStructure{
-		TargetDir: "api/{{.ServiceName}}/", IsDir: true, DataSource: data,
+		TargetDir: "api/", IsDir: true, DataSource: data,
 	}
 
 	cmdStructure := FileStructure{
-		TargetDir: "cmd/{{.ServiceName}}/", IsDir: true, DataSource: data,
+		TargetDir: "cmd/", IsDir: true, DataSource: data,
 		Childs: []FileStructure{
 			{FromTemplate: true, DataSource: data, Source: cmdMainTemplate, FileName: "main.go"},
 			{FromTemplate: true, DataSource: data, Source: envTemplate, FileName: ".env"},
@@ -83,7 +83,7 @@ func main() {
 	}
 
 	serviceStructure := FileStructure{
-		TargetDir: "internal/{{.ServiceName}}/", IsDir: true, DataSource: data,
+		TargetDir: "internal/", IsDir: true, DataSource: data,
 	}
 
 	apiProtoStructure := FileStructure{
@@ -200,6 +200,9 @@ func main() {
 	}
 
 	var baseDirectoryFile FileStructure
+	baseDirectoryFile.TargetDir = "{{.ServiceName}}/"
+	baseDirectoryFile.DataSource = data
+	baseDirectoryFile.IsDir = true
 	switch scope {
 	case "initservice":
 		baseDirectoryFile.Childs = []FileStructure{

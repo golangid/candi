@@ -1,8 +1,8 @@
 package factory
 
 import (
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/gendon/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
 )
 
 // ModuleFactory factory

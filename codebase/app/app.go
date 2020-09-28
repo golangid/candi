@@ -10,17 +10,17 @@ import (
 	"syscall"
 	"time"
 
-	cronworker "pkg.agungdwiprasetyo.com/gendon/codebase/app/cron_worker"
-	graphqlserver "pkg.agungdwiprasetyo.com/gendon/codebase/app/graphql_server"
-	grpcserver "pkg.agungdwiprasetyo.com/gendon/codebase/app/grpc_server"
-	kafkaworker "pkg.agungdwiprasetyo.com/gendon/codebase/app/kafka_worker"
-	redisworker "pkg.agungdwiprasetyo.com/gendon/codebase/app/redis_worker"
-	restserver "pkg.agungdwiprasetyo.com/gendon/codebase/app/rest_server"
-	taskqueueworker "pkg.agungdwiprasetyo.com/gendon/codebase/app/task_queue_worker"
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory"
-	"pkg.agungdwiprasetyo.com/gendon/config"
-	"pkg.agungdwiprasetyo.com/gendon/logger"
-	"pkg.agungdwiprasetyo.com/gendon/tracer"
+	cronworker "pkg.agungdwiprasetyo.com/candi/codebase/app/cron_worker"
+	graphqlserver "pkg.agungdwiprasetyo.com/candi/codebase/app/graphql_server"
+	grpcserver "pkg.agungdwiprasetyo.com/candi/codebase/app/grpc_server"
+	kafkaworker "pkg.agungdwiprasetyo.com/candi/codebase/app/kafka_worker"
+	redisworker "pkg.agungdwiprasetyo.com/candi/codebase/app/redis_worker"
+	restserver "pkg.agungdwiprasetyo.com/candi/codebase/app/rest_server"
+	taskqueueworker "pkg.agungdwiprasetyo.com/candi/codebase/app/task_queue_worker"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
+	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/logger"
+	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
 
 // App service

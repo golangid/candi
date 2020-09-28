@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/labstack/echo"
-	"pkg.agungdwiprasetyo.com/gendon/shared"
+	"pkg.agungdwiprasetyo.com/candi/shared"
 )
 
 // Middleware abstraction

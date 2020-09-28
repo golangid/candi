@@ -10,7 +10,7 @@ import (
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	idTranslations "github.com/go-playground/validator/v10/translations/id"
-	"pkg.agungdwiprasetyo.com/gendon/helper"
+	"pkg.agungdwiprasetyo.com/candi/helper"
 )
 
 const (

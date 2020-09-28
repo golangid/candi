@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/labstack/echo"
-	"pkg.agungdwiprasetyo.com/gendon/helper"
-	"pkg.agungdwiprasetyo.com/gendon/wrapper"
+	"pkg.agungdwiprasetyo.com/candi/helper"
+	"pkg.agungdwiprasetyo.com/candi/wrapper"
 )
 
 // HTTPMultipleAuth mix basic & bearer auth

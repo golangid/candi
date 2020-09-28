@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	"pkg.agungdwiprasetyo.com/gendon/codebase/interfaces"
-	"pkg.agungdwiprasetyo.com/gendon/logger"
-	"pkg.agungdwiprasetyo.com/gendon/publisher"
+	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/candi/logger"
+	"pkg.agungdwiprasetyo.com/candi/publisher"
 )
 
 type kafkaBroker struct {

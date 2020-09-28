@@ -5,9 +5,9 @@ import (
 	"errors"
 	"strings"
 
-	"pkg.agungdwiprasetyo.com/gendon/codebase/interfaces"
-	"pkg.agungdwiprasetyo.com/gendon/config"
-	"pkg.agungdwiprasetyo.com/gendon/shared"
+	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/shared"
 )
 
 // Middleware impl

@@ -11,8 +11,8 @@ import (
 	gqlerrors "github.com/golangid/graphql-go/errors"
 	"github.com/golangid/graphql-go/introspection"
 	"github.com/golangid/graphql-go/trace"
-	"pkg.agungdwiprasetyo.com/gendon/helper"
-	"pkg.agungdwiprasetyo.com/gendon/logger"
+	"pkg.agungdwiprasetyo.com/candi/helper"
+	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
 var gqlTypeNotShowLog = map[string]bool{

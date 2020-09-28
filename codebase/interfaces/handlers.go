@@ -3,7 +3,7 @@ package interfaces
 import (
 	"github.com/labstack/echo"
 	"google.golang.org/grpc"
-	"pkg.agungdwiprasetyo.com/gendon/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
 )
 
 // EchoRestHandler delivery factory for echo handler
