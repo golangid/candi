@@ -9,8 +9,8 @@ import (
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/dependency"
 	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
 	"pkg.agungdwiprasetyo.com/candi/config"
-	"pkg.agungdwiprasetyo.com/candi/config/broker"
-	"pkg.agungdwiprasetyo.com/candi/config/database"
+	{{isActive $.kafkaDeps}}"pkg.agungdwiprasetyo.com/candi/config/broker"
+	{{isActive $.isDatabaseActive}}"pkg.agungdwiprasetyo.com/candi/config/database"
 	"pkg.agungdwiprasetyo.com/candi/middleware"
 	"pkg.agungdwiprasetyo.com/candi/validator"
 )
@@ -21,21 +21,28 @@ func LoadConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 	loadAdditionalEnv()
 
 	baseCfg.LoadFunc(func(ctx context.Context) []interfaces.Closer {
-		kafkaDeps := broker.InitKafkaBroker(config.BaseEnv().Kafka.Brokers, config.BaseEnv().Kafka.ClientID)
-		redisDeps := database.InitRedis()
-		mongoDeps := database.InitMongoDB(ctx)
+		{{isActive $.kafkaDeps}}kafkaDeps := broker.InitKafkaBroker(config.BaseEnv().Kafka.Brokers, config.BaseEnv().Kafka.ClientID)
+		{{isActive $.redisDeps}}redisDeps := database.InitRedis()
+		{{isActive $.sqldbDeps}}sqlDeps := database.InitSQLDatabase()
+		{{isActive $.mongodbDeps}}mongoDeps := database.InitMongoDB(ctx)
 
 		// inject all service dependencies
 		// See all option in dependency package
 		deps = dependency.InitDependency(
 			dependency.SetMiddleware(middleware.NewMiddleware(nil)),
 			dependency.SetValidator(validator.NewValidator()),
-			dependency.SetBroker(kafkaDeps),
-			dependency.SetRedisPool(redisDeps),
-			dependency.SetMongoDatabase(mongoDeps),
+			{{isActive $.kafkaDeps}}dependency.SetBroker(kafkaDeps),
+			{{isActive $.redisDeps}}dependency.SetRedisPool(redisDeps),
+			{{isActive $.sqldbDeps}}dependency.SetSQLDatabase(sqlDeps),
+			{{isActive $.mongodbDeps}}dependency.SetMongoDatabase(mongoDeps),
 			// ... add more dependencies
 		)
-		return []interfaces.Closer{kafkaDeps, redisDeps, mongoDeps} // throw back to base config for close connection when application shutdown
+		return []interfaces.Closer{ // throw back to base config for close connection when application shutdown
+			{{isActive $.kafkaDeps}}kafkaDeps,
+			{{isActive $.redisDeps}}redisDeps,
+			{{isActive $.sqldbDeps}}sqlDeps,
+			{{isActive $.mongodbDeps}}mongoDeps,
+		}
 	})
 
 	return deps

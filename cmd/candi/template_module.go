@@ -3,10 +3,10 @@ package main
 const moduleMainTemplate = `package {{clean $.module}}
 
 import (
-	{{isHandlerActive $.graphqlHandler}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/graphqlhandler"
-	{{isHandlerActive $.grpcHandler}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/grpchandler"
-	{{isHandlerActive $.restHandler}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/resthandler"
-	{{isHandlerActive $.isWorkerActive}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/workerhandler"
+	{{isActive $.graphqlHandler}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/graphqlhandler"
+	{{isActive $.grpcHandler}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/grpchandler"
+	{{isActive $.restHandler}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/resthandler"
+	{{isActive $.isWorkerActive}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/workerhandler"
 
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/dependency"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
@@ -29,15 +29,15 @@ type Module struct {
 // NewModule module constructor
 func NewModule(deps dependency.Dependency) *Module {
 	var mod Module
-	{{isHandlerActive $.restHandler}}mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware())
-	{{isHandlerActive $.grpcHandler}}mod.grpcHandler = grpchandler.NewGRPCHandler(deps.GetMiddleware())
-	{{isHandlerActive $.graphqlHandler}}mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware())
+	{{isActive $.restHandler}}mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware())
+	{{isActive $.grpcHandler}}mod.grpcHandler = grpchandler.NewGRPCHandler(deps.GetMiddleware())
+	{{isActive $.graphqlHandler}}mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware())
 
 	mod.workerHandlers = map[types.Worker]interfaces.WorkerHandler{
-		{{isHandlerActive $.kafkaHandler}}types.Kafka:           workerhandler.NewKafkaHandler(),
-		{{isHandlerActive $.schedulerHandler}}types.Scheduler:       workerhandler.NewCronHandler(),
-		{{isHandlerActive $.redissubsHandler}}types.RedisSubscriber: workerhandler.NewRedisHandler(),
-		{{isHandlerActive $.taskqueueHandler}}types.TaskQueue:       workerhandler.NewTaskQueueHandler(),
+		{{isActive $.kafkaHandler}}types.Kafka:           workerhandler.NewKafkaHandler(),
+		{{isActive $.schedulerHandler}}types.Scheduler:       workerhandler.NewCronHandler(),
+		{{isActive $.redissubsHandler}}types.RedisSubscriber: workerhandler.NewRedisHandler(),
+		{{isActive $.taskqueueHandler}}types.TaskQueue:       workerhandler.NewTaskQueueHandler(),
 	}
 
 	return &mod

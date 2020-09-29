@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -30,6 +31,9 @@ var (
 	workerHandlersMap = map[string]string{
 		"1": "kafkaHandler", "2": "schedulerHandler", "3": "redissubsHandler", "4": "taskqueueHandler",
 	}
+	dependencyMap = map[string]string{
+		"1": "kafkaDeps", "2": "redisDeps", "3": "sqldbDeps", "4": "mongodbDeps",
+	}
 	tpl *template.Template
 )
 
@@ -53,7 +57,7 @@ type FileStructure struct {
 
 func main() {
 
-	scope, serviceName, modules, serviceHandlers, workerHandlers := parseInput()
+	scope, serviceName, modules, serviceHandlers, workerHandlers, dependencies := parseInput()
 
 	var data param
 	data.PackageName = packageName
@@ -62,6 +66,7 @@ func main() {
 	dataSourceWithHandler := map[string]string{"PackageName": packageName, "ServiceName": serviceName}
 	mergeMap(dataSourceWithHandler, serviceHandlers)
 	mergeMap(dataSourceWithHandler, workerHandlers)
+	mergeMap(dataSourceWithHandler, dependencies)
 
 	if scope == addModule {
 		files, err := ioutil.ReadDir("internal/modules")
@@ -96,7 +101,7 @@ func main() {
 	configsStructure := FileStructure{
 		TargetDir: "configs/", IsDir: true,
 		Childs: []FileStructure{
-			{Source: configsTemplate, FileName: "configs.go"},
+			{FromTemplate: true, DataSource: dataSourceWithHandler, Source: configsTemplate, FileName: "configs.go"},
 			{Source: additionalEnvTemplate, FileName: "environment.go"},
 		},
 	}
@@ -319,12 +324,10 @@ func formatTemplate() template.FuncMap {
 		"clean": func(v string) string {
 			return replacer.Replace(v)
 		},
-
 		"upper": func(str string) string {
 			return strings.Title(str)
 		},
-
-		"isHandlerActive": func(str string) string {
+		"isActive": func(str string) string {
 			ok, _ := strconv.ParseBool(str)
 			if ok {
 				return ""
@@ -334,7 +337,7 @@ func formatTemplate() template.FuncMap {
 	}
 }
 
-func parseInput() (scope, serviceName string, modules []string, serviceHandlers, workerHandlers map[string]string) {
+func parseInput() (scope, serviceName string, modules []string, serviceHandlers, workerHandlers, dependencies map[string]string) {
 
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("\033[1mWhat do you want?\n" +
@@ -346,21 +349,24 @@ func parseInput() (scope, serviceName string, modules []string, serviceHandlers,
 	var ok bool
 	scope, ok = scopeMap[cmdInput]
 	if !ok {
-		fmt.Println("invalid option")
-		os.Exit(1)
+		log.Fatal("invalid option")
 	}
 
 	if scope == initService {
 		fmt.Print(ps1 + "\033[1mPlease input service name:\033[0m ")
 		cmdInput, _ := reader.ReadString('\n')
-		cmdInput = strings.TrimRight(cmdInput, "\n")
-		serviceName = cmdInput
-
+		serviceName = strings.TrimRight(cmdInput, "\n")
+		if strings.TrimSpace(serviceName) == "" {
+			log.Fatal("service name cannot empty")
+		}
 	}
 
 	fmt.Print(ps1 + "\033[1mPlease input module names (separated by comma):\033[0m ")
 	cmdInput, _ = reader.ReadString('\n')
 	cmdInput = strings.TrimRight(cmdInput, "\n")
+	if strings.TrimSpace(cmdInput) == "" {
+		log.Fatal("modules cannot empty")
+	}
 	modules = strings.Split(cmdInput, ",")
 	sort.Slice(modules, func(i, j int) bool {
 		return modules[i] < modules[j]
@@ -372,7 +378,6 @@ func parseInput() (scope, serviceName string, modules []string, serviceHandlers,
 		"3) GraphQL\033[0m\n")
 	cmdInput, _ = reader.ReadString('\n')
 	cmdInput = strings.TrimRight(cmdInput, "\n")
-
 	serviceHandlers = make(map[string]string, 3)
 	for i := 1; i <= 3; i++ {
 		serviceHandlers[serviceHandlersMap[strconv.Itoa(i)]] = "false"
@@ -390,7 +395,6 @@ func parseInput() (scope, serviceName string, modules []string, serviceHandlers,
 		"4) Task Queue\033[0m\n")
 	cmdInput, _ = reader.ReadString('\n')
 	cmdInput = strings.TrimRight(cmdInput, "\n")
-
 	workerHandlers = make(map[string]string, 5)
 	for i := 1; i <= 4; i++ {
 		workerHandlers[workerHandlersMap[strconv.Itoa(i)]] = "false"
@@ -400,7 +404,28 @@ func parseInput() (scope, serviceName string, modules []string, serviceHandlers,
 		if workerName, ok := workerHandlersMap[strings.TrimSpace(str)]; ok {
 			workerHandlers[workerName] = "true"
 			workerHandlers["isWorkerActive"] = "true"
-			fmt.Println("masok worker aktif", strings.TrimSpace(str))
+		}
+	}
+
+	fmt.Print(ps1 + "\033[1mPlease select dependencies (separated by comma)\n" +
+		"1) Kafka\n" +
+		"2) Redis\n" +
+		"3) SQL Database\n" +
+		"4) Mongo Database\033[0m\n")
+	cmdInput, _ = reader.ReadString('\n')
+	cmdInput = strings.TrimRight(cmdInput, "\n")
+	dependencies = make(map[string]string, 5)
+	for i := 1; i <= 4; i++ {
+		dependencies[dependencyMap[strconv.Itoa(i)]] = "false"
+	}
+	dependencies["isDatabaseActive"] = "false"
+	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
+		str = strings.TrimSpace(str)
+		if depsName, ok := dependencyMap[str]; ok {
+			dependencies[depsName] = "true"
+			if str > "1" {
+				dependencies["isDatabaseActive"] = "true"
+			}
 		}
 	}
 
