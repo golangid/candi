@@ -56,6 +56,7 @@ type FileStructure struct {
 }
 
 func main() {
+	printBanner()
 
 	scope, serviceName, modules, serviceHandlers, workerHandlers, dependencies := parseInput()
 
@@ -436,4 +437,16 @@ func mergeMap(dest, source map[string]string) {
 	for k, v := range source {
 		dest[k] = v
 	}
+}
+
+func printBanner() {
+	fmt.Print(`
+	 _____   ___   _   _______ _____ 
+	/  __ \ / _ \ | \ | |  _  \_   _|
+	| /  \// /_\ \|  \| | | | | | |  
+	| |    |  _  || . | | | | | | |  
+	| \__/\| | | || |\  | |/ / _| |_ 
+	 \____/\_| |_/\_| \_/___/  \___/ 
+
+`)
 }
