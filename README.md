@@ -28,14 +28,14 @@ $ candi
 $ cd {{service_name}}
 $ make run
 ```
-If include GRPC handler, run `$ make proto` for generate rpc files from proto
+If include GRPC handler, run `$ make proto` for generate rpc files from proto (must install `protoc` compiler)
 
 
 ## Service handlers example:
-* [**Example Cron worker in delivery layer**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/pkg/codebase/app/cron_worker)
-* [**Example Kafka consumer in delivery layer**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/pkg/codebase/app/kafka_worker)
-* [**Example Redis subscriber in delivery layer**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/pkg/codebase/app/redis_worker)
-* [**Example Task queue worker in delivery layer**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/pkg/codebase/app/task_queue_worker)
+* [**Example Cron worker in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/cron_worker)
+* [**Example Kafka consumer in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/kafka_worker)
+* [**Example Redis subscriber in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/redis_worker)
+* [**Example Task queue worker in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/task_queue_worker)
 
 
 ## Todo
