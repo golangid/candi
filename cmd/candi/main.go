@@ -63,12 +63,23 @@ func main() {
 	mergeMap(dataSourceWithHandler, serviceHandlers)
 	mergeMap(dataSourceWithHandler, workerHandlers)
 
+	if scope == addModule {
+		files, err := ioutil.ReadDir("internal/modules")
+		if err != nil {
+			panic(err)
+		}
+		for _, f := range files {
+			if f.IsDir() {
+				data.Modules = append(data.Modules, f.Name())
+			}
+		}
+	}
+
 	tpl = template.New(packageName)
 
 	apiStructure := FileStructure{
 		TargetDir: "api/", IsDir: true,
 	}
-
 	cmdStructure := FileStructure{
 		TargetDir: "cmd/", IsDir: true,
 		Childs: []FileStructure{
@@ -82,8 +93,14 @@ func main() {
 			},
 		},
 	}
-
-	serviceStructure := FileStructure{
+	configsStructure := FileStructure{
+		TargetDir: "configs/", IsDir: true,
+		Childs: []FileStructure{
+			{Source: configsTemplate, FileName: "configs.go"},
+			{Source: additionalEnvTemplate, FileName: "environment.go"},
+		},
+	}
+	internalServiceStructure := FileStructure{
 		TargetDir: "internal/", IsDir: true, DataSource: data,
 	}
 
@@ -94,18 +111,6 @@ func main() {
 		TargetDir: "graphql/", IsDir: true,
 	}
 
-	if scope == addModule {
-		files, err := ioutil.ReadDir("internal/modules")
-		if err != nil {
-			panic(err)
-		}
-		for _, f := range files {
-			if f.IsDir() {
-				data.Modules = append(data.Modules, f.Name())
-			}
-		}
-	}
-
 	var moduleStructure = FileStructure{
 		TargetDir: "modules/", IsDir: true, DataSource: data,
 	}
@@ -114,7 +119,6 @@ func main() {
 		data.Modules = append(data.Modules, moduleName)
 		dataSource := map[string]string{"module": moduleName}
 		mergeMap(dataSource, dataSourceWithHandler)
-		fmt.Println("map {}", dataSource)
 
 		cleanArchModuleDir := []FileStructure{
 			{
@@ -183,8 +187,8 @@ func main() {
 			FromTemplate: true, DataSource: dataSource, Source: defaultGraphqlSchema, FileName: moduleName + ".graphql",
 		})
 	}
-	serviceStructure.Childs = append(serviceStructure.Childs, moduleStructure)
-	serviceStructure.Childs = append(serviceStructure.Childs, FileStructure{
+	internalServiceStructure.Childs = append(internalServiceStructure.Childs, moduleStructure)
+	internalServiceStructure.Childs = append(internalServiceStructure.Childs, FileStructure{
 		FromTemplate: true, DataSource: data, Source: serviceMainTemplate, FileName: "service.go",
 	})
 
@@ -209,7 +213,14 @@ func main() {
 	switch scope {
 	case initService:
 		baseDirectoryFile.Childs = []FileStructure{
-			apiStructure, cmdStructure, serviceStructure,
+			apiStructure, cmdStructure, configsStructure, internalServiceStructure,
+			{TargetDir: "deployments/", IsDir: true, Childs: []FileStructure{
+				{TargetDir: "k8s/", IsDir: true},
+			}},
+			{TargetDir: "docs/", IsDir: true},
+			{TargetDir: "pkg/", IsDir: true, Childs: []FileStructure{
+				{TargetDir: "helper/", IsDir: true}, {TargetDir: "shared/", IsDir: true},
+			}},
 			{FromTemplate: true, DataSource: data, Source: dockerfileTemplate, FileName: "Dockerfile"},
 			{FromTemplate: true, DataSource: data, Source: makefileTemplate, FileName: "Makefile"},
 			{FromTemplate: true, DataSource: data, Source: gomodTemplate, FileName: "go.mod"},
@@ -218,8 +229,8 @@ func main() {
 
 	case addModule:
 		moduleStructure.Skip = true
-		serviceStructure.Skip = true
-		serviceStructure.Childs = []FileStructure{
+		internalServiceStructure.Skip = true
+		internalServiceStructure.Childs = []FileStructure{
 			moduleStructure,
 			{FromTemplate: true, DataSource: data, Source: serviceMainTemplate, FileName: "service.go"},
 		}
@@ -230,7 +241,7 @@ func main() {
 			apiProtoStructure, apiGraphQLStructure,
 		}
 
-		baseDirectoryFile.Childs = []FileStructure{apiStructure, serviceStructure}
+		baseDirectoryFile.Childs = []FileStructure{apiStructure, internalServiceStructure}
 		baseDirectoryFile.Skip = true
 
 	default:
@@ -356,7 +367,6 @@ func parseInput() (scope, serviceName string, modules []string, serviceHandlers,
 	})
 
 	fmt.Print(ps1 + "\033[1mPlease select service handlers (separated by comma)\n" +
-		"0) all\n" +
 		"1) Rest API\n" +
 		"2) GRPC\n" +
 		"3) GraphQL\033[0m\n")
@@ -368,11 +378,12 @@ func parseInput() (scope, serviceName string, modules []string, serviceHandlers,
 		serviceHandlers[serviceHandlersMap[strconv.Itoa(i)]] = "false"
 	}
 	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
-		serviceHandlers[serviceHandlersMap[strings.TrimSpace(str)]] = "true"
+		if serverName, ok := serviceHandlersMap[strings.TrimSpace(str)]; ok {
+			serviceHandlers[serverName] = "true"
+		}
 	}
 
 	fmt.Print(ps1 + "\033[1mPlease select worker handlers (separated by comma)\n" +
-		"0) all\n" +
 		"1) Kafka Consumer\n" +
 		"2) Scheduler\n" +
 		"3) Redis Subscriber\n" +
@@ -380,12 +391,17 @@ func parseInput() (scope, serviceName string, modules []string, serviceHandlers,
 	cmdInput, _ = reader.ReadString('\n')
 	cmdInput = strings.TrimRight(cmdInput, "\n")
 
-	workerHandlers = make(map[string]string, 4)
+	workerHandlers = make(map[string]string, 5)
 	for i := 1; i <= 4; i++ {
 		workerHandlers[workerHandlersMap[strconv.Itoa(i)]] = "false"
 	}
+	workerHandlers["isWorkerActive"] = "false"
 	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
-		workerHandlers[workerHandlersMap[strings.TrimSpace(str)]] = "true"
+		if workerName, ok := workerHandlersMap[strings.TrimSpace(str)]; ok {
+			workerHandlers[workerName] = "true"
+			workerHandlers["isWorkerActive"] = "true"
+			fmt.Println("masok worker aktif", strings.TrimSpace(str))
+		}
 	}
 
 	return

@@ -6,7 +6,7 @@ import (
 	{{isHandlerActive $.graphqlHandler}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/graphqlhandler"
 	{{isHandlerActive $.grpcHandler}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/grpchandler"
 	{{isHandlerActive $.restHandler}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/resthandler"
-	"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/workerhandler"
+	{{isHandlerActive $.isWorkerActive}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/workerhandler"
 
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/dependency"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"

@@ -27,17 +27,15 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags '-w -s' -a -o bin
 # Stage 3
 FROM alpine:latest  
 
-ARG SERVICE_NAME
 RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /root/
 
 RUN mkdir -p /root/api
-RUN mkdir -p /root/cmd
+RUN mkdir -p /root/cmd/{{.ServiceName}}
 RUN mkdir -p /root/config/key
 COPY --from=service_builder /usr/app/bin bin
-COPY --from=service_builder /usr/app/cmd/.env /root/cmd/.env
+COPY --from=service_builder /usr/app/cmd/{{.ServiceName}}/.env /root/cmd/{{.ServiceName}}/.env
 COPY --from=service_builder /usr/app/api /root/api
-COPY --from=service_builder /usr/app/config/key /root/config/key
 
 ENTRYPOINT ["./bin"]
 `
@@ -63,7 +61,7 @@ proto:
 	protoc -I . $(proto_file) --go_out=plugins=grpc:.;)
 
 docker: prepare
-	docker build --build-arg -t {{.ServiceName}}:latest .
+	docker build -t {{.ServiceName}}:latest .
 
 run-container:
 	docker run --name={{.ServiceName}} --network="host" -d {{.ServiceName}}
@@ -79,5 +77,6 @@ go 1.14
 
 	gitignoreTemplate = `bin
 vendor
+main_service.go
 `
 )
