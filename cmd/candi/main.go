@@ -18,12 +18,12 @@ const (
 	ps1         = "\x1b[32;1m>>> \x1b[0m"
 	packageName = "pkg.agungdwiprasetyo.com/candi"
 	initService = "initservice"
-	addModule   = "addModule"
+	addModule   = "addmodule"
 )
 
 var (
 	scopeMap = map[string]string{
-		"1": "initservice", "2": "addmodule",
+		"1": initService, "2": addModule,
 	}
 	serviceHandlersMap = map[string]string{
 		"1": "restHandler", "2": "grpcHandler", "3": "graphqlHandler",
@@ -40,7 +40,10 @@ var (
 type param struct {
 	PackageName string
 	ServiceName string
-	Modules     []string
+	Modules     []struct {
+		Name string
+		Skip bool
+	}
 }
 
 // FileStructure model
@@ -64,11 +67,6 @@ func main() {
 	data.PackageName = packageName
 	data.ServiceName = serviceName
 
-	dataSourceWithHandler := map[string]string{"PackageName": packageName, "ServiceName": serviceName}
-	mergeMap(dataSourceWithHandler, serviceHandlers)
-	mergeMap(dataSourceWithHandler, workerHandlers)
-	mergeMap(dataSourceWithHandler, dependencies)
-
 	if scope == addModule {
 		files, err := ioutil.ReadDir("internal/modules")
 		if err != nil {
@@ -76,10 +74,35 @@ func main() {
 		}
 		for _, f := range files {
 			if f.IsDir() {
-				data.Modules = append(data.Modules, f.Name())
+				data.Modules = append(data.Modules, struct {
+					Name string
+					Skip bool
+				}{
+					f.Name(), true,
+				})
 			}
 		}
+		pwd, _ := os.Getwd()
+		data.ServiceName = filepath.Base(pwd)
 	}
+
+	for _, moduleName := range modules {
+		moduleName = strings.TrimSpace(moduleName)
+		data.Modules = append(data.Modules, struct {
+			Name string
+			Skip bool
+		}{
+			moduleName, false,
+		})
+	}
+	sort.Slice(data.Modules, func(i, j int) bool {
+		return data.Modules[i].Name < data.Modules[j].Name
+	})
+
+	dataSourceWithHandler := map[string]string{"PackageName": packageName, "ServiceName": data.ServiceName}
+	mergeMap(dataSourceWithHandler, serviceHandlers)
+	mergeMap(dataSourceWithHandler, workerHandlers)
+	mergeMap(dataSourceWithHandler, dependencies)
 
 	tpl = template.New(packageName)
 
@@ -120,71 +143,75 @@ func main() {
 	var moduleStructure = FileStructure{
 		TargetDir: "modules/", IsDir: true, DataSource: data,
 	}
-	for _, moduleName := range modules {
-		moduleName = strings.TrimSpace(moduleName)
-		data.Modules = append(data.Modules, moduleName)
+
+	for _, mod := range data.Modules {
+		moduleName := mod.Name
 		dataSource := map[string]string{"module": moduleName}
 		mergeMap(dataSource, dataSourceWithHandler)
 
 		cleanArchModuleDir := []FileStructure{
 			{
-				TargetDir: "delivery/", IsDir: true,
+				TargetDir: "delivery/", IsDir: true, Skip: mod.Skip,
 				Childs: []FileStructure{
-					{TargetDir: "graphqlhandler/", IsDir: true, Childs: []FileStructure{
-						{FromTemplate: true, DataSource: dataSource, Source: deliveryGraphqlRootTemplate, FileName: "root_resolver.go"},
-						{FromTemplate: true, DataSource: dataSource, Source: deliveryGraphqlQueryTemplate, FileName: "query_resolver.go"},
-						{FromTemplate: true, DataSource: dataSource, Source: deliveryGraphqlMutationTemplate, FileName: "mutation_resolver.go"},
-						{FromTemplate: true, DataSource: dataSource, Source: deliveryGraphqlSubscriptionTemplate, FileName: "subscription_resolver.go"},
-					}},
-					{TargetDir: "grpchandler/", IsDir: true, Childs: []FileStructure{
-						{FromTemplate: true, DataSource: dataSource, Source: deliveryGRPCTemplate, FileName: "grpchandler.go"},
-					}},
-					{TargetDir: "resthandler/", IsDir: true, Childs: []FileStructure{
-						{FromTemplate: true, DataSource: dataSource, Source: deliveryRestTemplate, FileName: "resthandler.go"},
-					}},
-					{TargetDir: "workerhandler/", IsDir: true, Childs: []FileStructure{
-						{FromTemplate: true, DataSource: dataSource, Source: deliveryKafkaTemplate, FileName: "kafka_handler.go"},
-						{FromTemplate: true, DataSource: dataSource, Source: deliveryRedisTemplate, FileName: "redis_handler.go"},
-						{FromTemplate: true, DataSource: dataSource, Source: deliveryCronTemplate, FileName: "cron_handler.go"},
-						{FromTemplate: true, DataSource: dataSource, Source: deliveryTaskQueueTemplate, FileName: "taskqueue_handler.go"},
-					}},
+					{TargetDir: "graphqlhandler/", IsDir: true, Skip: mod.Skip,
+						Childs: []FileStructure{
+							{FromTemplate: true, Skip: mod.Skip, DataSource: dataSource, Source: deliveryGraphqlRootTemplate, FileName: "root_resolver.go"},
+							{FromTemplate: true, Skip: mod.Skip, DataSource: dataSource, Source: deliveryGraphqlQueryTemplate, FileName: "query_resolver.go"},
+							{FromTemplate: true, Skip: mod.Skip, DataSource: dataSource, Source: deliveryGraphqlMutationTemplate, FileName: "mutation_resolver.go"},
+							{FromTemplate: true, Skip: mod.Skip, DataSource: dataSource, Source: deliveryGraphqlSubscriptionTemplate, FileName: "subscription_resolver.go"},
+						}},
+					{TargetDir: "grpchandler/", IsDir: true, Skip: mod.Skip,
+						Childs: []FileStructure{
+							{FromTemplate: true, Skip: mod.Skip, DataSource: dataSource, Source: deliveryGRPCTemplate, FileName: "grpchandler.go"},
+						}},
+					{TargetDir: "resthandler/", IsDir: true, Skip: mod.Skip,
+						Childs: []FileStructure{
+							{FromTemplate: true, Skip: mod.Skip, DataSource: dataSource, Source: deliveryRestTemplate, FileName: "resthandler.go"},
+						}},
+					{TargetDir: "workerhandler/", IsDir: true, Skip: mod.Skip,
+						Childs: []FileStructure{
+							{FromTemplate: true, Skip: mod.Skip, DataSource: dataSource, Source: deliveryKafkaTemplate, FileName: "kafka_handler.go"},
+							{FromTemplate: true, Skip: mod.Skip, DataSource: dataSource, Source: deliveryRedisTemplate, FileName: "redis_handler.go"},
+							{FromTemplate: true, Skip: mod.Skip, DataSource: dataSource, Source: deliveryCronTemplate, FileName: "cron_handler.go"},
+							{FromTemplate: true, Skip: mod.Skip, DataSource: dataSource, Source: deliveryTaskQueueTemplate, FileName: "taskqueue_handler.go"},
+						}},
 				},
 			},
 			{
-				TargetDir: "domain/", IsDir: true,
+				TargetDir: "domain/", IsDir: true, Skip: mod.Skip,
 				Childs: []FileStructure{
-					{FromTemplate: true, FileName: "domain.go"},
+					{FromTemplate: true, Skip: mod.Skip, FileName: "domain.go"},
 				},
 			},
 			{
-				TargetDir: "repository/", IsDir: true,
+				TargetDir: "repository/", IsDir: true, Skip: mod.Skip,
 				Childs: []FileStructure{
-					{TargetDir: "interfaces/", IsDir: true},
-					{FromTemplate: true, FileName: "repository.go"},
+					{TargetDir: "interfaces/", IsDir: true, Skip: mod.Skip},
+					{FromTemplate: true, Skip: mod.Skip, FileName: "repository.go"},
 				},
 			},
 			{
-				TargetDir: "usecase/", IsDir: true,
+				TargetDir: "usecase/", IsDir: true, Skip: mod.Skip,
 				Childs: []FileStructure{
-					{FromTemplate: true, FileName: "usecase.go"},
-					{FromTemplate: true, FileName: "usecase_impl.go"},
+					{FromTemplate: true, Skip: mod.Skip, FileName: "usecase.go"},
+					{FromTemplate: true, Skip: mod.Skip, FileName: "usecase_impl.go"},
 				},
 			},
 		}
 
 		moduleStructure.Childs = append(moduleStructure.Childs, []FileStructure{
 			{
-				TargetDir: moduleName + "/", IsDir: true,
+				TargetDir: moduleName + "/", IsDir: true, Skip: mod.Skip,
 				Childs: append(cleanArchModuleDir,
 					FileStructure{
-						FromTemplate: true, DataSource: dataSource, Source: moduleMainTemplate, FileName: "module.go",
+						FromTemplate: true, Skip: mod.Skip, DataSource: dataSource, Source: moduleMainTemplate, FileName: "module.go",
 					},
 				),
 			},
 		}...)
 
 		apiProtoStructure.Childs = append(apiProtoStructure.Childs, FileStructure{
-			TargetDir: moduleName, IsDir: true,
+			TargetDir: moduleName, IsDir: true, Skip: mod.Skip,
 			Childs: []FileStructure{
 				{FromTemplate: true, DataSource: dataSource, Source: defaultGRPCProto, FileName: moduleName + ".proto"},
 			},
@@ -193,6 +220,7 @@ func main() {
 			FromTemplate: true, DataSource: dataSource, Source: defaultGraphqlSchema, FileName: moduleName + ".graphql",
 		})
 	}
+	// debug.PrintJSON(moduleStructure)
 	internalServiceStructure.Childs = append(internalServiceStructure.Childs, moduleStructure)
 	internalServiceStructure.Childs = append(internalServiceStructure.Childs, FileStructure{
 		FromTemplate: true, DataSource: data, Source: serviceMainTemplate, FileName: "service.go",
@@ -249,9 +277,8 @@ func main() {
 
 		baseDirectoryFile.Childs = []FileStructure{apiStructure, internalServiceStructure}
 		baseDirectoryFile.Skip = true
+		baseDirectoryFile.TargetDir = ""
 
-	default:
-		panic("invalid scope parameter")
 	}
 
 	exec(baseDirectoryFile)
@@ -369,9 +396,6 @@ func parseInput() (scope, serviceName string, modules []string, serviceHandlers,
 		log.Fatal("modules cannot empty")
 	}
 	modules = strings.Split(cmdInput, ",")
-	sort.Slice(modules, func(i, j int) bool {
-		return modules[i] < modules[j]
-	})
 
 	fmt.Print(ps1 + "\033[1mPlease select service handlers (separated by comma)\n" +
 		"1) Rest API\n" +
@@ -408,24 +432,26 @@ func parseInput() (scope, serviceName string, modules []string, serviceHandlers,
 		}
 	}
 
-	fmt.Print(ps1 + "\033[1mPlease select dependencies (separated by comma)\n" +
-		"1) Kafka\n" +
-		"2) Redis\n" +
-		"3) SQL Database\n" +
-		"4) Mongo Database\033[0m\n")
-	cmdInput, _ = reader.ReadString('\n')
-	cmdInput = strings.TrimRight(cmdInput, "\n")
-	dependencies = make(map[string]string, 5)
-	for i := 1; i <= 4; i++ {
-		dependencies[dependencyMap[strconv.Itoa(i)]] = "false"
-	}
-	dependencies["isDatabaseActive"] = "false"
-	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
-		str = strings.TrimSpace(str)
-		if depsName, ok := dependencyMap[str]; ok {
-			dependencies[depsName] = "true"
-			if str > "1" {
-				dependencies["isDatabaseActive"] = "true"
+	if scope == initService {
+		fmt.Print(ps1 + "\033[1mPlease select dependencies (separated by comma)\n" +
+			"1) Kafka\n" +
+			"2) Redis\n" +
+			"3) SQL Database\n" +
+			"4) Mongo Database\033[0m\n")
+		cmdInput, _ = reader.ReadString('\n')
+		cmdInput = strings.TrimRight(cmdInput, "\n")
+		dependencies = make(map[string]string, 5)
+		for i := 1; i <= 4; i++ {
+			dependencies[dependencyMap[strconv.Itoa(i)]] = "false"
+		}
+		dependencies["isDatabaseActive"] = "false"
+		for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
+			str = strings.TrimSpace(str)
+			if depsName, ok := dependencyMap[str]; ok {
+				dependencies[depsName] = "true"
+				if str > "1" {
+					dependencies["isDatabaseActive"] = "true"
+				}
 			}
 		}
 	}

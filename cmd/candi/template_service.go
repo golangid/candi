@@ -10,7 +10,7 @@ import (
 
 	"{{$.ServiceName}}/configs"
 {{- range $module := .Modules}}
-	"{{$.ServiceName}}/internal/modules/{{$module}}"
+	"{{$.ServiceName}}/internal/modules/{{$module.Name}}"
 {{- end }}
 )
 
@@ -27,7 +27,7 @@ func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 
 	modules := []factory.ModuleFactory{
 	{{- range $module := .Modules}}
-		{{clean $module}}.NewModule(deps),
+		{{clean $module.Name}}.NewModule(deps),
 	{{- end }}
 	}
 

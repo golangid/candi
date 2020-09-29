@@ -100,19 +100,19 @@ func (s *subscriptionResolver) Hello(ctx context.Context) <-chan string {
 
 type Query {
 {{- range $module := .Modules}}
-	{{clean $module}}: {{clean (upper $module)}}QueryModule
+	{{clean $module.Name}}: {{clean (upper $module.Name)}}QueryModule
 {{- end }}
 }
 
 type Mutation {
 {{- range $module := .Modules}}
-	{{clean $module}}: {{clean (upper $module)}}MutationModule
+	{{clean $module.Name}}: {{clean (upper $module.Name)}}MutationModule
 {{- end }}
 }
 
 type Subscription {
 {{- range $module := .Modules}}
-	{{clean $module}}: {{clean (upper $module)}}SubscriptionModule
+	{{clean $module.Name}}: {{clean (upper $module.Name)}}SubscriptionModule
 {{- end }}
 }
 `
