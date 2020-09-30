@@ -6,7 +6,7 @@ const (
 import (
 	"context"
 
-	"{{.ServiceName}}/pkg/shared/repository"
+	{{isActive $.sqldbDeps}}"{{.ServiceName}}/pkg/shared/repository"
 
 	{{isActive $.sqldbDeps}}"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/dependency"
