@@ -253,7 +253,12 @@ func main() {
 			}},
 			{TargetDir: "docs/", IsDir: true},
 			{TargetDir: "pkg/", IsDir: true, Childs: []FileStructure{
-				{TargetDir: "helper/", IsDir: true}, {TargetDir: "shared/", IsDir: true},
+				{TargetDir: "helper/", IsDir: true},
+				{TargetDir: "shared/", IsDir: true, Childs: []FileStructure{
+					{TargetDir: "repository/", IsDir: true, Childs: []FileStructure{
+						{Source: templateRepositorySQL, FileName: "repository_sql.go"},
+					}},
+				}},
 			}},
 			{FromTemplate: true, DataSource: data, Source: dockerfileTemplate, FileName: "Dockerfile"},
 			{FromTemplate: true, DataSource: data, Source: makefileTemplate, FileName: "Makefile"},

@@ -43,6 +43,11 @@ const (
 	KByte = Byte * 1024
 	// MByte ...
 	MByte = KByte * 1024
+
+	// RepositorySQL unit of work for sql repository
+	RepositorySQL = "repositorySQL"
+	// RepositoryMongo unit of work for mongodb repository
+	RepositoryMongo = "repositoryMongo"
 )
 
 var (

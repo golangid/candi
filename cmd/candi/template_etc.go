@@ -42,10 +42,6 @@ ENTRYPOINT ["./bin"]
 
 	makefileTemplate = `.PHONY : prepare build run
 
-add-module:
-	candi --scope=addmodule --modules=$(modules)
-	@$(MAKE) -f $(lastword $(MAKEFILE_LIST)) proto
-
 prepare:
 	@if [ ! -d "cmd/{{.ServiceName}}" ]; then  echo "ERROR: service '{{.ServiceName}}' undefined"; exit 1; fi
 	@ln -sf cmd/{{.ServiceName}}/main.go main_service.go

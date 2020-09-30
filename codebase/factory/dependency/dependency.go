@@ -13,6 +13,7 @@ type Dependency interface {
 	GetRedisPool() interfaces.RedisPool
 	GetKey() interfaces.RSAKey
 	GetValidator() interfaces.Validator
+	GetExtended() map[string]interface{}
 }
 
 // Option func type
@@ -26,6 +27,7 @@ type deps struct {
 	redisPool interfaces.RedisPool
 	key       interfaces.RSAKey
 	validator interfaces.Validator
+	extended  map[string]interface{}
 }
 
 // SetMiddleware option func
@@ -77,6 +79,13 @@ func SetValidator(validator interfaces.Validator) Option {
 	}
 }
 
+// SetExtended option func
+func SetExtended(ext map[string]interface{}) Option {
+	return func(d *deps) {
+		d.extended = ext
+	}
+}
+
 // InitDependency constructor
 func InitDependency(opts ...Option) Dependency {
 	opt := new(deps)
@@ -108,4 +117,7 @@ func (d *deps) GetKey() interfaces.RSAKey {
 }
 func (d *deps) GetValidator() interfaces.Validator {
 	return d.validator
+}
+func (d *deps) GetExtended() map[string]interface{} {
+	return d.extended
 }
