@@ -6,6 +6,9 @@ const (
 import (
 	"context"
 
+	"{{.ServiceName}}/pkg/shared/repository"
+
+	{{isActive $.sqldbDeps}}"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/dependency"
 	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
 	"pkg.agungdwiprasetyo.com/candi/config"
@@ -26,6 +29,10 @@ func LoadConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 		{{isActive $.sqldbDeps}}sqlDeps := database.InitSQLDatabase()
 		{{isActive $.mongodbDeps}}mongoDeps := database.InitMongoDB(ctx)
 
+		extendedDeps := map[string]interface{}{
+			{{isActive $.sqldbDeps}}candihelper.RepositorySQL: repository.NewRepositorySQL(sqlDeps.ReadDB(), sqlDeps.WriteDB(), nil),
+		}
+
 		// inject all service dependencies
 		// See all option in dependency package
 		deps = dependency.InitDependency(
@@ -35,6 +42,7 @@ func LoadConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 			{{isActive $.redisDeps}}dependency.SetRedisPool(redisDeps),
 			{{isActive $.sqldbDeps}}dependency.SetSQLDatabase(sqlDeps),
 			{{isActive $.mongodbDeps}}dependency.SetMongoDatabase(mongoDeps),
+			dependency.SetExtended(extendedDeps),
 			// ... add more dependencies
 		)
 		return []interfaces.Closer{ // throw back to base config for close connection when application shutdown
