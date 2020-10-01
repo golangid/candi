@@ -253,7 +253,9 @@ func main() {
 			}},
 			{TargetDir: "docs/", IsDir: true},
 			{TargetDir: "pkg/", IsDir: true, Childs: []FileStructure{
-				{TargetDir: "helper/", IsDir: true},
+				{TargetDir: "helper/", IsDir: true, Childs: []FileStructure{
+					{FromTemplate: true, FileName: "helper.go"},
+				}},
 				{TargetDir: "shared/", IsDir: true, Childs: []FileStructure{
 					{TargetDir: "repository/", IsDir: true, Childs: []FileStructure{
 						{Source: templateRepositorySQL, FileName: "repository_sql.go"},
@@ -477,7 +479,7 @@ func printBanner() {
 	| /  \// /_\ \|  \| | | | | | |  
 	| |    |  _  || . | | | | | | |  
 	| \__/\| | | || |\  | |/ / _| |_ 
-	 \____/\_| |_/\_| \_/___/  \___/  v0.0.2
+	 \____/\_| |_/\_| \_/___/  \___/  v0.0.3
 
 `)
 }

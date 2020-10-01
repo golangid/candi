@@ -1,13 +1,13 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
+	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
 // Env model
@@ -65,7 +65,7 @@ func loadBaseEnv(serviceLocation string, targetEnv *Env) {
 
 	// load main .env and additional .env in app
 	if err := godotenv.Load(serviceLocation + ".env"); err != nil {
-		panic(fmt.Errorf("Load env: %v", err))
+		logger.LogYellow("warning: cannot load .env")
 	}
 
 	rootApp, _ := filepath.Abs(filepath.Dir(os.Args[0]))
