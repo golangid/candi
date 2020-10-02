@@ -7,3 +7,4 @@ main_service.go
 *.pem
 *.key
 coverage.txt
+example/
