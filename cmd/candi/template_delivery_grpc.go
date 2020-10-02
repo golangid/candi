@@ -1,7 +1,9 @@
 package main
 
 const (
-	deliveryGRPCTemplate = `package grpchandler
+	deliveryGRPCTemplate = `// {{.Header}}
+
+package grpchandler
 
 import (
 	"context"
@@ -9,7 +11,7 @@ import (
 	proto "{{.ServiceName}}/api/proto/{{$.module}}"
 
 	"google.golang.org/grpc"
-	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
+	"{{.PackageName}}/codebase/interfaces"
 )
 
 // GRPCHandler rpc handler

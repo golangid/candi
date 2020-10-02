@@ -42,10 +42,6 @@ ENTRYPOINT ["./bin"]
 
 	makefileTemplate = `.PHONY : prepare build run
 
-prepare:
-	@if [ ! -d "cmd/{{.ServiceName}}" ]; then  echo "ERROR: service '{{.ServiceName}}' undefined"; exit 1; fi
-	@ln -sf cmd/{{.ServiceName}}/main.go main_service.go
-
 build: prepare
 	go build -o bin
 

@@ -1,6 +1,8 @@
 package main
 
-const moduleMainTemplate = `package {{clean $.module}}
+const moduleMainTemplate = `// {{.Header}}
+
+package {{clean $.module}}
 
 import (
 	{{isActive $.graphqlHandler}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/graphqlhandler"
@@ -8,9 +10,9 @@ import (
 	{{isActive $.restHandler}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/resthandler"
 	{{isActive $.isWorkerActive}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/workerhandler"
 
-	"pkg.agungdwiprasetyo.com/candi/codebase/factory/dependency"
-	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
+	"{{.PackageName}}/codebase/factory/dependency"
+	"{{.PackageName}}/codebase/factory/types"
+	"{{.PackageName}}/codebase/interfaces"
 )
 
 const (

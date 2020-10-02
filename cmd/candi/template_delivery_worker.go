@@ -1,13 +1,15 @@
 package main
 
 const (
-	deliveryKafkaTemplate = `package workerhandler
+	deliveryKafkaTemplate = `// {{.Header}}
+
+package workerhandler
 
 import (
 	"context"
 	"fmt"
 
-	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"{{.PackageName}}/codebase/factory/types"
 )
 
 // KafkaHandler struct
@@ -21,24 +23,26 @@ func NewKafkaHandler() *KafkaHandler {
 
 // MountHandlers mount handler group
 func (h *KafkaHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	group.Add("{{$.module}}", h.handleTest) // handling topic "{{$.module}}"
+	group.Add("{{$.module}}", h.handle{{clean (upper $.module)}}) // handling topic "{{$.module}}"
 }
 
 // ProcessMessage from kafka consumer
-func (h *KafkaHandler) handleTest(ctx context.Context, message []byte) error {
+func (h *KafkaHandler) handle{{clean (upper $.module)}}(ctx context.Context, message []byte) error {
 	fmt.Printf("message consumed by module {{$.module}}. message: %s\n", string(message))
 	return nil
 }
 `
 
-	deliveryCronTemplate = `package workerhandler
+	deliveryCronTemplate = `// {{.Header}}
+
+package workerhandler
 
 import (
 	"context"
 	"fmt"
 
-	"pkg.agungdwiprasetyo.com/candi/candihelper"
-	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"{{.PackageName}}/candihelper"
+	"{{.PackageName}}/codebase/factory/types"
 )
 
 // CronHandler struct
@@ -52,22 +56,24 @@ func NewCronHandler() *CronHandler {
 
 // MountHandlers mount handler group
 func (h *CronHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	group.Add(candihelper.CronJobKeyToString("{{$.module}}-scheduler", "10s"), h.handleSample)
+	group.Add(candihelper.CronJobKeyToString("{{$.module}}-scheduler", "10s"), h.handle{{clean (upper $.module)}})
 }
 
-func (h *CronHandler) handleSample(ctx context.Context, message []byte) error {
+func (h *CronHandler) handle{{clean (upper $.module)}}(ctx context.Context, message []byte) error {
 	fmt.Println("cron: execute in module {{$.module}}")
 	return nil
 }
 `
 
-	deliveryRedisTemplate = `package workerhandler
+	deliveryRedisTemplate = `// {{.Header}}
+
+package workerhandler
 
 import (
 	"context"
 	"fmt"
 
-	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"{{.PackageName}}/codebase/factory/types"
 )
 
 // RedisHandler struct
@@ -82,23 +88,25 @@ func NewRedisHandler() *RedisHandler {
 
 // MountHandlers mount handler group
 func (h *RedisHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	group.Add("{{$.module}}-sample", h.handleSample)
+	group.Add("{{$.module}}-sample", h.handle{{clean (upper $.module)}})
 }
 
-func (h *RedisHandler) handleSample(ctx context.Context, message []byte) error {
+func (h *RedisHandler) handle{{clean (upper $.module)}}(ctx context.Context, message []byte) error {
 	fmt.Println("redis subs: execute sample")
 	return nil
 }
 `
 
-	deliveryTaskQueueTemplate = `package workerhandler
+	deliveryTaskQueueTemplate = `// {{.Header}}
+
+package workerhandler
 
 import (
 	"context"
 	"time"
 
-	taskqueueworker "pkg.agungdwiprasetyo.com/candi/codebase/app/task_queue_worker"
-	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	taskqueueworker "{{.PackageName}}/codebase/app/task_queue_worker"
+	"{{.PackageName}}/codebase/factory/types"
 )
 
 // TaskQueueHandler struct

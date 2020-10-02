@@ -1,14 +1,16 @@
 package main
 
 const (
-	templateRepositorySQL = `package repository
+	templateRepositorySQL = `// {{.Header}}
+
+package repository
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
 
-	"pkg.agungdwiprasetyo.com/candi/tracer"
+	"{{.PackageName}}/tracer"
 )
 
 // RepoSQL model
@@ -38,6 +40,10 @@ func (r *RepoSQL) WithTransaction(ctx context.Context, txFunc func(ctx context.C
 		return errInit
 	}
 
+	// reinit new repository in different memory address with tx value
+	manager := NewRepositorySQL(r.readDB, r.writeDB, tx)
+	defer manager.free()
+
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
@@ -50,10 +56,6 @@ func (r *RepoSQL) WithTransaction(ctx context.Context, txFunc func(ctx context.C
 			tx.Commit()
 		}
 	}()
-
-	// reinit new repository in different memory address with tx value
-	manager := NewRepositorySQL(r.readDB, r.writeDB, tx)
-	defer manager.free()
 
 	errChan := make(chan error)
 	go func() {

@@ -1,10 +1,12 @@
 package main
 
 const (
-	deliveryGraphqlRootTemplate = `package graphqlhandler
+	deliveryGraphqlRootTemplate = `// {{.Header}}
+
+package graphqlhandler
 
 import (
-	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
+	"{{.PackageName}}/codebase/interfaces"
 )
 
 // GraphQLHandler model
@@ -42,12 +44,14 @@ func (h *GraphQLHandler) Subscription() interface{} {
 }
 `
 
-	deliveryGraphqlQueryTemplate = `package graphqlhandler
+	deliveryGraphqlQueryTemplate = `// {{.Header}}
+
+package graphqlhandler
 
 import (
 	"context"
 
-	"pkg.agungdwiprasetyo.com/candi/tracer"
+	"{{.PackageName}}/tracer"
 )
 
 type queryResolver struct {
@@ -61,7 +65,9 @@ func (q *queryResolver) Hello(ctx context.Context) (string, error) {
 	return "Hello, from service: {{$.ServiceName}}, module: {{$.module}}", nil
 }
 `
-	deliveryGraphqlMutationTemplate = `package graphqlhandler
+	deliveryGraphqlMutationTemplate = `// {{.Header}}
+
+package graphqlhandler
 
 import "context"
 
@@ -73,7 +79,9 @@ func (m *mutationResolver) Hello(ctx context.Context) (string, error) {
 	return "Hello", nil
 }	
 `
-	deliveryGraphqlSubscriptionTemplate = `package graphqlhandler
+	deliveryGraphqlSubscriptionTemplate = `// {{.Header}}
+
+package graphqlhandler
 
 import "context"
 
@@ -92,7 +100,9 @@ func (s *subscriptionResolver) Hello(ctx context.Context) <-chan string {
 }
 `
 
-	defaultGraphqlRootSchema = `schema {
+	defaultGraphqlRootSchema = `# {{.Header}}
+
+schema {
 	query: Query
 	mutation: Mutation
 	subscription: Subscription
@@ -117,7 +127,9 @@ type Subscription {
 }
 `
 
-	defaultGraphqlSchema = `################### {{clean (upper $.module)}}Module Module Area
+	defaultGraphqlSchema = `# {{.Header}}
+
+# {{clean (upper $.module)}}Module Module Area
 type {{clean (upper $.module)}}QueryModule {
     hello(): String!
 }

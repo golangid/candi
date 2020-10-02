@@ -1,6 +1,7 @@
 package main
 
 const envTemplate = `# Basic env configuration
+ENVIRONMENT=[string] #development,staging,production
 
 # Service Handlers
 ## Server

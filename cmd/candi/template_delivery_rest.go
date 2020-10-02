@@ -1,15 +1,17 @@
 package main
 
-const deliveryRestTemplate = `package resthandler
+const deliveryRestTemplate = `// {{.Header}}
+
+package resthandler
 
 import (
 	"net/http"
 
 	"github.com/labstack/echo"
 
-	"pkg.agungdwiprasetyo.com/candi/candihelper"
-	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
-	"pkg.agungdwiprasetyo.com/candi/wrapper"
+	"{{.PackageName}}/candihelper"
+	"{{.PackageName}}/codebase/interfaces"
+	"{{.PackageName}}/wrapper"
 )
 
 // RestHandler handler

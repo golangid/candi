@@ -1,12 +1,14 @@
 package main
 
-const serviceMainTemplate = `package {{clean $.ServiceName}}
+const serviceMainTemplate = ` // {{.Header}} DO NOT EDIT.
+
+package {{clean $.ServiceName}}
 
 import (
-	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
-	"pkg.agungdwiprasetyo.com/candi/codebase/factory/dependency"
-	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/candi/config"
+	"{{.PackageName}}/codebase/factory"
+	"{{.PackageName}}/codebase/factory/dependency"
+	"{{.PackageName}}/codebase/factory/types"
+	"{{.PackageName}}/config"
 
 	"{{$.ServiceName}}/configs"
 {{- range $module := .Modules}}
@@ -52,5 +54,4 @@ func (s *Service) GetModules() []factory.ModuleFactory {
 func (s *Service) Name() types.Service {
 	return s.name
 }
-
 `

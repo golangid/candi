@@ -1,21 +1,23 @@
 package main
 
 const (
-	configsTemplate = `package configs
+	configsTemplate = `// {{.Header}}
+
+package configs
 
 import (
 	"context"
 
 	{{isActive $.sqldbDeps}}"{{.ServiceName}}/pkg/shared/repository"
 
-	{{isActive $.sqldbDeps}}"pkg.agungdwiprasetyo.com/candi/candihelper"
-	"pkg.agungdwiprasetyo.com/candi/codebase/factory/dependency"
-	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
-	"pkg.agungdwiprasetyo.com/candi/config"
-	{{isActive $.kafkaDeps}}"pkg.agungdwiprasetyo.com/candi/config/broker"
-	{{isActive $.isDatabaseActive}}"pkg.agungdwiprasetyo.com/candi/config/database"
-	"pkg.agungdwiprasetyo.com/candi/middleware"
-	"pkg.agungdwiprasetyo.com/candi/validator"
+	{{isActive $.sqldbDeps}}"{{.PackageName}}/candihelper"
+	"{{.PackageName}}/codebase/factory/dependency"
+	"{{.PackageName}}/codebase/interfaces"
+	"{{.PackageName}}/config"
+	{{isActive $.kafkaDeps}}"{{.PackageName}}/config/broker"
+	{{isActive $.isDatabaseActive}}"{{.PackageName}}/config/database"
+	"{{.PackageName}}/middleware"
+	"{{.PackageName}}/validator"
 )
 
 // LoadConfigs load selected dependency configuration in this service
@@ -57,7 +59,9 @@ func LoadConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 }
 `
 
-	additionalEnvTemplate = `package configs
+	additionalEnvTemplate = `// {{.Header}}
+
+package configs
 
 // Environment additional in this service
 type Environment struct {

@@ -1,13 +1,15 @@
 package main
 
-const cmdMainTemplate = `package main
+const cmdMainTemplate = `// {{.Header}}
+
+package main
 
 import (
 	"fmt"
 	"runtime/debug"
 
-	"pkg.agungdwiprasetyo.com/candi/codebase/app"
-	"pkg.agungdwiprasetyo.com/candi/config"
+	"{{.PackageName}}/codebase/app"
+	"{{.PackageName}}/config"
 
 	service "{{.ServiceName}}/internal"
 )
@@ -22,7 +24,7 @@ func main() {
 		}
 	}()
 
-	cfg := config.Init(fmt.Sprintf("cmd/%s/", serviceName))
+	cfg := config.Init("")
 	defer cfg.Exit()
 
 	srv := service.NewService(serviceName, cfg)
