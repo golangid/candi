@@ -14,6 +14,7 @@ type Dependency interface {
 	GetKey() interfaces.RSAKey
 	GetValidator() interfaces.Validator
 	GetExtended() map[string]interface{}
+	AddExtended(key string, value interface{})
 }
 
 // Option func type
@@ -120,4 +121,9 @@ func (d *deps) GetValidator() interfaces.Validator {
 }
 func (d *deps) GetExtended() map[string]interface{} {
 	return d.extended
+}
+func (d *deps) AddExtended(key string, value interface{}) {
+	if d.extended != nil {
+		d.extended[key] = value
+	}
 }

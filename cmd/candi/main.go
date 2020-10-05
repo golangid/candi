@@ -19,7 +19,7 @@ const (
 	packageName = "pkg.agungdwiprasetyo.com/candi"
 	initService = "initservice"
 	addModule   = "addmodule"
-	version     = "v0.0.4"
+	version     = "v0.0.5"
 )
 
 var (
