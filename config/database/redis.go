@@ -7,20 +7,24 @@ import (
 	"strconv"
 
 	"github.com/gomodule/redigo/redis"
+	"pkg.agungdwiprasetyo.com/candi/cache"
 	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
 type redisInstance struct {
 	read, write *redis.Pool
+	cache       interfaces.Cache
 }
 
 func (m *redisInstance) ReadPool() *redis.Pool {
 	return m.read
 }
-
 func (m *redisInstance) WritePool() *redis.Pool {
 	return m.write
+}
+func (m *redisInstance) Cache() interfaces.Cache {
+	return m.cache
 }
 
 func (m *redisInstance) Disconnect(ctx context.Context) (err error) {
@@ -70,6 +74,7 @@ func InitRedis() interfaces.RedisPool {
 	if err != nil {
 		panic("redis write: " + err.Error())
 	}
+	inst.cache = cache.NewRedisCache(inst.read, inst.write)
 
 	return inst
 }

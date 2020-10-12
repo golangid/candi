@@ -25,5 +25,6 @@ type MongoDatabase interface {
 type RedisPool interface {
 	ReadPool() *redis.Pool
 	WritePool() *redis.Pool
+	Cache() Cache
 	Closer
 }
