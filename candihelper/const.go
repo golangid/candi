@@ -1,7 +1,6 @@
 package candihelper
 
 import (
-	"errors"
 	"time"
 )
 
@@ -10,8 +9,6 @@ const (
 	TimeZoneAsia = "Asia/Jakarta"
 	// TokenClaimKey const
 	TokenClaimKey = "tokenClaim"
-	// TokenKey const
-	TokenKey = "18608c7d-b319-0xc000165c80-0xc0000da000-11478e4e2650"
 
 	// TimeFormatLogger const
 	TimeFormatLogger = "2006/01/02 15:04:05"
@@ -21,22 +18,6 @@ const (
 	// V2 const
 	V2 = "/v2"
 
-	// GRPCBanner const
-	GRPCBanner = `    __________  ____  ______
-   / ____/ __ \/ __ \/ ____/
-  / / __/ /_/ / /_/ / /     
- / /_/ / _, _/ ____/ /___   
- \____/_/ |_/_/    \____/   							
-`
-
-	// RedisBanner const
-	RedisBanner = `    ____  __________  _________
-   / __ \/ ____/ __ \/  _/ ___/
-  / /_/ / __/ / / / // / \__ \ 
- / _, _/ /___/ /_/ // / ___/ / 
-/_/ |_/_____/_____/___//____/                                
-`
-
 	// Byte ...
 	Byte uint64 = 1
 	// KByte ...
@@ -44,10 +25,14 @@ const (
 	// MByte ...
 	MByte = KByte * 1024
 
+	// WORKDIR const for workdir environment
+	WORKDIR = "WORKDIR"
 	// RepositorySQL unit of work for sql repository
 	RepositorySQL = "repositorySQL"
 	// RepositoryMongo unit of work for mongodb repository
 	RepositoryMongo = "repositoryMongo"
+	// UsecaseUOW unit of work for usecase
+	UsecaseUOW = "usecaseUOW"
 )
 
 var (
@@ -67,11 +52,6 @@ var (
 	Cyan = []byte{27, 91, 57, 55, 59, 52, 54, 109}
 	// Reset color
 	Reset = []byte{27, 91, 48, 109}
-
-	// ErrTokenFormat var
-	ErrTokenFormat = errors.New("Invalid token format")
-	// ErrTokenExpired var
-	ErrTokenExpired = errors.New("Token is expired")
 
 	// AsiaJakartaLocalTime location
 	AsiaJakartaLocalTime *time.Location

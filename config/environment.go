@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
@@ -61,10 +62,10 @@ type Env struct {
 	}
 }
 
-func loadBaseEnv(serviceLocation string, targetEnv *Env) {
+func loadBaseEnv(targetEnv *Env) {
 
 	// load main .env and additional .env in app
-	if err := godotenv.Load(serviceLocation + ".env"); err != nil {
+	if err := godotenv.Load(os.Getenv(candihelper.WORKDIR) + ".env"); err != nil {
 		logger.LogYellow("warning: cannot load .env")
 	}
 
@@ -177,9 +178,11 @@ func loadBaseEnv(serviceLocation string, targetEnv *Env) {
 	if env.UseGraphQL && !ok {
 		panic("GRAPHQL is active, missing GRAPHQL_SCHEMA_DIR environment")
 	}
+	env.GraphQLSchemaDir = os.Getenv(candihelper.WORKDIR) + env.GraphQLSchemaDir
 
 	env.JSONSchemaDir, ok = os.LookupEnv("JSON_SCHEMA_DIR")
 	if !ok {
 		panic("missing JSON_SCHEMA_DIR environment")
 	}
+	env.JSONSchemaDir = os.Getenv(candihelper.WORKDIR) + env.JSONSchemaDir
 }
