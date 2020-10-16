@@ -2,13 +2,14 @@ package main
 
 const moduleMainTemplate = `// {{.Header}}
 
-package {{clean $.module}}
+package {{clean .ModuleName}}
 
 import (
-	{{isActive $.graphqlHandler}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/graphqlhandler"
-	{{isActive $.grpcHandler}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/grpchandler"
-	{{isActive $.restHandler}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/resthandler"
-	{{isActive $.isWorkerActive}}"{{.ServiceName}}/internal/modules/{{$.module}}/delivery/workerhandler"
+	{{if not .GraphQLHandler}}// {{end}}"{{.GoModName}}/internal/modules/{{clean .ModuleName}}/delivery/graphqlhandler"
+	{{if not .GRPCHandler}}// {{end}}"{{.GoModName}}/internal/modules/{{clean .ModuleName}}/delivery/grpchandler"
+	{{if not .RestHandler}}// {{end}}"{{.GoModName}}/internal/modules/{{clean .ModuleName}}/delivery/resthandler"
+	{{if not .IsWorkerActive}}// {{end}}"{{.GoModName}}/internal/modules/{{clean .ModuleName}}/delivery/workerhandler"
+	"{{.GoModName}}/pkg/shared/usecase"
 
 	"{{.PackageName}}/codebase/factory/dependency"
 	"{{.PackageName}}/codebase/factory/types"
@@ -16,7 +17,7 @@ import (
 )
 
 const (
-	moduleName types.Module = "{{clean (upper $.module)}}"
+	moduleName types.Module = "{{clean (upper .ModuleName)}}"
 )
 
 // Module model
@@ -30,16 +31,18 @@ type Module struct {
 
 // NewModule module constructor
 func NewModule(deps dependency.Dependency) *Module {
+	usecaseUOW := usecase.GetSharedUsecase()
+
 	var mod Module
-	{{isActive $.restHandler}}mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware())
-	{{isActive $.grpcHandler}}mod.grpcHandler = grpchandler.NewGRPCHandler(deps.GetMiddleware())
-	{{isActive $.graphqlHandler}}mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware())
+	{{if not .RestHandler}}// {{end}}mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware(), usecaseUOW.{{clean (upper .ModuleName)}}())
+	{{if not .GRPCHandler}}// {{end}}mod.grpcHandler = grpchandler.NewGRPCHandler(deps.GetMiddleware(), usecaseUOW.{{clean (upper .ModuleName)}}())
+	{{if not .GraphQLHandler}}// {{end}}mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware(), usecaseUOW.{{clean (upper .ModuleName)}}())
 
 	mod.workerHandlers = map[types.Worker]interfaces.WorkerHandler{
-		{{isActive $.kafkaHandler}}types.Kafka:           workerhandler.NewKafkaHandler(),
-		{{isActive $.schedulerHandler}}types.Scheduler:       workerhandler.NewCronHandler(),
-		{{isActive $.redissubsHandler}}types.RedisSubscriber: workerhandler.NewRedisHandler(),
-		{{isActive $.taskqueueHandler}}types.TaskQueue:       workerhandler.NewTaskQueueHandler(),
+		{{if not .KafkaHandler}}// {{end}}types.Kafka:           workerhandler.NewKafkaHandler(usecaseUOW.{{clean (upper .ModuleName)}}()),
+		{{if not .SchedulerHandler}}// {{end}}types.Scheduler:       workerhandler.NewCronHandler(usecaseUOW.{{clean (upper .ModuleName)}}()),
+		{{if not .RedisSubsHandler}}// {{end}}types.RedisSubscriber: workerhandler.NewRedisHandler(usecaseUOW.{{clean (upper .ModuleName)}}()),
+		{{if not .TaskQueueHandler}}// {{end}}types.TaskQueue:       workerhandler.NewTaskQueueHandler(usecaseUOW.{{clean (upper .ModuleName)}}()),
 	}
 
 	return &mod

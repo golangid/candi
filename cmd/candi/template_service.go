@@ -1,6 +1,6 @@
 package main
 
-const serviceMainTemplate = ` // {{.Header}} DO NOT EDIT.
+const serviceMainTemplate = `// {{.Header}} DO NOT EDIT.
 
 package {{clean $.ServiceName}}
 
@@ -10,10 +10,11 @@ import (
 	"{{.PackageName}}/codebase/factory/types"
 	"{{.PackageName}}/config"
 
-	"{{$.ServiceName}}/configs"
+	"{{$.GoModName}}/configs"
 {{- range $module := .Modules}}
-	"{{$.ServiceName}}/internal/modules/{{$module.Name}}"
+	"{{$.GoModName}}/internal/modules/{{$module.ModuleName}}"
 {{- end }}
+	"{{$.GoModName}}/pkg/shared/usecase"
 )
 
 // Service model
@@ -26,10 +27,11 @@ type Service struct {
 // NewService in this service
 func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 	deps := configs.LoadConfigs(cfg)
+	usecase.SetSharedUsecase(deps)
 
 	modules := []factory.ModuleFactory{
 	{{- range $module := .Modules}}
-		{{clean $module.Name}}.NewModule(deps),
+		{{clean $module.ModuleName}}.NewModule(deps),
 	{{- end }}
 	}
 

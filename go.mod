@@ -3,7 +3,8 @@ module pkg.agungdwiprasetyo.com/candi
 go 1.12
 
 require (
-	github.com/Shopify/sarama v1.22.1
+	github.com/DataDog/zstd v1.4.5 // indirect
+	github.com/Shopify/sarama v1.24.1
 	github.com/afex/hystrix-go v0.0.0-20180502004556-fa1af6a1f4f5
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
@@ -17,12 +18,12 @@ require (
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/graph-gophers/graphql-transport-ws v0.0.0-20190611222414-40c048432299
 	github.com/joho/godotenv v1.3.0
+	github.com/klauspost/cpuid v1.3.1 // indirect
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/gommon v0.3.0 // indirect
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-isatty v0.0.11 // indirect
 	github.com/opentracing/opentracing-go v1.1.0
-	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/stretchr/testify v1.4.0

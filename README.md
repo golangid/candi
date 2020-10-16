@@ -13,8 +13,7 @@
 
 ### Install `binary` from source
 ```
-$ go get pkg.agungdwiprasetyo.com/candi
-$ go install pkg.agungdwiprasetyo.com/candi/cmd/candi
+$ go get -u pkg.agungdwiprasetyo.com/candi/cmd/candi
 ```
 
 

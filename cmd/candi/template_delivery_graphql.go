@@ -6,23 +6,22 @@ const (
 package graphqlhandler
 
 import (
+	"{{.GoModName}}/internal/modules/{{clean .ModuleName}}/usecase"
+	
 	"{{.PackageName}}/codebase/interfaces"
 )
 
 // GraphQLHandler model
 type GraphQLHandler struct {
-	query        *queryResolver
-	mutation     *mutationResolver
-	subscription *subscriptionResolver
+	mw interfaces.Middleware
+	uc usecase.{{clean (upper .ModuleName)}}Usecase
 }
 
 // NewGraphQLHandler delivery
-func NewGraphQLHandler(mw interfaces.Middleware) *GraphQLHandler {
+func NewGraphQLHandler(mw interfaces.Middleware, uc usecase.{{clean (upper .ModuleName)}}Usecase) *GraphQLHandler {
 
 	h := &GraphQLHandler{
-		query:        &queryResolver{},
-		mutation:     &mutationResolver{},
-		subscription: &subscriptionResolver{},
+		mw: mw, uc: uc,
 	}
 
 	return h
@@ -30,17 +29,17 @@ func NewGraphQLHandler(mw interfaces.Middleware) *GraphQLHandler {
 
 // Query method
 func (h *GraphQLHandler) Query() interface{} {
-	return h.query
+	return &queryResolver{root: h}
 }
 
 // Mutation method
 func (h *GraphQLHandler) Mutation() interface{} {
-	return h.mutation
+	return &mutationResolver{root: h}
 }
 
 // Subscription method
 func (h *GraphQLHandler) Subscription() interface{} {
-	return h.subscription
+	return &subscriptionResolver{root: h}
 }
 `
 
@@ -55,14 +54,16 @@ import (
 )
 
 type queryResolver struct {
+	root *GraphQLHandler
 }
 
 // Hello resolver
 func (q *queryResolver) Hello(ctx context.Context) (string, error) {
-	trace := tracer.StartTrace(ctx, "Delivery-Hello")
+	trace := tracer.StartTrace(ctx, "DeliveryGraphQL-Hello")
 	defer trace.Finish()
+	ctx = trace.Context()
 
-	return "Hello, from service: {{$.ServiceName}}, module: {{$.module}}", nil
+	return q.root.uc.Hello(ctx), nil
 }
 `
 	deliveryGraphqlMutationTemplate = `// {{.Header}}
@@ -72,6 +73,7 @@ package graphqlhandler
 import "context"
 
 type mutationResolver struct {
+	root *GraphQLHandler
 }
 
 // Hello resolver
@@ -86,6 +88,7 @@ package graphqlhandler
 import "context"
 
 type subscriptionResolver struct {
+	root *GraphQLHandler
 }
 
 // Hello resolver
@@ -110,35 +113,35 @@ schema {
 
 type Query {
 {{- range $module := .Modules}}
-	{{clean $module.Name}}: {{clean (upper $module.Name)}}QueryModule
+	{{clean $module.ModuleName}}: {{clean (upper $module.ModuleName)}}QueryModule
 {{- end }}
 }
 
 type Mutation {
 {{- range $module := .Modules}}
-	{{clean $module.Name}}: {{clean (upper $module.Name)}}MutationModule
+	{{clean $module.ModuleName}}: {{clean (upper $module.ModuleName)}}MutationModule
 {{- end }}
 }
 
 type Subscription {
 {{- range $module := .Modules}}
-	{{clean $module.Name}}: {{clean (upper $module.Name)}}SubscriptionModule
+	{{clean $module.ModuleName}}: {{clean (upper $module.ModuleName)}}SubscriptionModule
 {{- end }}
 }
 `
 
 	defaultGraphqlSchema = `# {{.Header}}
 
-# {{clean (upper $.module)}}Module Module Area
-type {{clean (upper $.module)}}QueryModule {
+# {{clean (upper .ModuleName)}}Module Module Area
+type {{clean (upper .ModuleName)}}QueryModule {
     hello(): String!
 }
 
-type {{clean (upper $.module)}}MutationModule {
+type {{clean (upper .ModuleName)}}MutationModule {
     hello(): String!
 }
 
-type {{clean (upper $.module)}}SubscriptionModule {
+type {{clean (upper .ModuleName)}}SubscriptionModule {
     hello(): String!
 }
 `

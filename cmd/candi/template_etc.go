@@ -40,9 +40,9 @@ COPY --from=service_builder /usr/app/api /root/api
 ENTRYPOINT ["./bin"]
 `
 
-	makefileTemplate = `.PHONY : prepare build run
+	makefileTemplate = `.PHONY : build run
 
-build: prepare
+build:
 	go build -o bin
 
 run: build
@@ -52,14 +52,14 @@ proto:
 	$(foreach proto_file, $(shell find api/proto -name '*.proto'),\
 	protoc -I . $(proto_file) --go_out=plugins=grpc:.;)
 
-docker: prepare
+docker:
 	docker build -t {{.ServiceName}}:latest .
 
 run-container:
 	docker run --name={{.ServiceName}} --network="host" -d {{.ServiceName}}
 
 clear:
-	rm main_service.go bin {{.ServiceName}}
+	rm bin {{.ServiceName}}
 `
 
 	gomodTemplate = `module {{.ServiceName}}

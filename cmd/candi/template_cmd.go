@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"runtime/debug"
 
+	{{if eq .SQLDriver "postgres"}}_ "github.com/lib/pq"{{end}}
+
 	"{{.PackageName}}/codebase/app"
 	"{{.PackageName}}/config"
 
-	service "{{.ServiceName}}/internal"
+	service "{{.GoModName}}/internal"
 )
 
 const serviceName = "{{.ServiceName}}"
@@ -24,11 +26,10 @@ func main() {
 		}
 	}()
 
-	cfg := config.Init("")
+	cfg := config.Init()
 	defer cfg.Exit()
 
 	srv := service.NewService(serviceName, cfg)
 	app.New(srv).Run()
 }
-
 `
