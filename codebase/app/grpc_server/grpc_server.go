@@ -10,7 +10,6 @@ import (
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/config"
-	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
 type grpcServer struct {
@@ -62,8 +61,8 @@ func (s *grpcServer) Serve() {
 }
 
 func (s *grpcServer) Shutdown(ctx context.Context) {
-	deferFunc := logger.LogWithDefer("Stopping GRPC server...")
-	defer deferFunc()
+	log.Println("Stopping GRPC server...")
+	defer func() { log.Println("Stopping GRPC server: \x1b[32;1mSUCCESS\x1b[0m") }()
 
 	s.serverEngine.GracefulStop()
 }

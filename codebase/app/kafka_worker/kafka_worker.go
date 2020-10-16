@@ -18,6 +18,7 @@ type kafkaWorker struct {
 	engine          sarama.ConsumerGroup
 	service         factory.ServiceFactory
 	consumerHandler *kafkaConsumer
+	cancelFunc      func()
 }
 
 // NewWorker create new kafka consumer
@@ -57,6 +58,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	}
 	fmt.Printf("\x1b[34;1m⇨ Kafka consumer is active. Brokers: " + strings.Join(config.BaseEnv().Kafka.Brokers, ", ") + "\x1b[0m\n\n")
 
+	consumerHandler.semaphore = make(chan struct{}, config.BaseEnv().MaxGoroutines)
 	return &kafkaWorker{
 		engine:          consumerEngine,
 		service:         service,
@@ -67,7 +69,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 func (h *kafkaWorker) Serve() {
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	h.cancelFunc = cancel
 
 startConsume:
 	if err := h.engine.Consume(ctx, h.consumerHandler.topics, h.consumerHandler); err != nil {
@@ -77,9 +79,10 @@ startConsume:
 }
 
 func (h *kafkaWorker) Shutdown(ctx context.Context) {
-	deferFunc := logger.LogWithDefer("Stopping Kafka consumer worker...")
-	defer deferFunc()
+	log.Println("Stopping Kafka Consumer worker...")
+	defer func() { log.Println("Stopping Kafka Consumer: \x1b[32;1mSUCCESS\x1b[0m") }()
 
+	h.cancelFunc()
 	h.engine.Close()
 }
 
@@ -90,6 +93,7 @@ type kafkaConsumer struct {
 		handlerFunc   types.WorkerHandlerFunc
 		errorHandlers []types.WorkerErrorHandler
 	}
+	semaphore chan struct{} // for control maximum total goroutines when exec handlers
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
@@ -105,34 +109,41 @@ func (c *kafkaConsumer) Cleanup(sarama.ConsumerGroupSession) error {
 // ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages().
 func (c *kafkaConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 
-	for message := range claim.Messages() {
+	for {
+		select {
+		case msg := <-claim.Messages():
 
-		tracer.WithTraceFunc(session.Context(), "KafkaConsumer", func(ctx context.Context, tags map[string]interface{}) {
-			defer func() {
-				if r := recover(); r != nil {
-					tracer.SetError(ctx, fmt.Errorf("%v", r))
+			c.semaphore <- struct{}{}
+			go func(message *sarama.ConsumerMessage) {
+				trace := tracer.StartTrace(session.Context(), "KafkaConsumer")
+				ctx, tags := trace.Context(), trace.Tags()
+				defer func() {
+					if r := recover(); r != nil {
+						trace.SetError(fmt.Errorf("%v", r))
+					}
+					session.MarkMessage(message, "")
+					logger.LogGreen(tracer.GetTraceURL(ctx))
+					trace.Finish()
+					<-c.semaphore
+				}()
+
+				log.Printf("\x1b[35;3mKafka Consumer: message consumed, timestamp = %v, topic = %s\x1b[0m", message.Timestamp, message.Topic)
+
+				tags["topic"], tags["key"], tags["value"] = message.Topic, string(message.Key), string(message.Value)
+				tags["partition"], tags["offset"] = message.Partition, message.Offset
+
+				handler := c.handlerFuncs[message.Topic]
+				if err := handler.handlerFunc(ctx, message.Value); err != nil {
+					for _, errHandler := range handler.errorHandlers {
+						errHandler(ctx, types.Kafka, message.Topic, message.Value, err)
+					}
+					trace.SetError(err)
 				}
-				session.MarkMessage(message, "")
-				logger.LogGreen(tracer.GetTraceURL(ctx))
-			}()
+			}(msg)
 
-			log.Printf("\x1b[35;3mKafka Consumer: message consumed, timestamp = %v, topic = %s\x1b[0m", message.Timestamp, message.Topic)
+		case <-session.Context().Done():
+			return nil
 
-			tags["topic"] = message.Topic
-			tags["key"] = string(message.Key)
-			tags["value"] = string(message.Value)
-			tags["partition"] = message.Partition
-			tags["offset"] = message.Offset
-
-			handler := c.handlerFuncs[message.Topic]
-			if err := handler.handlerFunc(ctx, message.Value); err != nil {
-				for _, errHandler := range handler.errorHandlers {
-					errHandler(ctx, types.Kafka, message.Topic, message.Value, err)
-				}
-				panic(err)
-			}
-		})
+		}
 	}
-
-	return nil
 }

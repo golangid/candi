@@ -13,21 +13,32 @@ import (
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/config"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
 
-type redisWorker struct {
-	pubSubConn func() redis.PubSubConn
-	isHaveJob  bool
-	service    factory.ServiceFactory
-	handlers   map[string]struct {
-		handlerFunc   types.WorkerHandlerFunc
-		errorHandlers []types.WorkerErrorHandler
+var (
+	shutdown, semaphore chan struct{}
+)
+
+type (
+	redisWorker struct {
+		pubSubConn func() redis.PubSubConn
+		isHaveJob  bool
+		service    factory.ServiceFactory
+		handlers   map[string]struct {
+			handlerFunc   types.WorkerHandlerFunc
+			errorHandlers []types.WorkerErrorHandler
+		}
+		wg sync.WaitGroup
 	}
-	shutdown chan struct{}
-	wg       sync.WaitGroup
-}
+
+	handler struct {
+		name    string
+		message []byte
+	}
+)
 
 // NewWorker create new redis subscriber
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
@@ -59,6 +70,8 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 		fmt.Printf("\x1b[34;1m⇨ Redis pubsub worker running with %d keys\x1b[0m\n\n", len(handlers))
 	}
 
+	shutdown, semaphore = make(chan struct{}, 1), make(chan struct{}, config.BaseEnv().MaxGoroutines)
+
 	return &redisWorker{
 		service:  service,
 		handlers: handlers,
@@ -71,7 +84,6 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 
 			return psc
 		},
-		shutdown:  make(chan struct{}),
 		isHaveJob: len(handlers) != 0,
 	}
 }
@@ -84,10 +96,7 @@ func (r *redisWorker) Serve() {
 	psc := r.pubSubConn()
 
 	// listen redis subscriber
-	handlerReceiver := make(chan struct {
-		handlerName string
-		message     []byte
-	})
+	handlerReceiver := make(chan handler)
 	go func() {
 		for {
 			switch msg := psc.Receive().(type) {
@@ -96,12 +105,9 @@ func (r *redisWorker) Serve() {
 				handlerName, messageData := candihelper.ParseRedisPubSubKeyTopic(string(msg.Data))
 				_, ok := r.handlers[handlerName]
 				if ok {
-					handlerReceiver <- struct {
-						handlerName string
-						message     []byte
-					}{
-						handlerName: handlerName,
-						message:     []byte(messageData),
+					handlerReceiver <- handler{
+						name:    handlerName,
+						message: []byte(messageData),
 					}
 				}
 
@@ -116,56 +122,56 @@ func (r *redisWorker) Serve() {
 	for {
 		select {
 		case recv := <-handlerReceiver:
+
 			r.wg.Add(1)
-			go tracer.WithTraceFunc(context.Background(), "RedisSubscriber", func(ctx context.Context, tags map[string]interface{}) {
+			semaphore <- struct{}{}
+			go func(h handler) {
 				defer r.wg.Done()
+
+				trace := tracer.StartTrace(context.Background(), "RedisSubscriber")
+				defer trace.Finish()
+				ctx, tags := trace.Context(), trace.Tags()
 				defer func() {
 					if r := recover(); r != nil {
 						tracer.SetError(ctx, fmt.Errorf("%v", r))
 					}
+					<-semaphore
 					logger.LogGreen(tracer.GetTraceURL(ctx))
 				}()
 
-				tags["handler_name"] = recv.handlerName
-				tags["message"] = string(recv.message)
+				tags["handler_name"] = h.name
+				tags["message"] = string(h.message)
+				log.Printf("\x1b[35;3mRedis Key Expired Subscriber: executing event key '%s'\x1b[0m", h.name)
 
-				log.Printf("\x1b[35;3mRedis Key Expired Subscriber: executing event key '%s'\x1b[0m", recv.handlerName)
-
-				handler := r.handlers[recv.handlerName]
+				handler := r.handlers[h.name]
 				if err := handler.handlerFunc(ctx, recv.message); err != nil {
 					for _, errHandler := range handler.errorHandlers {
-						errHandler(ctx, types.RedisSubscriber, recv.handlerName, recv.message, err)
+						errHandler(ctx, types.RedisSubscriber, h.name, h.message, err)
 					}
-					panic(err)
+					tracer.SetError(ctx, err)
 				}
-			})
 
-		case <-r.shutdown:
+			}(recv)
+
+		case <-shutdown:
 			return
 		}
 	}
 }
 
 func (r *redisWorker) Shutdown(ctx context.Context) {
-	deferFunc := logger.LogWithDefer("Stopping redis subscriber worker...")
-	defer deferFunc()
+	log.Println("Stopping Redis Subscriber worker...")
+	defer func() { log.Println("Stopping Redis Subscriber: \x1b[32;1mSUCCESS\x1b[0m") }()
 
 	if !r.isHaveJob {
 		return
 	}
 
-	r.shutdown <- struct{}{}
-
-	done := make(chan struct{})
-	go func() {
-		r.wg.Wait()
-		done <- struct{}{}
-	}()
-
-	select {
-	case <-ctx.Done():
-		fmt.Print("redis-subscriber: force shutdown ")
-	case <-done:
-		fmt.Print("redis-subscriber: success waiting all job until done ")
+	shutdown <- struct{}{}
+	runningJob := len(semaphore)
+	if runningJob != 0 {
+		fmt.Printf("\x1b[34;1mRedis Subscriber:\x1b[0m waiting %d job until done...\n", runningJob)
 	}
+
+	r.wg.Wait()
 }

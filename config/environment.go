@@ -60,6 +60,9 @@ type Env struct {
 		ClientID      string
 		ConsumerGroup string
 	}
+
+	// MaxGoroutines env for goroutine semaphore
+	MaxGoroutines int
 }
 
 func loadBaseEnv(targetEnv *Env) {
@@ -185,4 +188,10 @@ func loadBaseEnv(targetEnv *Env) {
 		panic("missing JSON_SCHEMA_DIR environment")
 	}
 	env.JSONSchemaDir = os.Getenv(candihelper.WORKDIR) + env.JSONSchemaDir
+
+	maxGoroutines, err := strconv.Atoi(os.Getenv("MAX_GOROUTINES"))
+	if err != nil || maxGoroutines <= 0 {
+		maxGoroutines = 4096
+	}
+	env.MaxGoroutines = maxGoroutines
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"reflect"
@@ -64,8 +65,8 @@ func (s *graphqlServer) Serve() {
 }
 
 func (s *graphqlServer) Shutdown(ctx context.Context) {
-	deferFunc := logger.LogWithDefer("Stopping GraphQL HTTP server...")
-	defer deferFunc()
+	log.Println("Stopping GraphQL HTTP server...")
+	defer func() { log.Println("Stopping GraphQL HTTP server: \x1b[32;1mSUCCESS\x1b[0m") }()
 
 	s.httpEngine.Shutdown(ctx)
 }

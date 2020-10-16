@@ -13,21 +13,20 @@ import (
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/config"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
 
 type cronWorker struct {
-	service    factory.ServiceFactory
-	runningJob int
-	shutdown   chan struct{}
-	wg         sync.WaitGroup
+	service factory.ServiceFactory
+	wg      sync.WaitGroup
 }
 
 // NewWorker create new cron worker
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
-	refreshWorkerNotif = make(chan struct{})
-	shutdown := make(chan struct{})
+	refreshWorkerNotif, shutdown = make(chan struct{}), make(chan struct{})
+	semaphore = make(chan struct{}, config.BaseEnv().MaxGoroutines)
 
 	// add shutdown channel to first index
 	workers = append(workers, reflect.SelectCase{
@@ -60,8 +59,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	fmt.Printf("\x1b[34;1m⇨ Cron worker running with %d jobs\x1b[0m\n\n", len(activeJobs))
 
 	return &cronWorker{
-		service:  service,
-		shutdown: shutdown,
+		service: service,
 	}
 }
 
@@ -93,7 +91,7 @@ func (c *cronWorker) Serve() {
 		}
 
 		c.wg.Add(1)
-		c.runningJob++
+		semaphore <- struct{}{}
 		go func(job *Job) {
 			defer c.wg.Done()
 
@@ -105,7 +103,7 @@ func (c *cronWorker) Serve() {
 				if r := recover(); r != nil {
 					trace.SetError(fmt.Errorf("%v", r))
 				}
-				c.runningJob--
+				<-semaphore
 				logger.LogGreen(tracer.GetTraceURL(ctx))
 			}()
 
@@ -114,7 +112,7 @@ func (c *cronWorker) Serve() {
 
 			log.Printf("\x1b[35;3mCron Scheduler: executing task '%s' (interval: %s)\x1b[0m", job.HandlerName, job.Interval)
 			if err := job.HandlerFunc(ctx, []byte(job.Params)); err != nil {
-				panic(err)
+				trace.SetError(err)
 			}
 		}(job)
 
@@ -122,28 +120,18 @@ func (c *cronWorker) Serve() {
 }
 
 func (c *cronWorker) Shutdown(ctx context.Context) {
-	deferFunc := logger.LogWithDefer("Stopping cron job scheduler worker...")
-	defer deferFunc()
+	log.Println("Stopping Cron Job Scheduler worker...")
+	defer func() { log.Println("Stopping Cron Job Scheduler: \x1b[32;1mSUCCESS\x1b[0m") }()
 
 	if len(activeJobs) == 0 {
 		return
 	}
 
-	c.shutdown <- struct{}{}
-
-	done := make(chan struct{})
-	go func() {
-		if c.runningJob != 0 {
-			fmt.Printf("\ncronjob: waiting %d job... ", c.runningJob)
-		}
-		c.wg.Wait()
-		done <- struct{}{}
-	}()
-
-	select {
-	case <-ctx.Done():
-		fmt.Print("cronjob: force shutdown ")
-	case <-done:
-		fmt.Print("cronjob: success waiting all job until done ")
+	shutdown <- struct{}{}
+	runningJob := len(semaphore)
+	if runningJob != 0 {
+		fmt.Printf("\x1b[34;1mCron Job Scheduler:\x1b[0m waiting %d job until done...\n", runningJob)
 	}
+
+	c.wg.Wait()
 }

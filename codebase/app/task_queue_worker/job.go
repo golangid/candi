@@ -106,6 +106,7 @@ func execJob(workerIndex int) {
 
 	log.Printf("\x1b[35;3mTask Queue Worker: executing task '%s'\x1b[0m", job.TaskName)
 	if err := registeredTask[job.TaskName].handlerFunc(ctx, job.Args); err != nil {
+		trace.SetError(err)
 		job.ErrorHistories = append(job.ErrorHistories, errorHistory{
 			Error:   err.Error(),
 			TraceID: tracer.GetTraceID(ctx),
@@ -127,7 +128,6 @@ func execJob(workerIndex int) {
 			taskIndex.activeInterval = time.NewTicker(interval)
 			workers[workerIndex].Chan = reflect.ValueOf(taskIndex.activeInterval.C)
 
-			trace.SetError(err)
 			tags["is_retry"] = true
 			tags["next_retry"] = time.Now().Add(interval).Format(time.RFC3339)
 
@@ -140,6 +140,5 @@ func execJob(workerIndex int) {
 		for _, errHandler := range registeredTask[job.TaskName].errorHandlers {
 			errHandler(ctx, types.TaskQueue, job.TaskName, job.Args, err)
 		}
-		panic(err)
 	}
 }

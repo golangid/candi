@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -33,8 +34,13 @@ func InitKafkaBroker(brokers []string, clientID string) interfaces.Broker {
 	deferFunc := logger.LogWithDefer("Load Kafka configuration... ")
 	defer deferFunc()
 
+	version, ok := os.LookupEnv("KAFKA_CLIENT_VERSION")
+	if !ok {
+		version = "2.0.0"
+	}
+
 	kafkaConfig := sarama.NewConfig()
-	kafkaConfig.Version, _ = sarama.ParseKafkaVersion("2.1.1")
+	kafkaConfig.Version, _ = sarama.ParseKafkaVersion(version)
 
 	// Producer config
 	kafkaConfig.ClientID = clientID

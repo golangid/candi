@@ -23,7 +23,7 @@ type Job struct {
 
 var activeJobs []*Job
 var workers []reflect.SelectCase
-var refreshWorkerNotif chan struct{}
+var refreshWorkerNotif, shutdown, semaphore chan struct{}
 var mutex sync.Mutex
 
 // GetActiveJobs get registered jobs

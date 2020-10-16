@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -115,9 +116,16 @@ func (a *App) shutdown(forceShutdown chan os.Signal) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
+
+		var wg sync.WaitGroup
 		for _, server := range a.servers {
-			server.Shutdown(ctx)
+			wg.Add(1)
+			go func(srv factory.AppServerFactory) {
+				defer wg.Done()
+				srv.Shutdown(ctx)
+			}(server)
 		}
+		wg.Wait()
 		done <- struct{}{}
 	}()
 

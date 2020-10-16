@@ -3,6 +3,7 @@ package restserver
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"sort"
@@ -93,8 +94,8 @@ func (h *restServer) Serve() {
 }
 
 func (h *restServer) Shutdown(ctx context.Context) {
-	deferFunc := logger.LogWithDefer("Stopping REST HTTP server...")
-	defer deferFunc()
+	log.Println("Stopping REST HTTP server...")
+	defer func() { log.Println("Stopping REST HTTP server: \x1b[32;1mSUCCESS\x1b[0m") }()
 
 	if err := h.serverEngine.Shutdown(ctx); err != nil {
 		panic(err)

@@ -3,12 +3,14 @@ package taskqueueworker
 import (
 	"context"
 	"fmt"
+	"log"
 	"reflect"
 	"sync"
 	"time"
 
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/config"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
@@ -24,15 +26,14 @@ var (
 		taskName       string
 		activeInterval *time.Ticker
 	}
-	queue                        QueueStorage
-	refreshWorkerNotif, shutdown chan struct{}
-	mutex                        sync.Mutex
+	queue                                   QueueStorage
+	refreshWorkerNotif, shutdown, semaphore chan struct{}
+	mutex                                   sync.Mutex
 )
 
 type taskQueueWorker struct {
-	service    factory.ServiceFactory
-	runningJob int
-	wg         sync.WaitGroup
+	service factory.ServiceFactory
+	wg      sync.WaitGroup
 }
 
 // NewWorker create new cron worker
@@ -42,7 +43,8 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	}
 
 	queue = NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
-	refreshWorkerNotif, shutdown = make(chan struct{}), make(chan struct{})
+	refreshWorkerNotif, shutdown, semaphore = make(chan struct{}), make(chan struct{}, 1), make(chan struct{}, config.BaseEnv().MaxGoroutines)
+
 	registeredTask = make(map[string]struct {
 		handlerFunc   types.WorkerHandlerFunc
 		errorHandlers []types.WorkerErrorHandler
@@ -121,10 +123,12 @@ func (t *taskQueueWorker) Serve() {
 		}
 
 		t.wg.Add(1)
-		t.runningJob++
+		semaphore <- struct{}{}
 		go func(chosen int) {
-			defer t.wg.Done()
-			t.runningJob--
+			defer func() {
+				<-semaphore
+				t.wg.Done()
+			}()
 
 			execJob(chosen)
 		}(chosen)
@@ -132,28 +136,18 @@ func (t *taskQueueWorker) Serve() {
 }
 
 func (t *taskQueueWorker) Shutdown(ctx context.Context) {
-	deferFunc := logger.LogWithDefer("Stopping task queue worker...")
-	defer deferFunc()
+	log.Println("Stopping Task Queue Worker...")
+	defer func() { log.Println("Stopping Task Queue Worker: \x1b[32;1mSUCCESS\x1b[0m") }()
 
 	if len(registeredTask) == 0 {
 		return
 	}
 
 	shutdown <- struct{}{}
-
-	done := make(chan struct{})
-	go func() {
-		if t.runningJob != 0 {
-			fmt.Printf("\nqueue_worker: waiting %d job... ", t.runningJob)
-		}
-		t.wg.Wait()
-		done <- struct{}{}
-	}()
-
-	select {
-	case <-ctx.Done():
-		fmt.Print("queue_worker: force shutdown ")
-	case <-done:
-		fmt.Print("queue_worker: success waiting all task until done ")
+	runningJob := len(semaphore)
+	if runningJob != 0 {
+		fmt.Printf("\x1b[34;1mTask Queue Workers:\x1b[0m waiting %d job until done...\x1b[0m\n", runningJob)
 	}
+
+	t.wg.Wait()
 }
