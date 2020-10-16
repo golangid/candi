@@ -238,6 +238,7 @@ func main() {
 			}},
 			{Source: gitignoreTemplate, FileName: ".gitignore"},
 			{FromTemplate: true, DataSource: srvConfig, Source: makefileTemplate, FileName: "Makefile"},
+			{FromTemplate: true, DataSource: srvConfig, Source: dockerfileTemplate, FileName: "Dockerfile"},
 			{FromTemplate: true, DataSource: srvConfig, Source: gomodTemplate, FileName: "go.mod"},
 			{FromTemplate: true, DataSource: srvConfig, Source: cmdMainTemplate, FileName: "main.go"},
 			{FromTemplate: true, DataSource: srvConfig, Source: envTemplate, FileName: ".env"},

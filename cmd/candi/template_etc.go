@@ -2,7 +2,7 @@ package main
 
 const (
 	dockerfileTemplate = `# Stage 1
-FROM golang:1.12.7-alpine3.10 AS dependency_builder
+FROM golang:1.14.9-alpine3.12 AS dependency_builder
 
 WORKDIR /go/src
 ENV GO111MODULE=on
@@ -21,7 +21,6 @@ FROM dependency_builder AS service_builder
 WORKDIR /usr/app
 
 COPY . .
-RUN make prepare
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags '-w -s' -a -o bin
 
 # Stage 3
@@ -34,7 +33,7 @@ RUN mkdir -p /root/api
 RUN mkdir -p /root/cmd/{{.ServiceName}}
 RUN mkdir -p /root/config/key
 COPY --from=service_builder /usr/app/bin bin
-COPY --from=service_builder /usr/app/cmd/{{.ServiceName}}/.env /root/cmd/{{.ServiceName}}/.env
+COPY --from=service_builder /usr/app/.env .env
 COPY --from=service_builder /usr/app/api /root/api
 
 ENTRYPOINT ["./bin"]
