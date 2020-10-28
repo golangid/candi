@@ -2,8 +2,6 @@ package logger
 
 import (
 	"fmt"
-	"os"
-	"strconv"
 	"time"
 
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
@@ -12,8 +10,12 @@ import (
 var debugMode bool
 
 func init() {
-	debugMode, _ = strconv.ParseBool(os.Getenv("DEBUG_MODE"))
 	InitZap()
+}
+
+// SetDebugMode set local debug mode
+func SetDebugMode(mode bool) {
+	debugMode = mode
 }
 
 // LogWithDefer return defer func for status

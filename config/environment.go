@@ -152,6 +152,7 @@ func loadBaseEnv(targetEnv *Env) {
 	if err != nil {
 		env.DebugMode = true
 	}
+	logger.SetDebugMode(env.DebugMode)
 
 	env.BasicAuthUsername, ok = os.LookupEnv("BASIC_AUTH_USERNAME")
 	if !ok {
