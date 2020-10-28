@@ -18,15 +18,23 @@ const (
 
 	customTagRegexp = "regexp"
 
+	// RegexAlphabetLower const
 	RegexAlphabetLower = "a-z"
+	// RegexAlphabetUpper const
 	RegexAlphabetUpper = "A-Z"
-	RegexNumeric       = "0-9"
-	RegexDash          = "-"
+	// RegexNumeric const
+	RegexNumeric = "0-9"
+	// RegexDash const
+	RegexDash = "-"
 
+	// AlphabetLower const
 	AlphabetLower = "alfabet kecil"
+	// AlphabetUpper const
 	AlphabetUpper = "alfabet besar"
-	Numeric       = "numerik"
-	Dash          = "strip"
+	// Numeric const
+	Numeric = "numerik"
+	// Dash const
+	Dash = "strip"
 )
 
 // custom error list
@@ -53,7 +61,7 @@ type StructValidator struct {
 	validator  *validator.Validate
 }
 
-// using go library
+// NewStructValidator using go library
 // https://github.com/go-playground/validator (all struct tags will be here)
 // https://godoc.org/github.com/go-playground/validator (documentation using it)
 // NewStructValidator function
@@ -152,9 +160,9 @@ func (v *StructValidator) regexError(errString string) string {
 // checkRegex function
 func checkRegex(fl validator.FieldLevel) bool {
 	var (
-		param       = fl.Param()
-		value       = fl.Field().String()
-		result bool = true
+		param  = fl.Param()
+		value  = fl.Field().String()
+		result = true
 	)
 
 	// regexp
@@ -173,21 +181,24 @@ func (v *StructValidator) ValidateStruct(data interface{}) error {
 
 	err := v.validator.Struct(data)
 	if err != nil {
-		errs := err.(validator.ValidationErrors)
+		switch errs := err.(type) {
+		case validator.ValidationErrors:
+			for _, e := range errs {
+				message := e.Translate(v.translator)
 
-		for _, e := range errs {
-			message := e.Translate(v.translator)
+				if e.Tag() == customTagRegexp {
+					message = fmt.Sprintf("%s%s", message, v.regexError(e.Param()))
+				}
 
-			if e.Tag() == customTagRegexp {
-				message = fmt.Sprintf("%s%s", message, v.regexError(e.Param()))
+				// can translate each error one at a time.
+				multiError.Append(strings.ToLower(e.Field()), fmt.Errorf(message))
+
+				if multiError.HasError() {
+					return multiError
+				}
 			}
-
-			// can translate each error one at a time.
-			multiError.Append(strings.ToLower(e.Field()), fmt.Errorf(message))
-
-			if multiError.HasError() {
-				return multiError
-			}
+		default:
+			return err
 		}
 	}
 
