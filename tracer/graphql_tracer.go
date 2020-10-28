@@ -12,6 +12,7 @@ import (
 	"github.com/golangid/graphql-go/introspection"
 	"github.com/golangid/graphql-go/trace"
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
+	"pkg.agungdwiprasetyo.com/candi/config"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
@@ -52,6 +53,10 @@ func (GraphQLTracer) TraceQuery(ctx context.Context, queryString string, operati
 func (GraphQLTracer) TraceField(ctx context.Context, label, typeName, fieldName string, trivial bool, args map[string]interface{}) (context.Context, trace.TraceFieldFinishFunc) {
 	start := time.Now()
 	return ctx, func(err *gqlerrors.QueryError) {
+		if !config.BaseEnv().DebugMode {
+			return
+		}
+
 		end := time.Now()
 		if !trivial && !gqlTypeNotShowLog[typeName] {
 			statusColor := candihelper.Green

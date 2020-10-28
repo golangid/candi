@@ -167,6 +167,10 @@ func streamPanicInterceptor(srv interface{}, stream grpc.ServerStream, info *grp
 
 // Log incoming grpc request
 func logInterceptor(startTime time.Time, err error, fullMethod string, reqType string) {
+	if !config.BaseEnv().DebugMode {
+		return
+	}
+
 	end := time.Now()
 	var status = "OK"
 	statusColor := candihelper.Green
