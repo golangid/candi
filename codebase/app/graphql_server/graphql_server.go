@@ -65,8 +65,8 @@ func (s *graphqlServer) Serve() {
 }
 
 func (s *graphqlServer) Shutdown(ctx context.Context) {
-	log.Println("Stopping GraphQL HTTP server...")
-	defer func() { log.Println("Stopping GraphQL HTTP server: \x1b[32;1mSUCCESS\x1b[0m") }()
+	log.Println("\x1b[33;1mStopping GraphQL HTTP server...\x1b[0m")
+	defer func() { log.Println("\x1b[33;1mStopping GraphQL HTTP server:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
 
 	s.httpEngine.Shutdown(ctx)
 }
@@ -110,6 +110,7 @@ func NewHandler(service factory.ServiceFactory) Handler {
 		graphql.UseStringDescriptions(),
 		graphql.UseFieldResolvers(),
 		graphql.Tracer(&tracer.GraphQLTracer{}),
+		graphql.Logger(&panicLogger{}),
 	}
 	if config.BaseEnv().IsProduction {
 		// handling vulnerabilities exploit schema
@@ -128,7 +129,7 @@ type handlerImpl struct {
 
 func (s *handlerImpl) ServeGraphQL() http.HandlerFunc {
 
-	graphQLHandler := func(resp http.ResponseWriter, req *http.Request) {
+	return graphqlws.NewHandlerFunc(s.schema, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 
 		var params struct {
 			Query         string                 `json:"query"`
@@ -163,9 +164,7 @@ func (s *handlerImpl) ServeGraphQL() http.HandlerFunc {
 
 		resp.Header().Set("Content-Type", "application/json")
 		resp.Write(responseJSON)
-	}
-
-	return graphqlws.NewHandlerFunc(s.schema, http.HandlerFunc(graphQLHandler))
+	}))
 }
 
 func (s *handlerImpl) ServePlayground(resp http.ResponseWriter, req *http.Request) {
@@ -182,4 +181,12 @@ func (s *handlerImpl) ServeVoyager(resp http.ResponseWriter, req *http.Request) 
 		return
 	}
 	resp.Write([]byte(voyagerAsset))
+}
+
+// panicLogger is the default logger used to log panics that occur during query execution
+type panicLogger struct{}
+
+// LogPanic is used to log recovered panic values that occur during query execution
+func (l *panicLogger) LogPanic(ctx context.Context, value interface{}) {
+	logger.LogEf("%v", value)
 }

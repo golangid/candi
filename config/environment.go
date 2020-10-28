@@ -40,7 +40,7 @@ type Env struct {
 	// Env on application
 	Environment string
 
-	IsProduction bool
+	IsProduction, DebugMode bool
 
 	// HTTPPort config
 	HTTPPort uint16
@@ -68,7 +68,8 @@ type Env struct {
 func loadBaseEnv(targetEnv *Env) {
 
 	// load main .env and additional .env in app
-	if err := godotenv.Load(os.Getenv(candihelper.WORKDIR) + ".env"); err != nil {
+	err := godotenv.Load(os.Getenv(candihelper.WORKDIR) + ".env")
+	if err != nil {
 		logger.LogYellow("warning: cannot load .env")
 	}
 
@@ -147,6 +148,11 @@ func loadBaseEnv(targetEnv *Env) {
 	// ------------------------------------
 	env.Environment = os.Getenv("ENVIRONMENT")
 	env.IsProduction = strings.ToLower(env.Environment) == "production"
+	env.DebugMode, err = strconv.ParseBool(os.Getenv("DEBUG_MODE"))
+	if err != nil {
+		env.DebugMode = true
+	}
+
 	env.BasicAuthUsername, ok = os.LookupEnv("BASIC_AUTH_USERNAME")
 	if !ok {
 		panic("missing BASIC_AUTH_USERNAME environment")

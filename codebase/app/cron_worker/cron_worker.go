@@ -104,13 +104,15 @@ func (c *cronWorker) Serve() {
 					trace.SetError(fmt.Errorf("%v", r))
 				}
 				<-semaphore
-				logger.LogGreen(tracer.GetTraceURL(ctx))
+				logger.LogGreen("cron scheduler " + tracer.GetTraceURL(ctx))
 			}()
 
-			tags := trace.Tags()
-			tags["jobName"] = job.HandlerName
+			if config.BaseEnv().DebugMode {
+				log.Printf("\x1b[35;3mCron Scheduler: executing task '%s' (interval: %s)\x1b[0m", job.HandlerName, job.Interval)
+			}
 
-			log.Printf("\x1b[35;3mCron Scheduler: executing task '%s' (interval: %s)\x1b[0m", job.HandlerName, job.Interval)
+			tags := trace.Tags()
+			tags["job_name"] = job.HandlerName
 			if err := job.HandlerFunc(ctx, []byte(job.Params)); err != nil {
 				trace.SetError(err)
 			}
@@ -120,8 +122,8 @@ func (c *cronWorker) Serve() {
 }
 
 func (c *cronWorker) Shutdown(ctx context.Context) {
-	log.Println("Stopping Cron Job Scheduler worker...")
-	defer func() { log.Println("Stopping Cron Job Scheduler: \x1b[32;1mSUCCESS\x1b[0m") }()
+	log.Println("\x1b[33;1mStopping Cron Job Scheduler worker...\x1b[0m")
+	defer func() { log.Println("\x1b[33;1mStopping Cron Job Scheduler:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
 
 	if len(activeJobs) == 0 {
 		return

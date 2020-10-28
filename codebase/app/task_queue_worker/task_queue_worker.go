@@ -136,8 +136,8 @@ func (t *taskQueueWorker) Serve() {
 }
 
 func (t *taskQueueWorker) Shutdown(ctx context.Context) {
-	log.Println("Stopping Task Queue Worker...")
-	defer func() { log.Println("Stopping Task Queue Worker: \x1b[32;1mSUCCESS\x1b[0m") }()
+	log.Println("\x1b[33;1mStopping Task Queue Worker...\x1b[0m")
+	defer func() { log.Println("\x1b[33;1mStopping Task Queue Worker:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
 
 	if len(registeredTask) == 0 {
 		return
@@ -146,7 +146,7 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 	shutdown <- struct{}{}
 	runningJob := len(semaphore)
 	if runningJob != 0 {
-		fmt.Printf("\x1b[34;1mTask Queue Workers:\x1b[0m waiting %d job until done...\x1b[0m\n", runningJob)
+		fmt.Printf("\x1b[34;1mTask Queue Worker:\x1b[0m waiting %d job until done...\x1b[0m\n", runningJob)
 	}
 
 	t.wg.Wait()

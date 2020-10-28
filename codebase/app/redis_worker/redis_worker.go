@@ -136,12 +136,15 @@ func (r *redisWorker) Serve() {
 						tracer.SetError(ctx, fmt.Errorf("%v", r))
 					}
 					<-semaphore
-					logger.LogGreen(tracer.GetTraceURL(ctx))
+					logger.LogGreen("redis subscriber " + tracer.GetTraceURL(ctx))
 				}()
+
+				if config.BaseEnv().DebugMode {
+					log.Printf("\x1b[35;3mRedis Key Expired Subscriber: executing event key '%s'\x1b[0m", h.name)
+				}
 
 				tags["handler_name"] = h.name
 				tags["message"] = string(h.message)
-				log.Printf("\x1b[35;3mRedis Key Expired Subscriber: executing event key '%s'\x1b[0m", h.name)
 
 				handler := r.handlers[h.name]
 				if err := handler.handlerFunc(ctx, recv.message); err != nil {
@@ -160,8 +163,8 @@ func (r *redisWorker) Serve() {
 }
 
 func (r *redisWorker) Shutdown(ctx context.Context) {
-	log.Println("Stopping Redis Subscriber worker...")
-	defer func() { log.Println("Stopping Redis Subscriber: \x1b[32;1mSUCCESS\x1b[0m") }()
+	log.Println("\x1b[33;1mStopping Redis Subscriber worker...\x1b[0m")
+	defer func() { log.Println("\x1b[33;1mStopping Redis Subscriber:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
 
 	if !r.isHaveJob {
 		return

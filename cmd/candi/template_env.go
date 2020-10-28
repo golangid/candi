@@ -2,6 +2,7 @@ package main
 
 const envTemplate = `# Basic env configuration
 ENVIRONMENT=development #development,staging,production
+DEBUG_MODE=true
 
 # Service Handlers
 ## Server
@@ -49,7 +50,7 @@ JAEGER_TRACING_HOST=127.0.0.1:5775
 GRAPHQL_SCHEMA_DIR="api/graphql"
 JSON_SCHEMA_DIR="api/jsonschema"
 
-MAX_GOROUTINES=4096
+MAX_GOROUTINES=100
 
 # Additional env
 `

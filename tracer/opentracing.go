@@ -3,11 +3,13 @@ package tracer
 import (
 	"log"
 	"math"
+	"runtime"
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	config "github.com/uber/jaeger-client-go/config"
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
+	candiconfig "pkg.agungdwiprasetyo.com/candi/config"
 )
 
 const maxPacketSize = int(65000 * candihelper.Byte)
@@ -27,6 +29,11 @@ func InitOpenTracing(agentHost, serviceName string) error {
 			LocalAgentHostPort:  agentHost,
 		},
 		ServiceName: serviceName,
+		Tags: []opentracing.Tag{
+			{Key: "num_cpu", Value: runtime.NumCPU()},
+			{Key: "max_goroutines", Value: candiconfig.BaseEnv().MaxGoroutines},
+			{Key: "go_version", Value: runtime.Version()},
+		},
 	}
 	tracer, _, err := cfg.NewTracer(config.MaxTagValueLength(math.MaxInt32))
 	if err != nil {

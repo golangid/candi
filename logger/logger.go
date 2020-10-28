@@ -2,10 +2,19 @@ package logger
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
 )
+
+var debugMode bool
+
+func init() {
+	debugMode, _ = strconv.ParseBool(os.Getenv("DEBUG_MODE"))
+	InitZap()
+}
 
 // LogWithDefer return defer func for status
 func LogWithDefer(str string) (deferFunc func()) {
@@ -21,15 +30,21 @@ func LogWithDefer(str string) (deferFunc func()) {
 
 // LogYellow log with yellow color
 func LogYellow(str string) {
-	fmt.Printf("\x1b[33;2m%s\x1b[0m\n", str)
+	if debugMode {
+		fmt.Printf("\x1b[33;2m%s\x1b[0m\n", str)
+	}
 }
 
 // LogRed log with red color
 func LogRed(str string) {
-	fmt.Printf("\x1b[31;2m%s\x1b[0m\n", str)
+	if debugMode {
+		fmt.Printf("\x1b[31;2m%s\x1b[0m\n", str)
+	}
 }
 
 // LogGreen log with green color
 func LogGreen(str string) {
-	fmt.Printf("\x1b[32;2m%s\x1b[0m\n", str)
+	if debugMode {
+		fmt.Printf("\x1b[32;2m%s\x1b[0m\n", str)
+	}
 }

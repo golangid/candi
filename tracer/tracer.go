@@ -102,8 +102,6 @@ func (t *tracerImpl) Finish(tags ...map[string]interface{}) {
 		t.span.SetTag(k, toString(v))
 	}
 	t.span.SetTag("num_goroutines", runtime.NumGoroutine())
-	t.span.SetTag("num_cpu", runtime.NumCPU())
-	t.span.SetTag("go_version", runtime.Version())
 }
 
 // Log trace

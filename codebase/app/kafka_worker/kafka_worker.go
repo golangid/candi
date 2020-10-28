@@ -56,7 +56,8 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 			}
 		}
 	}
-	fmt.Printf("\x1b[34;1m⇨ Kafka consumer is active. Brokers: " + strings.Join(config.BaseEnv().Kafka.Brokers, ", ") + "\x1b[0m\n\n")
+	fmt.Printf("\x1b[34;1m⇨ Kafka consumer running with %d topics. Brokers: "+strings.Join(config.BaseEnv().Kafka.Brokers, ", ")+"\x1b[0m\n\n",
+		len(consumerHandler.topics))
 
 	consumerHandler.semaphore = make(chan struct{}, config.BaseEnv().MaxGoroutines)
 	return &kafkaWorker{
@@ -79,8 +80,8 @@ startConsume:
 }
 
 func (h *kafkaWorker) Shutdown(ctx context.Context) {
-	log.Println("Stopping Kafka Consumer worker...")
-	defer func() { log.Println("Stopping Kafka Consumer: \x1b[32;1mSUCCESS\x1b[0m") }()
+	log.Println("\x1b[33;1mStopping Kafka Consumer worker...\x1b[0m")
+	defer func() { log.Println("\x1b[33;1mStopping Kafka Consumer:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
 
 	h.cancelFunc()
 	h.engine.Close()
@@ -122,12 +123,14 @@ func (c *kafkaConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim 
 						trace.SetError(fmt.Errorf("%v", r))
 					}
 					session.MarkMessage(message, "")
-					logger.LogGreen(tracer.GetTraceURL(ctx))
+					logger.LogGreen("kafka consumer " + tracer.GetTraceURL(ctx))
 					trace.Finish()
 					<-c.semaphore
 				}()
 
-				log.Printf("\x1b[35;3mKafka Consumer: message consumed, timestamp = %v, topic = %s\x1b[0m", message.Timestamp, message.Topic)
+				if config.BaseEnv().DebugMode {
+					log.Printf("\x1b[35;3mKafka Consumer: message consumed, timestamp = %v, topic = %s\x1b[0m", message.Timestamp, message.Topic)
+				}
 
 				tags["topic"], tags["key"], tags["value"] = message.Topic, string(message.Key), string(message.Value)
 				tags["partition"], tags["offset"] = message.Partition, message.Offset

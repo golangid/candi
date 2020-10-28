@@ -61,8 +61,8 @@ func (s *grpcServer) Serve() {
 }
 
 func (s *grpcServer) Shutdown(ctx context.Context) {
-	log.Println("Stopping GRPC server...")
-	defer func() { log.Println("Stopping GRPC server: \x1b[32;1mSUCCESS\x1b[0m") }()
+	log.Println("\x1b[33;1mStopping GRPC server...\x1b[0m")
+	defer func() { log.Println("\x1b[33;1mStopping GRPC server:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
 
 	s.serverEngine.GracefulStop()
 }

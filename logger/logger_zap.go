@@ -1,7 +1,9 @@
 package logger
 
 import (
+	"os"
 	"runtime"
+	"strings"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -35,10 +37,9 @@ func InitZap() {
 				enc.AppendString(caller.FullPath())
 			},
 		},
+		Level:       zap.NewAtomicLevelAt(zapcore.DebugLevel),
+		Development: !(strings.ToLower(os.Getenv("ENVIRONMENT")) == "production"),
 	}
-
-	cfg.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
-	cfg.Development = true
 
 	logg, err = cfg.Build()
 	if err != nil {
