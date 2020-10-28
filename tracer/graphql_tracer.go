@@ -27,7 +27,7 @@ type GraphQLTracer struct{}
 
 // TraceQuery method
 func (GraphQLTracer) TraceQuery(ctx context.Context, queryString string, operationName string, variables map[string]interface{}, varTypes map[string]*introspection.Type) (context.Context, trace.TraceQueryFinishFunc) {
-	trace := StartTrace(ctx, fmt.Sprintf("GraphQL-Root:%s", operationName))
+	trace := StartTrace(ctx, "GraphQL-Root")
 
 	tags := trace.Tags()
 	tags["graphql.query"] = queryString

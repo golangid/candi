@@ -20,7 +20,6 @@ import (
 	taskqueueworker "pkg.agungdwiprasetyo.com/candi/codebase/app/task_queue_worker"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/config"
-	"pkg.agungdwiprasetyo.com/candi/logger"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
 
@@ -29,7 +28,6 @@ type App struct {
 	servers []factory.AppServerFactory
 }
 
-// New service app
 // New service app
 func New(service factory.ServiceFactory) *App {
 	log.Printf("Starting \x1b[32;1m%s\x1b[0m service\n\n", service.Name())
@@ -41,8 +39,6 @@ func New(service factory.ServiceFactory) *App {
 	}
 	// init tracer
 	tracer.InitOpenTracing(config.BaseEnv().JaegerTracingHost, serviceName)
-	// init logger
-	logger.InitZap()
 
 	appInstance := new(App)
 	if config.BaseEnv().UseREST {
