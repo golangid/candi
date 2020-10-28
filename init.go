@@ -1,4 +1,4 @@
-package gendon
+package candi
 
 func init() {
 
