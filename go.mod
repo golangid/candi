@@ -5,13 +5,14 @@ go 1.12
 require (
 	github.com/DataDog/zstd v1.4.5 // indirect
 	github.com/Shopify/sarama v1.24.1
-	github.com/afex/hystrix-go v0.0.0-20180502004556-fa1af6a1f4f5
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-playground/locales v0.13.0
 	github.com/go-playground/universal-translator v0.17.0
 	github.com/go-playground/validator/v10 v10.3.0
 	github.com/go-stack/stack v1.8.0 // indirect
+	github.com/gojektech/heimdall v5.0.2+incompatible
+	github.com/gojektech/valkyrie v0.0.0-20190210220504-8f62c1e7ba45 // indirect
 	github.com/golangid/graphql-go v0.0.4
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/uuid v1.1.1
@@ -25,7 +26,6 @@ require (
 	github.com/mattn/go-isatty v0.0.11 // indirect
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/tidwall/pretty v1.0.1 // indirect
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
@@ -39,5 +39,4 @@ require (
 	golang.org/x/sys v0.0.0-20191228213918-04cbcbbfeed8 // indirect
 	google.golang.org/grpc v1.27.0
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
-	gopkg.in/eapache/go-resiliency.v1 v1.2.0
 )
