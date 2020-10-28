@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/golangid/graphql-go/introspection"
 	"github.com/golangid/graphql-go/trace"
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
+	"pkg.agungdwiprasetyo.com/candi/candishared"
 	"pkg.agungdwiprasetyo.com/candi/config"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 )
@@ -34,9 +36,14 @@ func (GraphQLTracer) TraceQuery(ctx context.Context, queryString string, operati
 		tags["graphql.variables"] = variables
 	}
 
-	return trace.Context(), func(errs []*gqlerrors.QueryError) {
+	if headers, ok := ctx.Value(candishared.HTTPHeaderContextKey).(http.Header); ok {
+		tags["http.header"] = headers
+	}
+
+	return trace.Context(), func(data []byte, errs []*gqlerrors.QueryError) {
 		defer trace.Finish()
-		logger.LogGreen(GetTraceURL(trace.Context()))
+		logger.LogGreen("graphql " + GetTraceURL(trace.Context()))
+		tags["response.data"] = string(data)
 
 		if len(errs) > 0 {
 			tags["errors"] = errs
@@ -52,7 +59,7 @@ func (GraphQLTracer) TraceQuery(ctx context.Context, queryString string, operati
 // TraceField method
 func (GraphQLTracer) TraceField(ctx context.Context, label, typeName, fieldName string, trivial bool, args map[string]interface{}) (context.Context, trace.TraceFieldFinishFunc) {
 	start := time.Now()
-	return ctx, func(err *gqlerrors.QueryError) {
+	return ctx, func(data []byte, err *gqlerrors.QueryError) {
 		if !config.BaseEnv().DebugMode {
 			return
 		}

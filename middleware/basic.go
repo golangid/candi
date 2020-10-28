@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	gqlerr "github.com/golangid/graphql-go/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -80,16 +81,28 @@ func (m *Middleware) HTTPBasicAuth(showAlert bool) echo.MiddlewareFunc {
 
 // GraphQLBasicAuth for graphql resolver
 func (m *Middleware) GraphQLBasicAuth(ctx context.Context) {
-	headers := ctx.Value(candishared.ContextKey("headers")).(http.Header)
+	headers := ctx.Value(candishared.HTTPHeaderContextKey).(http.Header)
 	authorization := headers.Get(echo.HeaderAuthorization)
 
 	key, err := extractAuthType(Basic, authorization)
 	if err != nil {
-		panic(err)
+		panic(&gqlerr.QueryError{
+			Message: err.Error(),
+			Extensions: map[string]interface{}{
+				"code":    401,
+				"success": false,
+			},
+		})
 	}
 
 	if err := m.Basic(ctx, key); err != nil {
-		panic(err)
+		panic(&gqlerr.QueryError{
+			Message: err.Error(),
+			Extensions: map[string]interface{}{
+				"code":    401,
+				"success": false,
+			},
+		})
 	}
 }
 
@@ -106,8 +119,7 @@ func (m *Middleware) GRPCBasicAuth(ctx context.Context) {
 		panic(grpc.Errorf(codes.Unauthenticated, "Invalid authorization"))
 	}
 
-	authorization := authorizationMap[0]
-	key, err := extractAuthType(Basic, authorization)
+	key, err := extractAuthType(Basic, authorizationMap[0])
 	if err != nil {
 		panic(err)
 	}

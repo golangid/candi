@@ -154,7 +154,7 @@ func (s *handlerImpl) ServeGraphQL() http.HandlerFunc {
 		}
 		req.Header.Set("X-Real-IP", ip)
 
-		ctx := context.WithValue(req.Context(), candishared.ContextKey("headers"), req.Header)
+		ctx := context.WithValue(req.Context(), candishared.HTTPHeaderContextKey, req.Header)
 		response := s.schema.Exec(ctx, params.Query, params.OperationName, params.Variables)
 		responseJSON, err := json.Marshal(response)
 		if err != nil {

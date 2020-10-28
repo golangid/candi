@@ -16,3 +16,13 @@ func SetToContext(ctx context.Context, key ContextKey, value interface{}) contex
 func GetValueFromContext(ctx context.Context, key ContextKey) interface{} {
 	return ctx.Value(key)
 }
+
+type contextKeyStruct struct{}
+
+var (
+	// HTTPHeaderContextKey context key
+	HTTPHeaderContextKey = contextKeyStruct{}
+
+	// TaskQueueRetryContextKey context key
+	TaskQueueRetryContextKey = contextKeyStruct{}
+)

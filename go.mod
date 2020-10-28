@@ -12,7 +12,7 @@ require (
 	github.com/go-playground/universal-translator v0.17.0
 	github.com/go-playground/validator/v10 v10.3.0
 	github.com/go-stack/stack v1.8.0 // indirect
-	github.com/golangid/graphql-go v0.0.2
+	github.com/golangid/graphql-go v0.0.4
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/websocket v1.4.2 // indirect

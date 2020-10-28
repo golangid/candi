@@ -3,8 +3,8 @@ package middleware
 import (
 	"context"
 	"net/http"
-	"strings"
 
+	gqlerr "github.com/golangid/graphql-go/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -54,18 +54,29 @@ func (m *Middleware) HTTPBearerAuth() echo.MiddlewareFunc {
 
 // GraphQLBearerAuth for graphql resolver
 func (m *Middleware) GraphQLBearerAuth(ctx context.Context) *candishared.TokenClaim {
-	headers := ctx.Value(candishared.ContextKey("headers")).(http.Header)
+	headers := ctx.Value(candishared.HTTPHeaderContextKey).(http.Header)
 	authorization := headers.Get(echo.HeaderAuthorization)
 
-	authValues := strings.Split(authorization, " ")
-	authType := strings.ToLower(authValues[0])
-	if authType != Bearer || len(authValues) != 2 {
-		panic("Invalid authorization")
+	tokenValue, err := extractAuthType(Bearer, authorization)
+	if err != nil {
+		panic(&gqlerr.QueryError{
+			Message: err.Error(),
+			Extensions: map[string]interface{}{
+				"code":    401,
+				"success": false,
+			},
+		})
 	}
 
-	tokenClaim, err := m.Bearer(ctx, authValues[1])
+	tokenClaim, err := m.Bearer(ctx, tokenValue)
 	if err != nil {
-		panic(err)
+		panic(&gqlerr.QueryError{
+			Message: err.Error(),
+			Extensions: map[string]interface{}{
+				"code":    401,
+				"success": false,
+			},
+		})
 	}
 
 	return tokenClaim
@@ -84,8 +95,7 @@ func (m *Middleware) GRPCBearerAuth(ctx context.Context) *candishared.TokenClaim
 		panic(grpc.Errorf(codes.Unauthenticated, "Invalid authorization"))
 	}
 
-	authorization := authorizationMap[0]
-	tokenClaim, err := m.Bearer(ctx, authorization)
+	tokenClaim, err := m.Bearer(ctx, authorizationMap[0])
 	if err != nil {
 		panic(err)
 	}
