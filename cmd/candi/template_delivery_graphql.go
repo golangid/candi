@@ -8,6 +8,7 @@ package graphqlhandler
 import (
 	"{{.GoModName}}/internal/modules/{{clean .ModuleName}}/usecase"
 	
+	"{{.PackageName}}/codebase/factory/types"
 	"{{.PackageName}}/codebase/interfaces"
 )
 
