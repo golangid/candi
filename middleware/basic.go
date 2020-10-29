@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"pkg.agungdwiprasetyo.com/candi/candishared"
+	"pkg.agungdwiprasetyo.com/candi/tracer"
 	"pkg.agungdwiprasetyo.com/candi/wrapper"
 
 	"github.com/labstack/echo"
@@ -80,8 +81,11 @@ func (m *Middleware) HTTPBasicAuth(showAlert bool) echo.MiddlewareFunc {
 }
 
 // GraphQLBasicAuth for graphql resolver
-func (m *Middleware) GraphQLBasicAuth(ctx context.Context) {
-	headers := ctx.Value(candishared.HTTPHeaderContextKey).(http.Header)
+func (m *Middleware) GraphQLBasicAuth(ctx context.Context) context.Context {
+	trace := tracer.StartTrace(ctx, "Middleware:GraphQLBasicAuth")
+	defer trace.Finish()
+
+	headers := ctx.Value(candishared.ContextKeyHTTPHeader).(http.Header)
 	authorization := headers.Get(echo.HeaderAuthorization)
 
 	key, err := extractAuthType(Basic, authorization)
@@ -104,6 +108,7 @@ func (m *Middleware) GraphQLBasicAuth(ctx context.Context) {
 			},
 		})
 	}
+	return trace.Context()
 }
 
 // GRPCBasicAuth method

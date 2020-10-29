@@ -1,11 +1,20 @@
 package candishared
 
-import (
-	"context"
-)
+import "context"
 
 // ContextKey represent Key of all context
 type ContextKey string
+
+const (
+	// ContextKeyHTTPHeader context key
+	ContextKeyHTTPHeader ContextKey = "httpHeader"
+
+	// ContextKeyTaskQueueRetry context key
+	ContextKeyTaskQueueRetry ContextKey = "taskQueueRetry"
+
+	// ContextKeyTokenClaim context key
+	ContextKeyTokenClaim ContextKey = "tokenClaim"
+)
 
 // SetToContext will set context with specific key
 func SetToContext(ctx context.Context, key ContextKey, value interface{}) context.Context {
@@ -17,12 +26,7 @@ func GetValueFromContext(ctx context.Context, key ContextKey) interface{} {
 	return ctx.Value(key)
 }
 
-type contextKeyStruct struct{}
-
-var (
-	// HTTPHeaderContextKey context key
-	HTTPHeaderContextKey = contextKeyStruct{}
-
-	// TaskQueueRetryContextKey context key
-	TaskQueueRetryContextKey = contextKeyStruct{}
-)
+// ParseTokenClaimFromContext parse token claim from given context
+func ParseTokenClaimFromContext(ctx context.Context) *TokenClaim {
+	return GetValueFromContext(ctx, ContextKeyTokenClaim).(*TokenClaim)
+}

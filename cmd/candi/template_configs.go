@@ -8,6 +8,7 @@ package configs
 import (
 	"context"
 
+	"{{.GoModName}}/pkg/shared"
 	{{ if not (or .SQLDeps .MongoDeps) }}// {{ end }}"{{.GoModName}}/pkg/shared/repository"
 
 	{{ if not (or .SQLDeps .MongoDeps) }}// {{ end }}"{{.PackageName}}/candihelper"
@@ -39,7 +40,7 @@ func LoadConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 		// inject all service dependencies
 		// See all option in dependency package
 		deps = dependency.InitDependency(
-			dependency.SetMiddleware(middleware.NewMiddleware(nil)),
+			dependency.SetMiddleware(middleware.NewMiddleware(&shared.DefaultTokenValidator{})),
 			dependency.SetValidator(validator.NewValidator()),
 			{{if not .KafkaDeps}}// {{end}}dependency.SetBroker(KafkaDeps),
 			{{if not .RedisDeps}}// {{end}}dependency.SetRedisPool(redisDeps),

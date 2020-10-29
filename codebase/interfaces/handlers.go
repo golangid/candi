@@ -18,10 +18,10 @@ type GRPCHandler interface {
 
 // GraphQLHandler delivery factory for graphql resolver handler
 type GraphQLHandler interface {
-	// waiting https://github.com/graph-gophers/graphql-go/issues/145 if include subscription in schema
 	Query() interface{}
 	Mutation() interface{}
 	Subscription() interface{}
+	RegisterMiddleware(group *types.GraphQLMiddlewareGroup)
 }
 
 // WorkerHandler delivery factory for all worker handler

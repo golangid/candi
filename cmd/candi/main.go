@@ -224,6 +224,7 @@ func main() {
 				{TargetDir: "usecase/", IsDir: true, Childs: []FileStructure{
 					{FromTemplate: true, DataSource: srvConfig, Source: templateUsecaseUOW, FileName: "usecase.go"},
 				}},
+				{FromTemplate: true, DataSource: srvConfig, Source: templateSharedTokenValidator, FileName: "token_validator.go"},
 			}},
 		}...)
 		baseDirectoryFile.Childs = []FileStructure{

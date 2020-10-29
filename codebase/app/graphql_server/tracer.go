@@ -1,4 +1,4 @@
-package tracer
+package graphqlserver
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	gqlerrors "github.com/golangid/graphql-go/errors"
@@ -14,20 +15,32 @@ import (
 	"github.com/golangid/graphql-go/trace"
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/candishared"
-	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
 	"pkg.agungdwiprasetyo.com/candi/logger"
+	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
+
+const schemaRootInstropectionField = "__schema"
 
 var gqlTypeNotShowLog = map[string]bool{
 	"Query": true, "Mutation": true, "Subscription": true, "__Type": true, "__Schema": true,
 }
 
-// GraphQLTracer struct
-type GraphQLTracer struct{}
+// graphQLTracer struct
+type graphQLTracer struct {
+	midd types.GraphQLMiddlewareGroup
+}
+
+// newGraphQLTracer constructor
+func newGraphQLTracer(midd types.GraphQLMiddlewareGroup) *graphQLTracer {
+	return &graphQLTracer{
+		midd: midd,
+	}
+}
 
 // TraceQuery method
-func (GraphQLTracer) TraceQuery(ctx context.Context, queryString string, operationName string, variables map[string]interface{}, varTypes map[string]*introspection.Type) (context.Context, trace.TraceQueryFinishFunc) {
-	trace := StartTrace(ctx, "GraphQL-Root")
+func (t *graphQLTracer) TraceQuery(ctx context.Context, queryString string, operationName string, variables map[string]interface{}, varTypes map[string]*introspection.Type) (context.Context, trace.TraceQueryFinishFunc) {
+	trace := tracer.StartTrace(ctx, strings.TrimSuffix(fmt.Sprintf("GraphQL-Root:%s", operationName), ":"))
 
 	tags := trace.Tags()
 	tags["graphql.query"] = queryString
@@ -36,13 +49,13 @@ func (GraphQLTracer) TraceQuery(ctx context.Context, queryString string, operati
 		tags["graphql.variables"] = variables
 	}
 
-	if headers, ok := ctx.Value(candishared.HTTPHeaderContextKey).(http.Header); ok {
+	if headers, ok := ctx.Value(candishared.ContextKeyHTTPHeader).(http.Header); ok {
 		tags["http.header"] = headers
 	}
 
 	return trace.Context(), func(data []byte, errs []*gqlerrors.QueryError) {
 		defer trace.Finish()
-		logger.LogGreen("graphql " + GetTraceURL(trace.Context()))
+		logger.LogGreen("graphql " + tracer.GetTraceURL(trace.Context()))
 		tags["response.data"] = string(data)
 
 		if len(errs) > 0 {
@@ -57,15 +70,14 @@ func (GraphQLTracer) TraceQuery(ctx context.Context, queryString string, operati
 }
 
 // TraceField method
-func (GraphQLTracer) TraceField(ctx context.Context, label, typeName, fieldName string, trivial bool, args map[string]interface{}) (context.Context, trace.TraceFieldFinishFunc) {
+func (t *graphQLTracer) TraceField(ctx context.Context, label, typeName, fieldName string, trivial bool, args map[string]interface{}) (context.Context, trace.TraceFieldFinishFunc) {
 	start := time.Now()
+	if middFunc, ok := t.midd[fmt.Sprintf("%s.%s", typeName, fieldName)]; ok {
+		ctx = middFunc(ctx)
+	}
 	return ctx, func(data []byte, err *gqlerrors.QueryError) {
-		if !config.BaseEnv().DebugMode {
-			return
-		}
-
 		end := time.Now()
-		if !trivial && !gqlTypeNotShowLog[typeName] {
+		if !trivial && !gqlTypeNotShowLog[typeName] && fieldName != schemaRootInstropectionField {
 			statusColor := candihelper.Green
 			status := " OK  "
 			if err != nil {

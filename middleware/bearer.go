@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/candishared"
+	"pkg.agungdwiprasetyo.com/candi/tracer"
 	"pkg.agungdwiprasetyo.com/candi/wrapper"
 
 	"github.com/labstack/echo"
@@ -53,8 +54,12 @@ func (m *Middleware) HTTPBearerAuth() echo.MiddlewareFunc {
 }
 
 // GraphQLBearerAuth for graphql resolver
-func (m *Middleware) GraphQLBearerAuth(ctx context.Context) *candishared.TokenClaim {
-	headers := ctx.Value(candishared.HTTPHeaderContextKey).(http.Header)
+func (m *Middleware) GraphQLBearerAuth(ctx context.Context) context.Context {
+	trace := tracer.StartTrace(ctx, "Middleware:GraphQLBearerAuth")
+	defer trace.Finish()
+	tags := trace.Tags()
+
+	headers := ctx.Value(candishared.ContextKeyHTTPHeader).(http.Header)
 	authorization := headers.Get(echo.HeaderAuthorization)
 
 	tokenValue, err := extractAuthType(Bearer, authorization)
@@ -67,6 +72,7 @@ func (m *Middleware) GraphQLBearerAuth(ctx context.Context) *candishared.TokenCl
 			},
 		})
 	}
+	tags["token"] = tokenValue
 
 	tokenClaim, err := m.Bearer(ctx, tokenValue)
 	if err != nil {
@@ -79,7 +85,8 @@ func (m *Middleware) GraphQLBearerAuth(ctx context.Context) *candishared.TokenCl
 		})
 	}
 
-	return tokenClaim
+	tags["token_claim"] = tokenClaim
+	return candishared.SetToContext(trace.Context(), candishared.ContextKeyTokenClaim, tokenClaim)
 }
 
 // GRPCBearerAuth method

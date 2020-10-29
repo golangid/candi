@@ -32,6 +32,6 @@ type GRPCMiddleware interface {
 
 // GraphQLMiddleware interface, common middleware for graphql handler, as directive in graphql schema
 type GraphQLMiddleware interface {
-	GraphQLBasicAuth(ctx context.Context)
-	GraphQLBearerAuth(ctx context.Context) *candishared.TokenClaim
+	GraphQLBasicAuth(ctx context.Context) context.Context
+	GraphQLBearerAuth(ctx context.Context) context.Context
 }

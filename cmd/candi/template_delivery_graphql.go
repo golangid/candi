@@ -27,6 +27,11 @@ func NewGraphQLHandler(mw interfaces.Middleware, uc usecase.{{clean (upper .Modu
 	return h
 }
 
+// RegisterMiddleware register resolver based on schema in "api/graphql/*" path
+func (h *GraphQLHandler) RegisterMiddleware(group *types.GraphQLMiddlewareGroup) {
+	group.Add("{{clean (upper .ModuleName)}}QueryModule.hello", h.mw.GraphQLBearerAuth)
+}
+
 // Query method
 func (h *GraphQLHandler) Query() interface{} {
 	return &queryResolver{root: h}

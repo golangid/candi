@@ -13,9 +13,9 @@ import (
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/candishared"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
 	"pkg.agungdwiprasetyo.com/candi/config"
 	"pkg.agungdwiprasetyo.com/candi/logger"
-	"pkg.agungdwiprasetyo.com/candi/tracer"
 
 	graphql "github.com/golangid/graphql-go"
 	"github.com/graph-gophers/graphql-transport-ws/graphqlws"
@@ -85,10 +85,12 @@ func NewHandler(service factory.ServiceFactory) Handler {
 	queryResolverValues := make(map[string]interface{})
 	mutationResolverValues := make(map[string]interface{})
 	subscriptionResolverValues := make(map[string]interface{})
+	middlewareResolvers := make(types.GraphQLMiddlewareGroup)
 	var queryResolverFields, mutationResolverFields, subscriptionResolverFields []reflect.StructField
 	for _, m := range service.GetModules() {
 		if resolverModule := m.GraphQLHandler(); resolverModule != nil {
 			rootName := string(m.Name())
+			resolverModule.RegisterMiddleware(&middlewareResolvers)
 			query, mutation, subscription := resolverModule.Query(), resolverModule.Mutation(), resolverModule.Subscription()
 
 			appendStructField(rootName, query, &queryResolverFields)
@@ -109,7 +111,7 @@ func NewHandler(service factory.ServiceFactory) Handler {
 	schemaOpts := []graphql.SchemaOpt{
 		graphql.UseStringDescriptions(),
 		graphql.UseFieldResolvers(),
-		graphql.Tracer(&tracer.GraphQLTracer{}),
+		graphql.Tracer(newGraphQLTracer(middlewareResolvers)),
 		graphql.Logger(&panicLogger{}),
 	}
 	if config.BaseEnv().IsProduction {
@@ -154,7 +156,7 @@ func (s *handlerImpl) ServeGraphQL() http.HandlerFunc {
 		}
 		req.Header.Set("X-Real-IP", ip)
 
-		ctx := context.WithValue(req.Context(), candishared.HTTPHeaderContextKey, req.Header)
+		ctx := context.WithValue(req.Context(), candishared.ContextKeyHTTPHeader, req.Header)
 		response := s.schema.Exec(ctx, params.Query, params.OperationName, params.Variables)
 		responseJSON, err := json.Marshal(response)
 		if err != nil {
