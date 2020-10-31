@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/logger"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
 
@@ -55,7 +56,10 @@ func unaryTracerInterceptor(ctx context.Context, req interface{}, info *grpc.Una
 		ctx = opentracing.ContextWithSpan(ctx, span)
 		ext.SpanKindRPCClient.Set(span)
 	}
-	defer span.Finish()
+	defer func() {
+		span.Finish()
+		logger.LogGreen("grpc " + tracer.GetTraceURL(ctx))
+	}()
 
 	if meta, ok := metadata.FromIncomingContext(ctx); ok {
 		span.SetTag("metadata", string(candihelper.ToBytes(meta)))
@@ -132,7 +136,10 @@ func streamTracerInterceptor(srv interface{}, stream grpc.ServerStream, info *gr
 		ctx = opentracing.ContextWithSpan(ctx, span)
 		ext.SpanKindRPCClient.Set(span)
 	}
-	defer span.Finish()
+	defer func() {
+		span.Finish()
+		logger.LogGreen("grpc_stream " + tracer.GetTraceURL(ctx))
+	}()
 
 	if meta, ok := metadata.FromIncomingContext(ctx); ok {
 		span.SetTag("metadata", string(candihelper.ToBytes(meta)))

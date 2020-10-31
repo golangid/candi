@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/config"
@@ -14,14 +16,36 @@ import (
 
 type grpcServer struct {
 	serverEngine *grpc.Server
+	listener     net.Listener
 	service      factory.ServiceFactory
 }
 
 // NewServer create new GRPC server
 func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
 
-	return &grpcServer{
+	grpcPort := fmt.Sprintf(":%d", config.BaseEnv().GRPCPort)
+	listener, err := net.Listen("tcp", grpcPort)
+	if err != nil {
+		panic(err)
+	}
+
+	var (
+		kaep = keepalive.EnforcementPolicy{
+			MinTime:             5 * time.Second, // If a client pings more than once every 5 seconds, terminate the connection
+			PermitWithoutStream: true,            // Allow pings even when there are no active streams
+		}
+		kasp = keepalive.ServerParameters{
+			MaxConnectionIdle:     15 * time.Second, // If a client is idle for 15 seconds, send a GOAWAY
+			MaxConnectionAgeGrace: 10 * time.Second, // Allow 5 seconds for pending RPCs to complete before forcibly closing connections
+			Time:                  5 * time.Second,  // Ping the client if it is idle for 5 seconds to ensure the connection is still active
+			Timeout:               1 * time.Second,  // Wait 1 second for the ping ack before assuming the connection is dead
+		}
+	)
+
+	server := &grpcServer{
 		serverEngine: grpc.NewServer(
+			grpc.KeepaliveEnforcementPolicy(kaep),
+			grpc.KeepaliveParams(kasp),
 			grpc.MaxSendMsgSize(200*int(candihelper.MByte)), grpc.MaxRecvMsgSize(200*int(candihelper.MByte)),
 			grpc.UnaryInterceptor(chainUnaryServer(
 				unaryTracerInterceptor,
@@ -34,28 +58,24 @@ func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
 				streamPanicInterceptor,
 			)),
 		),
-		service: service,
-	}
-}
-
-func (s *grpcServer) Serve() {
-	grpcPort := fmt.Sprintf(":%d", config.BaseEnv().GRPCPort)
-	listener, err := net.Listen("tcp", grpcPort)
-	if err != nil {
-		panic(err)
+		service:  service,
+		listener: listener,
 	}
 
 	fmt.Printf("\x1b[34;1m⇨ GRPC server run at port [::]%s\x1b[0m\n\n", grpcPort)
 
 	// register all module
-	for _, m := range s.service.GetModules() {
+	for _, m := range service.GetModules() {
 		if h := m.GRPCHandler(); h != nil {
-			h.Register(s.serverEngine)
+			h.Register(server.serverEngine)
 		}
 	}
 
-	err = s.serverEngine.Serve(listener)
-	if err != nil {
+	return server
+}
+
+func (s *grpcServer) Serve() {
+	if err := s.serverEngine.Serve(s.listener); err != nil {
 		log.Println("Unexpected Error", err)
 	}
 }
