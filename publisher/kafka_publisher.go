@@ -7,8 +7,13 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
+	"pkg.agungdwiprasetyo.com/candi/config"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
+)
+
+var (
+	semaphore chan struct{}
 )
 
 // KafkaPublisher kafka
@@ -25,7 +30,10 @@ func NewKafkaPublisher(client sarama.Client) *KafkaPublisher {
 		return nil
 	}
 
-	return &KafkaPublisher{producer}
+	semaphore = make(chan struct{}, config.BaseEnv().MaxGoroutines)
+	return &KafkaPublisher{
+		producer: producer,
+	}
 }
 
 // PublishMessage method
@@ -43,7 +51,15 @@ func (p *KafkaPublisher) PublishMessage(ctx context.Context, topic, key string, 
 		payload, _ = json.Marshal(data)
 	}
 
-	tracer.WithTraceFunc(ctx, opName, func(ctx context.Context, tag map[string]interface{}) {
+	semaphore <- struct{}{}
+	go tracer.WithTraceFunc(ctx, opName, func(ctx context.Context, tag map[string]interface{}) {
+		defer func() {
+			if r := recover(); r != nil {
+				tracer.SetError(ctx, fmt.Errorf("%v", r))
+			}
+			<-semaphore
+		}()
+
 		// set tracer tag
 		tag["topic"] = topic
 		tag["key"] = key

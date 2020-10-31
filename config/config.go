@@ -21,9 +21,12 @@ type Config struct {
 	closers []interfaces.Closer
 }
 
+func init() {
+	loadBaseEnv(&env)
+}
+
 // Init app config
 func Init() *Config {
-	loadBaseEnv(&env)
 	return &Config{}
 }
 
