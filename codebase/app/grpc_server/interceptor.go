@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
-	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/config/env"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
@@ -174,7 +174,7 @@ func streamPanicInterceptor(srv interface{}, stream grpc.ServerStream, info *grp
 
 // Log incoming grpc request
 func logInterceptor(startTime time.Time, err error, fullMethod string, reqType string) {
-	if !config.BaseEnv().DebugMode {
+	if !env.BaseEnv().DebugMode {
 		return
 	}
 
@@ -187,7 +187,7 @@ func logInterceptor(startTime time.Time, err error, fullMethod string, reqType s
 	}
 
 	fmt.Fprintf(os.Stdout, "%s[%s]%s :%d %v | %s %-5s %s | %13v | %s\n",
-		candihelper.Cyan, reqType, candihelper.Reset, config.BaseEnv().GRPCPort,
+		candihelper.Cyan, reqType, candihelper.Reset, env.BaseEnv().GRPCPort,
 		end.Format("2006/01/02 - 15:04:05"),
 		statusColor, status, candihelper.Reset,
 		end.Sub(startTime),

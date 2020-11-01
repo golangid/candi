@@ -9,7 +9,7 @@ import (
 	"github.com/Shopify/sarama"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/config/env"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
@@ -25,7 +25,7 @@ type kafkaWorker struct {
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	// init kafka consumer
 	consumerEngine, err := sarama.NewConsumerGroupFromClient(
-		config.BaseEnv().Kafka.ConsumerGroup,
+		env.BaseEnv().Kafka.ConsumerGroup,
 		service.GetDependency().GetBroker().GetClient(),
 	)
 	if err != nil {
@@ -56,10 +56,10 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 			}
 		}
 	}
-	fmt.Printf("\x1b[34;1m⇨ Kafka consumer running with %d topics. Brokers: "+strings.Join(config.BaseEnv().Kafka.Brokers, ", ")+"\x1b[0m\n\n",
+	fmt.Printf("\x1b[34;1m⇨ Kafka consumer running with %d topics. Brokers: "+strings.Join(env.BaseEnv().Kafka.Brokers, ", ")+"\x1b[0m\n\n",
 		len(consumerHandler.topics))
 
-	consumerHandler.semaphore = make(chan struct{}, config.BaseEnv().MaxGoroutines)
+	consumerHandler.semaphore = make(chan struct{}, env.BaseEnv().MaxGoroutines)
 	return &kafkaWorker{
 		engine:          consumerEngine,
 		service:         service,
@@ -128,7 +128,7 @@ func (c *kafkaConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim 
 					<-c.semaphore
 				}()
 
-				if config.BaseEnv().DebugMode {
+				if env.BaseEnv().DebugMode {
 					log.Printf("\x1b[35;3mKafka Consumer: message consumed, timestamp = %v, topic = %s\x1b[0m", message.Timestamp, message.Topic)
 				}
 

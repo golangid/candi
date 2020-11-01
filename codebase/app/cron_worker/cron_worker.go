@@ -13,7 +13,7 @@ import (
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/config/env"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
@@ -26,7 +26,7 @@ type cronWorker struct {
 // NewWorker create new cron worker
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	refreshWorkerNotif, shutdown = make(chan struct{}), make(chan struct{})
-	semaphore = make(chan struct{}, config.BaseEnv().MaxGoroutines)
+	semaphore = make(chan struct{}, env.BaseEnv().MaxGoroutines)
 
 	// add shutdown channel to first index
 	workers = append(workers, reflect.SelectCase{
@@ -107,7 +107,7 @@ func (c *cronWorker) Serve() {
 				logger.LogGreen("cron scheduler " + tracer.GetTraceURL(ctx))
 			}()
 
-			if config.BaseEnv().DebugMode {
+			if env.BaseEnv().DebugMode {
 				log.Printf("\x1b[35;3mCron Scheduler: executing task '%s' (interval: %s)\x1b[0m", job.HandlerName, job.Interval)
 			}
 

@@ -129,6 +129,9 @@ func parseInput() (scope string, headerConfig configHeader, srvConfig serviceCon
 }
 
 func parseSharedRepository(data serviceConfig) (repos []FileStructure) {
+	repos = append(repos, FileStructure{
+		FromTemplate: true, DataSource: data, Source: templateRepository, FileName: "repository.go",
+	})
 	if data.SQLDeps {
 		repos = append(repos, FileStructure{
 			FromTemplate: true, DataSource: data, Source: templateRepositoryUOWSQL, FileName: "repository_sql.go",

@@ -81,7 +81,6 @@ import (
 
 	"{{.PackageName}}/codebase/factory/dependency"
 	"{{.PackageName}}/codebase/interfaces"
-	{{ if not (or .SQLDeps .MongoDeps) }}// {{end}}"{{.PackageName}}/candihelper"
 	"{{.PackageName}}/tracer"
 )
 
@@ -93,11 +92,10 @@ type {{clean .ModuleName}}UsecaseImpl struct {
 
 // New{{clean (upper .ModuleName)}}Usecase usecase impl constructor
 func New{{clean (upper .ModuleName)}}Usecase(deps dependency.Dependency) {{clean (upper .ModuleName)}}Usecase {
-	{{ if not (or .SQLDeps .MongoDeps) }}// {{end}}extended := deps.GetExtended()
 	return &{{clean .ModuleName}}UsecaseImpl{
 		{{if .RedisDeps}}cache: deps.GetRedisPool().Cache(),{{end}}
-		{{if .SQLDeps}}repoSQL:   extended[candihelper.RepositorySQL].(*repository.RepoSQL),{{end}}
-		{{if .MongoDeps}}repoMongo: extended[candihelper.RepositoryMongo].(*repository.RepoMongo),{{end}}
+		{{if .SQLDeps}}repoSQL:   repository.GetSharedRepoSQL(),{{end}}
+		{{if .MongoDeps}}repoMongo: repository.GetSharedRepoMongo(),{{end}}
 	}
 }
 

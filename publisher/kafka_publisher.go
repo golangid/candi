@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/config/env"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
@@ -30,7 +30,7 @@ func NewKafkaPublisher(client sarama.Client) *KafkaPublisher {
 		return nil
 	}
 
-	semaphore = make(chan struct{}, config.BaseEnv().MaxGoroutines)
+	semaphore = make(chan struct{}, env.BaseEnv().MaxGoroutines)
 	return &KafkaPublisher{
 		producer: producer,
 	}

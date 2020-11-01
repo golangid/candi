@@ -14,6 +14,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	ext "github.com/opentracing/opentracing-go/ext"
 	"google.golang.org/grpc/metadata"
+	"pkg.agungdwiprasetyo.com/candi/config/env"
 )
 
 // Tracer for trace
@@ -191,7 +192,7 @@ func SetError(ctx context.Context, err error) {
 // GetTraceURL log trace url
 func GetTraceURL(ctx context.Context) (u string) {
 	defer func() { recover() }()
-	urlAgent, err := url.Parse("//" + agent)
+	urlAgent, err := url.Parse("//" + env.BaseEnv().JaegerTracingHost)
 	if err == nil {
 		u = fmt.Sprintf("> tracing_url: %s:16686/trace/%s", urlAgent.Hostname(), GetTraceID(ctx))
 	}

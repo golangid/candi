@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/keepalive"
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
-	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/config/env"
 )
 
 type grpcServer struct {
@@ -23,7 +23,7 @@ type grpcServer struct {
 // NewServer create new GRPC server
 func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
 
-	grpcPort := fmt.Sprintf(":%d", config.BaseEnv().GRPCPort)
+	grpcPort := fmt.Sprintf(":%d", env.BaseEnv().GRPCPort)
 	listener, err := net.Listen("tcp", grpcPort)
 	if err != nil {
 		panic(err)

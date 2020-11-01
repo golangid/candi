@@ -1,6 +1,6 @@
 package validator
 
-import "pkg.agungdwiprasetyo.com/candi/config"
+import "pkg.agungdwiprasetyo.com/candi/config/env"
 
 // Validator instance
 type Validator struct {
@@ -11,7 +11,7 @@ type Validator struct {
 // NewValidator instance
 func NewValidator() *Validator {
 	return &Validator{
-		JSONSchemaValidator: NewJSONSchemaValidator(config.BaseEnv().JSONSchemaDir),
+		JSONSchemaValidator: NewJSONSchemaValidator(env.BaseEnv().JSONSchemaDir),
 		StructValidator:     NewStructValidator(),
 	}
 }

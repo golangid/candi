@@ -15,7 +15,7 @@ import (
 
 	graphqlserver "pkg.agungdwiprasetyo.com/candi/codebase/app/graphql_server"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
-	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/config/env"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 	"pkg.agungdwiprasetyo.com/candi/wrapper"
@@ -32,7 +32,7 @@ func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
 	server := &restServer{
 		serverEngine: echo.New(),
 		service:      service,
-		httpPort:     fmt.Sprintf(":%d", config.BaseEnv().HTTPPort),
+		httpPort:     fmt.Sprintf(":%d", env.BaseEnv().HTTPPort),
 	}
 
 	server.serverEngine.HTTPErrorHandler = wrapper.CustomHTTPErrorHandler
@@ -65,7 +65,7 @@ func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
 	}
 
 	// inject graphql handler to rest server
-	if config.BaseEnv().UseGraphQL {
+	if env.BaseEnv().UseGraphQL {
 		graphqlHandler := graphqlserver.NewHandler(service)
 		server.serverEngine.Any("/graphql", echo.WrapHandler(graphqlHandler.ServeGraphQL()))
 		server.serverEngine.GET("/graphql/playground", echo.WrapHandler(http.HandlerFunc(graphqlHandler.ServePlayground)))

@@ -13,7 +13,7 @@ import (
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/config/env"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
@@ -70,7 +70,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 		fmt.Printf("\x1b[34;1m⇨ Redis pubsub worker running with %d keys\x1b[0m\n\n", len(handlers))
 	}
 
-	shutdown, semaphore = make(chan struct{}, 1), make(chan struct{}, config.BaseEnv().MaxGoroutines)
+	shutdown, semaphore = make(chan struct{}, 1), make(chan struct{}, env.BaseEnv().MaxGoroutines)
 
 	return &redisWorker{
 		service:  service,
@@ -139,7 +139,7 @@ func (r *redisWorker) Serve() {
 					logger.LogGreen("redis subscriber " + tracer.GetTraceURL(ctx))
 				}()
 
-				if config.BaseEnv().DebugMode {
+				if env.BaseEnv().DebugMode {
 					log.Printf("\x1b[35;3mRedis Key Expired Subscriber: executing event key '%s'\x1b[0m", h.name)
 				}
 

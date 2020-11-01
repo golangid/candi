@@ -73,9 +73,7 @@ func main() {
 	}
 
 	moduleStructure := FileStructure{
-		TargetDir: "modules/", IsDir: true, DataSource: srvConfig, Childs: []FileStructure{
-			{FromTemplate: true, DataSource: srvConfig, Source: serviceMainTemplate, FileName: "service.go"},
-		},
+		TargetDir: "modules/", IsDir: true, DataSource: srvConfig,
 	}
 	var sharedDomainFiles []FileStructure
 
@@ -101,7 +99,7 @@ func main() {
 		}
 
 		var repoModule = []FileStructure{
-			{FromTemplate: true, DataSource: mod, Source: templateRepository, FileName: "repository.go"},
+			{FromTemplate: true, DataSource: mod, Source: templateRepositoryAbstraction, FileName: "repository.go"},
 		}
 		repoModule = append(repoModule, parseRepositoryModule(mod)...)
 

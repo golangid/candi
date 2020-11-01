@@ -26,7 +26,7 @@ func main() {
 		}
 	}()
 
-	cfg := config.Init()
+	cfg := config.Init(serviceName)
 	defer cfg.Exit()
 
 	srv := service.NewService(serviceName, cfg)

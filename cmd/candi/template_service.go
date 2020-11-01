@@ -14,7 +14,6 @@ import (
 {{- range $module := .Modules}}
 	"{{$.GoModName}}/internal/modules/{{$module.ModuleName}}"
 {{- end }}
-	"{{$.GoModName}}/pkg/shared/usecase"
 )
 
 // Service model
@@ -27,7 +26,6 @@ type Service struct {
 // NewService in this service
 func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 	deps := configs.LoadConfigs(cfg)
-	usecase.SetSharedUsecase(deps)
 
 	modules := []factory.ModuleFactory{
 	{{- range $module := .Modules}}

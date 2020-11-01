@@ -14,7 +14,7 @@ import (
 	"pkg.agungdwiprasetyo.com/candi/candishared"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/config/env"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 
 	graphql "github.com/golangid/graphql-go"
@@ -42,7 +42,7 @@ func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
 	mux.HandleFunc(rootGraphQLPlayground, httpHandler.ServePlayground)
 	mux.HandleFunc(rootGraphQLVoyager, httpHandler.ServeVoyager)
 
-	httpEngine.Addr = fmt.Sprintf(":%d", config.BaseEnv().HTTPPort)
+	httpEngine.Addr = fmt.Sprintf(":%d", env.BaseEnv().HTTPPort)
 	httpEngine.Handler = mux
 
 	logger.LogYellow("[GraphQL] endpoint : " + rootGraphQLPath)
@@ -106,7 +106,7 @@ func NewHandler(service factory.ServiceFactory) Handler {
 	root.rootQuery = constructStruct(queryResolverFields, queryResolverValues)
 	root.rootMutation = constructStruct(mutationResolverFields, mutationResolverValues)
 	root.rootSubscription = constructStruct(subscriptionResolverFields, subscriptionResolverValues)
-	gqlSchema := candihelper.LoadAllFile(config.BaseEnv().GraphQLSchemaDir, ".graphql")
+	gqlSchema := candihelper.LoadAllFile(env.BaseEnv().GraphQLSchemaDir, ".graphql")
 
 	schemaOpts := []graphql.SchemaOpt{
 		graphql.UseStringDescriptions(),
@@ -114,7 +114,7 @@ func NewHandler(service factory.ServiceFactory) Handler {
 		graphql.Tracer(newGraphQLTracer(middlewareResolvers)),
 		graphql.Logger(&panicLogger{}),
 	}
-	if config.BaseEnv().IsProduction {
+	if env.BaseEnv().IsProduction {
 		// handling vulnerabilities exploit schema
 		schemaOpts = append(schemaOpts, graphql.DisableIntrospection())
 	}
@@ -170,7 +170,7 @@ func (s *handlerImpl) ServeGraphQL() http.HandlerFunc {
 }
 
 func (s *handlerImpl) ServePlayground(resp http.ResponseWriter, req *http.Request) {
-	if config.BaseEnv().IsProduction {
+	if env.BaseEnv().IsProduction {
 		http.Error(resp, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -178,7 +178,7 @@ func (s *handlerImpl) ServePlayground(resp http.ResponseWriter, req *http.Reques
 }
 
 func (s *handlerImpl) ServeVoyager(resp http.ResponseWriter, req *http.Request) {
-	if config.BaseEnv().IsProduction {
+	if env.BaseEnv().IsProduction {
 		http.Error(resp, "Forbidden", http.StatusForbidden)
 		return
 	}

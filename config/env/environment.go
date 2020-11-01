@@ -1,8 +1,7 @@
-package config
+package env
 
 import (
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -11,9 +10,9 @@ import (
 	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
-// Env model
+// Env basic environment model
 type Env struct {
-	RootApp string
+	RootApp, ServiceName string
 
 	useSQL, useMongo, useRedis, useRSAKey bool
 
@@ -65,17 +64,18 @@ type Env struct {
 	MaxGoroutines int
 }
 
-func loadBaseEnv(targetEnv *Env) {
+var env Env
+
+// Load environment
+func Load(serviceName string) {
+	env.RootApp = os.Getenv(candihelper.WORKDIR)
+	env.ServiceName = serviceName
 
 	// load main .env and additional .env in app
-	err := godotenv.Load(os.Getenv(candihelper.WORKDIR) + ".env")
+	err := godotenv.Load(env.RootApp + ".env")
 	if err != nil {
 		logger.LogYellow("warning: cannot load .env")
 	}
-
-	rootApp, _ := filepath.Abs(filepath.Dir(os.Args[0]))
-	os.Setenv("APP_PATH", rootApp)
-	env.RootApp = rootApp
 
 	// ------------------------------------
 	useREST, ok := os.LookupEnv("USE_REST")
@@ -201,4 +201,14 @@ func loadBaseEnv(targetEnv *Env) {
 		maxGoroutines = 4096
 	}
 	env.MaxGoroutines = maxGoroutines
+}
+
+// BaseEnv get global basic environment
+func BaseEnv() Env {
+	return env
+}
+
+// SetEnv set env for mocking data env
+func SetEnv(newEnv Env) {
+	env = newEnv
 }

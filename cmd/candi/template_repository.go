@@ -1,6 +1,28 @@
 package main
 
 const (
+	templateRepository = `// {{.Header}}
+package repository
+
+import (
+	"sync"
+
+	{{ if not (or .SQLDeps .MongoDeps) }}// {{ end }}"{{.PackageName}}/codebase/factory/dependency"
+)
+
+var (
+	once sync.Once
+)
+
+// SetSharedRepository set the global singleton "RepoSQL" and "RepoMongo" implementation
+func SetSharedRepository(deps dependency.Dependency) {
+	once.Do(func() {
+		{{if not .SQLDeps}}// {{end}}setSharedRepoSQL(deps.GetSQLDatabase().ReadDB(), deps.GetSQLDatabase().WriteDB())
+		{{if not .MongoDeps}}// {{end}}setSharedRepoMongo(deps.GetMongoDatabase().ReadDB(), deps.GetMongoDatabase().WriteDB())
+	})
+}
+`
+
 	templateRepositoryUOWSQL = `// {{.Header}}
 
 package repository
@@ -26,6 +48,20 @@ type RepoSQL struct {
 {{- range $module := .Modules}}
 	{{if $module.SQLDeps}}{{clean (upper $module.ModuleName)}}Repo {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository{{end}}
 {{- end }}
+}
+
+var (
+	globalRepoSQL = new(RepoSQL)
+)
+
+// setSharedRepoSQL set the global singleton "RepoSQL" implementation
+func setSharedRepoSQL(readDB, writeDB *sql.DB) {
+	globalRepoSQL = NewRepositorySQL(readDB, writeDB, nil)
+}
+
+// GetSharedRepoSQL returns the global singleton "RepoSQL" implementation
+func GetSharedRepoSQL() *RepoSQL {
+	return globalRepoSQL
 }
 
 // NewRepositorySQL constructor
@@ -120,19 +156,26 @@ type RepoMongo struct {
 {{- end }}
 }
 
-// NewRepositoryMongo constructor
-func NewRepositoryMongo(readDB, writeDB *mongo.Database) *RepoMongo {
-	return &RepoMongo{
+var globalRepoMongo = new(RepoMongo)
+
+// setSharedRepoMongo set the global singleton "RepoMongo" implementation
+func setSharedRepoMongo(readDB, writeDB *mongo.Database) {
+	globalRepoMongo = &RepoMongo{
 		readDB: readDB, writeDB: writeDB,
-		
+
 {{- range $module := .Modules}}
 		{{if $module.MongoDeps}}{{clean (upper $module.ModuleName)}}Repo: {{clean $module.ModuleName}}repo.New{{clean (upper $module.ModuleName)}}RepoMongo(readDB, writeDB),{{end}}
 {{- end }}
 	}
 }
+
+// GetSharedRepoMongo returns the global singleton "RepoMongo" implementation
+func GetSharedRepoMongo() *RepoMongo {
+	return globalRepoMongo
+}
 `
 
-	templateRepository = `// {{.Header}}
+	templateRepositoryAbstraction = `// {{.Header}}
 
 package repository
 

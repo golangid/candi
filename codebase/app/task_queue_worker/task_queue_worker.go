@@ -10,7 +10,7 @@ import (
 
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
-	"pkg.agungdwiprasetyo.com/candi/config"
+	"pkg.agungdwiprasetyo.com/candi/config/env"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
@@ -43,7 +43,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	}
 
 	queue = NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
-	refreshWorkerNotif, shutdown, semaphore = make(chan struct{}), make(chan struct{}, 1), make(chan struct{}, config.BaseEnv().MaxGoroutines)
+	refreshWorkerNotif, shutdown, semaphore = make(chan struct{}), make(chan struct{}, 1), make(chan struct{}, env.BaseEnv().MaxGoroutines)
 
 	registeredTask = make(map[string]struct {
 		handlerFunc   types.WorkerHandlerFunc

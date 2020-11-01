@@ -10,34 +10,24 @@ import (
 	"time"
 
 	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/candi/config/env"
+	"pkg.agungdwiprasetyo.com/candi/logger"
+	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
 
 const timeout time.Duration = 10 * time.Second
-
-var env Env
 
 // Config app
 type Config struct {
 	closers []interfaces.Closer
 }
 
-func init() {
-	loadBaseEnv(&env)
-}
-
 // Init app config
-func Init() *Config {
+func Init(serviceName string) *Config {
+	env.Load(serviceName)
+	logger.InitZap()
+	tracer.InitOpenTracing()
 	return &Config{}
-}
-
-// BaseEnv get global basic environment
-func BaseEnv() Env {
-	return env
-}
-
-// SetEnv set env for mocking data env
-func SetEnv(newEnv Env) {
-	env = newEnv
 }
 
 // LoadFunc load selected dependency with context timeout
