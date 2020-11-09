@@ -1,0 +1,12 @@
+language: go
+sudo: required
+go:
+  - 1.14.x
+env:
+  global:
+    - GO111MODULE=on
+install: true
+script:
+  - make test
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
