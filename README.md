@@ -1,5 +1,8 @@
 # Candi, a framework for `Membangun Candi` project in Golang
 
+[![Build Status](https://travis-ci.org/agungdwiprasetyo/candi.svg?branch=master)](https://travis-ci.org/agungdwiprasetyo/candi)
+[![codecov](https://codecov.io/gh/agungdwiprasetyo/candi/branch/master/graph/badge.svg)](https://codecov.io/gh/agungdwiprasetyo/candi)
+
 ## Made with
 <p align="center">
   <img src="https://storage.googleapis.com/agungdp/static/logo/golang.png" width="80" alt="golang logo" />
