@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
@@ -31,6 +30,23 @@ func New(service factory.ServiceFactory) *App {
 	log.Printf("Starting \x1b[32;1m%s\x1b[0m service\n\n", service.Name())
 
 	appInstance := new(App)
+
+	if env.BaseEnv().UseKafkaConsumer {
+		appInstance.servers = append(appInstance.servers, kafkaworker.NewWorker(service))
+	}
+
+	if env.BaseEnv().UseCronScheduler {
+		appInstance.servers = append(appInstance.servers, cronworker.NewWorker(service))
+	}
+
+	if env.BaseEnv().UseTaskQueueWorker {
+		appInstance.servers = append(appInstance.servers, taskqueueworker.NewWorker(service))
+	}
+
+	if env.BaseEnv().UseRedisSubscriber {
+		appInstance.servers = append(appInstance.servers, redisworker.NewWorker(service))
+	}
+
 	if env.BaseEnv().UseREST {
 		appInstance.servers = append(appInstance.servers, restserver.NewServer(service))
 	}
@@ -41,22 +57,6 @@ func New(service factory.ServiceFactory) *App {
 
 	if !env.BaseEnv().UseREST && env.BaseEnv().UseGraphQL {
 		appInstance.servers = append(appInstance.servers, graphqlserver.NewServer(service))
-	}
-
-	if env.BaseEnv().UseKafkaConsumer {
-		appInstance.servers = append(appInstance.servers, kafkaworker.NewWorker(service))
-	}
-
-	if env.BaseEnv().UseCronScheduler {
-		appInstance.servers = append(appInstance.servers, cronworker.NewWorker(service))
-	}
-
-	if env.BaseEnv().UseRedisSubscriber {
-		appInstance.servers = append(appInstance.servers, redisworker.NewWorker(service))
-	}
-
-	if env.BaseEnv().UseTaskQueueWorker {
-		appInstance.servers = append(appInstance.servers, taskqueueworker.NewWorker(service))
 	}
 
 	return appInstance
@@ -102,16 +102,9 @@ func (a *App) shutdown(forceShutdown chan os.Signal) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-
-		var wg sync.WaitGroup
 		for _, server := range a.servers {
-			wg.Add(1)
-			go func(srv factory.AppServerFactory) {
-				defer wg.Done()
-				srv.Shutdown(ctx)
-			}(server)
+			server.Shutdown(ctx)
 		}
-		wg.Wait()
 		done <- struct{}{}
 	}()
 
