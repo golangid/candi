@@ -210,7 +210,7 @@ func main() {
 	switch scope {
 	case initService:
 		configsStructure.Childs = append(configsStructure.Childs, FileStructure{
-			Source: additionalEnvTemplate, FileName: "environment.go",
+			DataSource: srvConfigEdited, Source: additionalEnvTemplate, FileName: "environment.go",
 		})
 		pkgServiceStructure.Childs = append(pkgServiceStructure.Childs, []FileStructure{
 			{TargetDir: "helper/", IsDir: true, Childs: []FileStructure{

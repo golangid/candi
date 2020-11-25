@@ -3,12 +3,12 @@ package database
 import (
 	"context"
 	"fmt"
-	"os"
 	"strconv"
 
 	"github.com/gomodule/redigo/redis"
 	"pkg.agungdwiprasetyo.com/candi/cache"
 	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
+	"pkg.agungdwiprasetyo.com/candi/config/env"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
@@ -23,12 +23,26 @@ func (m *redisInstance) ReadPool() *redis.Pool {
 func (m *redisInstance) WritePool() *redis.Pool {
 	return m.write
 }
+func (m *redisInstance) Health() map[string]error {
+	mErr := make(map[string]error)
+
+	connWrite := m.write.Get()
+	defer connWrite.Close()
+	_, err := connWrite.Do("PING")
+	mErr["redis_write"] = err
+
+	connRead := m.write.Get()
+	defer connRead.Close()
+	_, err = connRead.Do("PING")
+	mErr["redis_read"] = err
+
+	return mErr
+}
 func (m *redisInstance) Cache() interfaces.Cache {
 	return m.cache
 }
-
 func (m *redisInstance) Disconnect(ctx context.Context) (err error) {
-	deferFunc := logger.LogWithDefer("redis: disconnect......")
+	deferFunc := logger.LogWithDefer("redis: disconnect...")
 	defer deferFunc()
 
 	if err := m.read.Close(); err != nil {
@@ -37,21 +51,22 @@ func (m *redisInstance) Disconnect(ctx context.Context) (err error) {
 	return m.write.Close()
 }
 
-// InitRedis connection
+// InitRedis connection from environment:
+// REDIS_READ_HOST, REDIS_READ_PORT, REDIS_READ_AUTH, REDIS_READ_TLS, REDIS_READ_DB,
+// REDIS_WRITE_HOST, REDIS_WRITE_PORT, REDIS_WRITE_AUTH, REDIS_WRITE_TLS, REDIS_WRITE_DB
 func InitRedis() interfaces.RedisPool {
 	deferFunc := logger.LogWithDefer("Load Redis connection...")
 	defer deferFunc()
 
 	inst := new(redisInstance)
 
-	hostRead, portRead, passRead := os.Getenv("REDIS_READ_HOST"), os.Getenv("REDIS_READ_PORT"), os.Getenv("REDIS_READ_AUTH")
-	tlsRead, _ := strconv.ParseBool(os.Getenv("REDIS_READ_TLS"))
-	hostWrite, portWrite, passWrite := os.Getenv("REDIS_WRITE_HOST"), os.Getenv("REDIS_WRITE_PORT"), os.Getenv("REDIS_WRITE_AUTH")
-	tlsWrite, _ := strconv.ParseBool(os.Getenv("REDIS_WRITE_TLS"))
-
 	inst.read = &redis.Pool{
 		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", fmt.Sprintf("%s:%s", hostRead, portRead), redis.DialPassword(passRead), redis.DialUseTLS(tlsRead))
+			redisDB, _ := strconv.Atoi(env.BaseEnv().DbRedisReadDBIndex)
+			return redis.Dial("tcp", fmt.Sprintf("%s:%s", env.BaseEnv().DbRedisReadHost, env.BaseEnv().DbRedisReadPort),
+				redis.DialPassword(env.BaseEnv().DbRedisReadAuth),
+				redis.DialDatabase(redisDB),
+				redis.DialUseTLS(env.BaseEnv().DbRedisReadTLS))
 		},
 	}
 
@@ -64,7 +79,11 @@ func InitRedis() interfaces.RedisPool {
 
 	inst.write = &redis.Pool{
 		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", fmt.Sprintf("%s:%s", hostWrite, portWrite), redis.DialPassword(passWrite), redis.DialUseTLS(tlsWrite))
+			redisDB, _ := strconv.Atoi(env.BaseEnv().DbRedisWriteDBIndex)
+			return redis.Dial("tcp", fmt.Sprintf("%s:%s", env.BaseEnv().DbRedisWriteHost, env.BaseEnv().DbRedisWritePort),
+				redis.DialPassword(env.BaseEnv().DbRedisWriteAuth),
+				redis.DialDatabase(redisDB),
+				redis.DialUseTLS(env.BaseEnv().DbRedisWriteTLS))
 		},
 	}
 
@@ -74,6 +93,7 @@ func InitRedis() interfaces.RedisPool {
 	if err != nil {
 		panic("redis write: " + err.Error())
 	}
+
 	inst.cache = cache.NewRedisCache(inst.read, inst.write)
 
 	return inst

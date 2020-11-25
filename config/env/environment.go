@@ -1,16 +1,16 @@
 package env
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
-	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
-// Env basic environment model
+// Env model
 type Env struct {
 	RootApp, ServiceName string
 
@@ -54,27 +54,47 @@ type Env struct {
 	// JaegerTracingHost env
 	JaegerTracingHost string
 
+	// Broker environment
 	Kafka struct {
 		Brokers       []string
+		ClientVersion string
 		ClientID      string
 		ConsumerGroup string
 	}
 
 	// MaxGoroutines env for goroutine semaphore
 	MaxGoroutines int
+
+	// Database environment
+	DbMongoWriteHost, DbMongoReadHost, DbMongoDatabaseName                    string
+	DbSQLWriteHost, DbSQLWriteUser, DbSQLWritePass                            string
+	DbSQLReadHost, DbSQLReadUser, DbSQLReadPass                               string
+	DbSQLDatabaseName, DbSQLDriver                                            string
+	DbRedisReadHost, DbRedisReadPort, DbRedisReadAuth, DbRedisReadDBIndex     string
+	DbRedisWriteHost, DbRedisWritePort, DbRedisWriteAuth, DbRedisWriteDBIndex string
+	DbRedisReadTLS, DbRedisWriteTLS                                           bool
 }
 
 var env Env
 
+// BaseEnv get global basic environment
+func BaseEnv() Env {
+	return env
+}
+
+// SetEnv set env for mocking data env
+func SetEnv(newEnv Env) {
+	env = newEnv
+}
+
 // Load environment
 func Load(serviceName string) {
-	env.RootApp = os.Getenv(candihelper.WORKDIR)
 	env.ServiceName = serviceName
 
 	// load main .env and additional .env in app
-	err := godotenv.Load(env.RootApp + ".env")
+	err := godotenv.Load(os.Getenv(candihelper.WORKDIR) + ".env")
 	if err != nil {
-		logger.LogYellow("warning: cannot load .env")
+		panic(fmt.Errorf("Load env: %v", err))
 	}
 
 	// ------------------------------------
@@ -152,8 +172,6 @@ func Load(serviceName string) {
 	if err != nil {
 		env.DebugMode = true
 	}
-	logger.SetDebugMode(env.DebugMode)
-
 	env.BasicAuthUsername, ok = os.LookupEnv("BASIC_AUTH_USERNAME")
 	if !ok {
 		panic("missing BASIC_AUTH_USERNAME environment")
@@ -168,21 +186,8 @@ func Load(serviceName string) {
 		panic("missing JAEGER_TRACING_HOST environment")
 	}
 
-	kafkaBrokerEnv := os.Getenv("KAFKA_BROKERS")
-	env.Kafka.Brokers = strings.Split(kafkaBrokerEnv, ",") // optional
-	env.Kafka.ClientID = os.Getenv("KAFKA_CLIENT_ID")      // optional
-
 	// kafka environment
-	if env.UseKafkaConsumer {
-		if kafkaBrokerEnv == "" {
-			panic("kafka consumer is active, missing KAFKA_BROKERS environment")
-		}
-
-		env.Kafka.ConsumerGroup, ok = os.LookupEnv("KAFKA_CONSUMER_GROUP")
-		if !ok {
-			panic("kafka consumer is active, missing KAFKA_CONSUMER_GROUP environment")
-		}
-	}
+	parseBrokerEnv()
 
 	env.GraphQLSchemaDir, ok = os.LookupEnv("GRAPHQL_SCHEMA_DIR")
 	if env.UseGraphQL && !ok {
@@ -201,14 +206,51 @@ func Load(serviceName string) {
 		maxGoroutines = 4096
 	}
 	env.MaxGoroutines = maxGoroutines
+
+	// Parse database environment
+	parseDatabaseEnv()
 }
 
-// BaseEnv get global basic environment
-func BaseEnv() Env {
-	return env
+func parseBrokerEnv() {
+	kafkaBrokerEnv := os.Getenv("KAFKA_BROKERS")
+	env.Kafka.Brokers = strings.Split(kafkaBrokerEnv, ",") // optional
+	env.Kafka.ClientID = os.Getenv("KAFKA_CLIENT_ID")      // optional
+	env.Kafka.ClientVersion = os.Getenv("KAFKA_CLIENT_VERSION")
+	if env.UseKafkaConsumer {
+		if kafkaBrokerEnv == "" {
+			panic("kafka consumer is active, missing KAFKA_BROKERS environment")
+		}
+
+		var ok bool
+		env.Kafka.ConsumerGroup, ok = os.LookupEnv("KAFKA_CONSUMER_GROUP")
+		if !ok {
+			panic("kafka consumer is active, missing KAFKA_CONSUMER_GROUP environment")
+		}
+	}
 }
 
-// SetEnv set env for mocking data env
-func SetEnv(newEnv Env) {
-	env = newEnv
+func parseDatabaseEnv() {
+	env.DbMongoWriteHost = os.Getenv("MONGODB_HOST_WRITE")
+	env.DbMongoReadHost = os.Getenv("MONGODB_HOST_READ")
+	env.DbMongoDatabaseName = os.Getenv("MONGODB_DATABASE_NAME")
+
+	env.DbSQLDriver = os.Getenv("SQL_DRIVER_NAME")
+	env.DbSQLReadHost = os.Getenv("SQL_DB_READ_HOST")
+	env.DbSQLReadUser = os.Getenv("SQL_DB_READ_USER")
+	env.DbSQLReadPass = os.Getenv("SQL_DB_READ_PASSWORD")
+	env.DbSQLWriteHost = os.Getenv("SQL_DB_WRITE_HOST")
+	env.DbSQLWriteUser = os.Getenv("SQL_DB_WRITE_USER")
+	env.DbSQLWritePass = os.Getenv("SQL_DB_WRITE_PASSWORD")
+	env.DbSQLDatabaseName = os.Getenv("SQL_DATABASE_NAME")
+
+	env.DbRedisReadHost = os.Getenv("REDIS_READ_HOST")
+	env.DbRedisReadPort = os.Getenv("REDIS_READ_PORT")
+	env.DbRedisReadAuth = os.Getenv("REDIS_READ_AUTH")
+	env.DbRedisReadTLS, _ = strconv.ParseBool(os.Getenv("REDIS_READ_TLS"))
+	env.DbRedisReadDBIndex = os.Getenv("REDIS_READ_DB_INDEX")
+	env.DbRedisWriteHost = os.Getenv("REDIS_WRITE_HOST")
+	env.DbRedisWritePort = os.Getenv("REDIS_WRITE_PORT")
+	env.DbRedisWriteAuth = os.Getenv("REDIS_WRITE_AUTH")
+	env.DbRedisWriteTLS, _ = strconv.ParseBool(os.Getenv("REDIS_WRITE_TLS"))
+	env.DbRedisWriteDBIndex = os.Getenv("REDIS_WRITE_DB_INDEX")
 }

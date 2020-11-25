@@ -5,6 +5,7 @@ import (
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"pkg.agungdwiprasetyo.com/candi/config/env"
 )
 
 var logger *zap.SugaredLogger
@@ -36,7 +37,7 @@ func InitZap() {
 			},
 		},
 		Level:       zap.NewAtomicLevelAt(zapcore.DebugLevel),
-		Development: debugMode,
+		Development: !env.BaseEnv().IsProduction,
 	}
 
 	logg, err = cfg.Build()

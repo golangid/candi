@@ -74,6 +74,7 @@ func (m *Middleware) GraphQLBearerAuth(ctx context.Context) context.Context {
 	}
 	tags["token"] = tokenValue
 
+	ctx = trace.Context()
 	tokenClaim, err := m.Bearer(ctx, tokenValue)
 	if err != nil {
 		panic(&gqlerr.QueryError{
@@ -86,7 +87,7 @@ func (m *Middleware) GraphQLBearerAuth(ctx context.Context) context.Context {
 	}
 
 	tags["token_claim"] = tokenClaim
-	return candishared.SetToContext(trace.Context(), candishared.ContextKeyTokenClaim, tokenClaim)
+	return candishared.SetToContext(ctx, candishared.ContextKeyTokenClaim, tokenClaim)
 }
 
 // GRPCBearerAuth method

@@ -147,7 +147,7 @@ func (r *redisWorker) Serve() {
 				tags["message"] = string(h.message)
 
 				handler := r.handlers[h.name]
-				if err := handler.handlerFunc(ctx, recv.message); err != nil {
+				if err := handler.handlerFunc(ctx, h.message); err != nil {
 					for _, errHandler := range handler.errorHandlers {
 						errHandler(ctx, types.RedisSubscriber, h.name, h.message, err)
 					}

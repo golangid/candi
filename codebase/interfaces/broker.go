@@ -8,5 +8,6 @@ import (
 type Broker interface {
 	GetClient() sarama.Client
 	Publisher() Publisher
+	Health() map[string]error
 	Closer
 }

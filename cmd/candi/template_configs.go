@@ -17,7 +17,6 @@ import (
 	"{{.PackageName}}/config"
 	{{if not .KafkaDeps}}// {{end}}"{{.PackageName}}/config/broker"
 	{{ if not (or .SQLDeps .MongoDeps) }}// {{ end }}"{{.PackageName}}/config/database"
-	{{if not .KafkaDeps}}// {{end}}"{{.PackageName}}/config/env"
 	"{{.PackageName}}/middleware"
 	"{{.PackageName}}/validator"
 )
@@ -28,7 +27,7 @@ func LoadConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 	loadAdditionalEnv()
 
 	baseCfg.LoadFunc(func(ctx context.Context) []interfaces.Closer {
-		{{if not .KafkaDeps}}// {{end}}kafkaDeps := broker.InitKafkaBroker(env.BaseEnv().Kafka.Brokers, env.BaseEnv().Kafka.ClientID)
+		{{if not .KafkaDeps}}// {{end}}kafkaDeps := broker.InitKafkaBroker()
 		{{if not .RedisDeps}}// {{end}}redisDeps := database.InitRedis()
 		{{if not .SQLDeps}}// {{end}}sqlDeps := database.InitSQLDatabase()
 		{{if not .MongoDeps}}// {{end}}mongoDeps := database.InitMongoDB(ctx)

@@ -11,6 +11,7 @@ import (
 type SQLDatabase interface {
 	ReadDB() *sql.DB
 	WriteDB() *sql.DB
+	Health() map[string]error
 	Closer
 }
 
@@ -18,6 +19,7 @@ type SQLDatabase interface {
 type MongoDatabase interface {
 	ReadDB() *mongo.Database
 	WriteDB() *mongo.Database
+	Health() map[string]error
 	Closer
 }
 
@@ -25,6 +27,7 @@ type MongoDatabase interface {
 type RedisPool interface {
 	ReadPool() *redis.Pool
 	WritePool() *redis.Pool
+	Health() map[string]error
 	Cache() Cache
 	Closer
 }

@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"pkg.agungdwiprasetyo.com/candi/candishared"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"pkg.agungdwiprasetyo.com/candi/config/env"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
@@ -92,6 +94,10 @@ func execJob(workerIndex int) {
 	job := queue.PopJob(taskIndex.taskName)
 	job.Retries++
 
+	if env.BaseEnv().DebugMode {
+		log.Printf("\x1b[35;3mTask Queue Worker: executing task '%s'\x1b[0m", job.TaskName)
+	}
+
 	tags := trace.Tags()
 	tags["job_id"] = job.ID
 	tags["task_name"] = job.TaskName
@@ -104,7 +110,7 @@ func execJob(workerIndex int) {
 		registerJobToWorker(nextJob, workerIndex)
 	}
 
-	log.Printf("\x1b[35;3mTask Queue Worker: executing task '%s'\x1b[0m", job.TaskName)
+	ctx = context.WithValue(ctx, candishared.ContextKeyTaskQueueRetry, job.Retries)
 	if err := registeredTask[job.TaskName].handlerFunc(ctx, job.Args); err != nil {
 		trace.SetError(err)
 		job.ErrorHistories = append(job.ErrorHistories, errorHistory{

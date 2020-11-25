@@ -87,6 +87,7 @@ func (m *Middleware) GraphQLBasicAuth(ctx context.Context) context.Context {
 
 	headers := ctx.Value(candishared.ContextKeyHTTPHeader).(http.Header)
 	authorization := headers.Get(echo.HeaderAuthorization)
+	ctx = trace.Context()
 
 	key, err := extractAuthType(Basic, authorization)
 	if err != nil {
@@ -108,7 +109,7 @@ func (m *Middleware) GraphQLBasicAuth(ctx context.Context) context.Context {
 			},
 		})
 	}
-	return trace.Context()
+	return ctx
 }
 
 // GRPCBasicAuth method

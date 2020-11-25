@@ -1,7 +1,8 @@
 package main
 
 const (
-	templateRepository = `// {{.Header}}
+	templateRepository = `// {{.Header}} DO NOT EDIT.
+
 package repository
 
 import (
