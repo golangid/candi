@@ -4,9 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/jinzhu/now"
 )
 
 // ParseFromQueryParam parse url query string to struct target (with multiple data type in struct field), target must in pointer
@@ -31,7 +35,7 @@ func ParseFromQueryParam(query url.Values, target interface{}) (err error) {
 		field := pValue.Field(i)
 		typ := pType.Field(i)
 		if typ.Anonymous { // embedded struct
-			if e, ok := ParseFromQueryParam(query, field.Addr().Interface()).(*MultiError); ok {
+			if e, ok := ParseFromQueryParam(query, field.Addr().Interface()).(MultiError); ok {
 				errs.Merge(e)
 			}
 		}
@@ -106,6 +110,54 @@ func ToStringPtr(str string) *string {
 	return &str
 }
 
+// ToIntPtr helper
+func ToIntPtr(i int) *int {
+	return &i
+}
+
+// ToFloatPtr helper
+func ToFloatPtr(f float64) *float64 {
+	return &f
+}
+
+// PtrToString helper
+func PtrToString(ptr *string) (s string) {
+	if ptr != nil {
+		s = *ptr
+	}
+	return
+}
+
+// PtrToBool helper
+func PtrToBool(ptr *bool) (b bool) {
+	if ptr != nil {
+		b = *ptr
+	}
+	return
+}
+
+// PtrToInt helper
+func PtrToInt(ptr *int) (i int) {
+	if ptr != nil {
+		i = *ptr
+	}
+	return
+}
+
+// PtrToFloat helper
+func PtrToFloat(ptr *float64) (f float64) {
+	if ptr != nil {
+		f = *ptr
+	}
+	return
+}
+
+// ToAsiaJakartaTime convert time location to AsiaJakarta local time
+func ToAsiaJakartaTime(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(),
+		t.Nanosecond(), AsiaJakartaLocalTime)
+}
+
 // ToBytes convert all types to bytes
 func ToBytes(i interface{}) (b []byte) {
 	switch t := i.(type) {
@@ -117,4 +169,97 @@ func ToBytes(i interface{}) (b []byte) {
 		b, _ = json.Marshal(i)
 	}
 	return
+}
+
+// StringInSlice function for checking whether string in slice
+// str string searched string
+// list []string slice
+func StringInSlice(str string, list []string) bool {
+	for _, v := range list {
+		if v == str {
+			return true
+		}
+	}
+	return false
+}
+
+// MaskingPasswordURL for hide plain text password
+func MaskingPasswordURL(stringURL string) string {
+	u, _ := url.Parse(stringURL)
+	pass, _ := u.User.Password()
+	if pass == "" {
+		return stringURL
+	}
+	return strings.ReplaceAll(stringURL, pass, "xxxxx")
+}
+
+// MustParseEnv must parse env to struct, panic if env is not found
+func MustParseEnv(target interface{}) {
+	pValue := reflect.ValueOf(target)
+	pValue = pValue.Elem()
+	pType := reflect.TypeOf(target).Elem()
+	mErrs := NewMultiError()
+	for i := 0; i < pValue.NumField(); i++ {
+		field := pValue.Field(i)
+		typ := pType.Field(i)
+		if typ.Anonymous { // embedded struct
+			MustParseEnv(field.Addr().Interface())
+			continue
+		}
+
+		key := typ.Tag.Get("env")
+		if key == "" || key == "-" {
+			continue
+		}
+
+		val, ok := os.LookupEnv(key)
+		if !ok {
+			mErrs.Append(key, fmt.Errorf("missing %s environment", key))
+			continue
+		}
+
+		switch field.Interface().(type) {
+		case time.Duration:
+			dur, err := time.ParseDuration(val)
+			if err != nil {
+				mErrs.Append(key, fmt.Errorf("env '%s': %v", key, err))
+				continue
+			}
+			field.Set(reflect.ValueOf(dur))
+		case time.Time:
+			t, err := now.Parse(val)
+			if err != nil {
+				mErrs.Append(key, fmt.Errorf("env '%s': %v", key, err))
+				continue
+			}
+			field.Set(reflect.ValueOf(t))
+		case int32, int, int64:
+			vInt, err := strconv.Atoi(val)
+			if err != nil {
+				mErrs.Append(key, fmt.Errorf("env '%s': %v", key, err))
+				continue
+			}
+			field.SetInt(int64(vInt))
+		case float32, float64:
+			vFloat, err := strconv.ParseFloat(val, 64)
+			if err != nil {
+				mErrs.Append(key, fmt.Errorf("env '%s': %v", key, err))
+				continue
+			}
+			field.SetFloat(vFloat)
+		case bool:
+			vBool, err := strconv.ParseBool(val)
+			if err != nil {
+				mErrs.Append(key, fmt.Errorf("env '%s': %v", key, err))
+				continue
+			}
+			field.SetBool(vBool)
+		case string:
+			field.SetString(val)
+		}
+	}
+
+	if mErrs.HasError() {
+		panic("Environment error: \n" + mErrs.Error())
+	}
 }

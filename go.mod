@@ -17,6 +17,7 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/graph-gophers/graphql-transport-ws v0.0.0-20190611222414-40c048432299
+	github.com/jinzhu/now v1.1.1
 	github.com/joho/godotenv v1.3.0
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/gommon v0.3.0 // indirect

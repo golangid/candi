@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"net/http"
-	"reflect"
 
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/candishared"
@@ -25,24 +24,13 @@ func NewHTTPResponse(code int, message string, params ...interface{}) *HTTPRespo
 	commonResponse := new(HTTPResponse)
 
 	for _, param := range params {
-		switch e := param.(type) {
-		case *candihelper.MultiError:
-		case error:
-			param = candihelper.NewMultiError().Append("detail", e)
-		}
-
-		// get value param if type is pointer
-		refValue := reflect.ValueOf(param)
-		if refValue.Kind() == reflect.Ptr {
-			refValue = refValue.Elem()
-		}
-		param = refValue.Interface()
-
 		switch val := param.(type) {
-		case candishared.Meta:
+		case *candishared.Meta, candishared.Meta:
 			commonResponse.Meta = val
 		case candihelper.MultiError:
 			commonResponse.Errors = val.ToMap()
+		case error:
+			commonResponse.Errors = candihelper.NewMultiError().Append("detail", val).ToMap()
 		default:
 			commonResponse.Data = param
 		}
