@@ -82,10 +82,9 @@ func parseInput() (scope string, headerConfig configHeader, srvConfig serviceCon
 	}
 
 	fmt.Print(ps1 + "\033[1mPlease select dependencies (separated by comma)\n" +
-		"1) Kafka\n" +
-		"2) Redis\n" +
-		"3) SQL Database\n" +
-		"4) Mongo Database\033[0m\n")
+		"1) Redis\n" +
+		"2) SQL Database\n" +
+		"3) Mongo Database\033[0m\n")
 	cmdInput, _ = reader.ReadString('\n')
 	cmdInput = strings.TrimRight(cmdInput, "\n")
 
@@ -121,9 +120,12 @@ func parseInput() (scope string, headerConfig configHeader, srvConfig serviceCon
 	baseConfig.SchedulerHandler = workerHandlers[schedulerHandler]
 	baseConfig.RedisSubsHandler = workerHandlers[redissubsHandler]
 	baseConfig.TaskQueueHandler = workerHandlers[taskqueueHandler]
-	baseConfig.KafkaDeps, baseConfig.RedisDeps = dependencies[kafkaDeps], dependencies[redisDeps]
+	baseConfig.RedisDeps = dependencies[redisDeps]
 	baseConfig.SQLDeps, baseConfig.MongoDeps = dependencies[sqldbDeps], dependencies[mongodbDeps]
-	baseConfig.IsWorkerActive = baseConfig.KafkaHandler || baseConfig.SchedulerHandler || baseConfig.RedisSubsHandler || baseConfig.TaskQueueHandler
+	baseConfig.IsWorkerActive = baseConfig.KafkaHandler ||
+		baseConfig.SchedulerHandler ||
+		baseConfig.RedisSubsHandler ||
+		baseConfig.TaskQueueHandler
 
 	return
 }
@@ -176,11 +178,16 @@ func loadTemplate(source string, sourceData interface{}) []byte {
 }
 
 func formatTemplate() template.FuncMap {
-	replacer := strings.NewReplacer("-", "", "*", "", "/", "", ":", "")
+	replaceChar := []string{"*", "", "/", "", ":", ""}
+	replacer := strings.NewReplacer(append(replaceChar, "-", "")...)
+	modulePathReplacer := strings.NewReplacer(replaceChar...)
 	return template.FuncMap{
 
 		"clean": func(v string) string {
 			return replacer.Replace(v)
+		},
+		"cleanPathModule": func(v string) string {
+			return modulePathReplacer.Replace(v)
 		},
 		"upper": func(str string) string {
 			return strings.Title(str)

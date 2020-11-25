@@ -6,7 +6,7 @@ const (
 package graphqlhandler
 
 import (
-	"{{.GoModName}}/internal/modules/{{clean .ModuleName}}/usecase"
+	"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 	
 	"{{.PackageName}}/codebase/factory/types"
 	"{{.PackageName}}/codebase/interfaces"

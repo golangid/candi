@@ -209,9 +209,6 @@ func main() {
 	baseDirectoryFile.IsDir = true
 	switch scope {
 	case initService:
-		configsStructure.Childs = append(configsStructure.Childs, FileStructure{
-			DataSource: srvConfigEdited, Source: additionalEnvTemplate, FileName: "environment.go",
-		})
 		pkgServiceStructure.Childs = append(pkgServiceStructure.Childs, []FileStructure{
 			{TargetDir: "helper/", IsDir: true, Childs: []FileStructure{
 				{FromTemplate: true, FileName: "helper.go"},
@@ -223,6 +220,7 @@ func main() {
 					{FromTemplate: true, DataSource: srvConfig, Source: templateUsecaseUOW, FileName: "usecase.go"},
 				}},
 				{FromTemplate: true, DataSource: srvConfig, Source: templateSharedTokenValidator, FileName: "token_validator.go"},
+				{Source: additionalEnvTemplate, FromTemplate: true, DataSource: srvConfig, FileName: "environment.go"},
 			}},
 		}...)
 		baseDirectoryFile.Childs = []FileStructure{

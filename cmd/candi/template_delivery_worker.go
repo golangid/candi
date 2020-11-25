@@ -9,7 +9,7 @@ import (
 	"context"
 	"fmt"
 
-	"{{.GoModName}}/internal/modules/{{clean .ModuleName}}/usecase"
+	"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 
 	"{{.PackageName}}/codebase/factory/types"
 	"{{.PackageName}}/tracer"
@@ -52,7 +52,7 @@ import (
 	"context"
 	"fmt"
 
-	"{{.GoModName}}/internal/modules/{{clean .ModuleName}}/usecase"
+	"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 
 	"{{.PackageName}}/candihelper"
 	"{{.PackageName}}/codebase/factory/types"
@@ -95,7 +95,7 @@ import (
 	"context"
 	"fmt"
 
-	"{{.GoModName}}/internal/modules/{{clean .ModuleName}}/usecase"
+	"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 
 	"{{.PackageName}}/codebase/factory/types"
 	"{{.PackageName}}/tracer"
@@ -137,7 +137,7 @@ import (
 	"context"
 	"time"
 
-	"{{.GoModName}}/internal/modules/{{clean .ModuleName}}/usecase"
+	"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 
 	taskqueueworker "{{.PackageName}}/codebase/app/task_queue_worker"
 	"{{.PackageName}}/codebase/factory/types"

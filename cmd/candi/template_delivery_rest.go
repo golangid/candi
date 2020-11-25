@@ -9,7 +9,7 @@ import (
 
 	"github.com/labstack/echo"
 
-	"{{.GoModName}}/internal/modules/{{clean .ModuleName}}/usecase"
+	"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 
 	"{{.PackageName}}/candihelper"
 	"{{.PackageName}}/codebase/interfaces"

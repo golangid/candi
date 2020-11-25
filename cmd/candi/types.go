@@ -7,7 +7,7 @@ const (
 	packageName = "pkg.agungdwiprasetyo.com/candi"
 	initService = "initservice"
 	addModule   = "addmodule"
-	version     = "v0.1.0"
+	version     = "v0.1.1"
 
 	restHandler      = "restHandler"
 	grpcHandler      = "grpcHandler"
@@ -34,7 +34,7 @@ var (
 		"1": kafkaHandler, "2": schedulerHandler, "3": redissubsHandler, "4": taskqueueHandler,
 	}
 	dependencyMap = map[string]string{
-		"1": kafkaDeps, "2": redisDeps, "3": sqldbDeps, "4": mongodbDeps,
+		"1": redisDeps, "2": sqldbDeps, "3": mongodbDeps,
 	}
 	sqlDrivers = map[string]string{
 		"1": "postgres", "2": "mysql",
@@ -53,7 +53,7 @@ type configHeader struct {
 type config struct {
 	RestHandler, GRPCHandler, GraphQLHandler                                           bool
 	KafkaHandler, SchedulerHandler, RedisSubsHandler, TaskQueueHandler, IsWorkerActive bool
-	KafkaDeps, RedisDeps, SQLDeps, MongoDeps                                           bool
+	RedisDeps, SQLDeps, MongoDeps                                                      bool
 	SQLDriver                                                                          string
 }
 

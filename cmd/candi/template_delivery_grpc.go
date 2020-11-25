@@ -9,7 +9,7 @@ import (
 	"context"
 
 	proto "{{.GoModName}}/api/proto/{{.ModuleName}}"
-	"{{.GoModName}}/internal/modules/{{clean .ModuleName}}/usecase"
+	"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 
 	"google.golang.org/grpc"
 

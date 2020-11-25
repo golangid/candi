@@ -34,7 +34,7 @@ import (
 	"fmt"
 
 {{- range $module := .Modules}}
-	{{if $module.SQLDeps}}{{clean $module.ModuleName}}repo "{{$.GoModName}}/internal/modules/{{clean $module.ModuleName}}/repository"{{end}}
+	{{if $module.SQLDeps}}{{clean $module.ModuleName}}repo "{{$.GoModName}}/internal/modules/{{cleanPathModule $module.ModuleName}}/repository"{{end}}
 {{- end }}
 
 	"{{.PackageName}}/tracer"
@@ -143,7 +143,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 
 {{- range $module := .Modules}}
-	{{if $module.MongoDeps}}{{clean $module.ModuleName}}repo "{{$.GoModName}}/internal/modules/{{clean $module.ModuleName}}/repository"{{end}}
+	{{if $module.MongoDeps}}{{clean $module.ModuleName}}repo "{{$.GoModName}}/internal/modules/{{cleanPathModule $module.ModuleName}}/repository"{{end}}
 {{- end }}
 )
 

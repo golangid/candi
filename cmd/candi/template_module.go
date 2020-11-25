@@ -5,10 +5,10 @@ const moduleMainTemplate = `// {{.Header}}
 package {{clean .ModuleName}}
 
 import (
-	{{if not .GraphQLHandler}}// {{end}}"{{.GoModName}}/internal/modules/{{clean .ModuleName}}/delivery/graphqlhandler"
-	{{if not .GRPCHandler}}// {{end}}"{{.GoModName}}/internal/modules/{{clean .ModuleName}}/delivery/grpchandler"
-	{{if not .RestHandler}}// {{end}}"{{.GoModName}}/internal/modules/{{clean .ModuleName}}/delivery/resthandler"
-	{{if not .IsWorkerActive}}// {{end}}"{{.GoModName}}/internal/modules/{{clean .ModuleName}}/delivery/workerhandler"
+	{{if not .GraphQLHandler}}// {{end}}"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/delivery/graphqlhandler"
+	{{if not .GRPCHandler}}// {{end}}"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/delivery/grpchandler"
+	{{if not .RestHandler}}// {{end}}"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/delivery/resthandler"
+	{{if not .IsWorkerActive}}// {{end}}"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/delivery/workerhandler"
 	"{{.GoModName}}/pkg/shared/usecase"
 
 	"{{.PackageName}}/codebase/factory/dependency"

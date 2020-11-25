@@ -9,7 +9,7 @@ import (
 	"sync"
 
 {{- range $module := .Modules}}
-	{{clean $module.ModuleName}}usecase "{{$.GoModName}}/internal/modules/{{clean $module.ModuleName}}/usecase"
+	{{clean $module.ModuleName}}usecase "{{$.GoModName}}/internal/modules/{{cleanPathModule $module.ModuleName}}/usecase"
 {{- end }}
 
 	"{{.PackageName}}/codebase/factory/dependency"
