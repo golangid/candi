@@ -90,32 +90,15 @@ func (c *cronWorker) Serve() {
 			activeJobs[chosen].nextDuration = nil
 		}
 
-		c.wg.Add(1)
 		semaphore <- struct{}{}
-		go func(job *Job) {
-			defer c.wg.Done()
-
-			trace := tracer.StartTrace(context.Background(), "CronScheduler")
-			defer trace.Finish()
-			ctx := trace.Context()
-
+		c.wg.Add(1)
+		go func(j *Job) {
 			defer func() {
-				if r := recover(); r != nil {
-					trace.SetError(fmt.Errorf("%v", r))
-				}
+				c.wg.Done()
 				<-semaphore
-				logger.LogGreen("cron scheduler " + tracer.GetTraceURL(ctx))
 			}()
 
-			if env.BaseEnv().DebugMode {
-				log.Printf("\x1b[35;3mCron Scheduler: executing task '%s' (interval: %s)\x1b[0m", job.HandlerName, job.Interval)
-			}
-
-			tags := trace.Tags()
-			tags["job_name"] = job.HandlerName
-			if err := job.HandlerFunc(ctx, []byte(job.Params)); err != nil {
-				trace.SetError(err)
-			}
+			c.processJob(j)
 		}(job)
 
 	}
@@ -136,4 +119,27 @@ func (c *cronWorker) Shutdown(ctx context.Context) {
 	}
 
 	c.wg.Wait()
+}
+
+func (c *cronWorker) processJob(job *Job) {
+	trace := tracer.StartTrace(context.Background(), "CronScheduler")
+	defer trace.Finish()
+	ctx := trace.Context()
+
+	defer func() {
+		if r := recover(); r != nil {
+			trace.SetError(fmt.Errorf("%v", r))
+		}
+		logger.LogGreen("cron scheduler " + tracer.GetTraceURL(ctx))
+	}()
+
+	if env.BaseEnv().DebugMode {
+		log.Printf("\x1b[35;3mCron Scheduler: executing task '%s' (interval: %s)\x1b[0m", job.HandlerName, job.Interval)
+	}
+
+	tags := trace.Tags()
+	tags["job_name"] = job.HandlerName
+	if err := job.HandlerFunc(ctx, []byte(job.Params)); err != nil {
+		trace.SetError(err)
+	}
 }

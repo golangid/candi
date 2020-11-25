@@ -123,37 +123,15 @@ func (r *redisWorker) Serve() {
 		select {
 		case recv := <-handlerReceiver:
 
-			r.wg.Add(1)
 			semaphore <- struct{}{}
+			r.wg.Add(1)
 			go func(h handler) {
-				defer r.wg.Done()
-
-				trace := tracer.StartTrace(context.Background(), "RedisSubscriber")
-				defer trace.Finish()
-				ctx, tags := trace.Context(), trace.Tags()
 				defer func() {
-					if r := recover(); r != nil {
-						tracer.SetError(ctx, fmt.Errorf("%v", r))
-					}
+					r.wg.Done()
 					<-semaphore
-					logger.LogGreen("redis subscriber " + tracer.GetTraceURL(ctx))
 				}()
 
-				if env.BaseEnv().DebugMode {
-					log.Printf("\x1b[35;3mRedis Key Expired Subscriber: executing event key '%s'\x1b[0m", h.name)
-				}
-
-				tags["handler_name"] = h.name
-				tags["message"] = string(h.message)
-
-				handler := r.handlers[h.name]
-				if err := handler.handlerFunc(ctx, h.message); err != nil {
-					for _, errHandler := range handler.errorHandlers {
-						errHandler(ctx, types.RedisSubscriber, h.name, h.message, err)
-					}
-					tracer.SetError(ctx, err)
-				}
-
+				r.processMessage(h)
 			}(recv)
 
 		case <-shutdown:
@@ -177,4 +155,31 @@ func (r *redisWorker) Shutdown(ctx context.Context) {
 	}
 
 	r.wg.Wait()
+}
+
+func (r *redisWorker) processMessage(h handler) {
+	trace := tracer.StartTrace(context.Background(), "RedisSubscriber")
+	defer trace.Finish()
+	ctx, tags := trace.Context(), trace.Tags()
+	defer func() {
+		if r := recover(); r != nil {
+			tracer.SetError(ctx, fmt.Errorf("%v", r))
+		}
+		logger.LogGreen("redis subscriber " + tracer.GetTraceURL(ctx))
+	}()
+
+	if env.BaseEnv().DebugMode {
+		log.Printf("\x1b[35;3mRedis Key Expired Subscriber: executing event key '%s'\x1b[0m", h.name)
+	}
+
+	tags["handler_name"] = h.name
+	tags["message"] = string(h.message)
+
+	handler := r.handlers[h.name]
+	if err := handler.handlerFunc(ctx, h.message); err != nil {
+		for _, errHandler := range handler.errorHandlers {
+			errHandler(ctx, types.RedisSubscriber, h.name, h.message, err)
+		}
+		tracer.SetError(ctx, err)
+	}
 }

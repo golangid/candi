@@ -122,12 +122,12 @@ func (t *taskQueueWorker) Serve() {
 			continue
 		}
 
-		t.wg.Add(1)
 		semaphore <- struct{}{}
+		t.wg.Add(1)
 		go func(chosen int) {
 			defer func() {
-				<-semaphore
 				t.wg.Done()
+				<-semaphore
 			}()
 
 			execJob(chosen)
