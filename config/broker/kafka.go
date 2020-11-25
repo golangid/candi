@@ -1,8 +1,6 @@
 package broker
 
 import (
-	"context"
-	"errors"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -17,31 +15,8 @@ type kafkaBroker struct {
 	pub    interfaces.Publisher
 }
 
-func (b *kafkaBroker) GetClient() sarama.Client {
-	return b.client
-}
-func (b *kafkaBroker) Publisher() interfaces.Publisher {
-	return b.pub
-}
-func (b *kafkaBroker) Health() map[string]error {
-	mErr := make(map[string]error)
-	var err error
-	if len(b.client.Brokers()) == 0 {
-		err = errors.New("not ok")
-	}
-	mErr["kafka"] = err
-	return mErr
-}
-func (b *kafkaBroker) Disconnect(ctx context.Context) error {
-	deferFunc := logger.LogWithDefer("kafka: disconnect...")
-	defer deferFunc()
-
-	return b.client.Close()
-}
-
-// InitKafkaBroker init kafka broker configuration from env KAFKA_BROKERS, KAFKA_CLIENT_ID, KAFKA_CLIENT_VERSION
-func InitKafkaBroker() interfaces.Broker {
-	deferFunc := logger.LogWithDefer("Load Kafka configuration... ")
+func initKafkaBroker() *kafkaBroker {
+	deferFunc := logger.LogWithDefer("Load Kafka broker configuration... ")
 	defer deferFunc()
 
 	version := env.BaseEnv().Kafka.ClientVersion
