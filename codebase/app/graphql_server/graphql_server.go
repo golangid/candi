@@ -12,13 +12,14 @@ import (
 
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/candishared"
+	"pkg.agungdwiprasetyo.com/candi/codebase/app/graphql_server/static"
+	"pkg.agungdwiprasetyo.com/candi/codebase/app/graphql_server/ws"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
 	"pkg.agungdwiprasetyo.com/candi/config/env"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 
 	graphql "github.com/golangid/graphql-go"
-	"github.com/graph-gophers/graphql-transport-ws/graphqlws"
 )
 
 const (
@@ -131,7 +132,7 @@ type handlerImpl struct {
 
 func (s *handlerImpl) ServeGraphQL() http.HandlerFunc {
 
-	return graphqlws.NewHandlerFunc(s.schema, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+	return ws.NewHandlerFunc(s.schema, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 
 		var params struct {
 			Query         string                 `json:"query"`
@@ -174,7 +175,7 @@ func (s *handlerImpl) ServePlayground(resp http.ResponseWriter, req *http.Reques
 		http.Error(resp, "Forbidden", http.StatusForbidden)
 		return
 	}
-	resp.Write([]byte(playgroundAsset))
+	resp.Write([]byte(static.PlaygroundAsset))
 }
 
 func (s *handlerImpl) ServeVoyager(resp http.ResponseWriter, req *http.Request) {
@@ -182,7 +183,7 @@ func (s *handlerImpl) ServeVoyager(resp http.ResponseWriter, req *http.Request) 
 		http.Error(resp, "Forbidden", http.StatusForbidden)
 		return
 	}
-	resp.Write([]byte(voyagerAsset))
+	resp.Write([]byte(static.VoyagerAsset))
 }
 
 // panicLogger is the default logger used to log panics that occur during query execution

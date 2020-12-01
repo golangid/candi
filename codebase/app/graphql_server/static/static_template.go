@@ -1,7 +1,8 @@
-package graphqlserver
+package static
 
 const (
-	playgroundAsset = `
+	// PlaygroundAsset template
+	PlaygroundAsset = `
 	<!DOCTYPE html>
 	<html>
 	<head>
@@ -36,7 +37,8 @@ const (
 	</body>
 	</html>`
 
-	voyagerAsset = `<!DOCTYPE html>
+	// VoyagerAsset template
+	VoyagerAsset = `<!DOCTYPE html>
 <html>
   <head>
 	<style>
