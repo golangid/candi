@@ -15,7 +15,7 @@ const (
 
 // Job model
 type Job struct {
-	ID          string `bson:"id" json:"id"`
+	ID          string `bson:"_id" json:"_id"`
 	TaskName    string `bson:"task_name" json:"task_name"`
 	Arguments   string `bson:"arguments" json:"arguments"`
 	Retries     int    `bson:"retries" json:"retries"`

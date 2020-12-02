@@ -76,7 +76,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 
 func (t *taskQueueWorker) Serve() {
 	// serve graphql api for communication to dashboard
-	go newGraphQLAPI(t)
+	go serveGraphQLAPI(t)
 
 	// run worker
 	for {
@@ -137,7 +137,18 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 	taskIndex.activeInterval.Stop()
 	taskIndex.activeInterval = nil
 	job := queue.PopJob(taskIndex.taskName)
-	if job.TaskName == "" {
+	job, err := repo.findJobByID(job.ID)
+	if err != nil {
+		return
+	}
+	if job.Status == string(statusStopped) {
+		nextJob := queue.NextJob(taskIndex.taskName)
+		if nextJob != nil {
+			if jb, err := repo.findJobByID(nextJob.ID); err == nil {
+				nextJob = &jb
+			}
+			registerJobToWorker(nextJob, workerIndex)
+		}
 		return
 	}
 
@@ -154,16 +165,16 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 
 	job.Retries++
 	job.Status = string(statusRetrying)
-	t.broadcastEvent(job)
+	t.broadcastEvent(&job)
 
 	defer func() {
-		t.broadcastEvent(job)
+		t.broadcastEvent(&job)
 	}()
 
 	job.TraceID = tracer.GetTraceID(ctx)
 
 	if env.BaseEnv().DebugMode {
-		log.Printf("\x1b[35;3mTask Queue Worker: executing task '%s' => %s\x1b[0m", job.TaskName, job.Arguments)
+		log.Printf("\x1b[35;3mTask Queue Worker: executing task '%s'\x1b[0m", job.TaskName)
 	}
 
 	tags := trace.Tags()
@@ -172,6 +183,9 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 
 	nextJob := queue.NextJob(taskIndex.taskName)
 	if nextJob != nil {
+		if jb, err := repo.findJobByID(nextJob.ID); err == nil {
+			nextJob = &jb
+		}
 		registerJobToWorker(nextJob, workerIndex)
 	}
 
@@ -197,13 +211,15 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 				delay += nextJobDelay
 			}
 
+			fmt.Println("DELAY:", delay.Seconds())
+
 			taskIndex.activeInterval = time.NewTicker(delay)
 			workers[workerIndex].Chan = reflect.ValueOf(taskIndex.activeInterval.C)
 
 			tags["is_retry"] = true
 
 			job.Interval = delay.String()
-			queue.PushJob(job)
+			queue.PushJob(&job)
 		}
 	} else {
 		job.Status = string(statusSuccess)
@@ -224,16 +240,16 @@ func (t *taskQueueWorker) registerNewSubscriber(taskName string, filter Filter, 
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	dashboardClientSubscribers[taskName] = clientSubscribeData{
+	clientJobTaskSubscribers[taskName] = clientJobTaskSubscriber{
 		c: clientChannel, filter: filter,
 	}
 }
 
 func (t *taskQueueWorker) broadcastRefreshClientSubscriber(job *Job) {
-	dashboardClientSubscribers := dashboardClientSubscribers[job.TaskName]
-	meta, jobs := repo.findAllJob(job.TaskName, dashboardClientSubscribers.filter)
+	clientJobTaskSubscribers := clientJobTaskSubscribers[job.TaskName]
+	meta, jobs := repo.findAllJob(job.TaskName, clientJobTaskSubscribers.filter)
 	go func() {
-		dashboardClientSubscribers.c <- JobListResolver{
+		clientJobTaskSubscribers.c <- JobListResolver{
 			Meta: meta,
 			Data: jobs,
 		}

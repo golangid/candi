@@ -9,27 +9,25 @@ import (
 	"github.com/agungdwiprasetyo/task-queue-worker-dashboard/external"
 	"github.com/golangid/graphql-go"
 	"github.com/golangid/graphql-go/relay"
-	"github.com/gomodule/redigo/redis"
 
-	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/candishared"
 	"pkg.agungdwiprasetyo.com/candi/codebase/app/graphql_server/static"
 	"pkg.agungdwiprasetyo.com/candi/codebase/app/graphql_server/ws"
 	"pkg.agungdwiprasetyo.com/candi/config/env"
 )
 
-func newGraphQLAPI(wrk *taskQueueWorker) {
+func serveGraphQLAPI(wrk *taskQueueWorker) {
 	schemaOpts := []graphql.SchemaOpt{
 		graphql.UseStringDescriptions(),
 		graphql.UseFieldResolvers(),
 	}
-	schema := graphql.MustParseSchema(schema, &rootResolver{worker: wrk, redisPool: wrk.service.GetDependency().GetRedisPool().WritePool()}, schemaOpts...)
+	schema := graphql.MustParseSchema(schema, &rootResolver{worker: wrk}, schemaOpts...)
 
 	mux := http.NewServeMux()
 	mux.Handle("/", http.StripPrefix("/", http.FileServer(external.Dashboard)))
 	mux.Handle("/task", http.StripPrefix("/task", http.FileServer(external.Dashboard)))
 	mux.HandleFunc("/graphql", ws.NewHandlerFunc(schema, &relay.Handler{Schema: schema}))
-	mux.HandleFunc("/playground", func(rw http.ResponseWriter, r *http.Request) { rw.Write([]byte(static.PlaygroundAsset)) })
+	mux.HandleFunc("/voyager", func(rw http.ResponseWriter, r *http.Request) { rw.Write([]byte(static.VoyagerAsset)) })
 
 	httpEngine := new(http.Server)
 	httpEngine.Addr = fmt.Sprintf(":%d", env.BaseEnv().TaskQueueDashboardPort)
@@ -44,8 +42,7 @@ func newGraphQLAPI(wrk *taskQueueWorker) {
 }
 
 type rootResolver struct {
-	worker    *taskQueueWorker
-	redisPool *redis.Pool
+	worker *taskQueueWorker
 }
 
 func (r *rootResolver) Tagline(ctx context.Context) string {
@@ -68,11 +65,6 @@ func (r *rootResolver) StopJob(ctx context.Context, input struct {
 	if err != nil {
 		return "Failed", err
 	}
-
-	conn := r.redisPool.Get()
-	defer conn.Close()
-
-	conn.Do("LREM", job.TaskName, 1, candihelper.ToBytes(job))
 
 	job.Status = string(statusStopped)
 	r.worker.broadcastEvent(&job)

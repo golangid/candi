@@ -18,6 +18,43 @@ const (
 	mongoColl = "task_queue_worker_jobs"
 )
 
+func createMongoIndex(db *mongo.Database) {
+	uniqueOpts := &options.IndexOptions{
+		Unique: candihelper.ToBoolPtr(true),
+	}
+	indexes := []mongo.IndexModel{
+		{
+			Keys: bson.M{
+				"_id": 1,
+			},
+			Options: uniqueOpts,
+		},
+		{
+			Keys: bson.M{
+				"task_name": 1,
+			},
+			Options: &options.IndexOptions{},
+		},
+		{
+			Keys: bson.M{
+				"status": 1,
+			},
+			Options: &options.IndexOptions{},
+		},
+		{
+			Keys: bson.M{
+				"arguments": 1,
+			},
+			Options: &options.IndexOptions{},
+		},
+	}
+
+	indexView := db.Collection(mongoColl).Indexes()
+	for _, idx := range indexes {
+		indexView.CreateOne(context.Background(), idx)
+	}
+}
+
 type storage struct {
 	mongoRead, mongoWrite *mongo.Database
 }
@@ -73,28 +110,35 @@ func (s *storage) findAllJob(taskName string, filter Filter) (meta Meta, jobs []
 	meta.Detail.Success = repo.countTaskJobDetail(taskName, statusSuccess)
 	meta.Detail.Queueing = repo.countTaskJobDetail(taskName, statusQueueing)
 	meta.Detail.Stopped = repo.countTaskJobDetail(taskName, statusStopped)
-	meta.TotalRecords = meta.Detail.GiveUp + meta.Detail.Retrying + meta.Detail.Success + meta.Detail.Queueing + meta.Detail.Stopped
+	meta.TotalRecords = s.countTaskJob(taskName, filter)
 	meta.Page, meta.Limit = filter.Page, filter.Limit
 	meta.TotalPages = int(math.Ceil(float64(meta.TotalRecords) / float64(meta.Limit)))
 	return
 }
 
-func (s *storage) countTaskJob(taskName string, search *string) int {
+func (s *storage) countTaskJob(taskName string, filter Filter) int {
 	ctx := context.Background()
 
 	pipeQuery := []bson.M{
 		{"task_name": taskName},
 	}
-	if search != nil && *search != "" {
+	if filter.Search != nil && *filter.Search != "" {
 		pipeQuery = append(pipeQuery, bson.M{
-			"arguments": primitive.Regex{Pattern: *search, Options: "i"},
+			"arguments": primitive.Regex{Pattern: *filter.Search, Options: "i"},
 		})
 	}
-	filter := bson.M{
+	if len(filter.Status) > 0 {
+		pipeQuery = append(pipeQuery, bson.M{
+			"status": bson.M{
+				"$in": filter.Status,
+			},
+		})
+	}
+	query := bson.M{
 		"$and": pipeQuery,
 	}
 
-	count, _ := s.mongoRead.Collection(mongoColl).CountDocuments(ctx, filter)
+	count, _ := s.mongoRead.Collection(mongoColl).CountDocuments(ctx, query)
 	return int(count)
 }
 
@@ -118,7 +162,7 @@ func (s *storage) saveJob(job Job) {
 		}
 		_, err = s.mongoWrite.Collection(mongoColl).UpdateOne(ctx,
 			bson.M{
-				"id": job.ID,
+				"_id": job.ID,
 			},
 			bson.M{
 				"$set": job,
@@ -133,7 +177,7 @@ func (s *storage) saveJob(job Job) {
 func (s *storage) findJobByID(id string) (job Job, err error) {
 	ctx := context.Background()
 
-	err = s.mongoWrite.Collection(mongoColl).FindOne(ctx, bson.M{"id": id}).Decode(&job)
+	err = s.mongoWrite.Collection(mongoColl).FindOne(ctx, bson.M{"_id": id}).Decode(&job)
 	return
 }
 

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/gomodule/redigo/redis"
-	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/candishared"
 )
 
@@ -12,7 +11,7 @@ import (
 type QueueStorage interface {
 	GetAllJobs(taskName string) []*Job
 	PushJob(job *Job)
-	PopJob(taskName string) *Job
+	PopJob(taskName string) Job
 	NextJob(taskName string) *Job
 	Clear(taskName string)
 }
@@ -39,9 +38,9 @@ func (i *inMemQueue) PushJob(job *Job) {
 	}
 	queue.Push(job)
 }
-func (i *inMemQueue) PopJob(taskName string) *Job {
+func (i *inMemQueue) PopJob(taskName string) Job {
 	defer func() { recover() }()
-	return i.queue[taskName].Pop().(*Job)
+	return *i.queue[taskName].Pop().(*Job)
 }
 func (i *inMemQueue) NextJob(taskName string) *Job {
 	defer func() { recover() }()
@@ -83,23 +82,21 @@ func (r *redisQueue) PushJob(job *Job) {
 	conn := r.pool.Get()
 	defer conn.Close()
 
-	conn.Do("RPUSH", job.TaskName, candihelper.ToBytes(job))
+	conn.Do("RPUSH", job.TaskName, job.ID)
 }
-func (r *redisQueue) PopJob(taskName string) *Job {
+func (r *redisQueue) PopJob(taskName string) Job {
 	conn := r.pool.Get()
 	defer conn.Close()
 
-	b, _ := redis.Bytes(conn.Do("LPOP", taskName))
-
 	var job Job
-	json.Unmarshal(b, &job)
-	return &job
+	job.ID, _ = redis.String(conn.Do("LPOP", taskName))
+	return job
 }
 func (r *redisQueue) NextJob(taskName string) *Job {
 	conn := r.pool.Get()
 	defer conn.Close()
 
-	b, err := redis.Bytes(conn.Do("LINDEX", taskName, 0))
+	b, err := redis.String(conn.Do("LINDEX", taskName, 0))
 	if err != nil {
 		return nil
 	}
@@ -109,7 +106,7 @@ func (r *redisQueue) NextJob(taskName string) *Job {
 	}
 
 	var job Job
-	json.Unmarshal(b, &job)
+	job.ID = b
 	return &job
 }
 func (r *redisQueue) Clear(taskName string) {

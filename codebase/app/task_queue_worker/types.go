@@ -44,7 +44,7 @@ type (
 		Status      []string
 	}
 
-	clientSubscribeData struct {
+	clientJobTaskSubscriber struct {
 		c      chan JobListResolver
 		filter Filter
 	}
@@ -79,8 +79,8 @@ var (
 	mutex                                   sync.Mutex
 	tasks                                   []string
 
-	dashboardClientSubscribers map[string]clientSubscribeData
-	taskChannel                chan []TaskResolver
+	clientJobTaskSubscribers map[string]clientJobTaskSubscriber
+	taskChannel              chan []TaskResolver
 )
 
 func makeAllGlobalVars(service factory.ServiceFactory) {
@@ -88,10 +88,11 @@ func makeAllGlobalVars(service factory.ServiceFactory) {
 		panic("Task queue worker require redis for queue storage")
 	}
 
+	createMongoIndex(service.GetDependency().GetMongoDatabase().WriteDB())
 	queue = NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
 	repo = &storage{mongoRead: service.GetDependency().GetMongoDatabase().ReadDB(), mongoWrite: service.GetDependency().GetMongoDatabase().WriteDB()}
 	refreshWorkerNotif, shutdown, semaphore = make(chan struct{}), make(chan struct{}, 1), make(chan struct{}, env.BaseEnv().MaxGoroutines)
-	dashboardClientSubscribers = make(map[string]clientSubscribeData)
+	clientJobTaskSubscribers = make(map[string]clientJobTaskSubscriber)
 	taskChannel = make(chan []TaskResolver)
 
 	registeredTask = make(map[string]struct {
