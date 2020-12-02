@@ -45,6 +45,8 @@ type Env struct {
 	HTTPPort uint16
 	// GRPCPort Config
 	GRPCPort uint16
+	// TaskQueueDashboardPort Config
+	TaskQueueDashboardPort uint16
 
 	// BasicAuthUsername config
 	BasicAuthUsername string
@@ -163,6 +165,18 @@ func Load(serviceName string) {
 			}
 			env.GRPCPort = uint16(port)
 		}
+	}
+
+	if env.UseTaskQueueWorker {
+		taskQueueDashboardPort, ok := os.LookupEnv("TASK_QUEUE_DASHBOARD_PORT")
+		if !ok {
+			taskQueueDashboardPort = "8080"
+		}
+		port, err := strconv.Atoi(taskQueueDashboardPort)
+		if err != nil {
+			panic("TASK_QUEUE_DASHBOARD_PORT environment must in integer format")
+		}
+		env.TaskQueueDashboardPort = uint16(port)
 	}
 
 	// ------------------------------------

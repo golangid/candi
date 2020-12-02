@@ -14,6 +14,7 @@ type QueueStorage interface {
 	PushJob(job *Job)
 	PopJob(taskName string) *Job
 	NextJob(taskName string) *Job
+	Clear(taskName string)
 }
 
 // inMemQueue queue
@@ -45,6 +46,10 @@ func (i *inMemQueue) PopJob(taskName string) *Job {
 func (i *inMemQueue) NextJob(taskName string) *Job {
 	defer func() { recover() }()
 	return i.queue[taskName].Peek().(*Job)
+}
+func (i *inMemQueue) Clear(taskName string) {
+	defer func() { recover() }()
+	i.queue[taskName] = nil
 }
 
 // redisQueue queue
@@ -106,4 +111,10 @@ func (r *redisQueue) NextJob(taskName string) *Job {
 	var job Job
 	json.Unmarshal(b, &job)
 	return &job
+}
+func (r *redisQueue) Clear(taskName string) {
+	conn := r.pool.Get()
+	defer conn.Close()
+
+	conn.Do("DEL", taskName)
 }

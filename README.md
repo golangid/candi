@@ -41,4 +41,4 @@ If include GRPC handler, run `$ make proto` for generate rpc files from proto (m
 
 
 ## Todo
-- [x] ~~Add task queue worker like celery~~ Add UI for manage task queue worker
+- [x] ~~Add task queue worker like celery and add UI for manage task queue worker~~ => https://github.com/agungdwiprasetyo/task-queue-worker-dashboard

@@ -8,27 +8,12 @@ import (
 	"sync"
 	"time"
 
+	"pkg.agungdwiprasetyo.com/candi/candishared"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
 	"pkg.agungdwiprasetyo.com/candi/config/env"
 	"pkg.agungdwiprasetyo.com/candi/logger"
-)
-
-var (
-	registeredTask map[string]struct {
-		handlerFunc   types.WorkerHandlerFunc
-		errorHandlers []types.WorkerErrorHandler
-		workerIndex   int
-	}
-
-	workers         []reflect.SelectCase
-	workerIndexTask map[int]*struct {
-		taskName       string
-		activeInterval *time.Ticker
-	}
-	queue                                   QueueStorage
-	refreshWorkerNotif, shutdown, semaphore chan struct{}
-	mutex                                   sync.Mutex
+	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
 
 type taskQueueWorker struct {
@@ -38,31 +23,7 @@ type taskQueueWorker struct {
 
 // NewWorker create new cron worker
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
-	if service.GetDependency().GetRedisPool() == nil {
-		panic("Task queue worker require redis for queue storage")
-	}
-
-	queue = NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
-	refreshWorkerNotif, shutdown, semaphore = make(chan struct{}), make(chan struct{}, 1), make(chan struct{}, env.BaseEnv().MaxGoroutines)
-
-	registeredTask = make(map[string]struct {
-		handlerFunc   types.WorkerHandlerFunc
-		errorHandlers []types.WorkerErrorHandler
-		workerIndex   int
-	})
-	workerIndexTask = make(map[int]*struct {
-		taskName       string
-		activeInterval *time.Ticker
-	})
-
-	// add shutdown channel to first index
-	workers = append(workers, reflect.SelectCase{
-		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(shutdown),
-	})
-	// add refresh worker channel to second index
-	workers = append(workers, reflect.SelectCase{
-		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(refreshWorkerNotif),
-	})
+	makeAllGlobalVars(service)
 
 	for _, m := range service.GetModules() {
 		if h := m.WorkerHandler(types.TaskQueue); h != nil {
@@ -83,6 +44,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 				}{
 					taskName: handler.Pattern,
 				}
+				tasks = append(tasks, handler.Pattern)
 				workers = append(workers, reflect.SelectCase{Dir: reflect.SelectRecv})
 
 				logger.LogYellow(fmt.Sprintf(`[TASK-QUEUE-WORKER] Task name: %s`, handler.Pattern))
@@ -90,14 +52,22 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 		}
 	}
 
-	// get current queue
-	for taskName, registered := range registeredTask {
-		for _, job := range queue.GetAllJobs(taskName) {
-			registerJobToWorker(job, registered.workerIndex)
+	go func() {
+		// get current pending jobs
+		pendingJobs := repo.findAllPendingJob()
+		for taskName, registered := range registeredTask {
+			queue.Clear(taskName)
+			for _, job := range pendingJobs {
+				if job.TaskName == taskName {
+					queue.PushJob(&job)
+					registerJobToWorker(&job, registered.workerIndex)
+				}
+			}
 		}
-	}
+	}()
 
-	fmt.Printf("\x1b[34;1m⇨ Task queue worker running with %d task\x1b[0m\n\n", len(registeredTask))
+	fmt.Printf("\x1b[34;1m⇨ Task queue worker running with %d task. Open [::]:%d for dashboard\x1b[0m\n\n",
+		len(registeredTask), env.BaseEnv().TaskQueueDashboardPort)
 
 	return &taskQueueWorker{
 		service: service,
@@ -105,8 +75,12 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 }
 
 func (t *taskQueueWorker) Serve() {
+	// serve graphql api for communication to dashboard
+	go newGraphQLAPI(t)
 
+	// run worker
 	for {
+
 		chosen, _, ok := reflect.Select(workers)
 		if !ok {
 			continue
@@ -126,11 +100,13 @@ func (t *taskQueueWorker) Serve() {
 		t.wg.Add(1)
 		go func(chosen int) {
 			defer func() {
+				recover()
 				t.wg.Done()
+				refreshWorkerNotif <- struct{}{}
 				<-semaphore
 			}()
 
-			execJob(chosen)
+			t.execJob(chosen)
 		}(chosen)
 	}
 }
@@ -150,4 +126,135 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 	}
 
 	t.wg.Wait()
+}
+
+func (t *taskQueueWorker) execJob(workerIndex int) {
+	taskIndex, ok := workerIndexTask[workerIndex]
+	if !ok {
+		return
+	}
+
+	taskIndex.activeInterval.Stop()
+	taskIndex.activeInterval = nil
+	job := queue.PopJob(taskIndex.taskName)
+	if job.TaskName == "" {
+		return
+	}
+
+	trace := tracer.StartTrace(context.Background(), "TaskQueueWorker")
+	defer trace.Finish()
+	ctx := trace.Context()
+
+	defer func() {
+		if r := recover(); r != nil {
+			trace.SetError(fmt.Errorf("%v", r))
+		}
+		logger.LogGreen("task queue: " + tracer.GetTraceURL(ctx))
+	}()
+
+	job.Retries++
+	job.Status = string(statusRetrying)
+	t.broadcastEvent(job)
+
+	defer func() {
+		t.broadcastEvent(job)
+	}()
+
+	job.TraceID = tracer.GetTraceID(ctx)
+
+	if env.BaseEnv().DebugMode {
+		log.Printf("\x1b[35;3mTask Queue Worker: executing task '%s' => %s\x1b[0m", job.TaskName, job.Arguments)
+	}
+
+	tags := trace.Tags()
+	tags["job_id"], tags["task_name"], tags["retries"], tags["max_retry"] = job.ID, job.TaskName, job.Retries, job.MaxRetry
+	tracer.Log(ctx, "job_args", job.Arguments)
+
+	nextJob := queue.NextJob(taskIndex.taskName)
+	if nextJob != nil {
+		registerJobToWorker(nextJob, workerIndex)
+	}
+
+	ctx = context.WithValue(ctx, candishared.ContextKeyTaskQueueRetry, job.Retries)
+	if err := registeredTask[job.TaskName].handlerFunc(ctx, []byte(job.Arguments)); err != nil {
+		job.Error = err.Error()
+		trace.SetError(err)
+		switch e := err.(type) {
+		case *ErrorRetrier:
+			job.Status = string(statusQueueing)
+			if job.Retries >= job.MaxRetry {
+				fmt.Printf("\x1b[31;1mTaskQueueWorker: GIVE UP: %s\x1b[0m\n", job.TaskName)
+				job.Status = string(statusFailure)
+				for _, errHandler := range registeredTask[job.TaskName].errorHandlers {
+					errHandler(ctx, types.TaskQueue, job.TaskName, []byte(job.Arguments), err)
+				}
+				return
+			}
+
+			delay := e.Delay
+			if nextJob != nil && nextJob.Retries == 0 {
+				nextJobDelay, _ := time.ParseDuration(nextJob.Interval)
+				delay += nextJobDelay
+			}
+
+			taskIndex.activeInterval = time.NewTicker(delay)
+			workers[workerIndex].Chan = reflect.ValueOf(taskIndex.activeInterval.C)
+
+			tags["is_retry"] = true
+
+			job.Interval = delay.String()
+			queue.PushJob(job)
+		}
+	} else {
+		job.Status = string(statusSuccess)
+	}
+}
+
+func (t *taskQueueWorker) broadcastEvent(job *Job) {
+	repo.saveJob(*job)
+	t.broadcastRefreshClientSubscriber(job)
+}
+
+func (t *taskQueueWorker) listenUpdatedTask(clientChannel chan []TaskResolver) {
+	taskChannel = clientChannel
+	t.appendTaskDataToChannel()
+}
+
+func (t *taskQueueWorker) registerNewSubscriber(taskName string, filter Filter, clientChannel chan JobListResolver) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	dashboardClientSubscribers[taskName] = clientSubscribeData{
+		c: clientChannel, filter: filter,
+	}
+}
+
+func (t *taskQueueWorker) broadcastRefreshClientSubscriber(job *Job) {
+	dashboardClientSubscribers := dashboardClientSubscribers[job.TaskName]
+	meta, jobs := repo.findAllJob(job.TaskName, dashboardClientSubscribers.filter)
+	go func() {
+		dashboardClientSubscribers.c <- JobListResolver{
+			Meta: meta,
+			Data: jobs,
+		}
+	}()
+	go t.appendTaskDataToChannel()
+}
+
+func (t *taskQueueWorker) appendTaskDataToChannel() {
+	var taskRes []TaskResolver
+	for _, task := range tasks {
+		var tsk = TaskResolver{
+			Name: task,
+		}
+		tsk.Detail.GiveUp = repo.countTaskJobDetail(task, statusFailure)
+		tsk.Detail.Retrying = repo.countTaskJobDetail(task, statusRetrying)
+		tsk.Detail.Success = repo.countTaskJobDetail(task, statusSuccess)
+		tsk.Detail.Queueing = repo.countTaskJobDetail(task, statusQueueing)
+		tsk.Detail.Stopped = repo.countTaskJobDetail(task, statusStopped)
+		tsk.TotalJobs = tsk.Detail.GiveUp + tsk.Detail.Retrying + tsk.Detail.Success + tsk.Detail.Queueing + tsk.Detail.Stopped
+		taskRes = append(taskRes, tsk)
+	}
+
+	taskChannel <- taskRes
 }
