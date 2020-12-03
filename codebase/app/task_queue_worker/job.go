@@ -63,6 +63,7 @@ func AddJob(taskName string, maxRetry int, args []byte) (err error) {
 		queue.PushJob(&job)
 		registerJobToWorker(&job, workerIndex)
 		repo.saveJob(job)
+		broadcastAllToSubscribers()
 	}(newJob, task.workerIndex)
 
 	return nil

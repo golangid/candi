@@ -160,16 +160,15 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 		if r := recover(); r != nil {
 			trace.SetError(fmt.Errorf("%v", r))
 		}
+		repo.saveJob(job)
+		broadcastAllToSubscribers()
 		logger.LogGreen("task queue: " + tracer.GetTraceURL(ctx))
 	}()
 
 	job.Retries++
 	job.Status = string(statusRetrying)
-	t.broadcastEvent(&job)
-
-	defer func() {
-		t.broadcastEvent(&job)
-	}()
+	repo.saveJob(job)
+	broadcastAllToSubscribers()
 
 	job.TraceID = tracer.GetTraceID(ctx)
 
@@ -211,8 +210,6 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 				delay += nextJobDelay
 			}
 
-			fmt.Println("DELAY:", delay.Seconds())
-
 			taskIndex.activeInterval = time.NewTicker(delay)
 			workers[workerIndex].Chan = reflect.ValueOf(taskIndex.activeInterval.C)
 
@@ -224,53 +221,4 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 	} else {
 		job.Status = string(statusSuccess)
 	}
-}
-
-func (t *taskQueueWorker) broadcastEvent(job *Job) {
-	repo.saveJob(*job)
-	t.broadcastRefreshClientSubscriber(job)
-}
-
-func (t *taskQueueWorker) listenUpdatedTask(clientChannel chan []TaskResolver) {
-	taskChannel = clientChannel
-	t.appendTaskDataToChannel()
-}
-
-func (t *taskQueueWorker) registerNewSubscriber(taskName string, filter Filter, clientChannel chan JobListResolver) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	clientJobTaskSubscribers[taskName] = clientJobTaskSubscriber{
-		c: clientChannel, filter: filter,
-	}
-}
-
-func (t *taskQueueWorker) broadcastRefreshClientSubscriber(job *Job) {
-	clientJobTaskSubscribers := clientJobTaskSubscribers[job.TaskName]
-	meta, jobs := repo.findAllJob(job.TaskName, clientJobTaskSubscribers.filter)
-	go func() {
-		clientJobTaskSubscribers.c <- JobListResolver{
-			Meta: meta,
-			Data: jobs,
-		}
-	}()
-	go t.appendTaskDataToChannel()
-}
-
-func (t *taskQueueWorker) appendTaskDataToChannel() {
-	var taskRes []TaskResolver
-	for _, task := range tasks {
-		var tsk = TaskResolver{
-			Name: task,
-		}
-		tsk.Detail.GiveUp = repo.countTaskJobDetail(task, statusFailure)
-		tsk.Detail.Retrying = repo.countTaskJobDetail(task, statusRetrying)
-		tsk.Detail.Success = repo.countTaskJobDetail(task, statusSuccess)
-		tsk.Detail.Queueing = repo.countTaskJobDetail(task, statusQueueing)
-		tsk.Detail.Stopped = repo.countTaskJobDetail(task, statusStopped)
-		tsk.TotalJobs = tsk.Detail.GiveUp + tsk.Detail.Retrying + tsk.Detail.Success + tsk.Detail.Queueing + tsk.Detail.Stopped
-		taskRes = append(taskRes, tsk)
-	}
-
-	taskChannel <- taskRes
 }

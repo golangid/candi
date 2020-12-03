@@ -43,7 +43,7 @@ func createMongoIndex(db *mongo.Database) {
 		},
 		{
 			Keys: bson.M{
-				"arguments": 1,
+				"arguments": "text",
 			},
 			Options: &options.IndexOptions{},
 		},
@@ -59,7 +59,7 @@ type storage struct {
 	mongoRead, mongoWrite *mongo.Database
 }
 
-func (s *storage) findAllJob(taskName string, filter Filter) (meta Meta, jobs []Job) {
+func (s *storage) findAllJob(filter Filter) (meta Meta, jobs []Job) {
 	ctx := context.Background()
 
 	lim := int64(filter.Limit)
@@ -71,7 +71,7 @@ func (s *storage) findAllJob(taskName string, filter Filter) (meta Meta, jobs []
 	}
 
 	pipeQuery := []bson.M{
-		{"task_name": taskName},
+		{"task_name": filter.TaskName},
 	}
 	if filter.Search != nil && *filter.Search != "" {
 		pipeQuery = append(pipeQuery, bson.M{
@@ -105,22 +105,22 @@ func (s *storage) findAllJob(taskName string, filter Filter) (meta Meta, jobs []
 		jobs = append(jobs, job)
 	}
 
-	meta.Detail.GiveUp = repo.countTaskJobDetail(taskName, statusFailure)
-	meta.Detail.Retrying = repo.countTaskJobDetail(taskName, statusRetrying)
-	meta.Detail.Success = repo.countTaskJobDetail(taskName, statusSuccess)
-	meta.Detail.Queueing = repo.countTaskJobDetail(taskName, statusQueueing)
-	meta.Detail.Stopped = repo.countTaskJobDetail(taskName, statusStopped)
-	meta.TotalRecords = s.countTaskJob(taskName, filter)
+	meta.Detail.GiveUp = repo.countTaskJobDetail(filter.TaskName, statusFailure)
+	meta.Detail.Retrying = repo.countTaskJobDetail(filter.TaskName, statusRetrying)
+	meta.Detail.Success = repo.countTaskJobDetail(filter.TaskName, statusSuccess)
+	meta.Detail.Queueing = repo.countTaskJobDetail(filter.TaskName, statusQueueing)
+	meta.Detail.Stopped = repo.countTaskJobDetail(filter.TaskName, statusStopped)
+	meta.TotalRecords = s.countTaskJob(filter)
 	meta.Page, meta.Limit = filter.Page, filter.Limit
 	meta.TotalPages = int(math.Ceil(float64(meta.TotalRecords) / float64(meta.Limit)))
 	return
 }
 
-func (s *storage) countTaskJob(taskName string, filter Filter) int {
+func (s *storage) countTaskJob(filter Filter) int {
 	ctx := context.Background()
 
 	pipeQuery := []bson.M{
-		{"task_name": taskName},
+		{"task_name": filter.TaskName},
 	}
 	if filter.Search != nil && *filter.Search != "" {
 		pipeQuery = append(pipeQuery, bson.M{

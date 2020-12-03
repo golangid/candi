@@ -45,8 +45,15 @@ type rootResolver struct {
 	worker *taskQueueWorker
 }
 
-func (r *rootResolver) Tagline(ctx context.Context) string {
-	return "GraphQL service for Task Queue Worker dashboard"
+func (r *rootResolver) Tagline(ctx context.Context) (res TaglineResolver) {
+	for taskClient := range clientTaskSubscribers {
+		res.TaskListClientSubscribers = append(res.TaskListClientSubscribers, taskClient)
+	}
+	for client := range clientJobTaskSubscribers {
+		res.JobListClientSubscribers = append(res.JobListClientSubscribers, client)
+	}
+	res.Tagline = "GraphQL service for Task Queue Worker dashboard"
+	return
 }
 
 func (r *rootResolver) AddJob(ctx context.Context, input struct {
@@ -67,7 +74,8 @@ func (r *rootResolver) StopJob(ctx context.Context, input struct {
 	}
 
 	job.Status = string(statusStopped)
-	r.worker.broadcastEvent(&job)
+	repo.saveJob(job)
+	broadcastAllToSubscribers()
 
 	return "Success stop job " + input.JobID, nil
 }
@@ -87,10 +95,10 @@ func (r *rootResolver) RetryJob(ctx context.Context, input struct {
 			job.Retries = 0
 		}
 		job.Status = string(statusQueueing)
-		repo.saveJob(job)
 		queue.PushJob(&job)
 		registerJobToWorker(&job, task.workerIndex)
-		r.worker.broadcastRefreshClientSubscriber(&job)
+		repo.saveJob(job)
+		broadcastAllToSubscribers()
 	}(job)
 
 	return "Success retry job " + input.JobID, nil
@@ -101,19 +109,33 @@ func (r *rootResolver) CleanJob(ctx context.Context, input struct {
 }) (string, error) {
 
 	repo.cleanJob(input.TaskName)
-	go r.worker.broadcastRefreshClientSubscriber(&Job{TaskName: input.TaskName})
+	go broadcastAllToSubscribers()
 
 	return "Success clean all job in task " + input.TaskName, nil
 }
 
-func (r *rootResolver) SubscribeAllTask(ctx context.Context) <-chan []TaskResolver {
+func (r *rootResolver) SubscribeAllTask(ctx context.Context) (<-chan []TaskResolver, error) {
 	output := make(chan []TaskResolver)
 
+	httpHeader := candishared.GetValueFromContext(ctx, candishared.ContextKeyHTTPHeader).(http.Header)
+	clientID := httpHeader.Get("Sec-WebSocket-Key")
+
+	if err := registerNewTaskListSubscriber(clientID, output); err != nil {
+		return nil, err
+	}
+
 	go func() {
-		r.worker.listenUpdatedTask(output)
+
+		broadcastTaskList()
+
+		select {
+		case <-ctx.Done():
+			removeTaskListSubscriber(clientID)
+			return
+		}
 	}()
 
-	return output
+	return output, nil
 }
 
 func (r *rootResolver) ListenTask(ctx context.Context, input struct {
@@ -121,37 +143,41 @@ func (r *rootResolver) ListenTask(ctx context.Context, input struct {
 	Page, Limit int32
 	Search      *string
 	Status      []string
-}) <-chan JobListResolver {
+}) (<-chan JobListResolver, error) {
+
 	output := make(chan JobListResolver)
+
+	httpHeader := candishared.GetValueFromContext(ctx, candishared.ContextKeyHTTPHeader).(http.Header)
+	clientID := httpHeader.Get("Sec-WebSocket-Key")
+
+	if input.Page <= 0 {
+		input.Page = 1
+	}
+	if input.Limit <= 0 || input.Limit > 10 {
+		input.Limit = 10
+	}
+
+	filter := Filter{
+		Page: int(input.Page), Limit: int(input.Limit), Search: input.Search, Status: input.Status, TaskName: input.TaskName,
+	}
+
+	if err := registerNewJobListSubscriber(input.TaskName, clientID, filter, output); err != nil {
+		return nil, err
+	}
 
 	go func() {
 
-		httpHeader := candishared.GetValueFromContext(ctx, candishared.ContextKeyHTTPHeader).(http.Header)
-
-		if input.Page <= 0 {
-			input.Page = 1
-		}
-		if input.Limit <= 0 || input.Limit > 10 {
-			input.Limit = 10
-		}
-
-		filter := Filter{
-			Page: int(input.Page), Limit: int(input.Limit), Search: input.Search, Status: input.Status,
-		}
-		meta, jobs := repo.findAllJob(input.TaskName, filter)
+		meta, jobs := repo.findAllJob(filter)
 		output <- JobListResolver{
 			Meta: meta, Data: jobs,
 		}
 
-		r.worker.registerNewSubscriber(input.TaskName, filter, output)
-
 		select {
 		case <-ctx.Done():
-			fmt.Println("close", httpHeader.Get("Sec-WebSocket-Key"))
-			// close(output)
+			removeJobListSubscriber(input.TaskName, clientID)
 			return
 		}
 	}()
 
-	return output
+	return output, nil
 }

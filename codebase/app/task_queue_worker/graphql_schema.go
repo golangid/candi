@@ -7,7 +7,7 @@ const schema = `schema {
 }
 
 type Query {
-	tagline(): String!
+	tagline(): TaglineType!
 }
 
 type Mutation {
@@ -20,6 +20,12 @@ type Mutation {
 type Subscription {
 	subscribe_all_task(): [TaskType!]!
 	listen_task(task_name: String!, page: Int!, limit: Int!, search: String, status: [String!]!): JobListType!
+}
+
+type TaglineType {
+	tagline: String!
+	task_list_client_subscribers: [String!]!
+	job_list_client_subscribers: [String!]!
 }
 
 type MetaType {
