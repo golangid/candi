@@ -47,6 +47,8 @@ type Env struct {
 	GRPCPort uint16
 	// TaskQueueDashboardPort Config
 	TaskQueueDashboardPort uint16
+	// TaskQueueDashboardMaxClientSubscribers Config
+	TaskQueueDashboardMaxClientSubscribers int
 
 	// BasicAuthUsername config
 	BasicAuthUsername string
@@ -177,6 +179,10 @@ func Load(serviceName string) {
 			panic("TASK_QUEUE_DASHBOARD_PORT environment must in integer format")
 		}
 		env.TaskQueueDashboardPort = uint16(port)
+		env.TaskQueueDashboardMaxClientSubscribers, _ = strconv.Atoi(os.Getenv("TASK_QUEUE_DASHBOARD_MAX_CLIENT"))
+		if env.TaskQueueDashboardPort <= 0 || env.TaskQueueDashboardMaxClientSubscribers > 10 {
+			env.TaskQueueDashboardMaxClientSubscribers = 10 // default
+		}
 	}
 
 	// ------------------------------------

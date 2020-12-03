@@ -1,6 +1,7 @@
 package taskqueueworker
 
 import (
+	"errors"
 	"reflect"
 	"sync"
 	"time"
@@ -88,6 +89,8 @@ var (
 
 	clientTaskSubscribers    map[string]chan []TaskResolver
 	clientJobTaskSubscribers map[string]clientJobTaskSubscriber
+
+	errClientLimitExceeded = errors.New("client limit exceeded, please try again later")
 )
 
 func makeAllGlobalVars(service factory.ServiceFactory) {
@@ -102,8 +105,9 @@ func makeAllGlobalVars(service factory.ServiceFactory) {
 	queue = NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
 	repo = &storage{mongoRead: service.GetDependency().GetMongoDatabase().ReadDB(), mongoWrite: service.GetDependency().GetMongoDatabase().WriteDB()}
 	refreshWorkerNotif, shutdown, semaphore = make(chan struct{}), make(chan struct{}, 1), make(chan struct{}, env.BaseEnv().MaxGoroutines)
-	clientTaskSubscribers = make(map[string]chan []TaskResolver, maxClientSubscribers)
-	clientJobTaskSubscribers = make(map[string]clientJobTaskSubscriber, maxClientSubscribers)
+
+	clientTaskSubscribers = make(map[string]chan []TaskResolver, env.BaseEnv().TaskQueueDashboardMaxClientSubscribers)
+	clientJobTaskSubscribers = make(map[string]clientJobTaskSubscriber, env.BaseEnv().TaskQueueDashboardMaxClientSubscribers)
 
 	registeredTask = make(map[string]struct {
 		handlerFunc   types.WorkerHandlerFunc

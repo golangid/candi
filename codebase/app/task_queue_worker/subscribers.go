@@ -1,15 +1,11 @@
 package taskqueueworker
 
 import (
-	"errors"
+	"pkg.agungdwiprasetyo.com/candi/config/env"
 )
 
-const maxClientSubscribers = 2
-
-var errClientLimitExceeded = errors.New("client limit exceeded, please try again later")
-
 func registerNewTaskListSubscriber(clientID string, clientChannel chan []TaskResolver) error {
-	if len(clientTaskSubscribers) >= maxClientSubscribers {
+	if len(clientTaskSubscribers) >= env.BaseEnv().TaskQueueDashboardMaxClientSubscribers {
 		return errClientLimitExceeded
 	}
 
@@ -28,7 +24,7 @@ func removeTaskListSubscriber(clientID string) {
 }
 
 func registerNewJobListSubscriber(taskName, clientID string, filter Filter, clientChannel chan JobListResolver) error {
-	if len(clientJobTaskSubscribers) >= maxClientSubscribers {
+	if len(clientJobTaskSubscribers) >= env.BaseEnv().TaskQueueDashboardMaxClientSubscribers {
 		return errClientLimitExceeded
 	}
 
@@ -49,8 +45,12 @@ func removeJobListSubscriber(taskName, clientID string) {
 }
 
 func broadcastAllToSubscribers() {
-	go broadcastTaskList()
-	go broadcastJobList()
+	if len(clientTaskSubscribers) > 0 {
+		go broadcastTaskList()
+	}
+	if len(clientJobTaskSubscribers) > 0 {
+		go broadcastJobList()
+	}
 }
 
 func broadcastTaskList() {
