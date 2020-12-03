@@ -5,8 +5,8 @@ github.com/Shopify/sarama v1.24.1 h1:svn9vfN3R1Hz21WR2Gj0VW9ehaDGkiOS+VqlIcZOkMI
 github.com/Shopify/sarama v1.24.1/go.mod h1:fGP8eQ6PugKEI0iUETYYtnP6d1pH/bdDMTel1X5ajsU=
 github.com/Shopify/toxiproxy v2.1.4+incompatible h1:TKdv8HiTLgE5wdJuEML90aBgNWsokNbMijUGhmcoBJc=
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
-github.com/agungdwiprasetyo/task-queue-worker-dashboard/external v0.0.0-20201202025135-d6c447d079aa h1:MC/2E4tzjiLwlGG1M343zQJvuE1ODOXPyIjcUsAHdDQ=
-github.com/agungdwiprasetyo/task-queue-worker-dashboard/external v0.0.0-20201202025135-d6c447d079aa/go.mod h1:oyuOHk50y8AZ4m9U55feZjFzJ1xFxFJwaoHIh4w6ZLA=
+github.com/agungdwiprasetyo/task-queue-worker-dashboard/external v0.0.0-20201203074444-7cdb4cacc662 h1:ZbbOCXHzLmLC6X2vLePp0AT5C4BNx+AaV68yzrNzvh4=
+github.com/agungdwiprasetyo/task-queue-worker-dashboard/external v0.0.0-20201203074444-7cdb4cacc662/go.mod h1:oyuOHk50y8AZ4m9U55feZjFzJ1xFxFJwaoHIh4w6ZLA=
 github.com/aws/aws-sdk-go v1.34.28 h1:sscPpn/Ns3i0F4HPEWAVcwdIRaZZCuL7llJ2/60yPIk=
 github.com/aws/aws-sdk-go v1.34.28/go.mod h1:H7NKnBqNVzoTJpGfLrQkkD+ytBA93eiDYi/+8rV9s48=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=

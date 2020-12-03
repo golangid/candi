@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/Shopify/sarama v1.24.1
-	github.com/agungdwiprasetyo/task-queue-worker-dashboard/external v0.0.0-20201202025135-d6c447d079aa
+	github.com/agungdwiprasetyo/task-queue-worker-dashboard/external v0.0.0-20201203074444-7cdb4cacc662
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-playground/locales v0.13.0
