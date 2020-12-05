@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/agungdwiprasetyo/task-queue-worker-dashboard/external"
 	"github.com/golangid/graphql-go"
@@ -80,6 +81,21 @@ func (r *rootResolver) StopJob(ctx context.Context, input struct {
 	return "Success stop job " + input.JobID, nil
 }
 
+func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
+	TaskName string
+}) (string, error) {
+
+	if _, ok := registeredTask[input.TaskName]; !ok {
+		return "", fmt.Errorf("task '%s' unregistered, task must one of [%s]", input.TaskName, strings.Join(tasks, ", "))
+	}
+
+	queue.Clear(input.TaskName)
+	repo.updateAllStatus(input.TaskName, statusStopped)
+	broadcastAllToSubscribers()
+
+	return "Success stop all job in task " + input.TaskName, nil
+}
+
 func (r *rootResolver) RetryJob(ctx context.Context, input struct {
 	JobID string
 }) (string, error) {
@@ -91,14 +107,14 @@ func (r *rootResolver) RetryJob(ctx context.Context, input struct {
 	job.Interval = defaultInterval
 	task := registeredTask[job.TaskName]
 	go func(job Job) {
-		if job.Status == string(statusFailure) {
+		if (job.Status == string(statusFailure)) || (job.Retries >= job.MaxRetry) {
 			job.Retries = 0
 		}
 		job.Status = string(statusQueueing)
 		queue.PushJob(&job)
-		registerJobToWorker(&job, task.workerIndex)
 		repo.saveJob(job)
 		broadcastAllToSubscribers()
+		registerJobToWorker(&job, task.workerIndex)
 	}(job)
 
 	return "Success retry job " + input.JobID, nil

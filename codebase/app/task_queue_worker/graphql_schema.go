@@ -13,6 +13,7 @@ type Query {
 type Mutation {
 	add_job(task_name: String!, max_retry: Int!, args: String!): String!
 	stop_job(job_id: String!): String!
+	stop_all_job(task_name: String!): String!
 	retry_job(job_id: String!): String!
 	clean_job(task_name: String!): String!
 }
@@ -66,5 +67,6 @@ type JobType {
 	trace_id: String!
 	status: String!
 	created_at: String!
+	finished_at: String!
 	next_retry_at: String!
 }`

@@ -2,6 +2,7 @@ package taskqueueworker
 
 import (
 	"errors"
+	"net/url"
 	"reflect"
 	"sync"
 	"time"
@@ -86,6 +87,7 @@ var (
 	refreshWorkerNotif, shutdown, semaphore chan struct{}
 	mutex                                   sync.Mutex
 	tasks                                   []string
+	tracerHost                              string
 
 	clientTaskSubscribers    map[string]chan []TaskResolver
 	clientJobTaskSubscribers map[string]clientJobTaskSubscriber
@@ -105,6 +107,9 @@ func makeAllGlobalVars(service factory.ServiceFactory) {
 	queue = NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
 	repo = &storage{mongoRead: service.GetDependency().GetMongoDatabase().ReadDB(), mongoWrite: service.GetDependency().GetMongoDatabase().WriteDB()}
 	refreshWorkerNotif, shutdown, semaphore = make(chan struct{}), make(chan struct{}, 1), make(chan struct{}, env.BaseEnv().MaxGoroutines)
+	if urlTracerAgent, _ := url.Parse("//" + env.BaseEnv().JaegerTracingHost); urlTracerAgent != nil {
+		tracerHost = urlTracerAgent.Hostname()
+	}
 
 	clientTaskSubscribers = make(map[string]chan []TaskResolver, env.BaseEnv().TaskQueueDashboardMaxClientSubscribers)
 	clientJobTaskSubscribers = make(map[string]clientJobTaskSubscriber, env.BaseEnv().TaskQueueDashboardMaxClientSubscribers)

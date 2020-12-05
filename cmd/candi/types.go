@@ -7,7 +7,7 @@ const (
 	packageName = "pkg.agungdwiprasetyo.com/candi"
 	initService = "initservice"
 	addModule   = "addmodule"
-	version     = "v1.0.2"
+	version     = "v1.0.3"
 
 	restHandler      = "restHandler"
 	grpcHandler      = "grpcHandler"

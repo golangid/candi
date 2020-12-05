@@ -102,6 +102,9 @@ func (s *storage) findAllJob(filter Filter) (meta Meta, jobs []Job) {
 		if delay, err := time.ParseDuration(job.Interval); err == nil && job.Status == string(statusQueueing) {
 			job.NextRetryAt = time.Now().Add(delay).Format(time.RFC3339)
 		}
+		if job.TraceID != "" && tracerHost != "" {
+			job.TraceID = fmt.Sprintf("http://%s:16686/trace/%s", tracerHost, job.TraceID)
+		}
 		jobs = append(jobs, job)
 	}
 
@@ -168,6 +171,25 @@ func (s *storage) saveJob(job Job) {
 				"$set": job,
 			}, &opt)
 	}
+
+	if err != nil {
+		logger.LogE(err.Error())
+	}
+}
+
+func (s *storage) updateAllStatus(taskName string, status jobStatusEnum) {
+	ctx := context.Background()
+	filter := bson.M{
+		"task_name": taskName,
+	}
+	if status == statusStopped {
+		filter["status"] = bson.M{"$nin": []jobStatusEnum{statusFailure, statusSuccess, statusRetrying}}
+	}
+	_, err := s.mongoWrite.Collection(mongoColl).UpdateMany(ctx,
+		filter,
+		bson.M{
+			"$set": bson.M{"status": string(status)},
+		})
 
 	if err != nil {
 		logger.LogE(err.Error())
