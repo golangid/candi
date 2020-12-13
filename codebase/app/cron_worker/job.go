@@ -12,19 +12,22 @@ import (
 
 // Job model
 type Job struct {
-	HandlerName  string                  `json:"handler_name"`
-	Interval     string                  `json:"interval"`
-	HandlerFunc  types.WorkerHandlerFunc `json:"-"`
-	Params       string                  `json:"params"`
-	WorkerIndex  int                     `json:"worker_index"`
-	ticker       *time.Ticker
-	nextDuration *time.Duration
+	HandlerName     string                  `json:"handler_name"`
+	Interval        string                  `json:"interval"`
+	HandlerFunc     types.WorkerHandlerFunc `json:"-"`
+	Params          string                  `json:"params"`
+	WorkerIndex     int                     `json:"worker_index"`
+	ticker          *time.Ticker
+	currentDuration time.Duration
+	nextDuration    *time.Duration
 }
 
-var activeJobs []*Job
-var workers []reflect.SelectCase
-var refreshWorkerNotif, shutdown, semaphore chan struct{}
-var mutex sync.Mutex
+var (
+	activeJobs                                                              []*Job
+	workers                                                                 []reflect.SelectCase
+	refreshWorkerNotif, shutdown, semaphore, startWorkerCh, releaseWorkerCh chan struct{}
+	mutex                                                                   sync.Mutex
+)
 
 // GetActiveJobs get registered jobs
 func GetActiveJobs() []*Job {
@@ -86,6 +89,7 @@ func AddJob(job Job) error {
 		duration = durationParser
 	}
 
+	job.currentDuration = duration
 	job.ticker = time.NewTicker(duration)
 	job.WorkerIndex = len(workers)
 
@@ -95,4 +99,20 @@ func AddJob(job Job) error {
 	})
 
 	return nil
+}
+
+func startAllJob() {
+	for _, job := range activeJobs {
+		job.ticker = time.NewTicker(job.currentDuration)
+		workers[job.WorkerIndex].Chan = reflect.ValueOf(job.ticker.C)
+	}
+	go func() {
+		refreshWorkerNotif <- struct{}{}
+	}()
+}
+
+func stopAllJob() {
+	for _, job := range activeJobs {
+		job.ticker.Stop()
+	}
 }

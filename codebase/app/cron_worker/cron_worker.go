@@ -6,11 +6,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"reflect"
 	"sync"
 	"time"
 
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
+	"pkg.agungdwiprasetyo.com/candi/candiutils"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
 	"pkg.agungdwiprasetyo.com/candi/config/env"
@@ -20,6 +22,7 @@ import (
 
 type cronWorker struct {
 	service factory.ServiceFactory
+	consul  *candiutils.Consul
 	wg      sync.WaitGroup
 }
 
@@ -27,6 +30,7 @@ type cronWorker struct {
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	refreshWorkerNotif, shutdown = make(chan struct{}), make(chan struct{})
 	semaphore = make(chan struct{}, env.BaseEnv().MaxGoroutines)
+	startWorkerCh, releaseWorkerCh = make(chan struct{}), make(chan struct{})
 
 	// add shutdown channel to first index
 	workers = append(workers, reflect.SelectCase{
@@ -58,55 +62,97 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	}
 	fmt.Printf("\x1b[34;1m⇨ Cron worker running with %d jobs\x1b[0m\n\n", len(activeJobs))
 
-	return &cronWorker{
+	c := &cronWorker{
 		service: service,
 	}
+
+	if env.BaseEnv().UseConsul {
+		consul, err := candiutils.NewConsul(&candiutils.ConsulConfig{
+			ConsulAgentHost:   env.BaseEnv().ConsulAgentHost,
+			ConsulKey:         fmt.Sprintf("%s_cron_worker", service.Name()),
+			LockRetryInterval: time.Second,
+		})
+		if err != nil {
+			panic(err)
+		}
+		c.consul = consul
+	}
+
+	return c
 }
 
 func (c *cronWorker) Serve() {
+	c.createConsulSession()
 
-	for {
-		chosen, _, ok := reflect.Select(workers)
-		if !ok {
-			continue
+START:
+	select {
+	case <-startWorkerCh:
+		startAllJob()
+		totalRunJobs := 0
+
+		// run worker
+		for {
+			chosen, _, ok := reflect.Select(workers)
+			if !ok {
+				continue
+			}
+
+			// if shutdown channel captured, break loop (no more jobs will run)
+			if chosen == 0 {
+				return
+			}
+
+			// notify for refresh worker
+			if chosen == 1 {
+				continue
+			}
+
+			chosen = chosen - 2
+			job := activeJobs[chosen]
+			if job.nextDuration != nil {
+				job.ticker.Stop()
+				job.currentDuration = *job.nextDuration
+				job.ticker = time.NewTicker(*job.nextDuration)
+				workers[job.WorkerIndex].Chan = reflect.ValueOf(job.ticker.C)
+				activeJobs[chosen].nextDuration = nil
+			}
+
+			semaphore <- struct{}{}
+			c.wg.Add(1)
+			go func(j *Job) {
+				defer func() {
+					c.wg.Done()
+					<-semaphore
+				}()
+
+				c.processJob(j)
+			}(job)
+
+			totalRunJobs++
+			// if already running 10 jobs, release lock so that run in another instance
+			if totalRunJobs > 10 {
+				// recreate session
+				c.createConsulSession()
+				goto START
+			}
+
 		}
 
-		// if shutdown channel captured, break loop (no more jobs will run)
-		if chosen == 0 {
-			break
-		}
-
-		// notify for refresh worker
-		if chosen == 1 {
-			continue
-		}
-
-		chosen = chosen - 2
-		job := activeJobs[chosen]
-		if job.nextDuration != nil {
-			job.ticker.Stop()
-			job.ticker = time.NewTicker(*job.nextDuration)
-			workers[job.WorkerIndex].Chan = reflect.ValueOf(job.ticker.C)
-			activeJobs[chosen].nextDuration = nil
-		}
-
-		semaphore <- struct{}{}
-		c.wg.Add(1)
-		go func(j *Job) {
-			defer func() {
-				c.wg.Done()
-				<-semaphore
-			}()
-
-			c.processJob(j)
-		}(job)
-
+	case <-shutdown:
+		return
 	}
 }
 
 func (c *cronWorker) Shutdown(ctx context.Context) {
 	log.Println("\x1b[33;1mStopping Cron Job Scheduler worker...\x1b[0m")
-	defer func() { log.Println("\x1b[33;1mStopping Cron Job Scheduler:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
+	defer func() {
+		if c.consul != nil {
+			if err := c.consul.DestroySession(); err != nil {
+				panic(err)
+			}
+		}
+		log.Println("\x1b[33;1mStopping Cron Job Scheduler:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
+	}()
 
 	if len(activeJobs) == 0 {
 		return
@@ -119,6 +165,20 @@ func (c *cronWorker) Shutdown(ctx context.Context) {
 	}
 
 	c.wg.Wait()
+}
+
+func (c *cronWorker) createConsulSession() {
+	if c.consul == nil {
+		go func() { startWorkerCh <- struct{}{} }()
+		return
+	}
+	c.consul.DestroySession()
+	stopAllJob()
+	hostname, _ := os.Hostname()
+	value := map[string]string{
+		"hostname": hostname,
+	}
+	go c.consul.RetryLockAcquire(value, startWorkerCh, releaseWorkerCh)
 }
 
 func (c *cronWorker) processJob(job *Job) {
