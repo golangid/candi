@@ -76,9 +76,9 @@ type Env struct {
 
 	// Database environment
 	DbMongoWriteHost, DbMongoReadHost, DbMongoDatabaseName                    string
-	DbSQLWriteHost, DbSQLWriteUser, DbSQLWritePass                            string
-	DbSQLReadHost, DbSQLReadUser, DbSQLReadPass                               string
-	DbSQLDatabaseName, DbSQLDriver                                            string
+	DbSQLWriteDSN                                                             string
+	DbSQLReadDSN                                                              string
+	DbSQLDriver                                                               string
 	DbRedisReadHost, DbRedisReadPort, DbRedisReadAuth, DbRedisReadDBIndex     string
 	DbRedisWriteHost, DbRedisWritePort, DbRedisWriteAuth, DbRedisWriteDBIndex string
 	DbRedisReadTLS, DbRedisWriteTLS                                           bool
@@ -268,13 +268,8 @@ func parseDatabaseEnv() {
 	env.DbMongoDatabaseName = os.Getenv("MONGODB_DATABASE_NAME")
 
 	env.DbSQLDriver = os.Getenv("SQL_DRIVER_NAME")
-	env.DbSQLReadHost = os.Getenv("SQL_DB_READ_HOST")
-	env.DbSQLReadUser = os.Getenv("SQL_DB_READ_USER")
-	env.DbSQLReadPass = os.Getenv("SQL_DB_READ_PASSWORD")
-	env.DbSQLWriteHost = os.Getenv("SQL_DB_WRITE_HOST")
-	env.DbSQLWriteUser = os.Getenv("SQL_DB_WRITE_USER")
-	env.DbSQLWritePass = os.Getenv("SQL_DB_WRITE_PASSWORD")
-	env.DbSQLDatabaseName = os.Getenv("SQL_DATABASE_NAME")
+	env.DbSQLReadDSN = os.Getenv("SQL_DB_READ_DSN")
+	env.DbSQLWriteDSN = os.Getenv("SQL_DB_WRITE_DSN")
 
 	env.DbRedisReadHost = os.Getenv("REDIS_READ_HOST")
 	env.DbRedisReadPort = os.Getenv("REDIS_READ_PORT")

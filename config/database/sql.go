@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"fmt"
 
 	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
 	"pkg.agungdwiprasetyo.com/candi/config/env"
@@ -43,19 +42,14 @@ func InitSQLDatabase() interfaces.SQLDatabase {
 	defer deferFunc()
 
 	inst := new(sqlInstance)
-	dsn := "host=%s user=%s password=%s dbname=%s sslmode=disable"
 
 	var err error
-	descriptor := fmt.Sprintf(dsn,
-		env.BaseEnv().DbSQLReadHost, env.BaseEnv().DbSQLReadUser, env.BaseEnv().DbSQLReadPass, env.BaseEnv().DbSQLDatabaseName)
-	inst.read, err = sql.Open(env.BaseEnv().DbSQLDriver, descriptor)
+	inst.read, err = sql.Open(env.BaseEnv().DbSQLDriver, env.BaseEnv().DbSQLReadDSN)
 	if err != nil {
 		panic("SQL Read: " + err.Error())
 	}
 
-	descriptor = fmt.Sprintf(dsn,
-		env.BaseEnv().DbSQLWriteHost, env.BaseEnv().DbSQLWriteUser, env.BaseEnv().DbSQLWritePass, env.BaseEnv().DbSQLDatabaseName)
-	inst.write, err = sql.Open(env.BaseEnv().DbSQLDriver, descriptor)
+	inst.write, err = sql.Open(env.BaseEnv().DbSQLDriver, env.BaseEnv().DbSQLWriteDSN)
 	if err != nil {
 		panic("SQL Write: " + err.Error())
 	}

@@ -27,18 +27,13 @@ CONSUL_AGENT_HOST=127.0.0.1:8500
 BASIC_AUTH_USERNAME=user
 BASIC_AUTH_PASS=pass
 
-MONGODB_HOST_WRITE=mongodb://localhost:27017
-MONGODB_HOST_READ=mongodb://localhost:27017
+MONGODB_HOST_WRITE=mongodb://user:pass@localhost:27017
+MONGODB_HOST_READ=mongodb://user:pass@localhost:27017
 MONGODB_DATABASE_NAME={{.ServiceName}}
 
 SQL_DRIVER_NAME={{.SQLDriver}}
-SQL_DB_READ_HOST=[string]
-SQL_DB_READ_USER=[string]
-SQL_DB_READ_PASSWORD=[string]
-SQL_DB_WRITE_HOST=[string]
-SQL_DB_WRITE_USER=[string]
-SQL_DB_WRITE_PASSWORD=[string]
-SQL_DATABASE_NAME=[string]
+SQL_DB_READ_DSN={{.SQLDriver}}://user:pass@localhost:5432/db_name?sslmode=disable
+SQL_DB_WRITE_DSN={{.SQLDriver}}://user:pass@localhost:5432/db_name?sslmode=disable
 
 REDIS_READ_HOST=localhost
 REDIS_READ_PORT=6379
