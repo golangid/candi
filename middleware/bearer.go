@@ -4,12 +4,14 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/dgrijalva/jwt-go"
 	gqlerr "github.com/golangid/graphql-go/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/candishared"
+	"pkg.agungdwiprasetyo.com/candi/config/env"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 	"pkg.agungdwiprasetyo.com/candi/wrapper"
 
@@ -23,6 +25,14 @@ const (
 
 // Bearer token validator
 func (m *Middleware) Bearer(ctx context.Context, tokenString string) (*candishared.TokenClaim, error) {
+	if env.BaseEnv().NoAuth {
+		return &candishared.TokenClaim{
+			StandardClaims: jwt.StandardClaims{
+				Audience: "ANONYMOUS",
+			},
+		}, nil
+	}
+
 	tokenClaim, err := m.tokenValidator.ValidateToken(ctx, tokenString)
 	if err != nil {
 		return nil, err

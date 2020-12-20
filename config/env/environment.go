@@ -15,6 +15,7 @@ type Env struct {
 	RootApp, ServiceName string
 
 	useSQL, useMongo, useRedis, useRSAKey bool
+	NoAuth                                bool
 
 	// UseREST env
 	UseREST bool
@@ -75,13 +76,10 @@ type Env struct {
 	MaxGoroutines int
 
 	// Database environment
-	DbMongoWriteHost, DbMongoReadHost, DbMongoDatabaseName                    string
-	DbSQLWriteDSN                                                             string
-	DbSQLReadDSN                                                              string
-	DbSQLDriver                                                               string
-	DbRedisReadHost, DbRedisReadPort, DbRedisReadAuth, DbRedisReadDBIndex     string
-	DbRedisWriteHost, DbRedisWritePort, DbRedisWriteAuth, DbRedisWriteDBIndex string
-	DbRedisReadTLS, DbRedisWriteTLS                                           bool
+	DbMongoWriteHost, DbMongoReadHost, DbMongoDatabaseName string
+	DbSQLWriteDSN, DbSQLReadDSN                            string
+	DbRedisReadDSN, DbRedisWriteDSN                        string
+	DbRedisReadTLS, DbRedisWriteTLS                        bool
 }
 
 var env Env
@@ -205,6 +203,8 @@ func Load(serviceName string) {
 	if err != nil {
 		env.DebugMode = true
 	}
+	env.NoAuth, _ = strconv.ParseBool(os.Getenv("NO_AUTH"))
+
 	env.BasicAuthUsername, ok = os.LookupEnv("BASIC_AUTH_USERNAME")
 	if !ok {
 		panic("missing BASIC_AUTH_USERNAME environment")
@@ -267,18 +267,11 @@ func parseDatabaseEnv() {
 	env.DbMongoReadHost = os.Getenv("MONGODB_HOST_READ")
 	env.DbMongoDatabaseName = os.Getenv("MONGODB_DATABASE_NAME")
 
-	env.DbSQLDriver = os.Getenv("SQL_DRIVER_NAME")
 	env.DbSQLReadDSN = os.Getenv("SQL_DB_READ_DSN")
 	env.DbSQLWriteDSN = os.Getenv("SQL_DB_WRITE_DSN")
 
-	env.DbRedisReadHost = os.Getenv("REDIS_READ_HOST")
-	env.DbRedisReadPort = os.Getenv("REDIS_READ_PORT")
-	env.DbRedisReadAuth = os.Getenv("REDIS_READ_AUTH")
+	env.DbRedisReadDSN = os.Getenv("REDIS_READ_DSN")
 	env.DbRedisReadTLS, _ = strconv.ParseBool(os.Getenv("REDIS_READ_TLS"))
-	env.DbRedisReadDBIndex = os.Getenv("REDIS_READ_DB_INDEX")
-	env.DbRedisWriteHost = os.Getenv("REDIS_WRITE_HOST")
-	env.DbRedisWritePort = os.Getenv("REDIS_WRITE_PORT")
-	env.DbRedisWriteAuth = os.Getenv("REDIS_WRITE_AUTH")
+	env.DbRedisWriteDSN = os.Getenv("REDIS_WRITE_DSN")
 	env.DbRedisWriteTLS, _ = strconv.ParseBool(os.Getenv("REDIS_WRITE_TLS"))
-	env.DbRedisWriteDBIndex = os.Getenv("REDIS_WRITE_DB_INDEX")
 }

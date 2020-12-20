@@ -2,8 +2,6 @@ package database
 
 import (
 	"context"
-	"fmt"
-	"strconv"
 
 	"github.com/gomodule/redigo/redis"
 	"pkg.agungdwiprasetyo.com/candi/cache"
@@ -52,8 +50,8 @@ func (m *redisInstance) Disconnect(ctx context.Context) (err error) {
 }
 
 // InitRedis connection from environment:
-// REDIS_READ_HOST, REDIS_READ_PORT, REDIS_READ_AUTH, REDIS_READ_TLS, REDIS_READ_DB,
-// REDIS_WRITE_HOST, REDIS_WRITE_PORT, REDIS_WRITE_AUTH, REDIS_WRITE_TLS, REDIS_WRITE_DB
+// REDIS_READ_DSN, REDIS_READ_TLS
+// REDIS_WRITE_DSN, REDIS_WRITE_TLS
 func InitRedis() interfaces.RedisPool {
 	deferFunc := logger.LogWithDefer("Load Redis connection...")
 	defer deferFunc()
@@ -62,11 +60,7 @@ func InitRedis() interfaces.RedisPool {
 
 	inst.read = &redis.Pool{
 		Dial: func() (redis.Conn, error) {
-			redisDB, _ := strconv.Atoi(env.BaseEnv().DbRedisReadDBIndex)
-			return redis.Dial("tcp", fmt.Sprintf("%s:%s", env.BaseEnv().DbRedisReadHost, env.BaseEnv().DbRedisReadPort),
-				redis.DialPassword(env.BaseEnv().DbRedisReadAuth),
-				redis.DialDatabase(redisDB),
-				redis.DialUseTLS(env.BaseEnv().DbRedisReadTLS))
+			return redis.DialURL(env.BaseEnv().DbRedisReadDSN, redis.DialUseTLS(env.BaseEnv().DbRedisReadTLS))
 		},
 	}
 
@@ -79,11 +73,7 @@ func InitRedis() interfaces.RedisPool {
 
 	inst.write = &redis.Pool{
 		Dial: func() (redis.Conn, error) {
-			redisDB, _ := strconv.Atoi(env.BaseEnv().DbRedisWriteDBIndex)
-			return redis.Dial("tcp", fmt.Sprintf("%s:%s", env.BaseEnv().DbRedisWriteHost, env.BaseEnv().DbRedisWritePort),
-				redis.DialPassword(env.BaseEnv().DbRedisWriteAuth),
-				redis.DialDatabase(redisDB),
-				redis.DialUseTLS(env.BaseEnv().DbRedisWriteTLS))
+			return redis.DialURL(env.BaseEnv().DbRedisWriteDSN, redis.DialUseTLS(env.BaseEnv().DbRedisWriteTLS))
 		},
 	}
 

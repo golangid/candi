@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"pkg.agungdwiprasetyo.com/candi/candishared"
+	"pkg.agungdwiprasetyo.com/candi/config/env"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 	"pkg.agungdwiprasetyo.com/candi/wrapper"
 
@@ -25,6 +26,9 @@ const (
 
 // Basic function basic auth
 func (m *Middleware) Basic(ctx context.Context, key string) error {
+	if env.BaseEnv().NoAuth {
+		return nil
+	}
 
 	isValid := func() bool {
 		data, err := base64.StdEncoding.DecodeString(key)

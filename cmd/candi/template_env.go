@@ -3,6 +3,7 @@ package main
 const envTemplate = `# Basic env configuration
 ENVIRONMENT=development #development,staging,production
 DEBUG_MODE=true
+NO_AUTH=false
 
 # Service Handlers
 ## Server
@@ -31,20 +32,13 @@ MONGODB_HOST_WRITE=mongodb://user:pass@localhost:27017
 MONGODB_HOST_READ=mongodb://user:pass@localhost:27017
 MONGODB_DATABASE_NAME={{.ServiceName}}
 
-SQL_DRIVER_NAME={{.SQLDriver}}
 SQL_DB_READ_DSN={{.SQLDriver}}://user:pass@localhost:5432/db_name?sslmode=disable
 SQL_DB_WRITE_DSN={{.SQLDriver}}://user:pass@localhost:5432/db_name?sslmode=disable
 
-REDIS_READ_HOST=localhost
-REDIS_READ_PORT=6379
-REDIS_READ_AUTH=
+REDIS_READ_DSN=redis://user:pass@localhost:6379/0
+REDIS_READ_TLS=false
+REDIS_WRITE_DSN=redis://user:pass@localhost:6379/0
 REDIS_WRITE_TLS=false
-REDIS_READ_DB=0
-REDIS_WRITE_HOST=localhost
-REDIS_WRITE_PORT=6379
-REDIS_WRITE_AUTH=
-REDIS_WRITE_TLS=false
-REDIS_WRITE_DB=0
 
 KAFKA_BROKERS=localhost:9092
 KAFKA_CLIENT_VERSION=2.0.0
