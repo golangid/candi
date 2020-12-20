@@ -32,8 +32,8 @@ MONGODB_HOST_WRITE=mongodb://user:pass@localhost:27017
 MONGODB_HOST_READ=mongodb://user:pass@localhost:27017
 MONGODB_DATABASE_NAME={{.ServiceName}}
 
-SQL_DB_READ_DSN={{.SQLDriver}}://user:pass@localhost:5432/db_name?sslmode=disable
-SQL_DB_WRITE_DSN={{.SQLDriver}}://user:pass@localhost:5432/db_name?sslmode=disable
+SQL_DB_READ_DSN={{ if .SQLDeps }}{{.SQLDriver}}{{ else }}sql{{ end }}://user:pass@localhost:5432/db_name?sslmode=disable
+SQL_DB_WRITE_DSN={{ if .SQLDeps }}{{.SQLDriver}}{{ else }}sql{{ end }}://user:pass@localhost:5432/db_name?sslmode=disable
 
 REDIS_READ_DSN=redis://user:pass@localhost:6379/0
 REDIS_READ_TLS=false

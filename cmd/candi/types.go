@@ -4,6 +4,7 @@ import "text/template"
 
 const (
 	ps1         = "\x1b[32;1m>>> \x1b[0m"
+	redFormat   = "\x1b[31;1m%s \x1b[0m\n"
 	packageName = "pkg.agungdwiprasetyo.com/candi"
 	initService = "initservice"
 	addModule   = "addmodule"
@@ -43,6 +44,7 @@ var (
 )
 
 type configHeader struct {
+	Version     string
 	Header      string
 	PackageName string
 	ServiceName string

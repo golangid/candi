@@ -8,7 +8,7 @@ package repository
 import (
 	"sync"
 
-	{{ if not (or .SQLDeps .MongoDeps) }}// {{ end }}"{{.PackageName}}/codebase/factory/dependency"
+	"{{.PackageName}}/codebase/factory/dependency"
 )
 
 var (

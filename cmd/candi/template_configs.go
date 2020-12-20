@@ -17,7 +17,7 @@ import (
 	"{{.PackageName}}/codebase/interfaces"
 	"{{.PackageName}}/config"
 	"{{.PackageName}}/config/broker"
-	{{ if not (or .SQLDeps .MongoDeps) }}// {{ end }}"{{.PackageName}}/config/database"
+	{{ if not (or .SQLDeps .MongoDeps .RedisDeps) }}// {{ end }}"{{.PackageName}}/config/database"
 	"{{.PackageName}}/candihelper"
 	"{{.PackageName}}/middleware"
 	"{{.PackageName}}/validator"

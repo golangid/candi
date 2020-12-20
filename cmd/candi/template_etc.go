@@ -64,6 +64,9 @@ clear:
 	gomodTemplate = `module {{.ServiceName}}
 
 go 1.14
+
+require pkg.agungdwiprasetyo.com/candi {{.Version}}
+
 `
 
 	gitignoreTemplate = `bin

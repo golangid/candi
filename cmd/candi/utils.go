@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -17,6 +16,7 @@ func parseInput() (scope string, headerConfig configHeader, srvConfig serviceCon
 
 	reader := bufio.NewReader(os.Stdin)
 
+selectScope:
 	var cmdInput string
 	if scopeFlag == "" {
 		fmt.Println("\033[1mWhat do you want?\n" +
@@ -30,25 +30,41 @@ func parseInput() (scope string, headerConfig configHeader, srvConfig serviceCon
 	var ok bool
 	scope, ok = scopeMap[scopeFlag]
 	if !ok {
-		log.Fatal("invalid option")
+		fmt.Printf(redFormat, "Invalid option, try again")
+		scopeFlag = ""
+		goto selectScope
 	}
 
 	if scope == initService {
+	inputServiceName:
 		fmt.Print(ps1 + "\033[1mPlease input service name:\033[0m ")
 		cmdInput, _ := reader.ReadString('\n')
 		headerConfig.ServiceName = strings.TrimRight(cmdInput, "\n")
+		_, err := os.Stat(headerConfig.ServiceName)
+		var errMessage string
 		if strings.TrimSpace(headerConfig.ServiceName) == "" {
-			log.Fatal("service name cannot empty")
+			errMessage = "Service name cannot empty"
+		}
+		if !os.IsNotExist(err) {
+			errMessage = "Folder already exists"
+		}
+		if errMessage != "" {
+			fmt.Printf(redFormat, errMessage+", try again")
+			cmdInput = ""
+			goto inputServiceName
 		}
 	} else if scope == addModule && serviceNameFlag != "" {
 		headerConfig.ServiceName = serviceNameFlag
 	}
 
+inputModules:
 	fmt.Print(ps1 + "\033[1mPlease input module names (separated by comma):\033[0m ")
 	cmdInput, _ = reader.ReadString('\n')
 	cmdInput = strings.TrimRight(cmdInput, "\n")
 	if strings.TrimSpace(cmdInput) == "" {
-		log.Fatal("modules cannot empty")
+		fmt.Printf(redFormat, "Modules cannot empty")
+		cmdInput = ""
+		goto inputModules
 	}
 	for _, moduleName := range strings.Split(cmdInput, ",") {
 		modConfigs = append(modConfigs, moduleConfig{
@@ -56,7 +72,8 @@ func parseInput() (scope string, headerConfig configHeader, srvConfig serviceCon
 		})
 	}
 
-	fmt.Print(ps1 + "\033[1mPlease select service handlers (separated by comma)\n" +
+selectServiceHandler:
+	fmt.Print(ps1 + "\033[1mPlease select service handlers (separated by comma, enter for skip)\n" +
 		"1) Rest API\n" +
 		"2) GRPC\n" +
 		"3) GraphQL\033[0m\n")
@@ -66,24 +83,40 @@ func parseInput() (scope string, headerConfig configHeader, srvConfig serviceCon
 	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
 		if serverName, ok := serviceHandlersMap[strings.TrimSpace(str)]; ok {
 			serviceHandlers[serverName] = true
+		} else if str != "" {
+			fmt.Printf(redFormat, "Invalid option, try again")
+			cmdInput = ""
+			goto selectServiceHandler
 		}
 	}
 
-	fmt.Print(ps1 + "\033[1mPlease select worker handlers (separated by comma)\n" +
+selectWorkerHandlers:
+	fmt.Print(ps1 + "\033[1mPlease select worker handlers (separated by comma, enter for skip)\n" +
 		"1) Kafka Consumer\n" +
 		"2) Scheduler\n" +
 		"3) Redis Subscriber\n" +
-		"4) Task Queue\033[0m\n")
+		"4) Task Queue Worker\033[0m\n")
 	cmdInput, _ = reader.ReadString('\n')
 	cmdInput = strings.TrimRight(cmdInput, "\n")
 	workerHandlers := make(map[string]bool)
 	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
 		if workerName, ok := workerHandlersMap[strings.TrimSpace(str)]; ok {
 			workerHandlers[workerName] = true
+		} else if str != "" {
+			fmt.Printf(redFormat, "Invalid option, try again")
+			cmdInput = ""
+			goto selectWorkerHandlers
 		}
 	}
 
-	fmt.Print(ps1 + "\033[1mPlease select dependencies (separated by comma)\n" +
+	if len(serviceHandlers) == 0 && len(workerHandlers) == 0 {
+		fmt.Printf(redFormat, "No service/worker selected, try again")
+		cmdInput = ""
+		goto selectServiceHandler
+	}
+
+selectDependencies:
+	fmt.Print(ps1 + "\033[1mPlease select dependencies (separated by comma, enter for skip)\n" +
 		"1) Redis\n" +
 		"2) SQL Database\n" +
 		"3) Mongo Database\033[0m\n")
@@ -95,18 +128,40 @@ func parseInput() (scope string, headerConfig configHeader, srvConfig serviceCon
 		str = strings.TrimSpace(str)
 		if depsName, ok := dependencyMap[str]; ok {
 			dependencies[depsName] = true
+		} else if str != "" {
+			fmt.Printf(redFormat, "Invalid option, try again")
+			cmdInput = ""
+			goto selectDependencies
 		}
 	}
+	if workerHandlers[redissubsHandler] && !dependencies[redisDeps] {
+		fmt.Printf(redFormat, "Redis Subscriber need redis, try again")
+		cmdInput = ""
+		goto selectDependencies
+	}
+	if workerHandlers[taskqueueHandler] && !(dependencies[redisDeps] && dependencies[mongodbDeps]) {
+		fmt.Printf(redFormat, "Task Queue Worker need redis (for queue) and mongo (for log storage), try again")
+		cmdInput = ""
+		goto selectDependencies
+	}
+
 	if dependencies[sqldbDeps] {
-		fmt.Print(ps1 + "\033[1mPlease select SQL database driver\n" +
+	selectSQLDriver:
+		fmt.Print(ps1 + "\033[1mPlease select SQL database driver (choose one)\n" +
 			"1) Postgres\n" +
 			"2) MySQL\033[0m\n")
 		cmdInput, _ = reader.ReadString('\n')
 		cmdInput = strings.TrimRight(strings.TrimSpace(cmdInput), "\n")
-		baseConfig.SQLDriver = sqlDrivers[cmdInput]
+		baseConfig.SQLDriver, ok = sqlDrivers[cmdInput]
+		if !ok {
+			fmt.Printf(redFormat, "Invalid option, try again")
+			cmdInput = ""
+			goto selectSQLDriver
+		}
 	}
 
 	headerConfig.Header = fmt.Sprintf("Code generated by candi %s.", candihelper.Version)
+	headerConfig.Version = candihelper.Version
 	headerConfig.PackageName = packageName
 	if gomodName != "" {
 		gomodName = strings.TrimSuffix(gomodName, "/") + "/"
