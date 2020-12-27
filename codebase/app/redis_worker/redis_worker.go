@@ -6,11 +6,14 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
+	"pkg.agungdwiprasetyo.com/candi/candiutils"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
 	"pkg.agungdwiprasetyo.com/candi/config/env"
@@ -19,7 +22,7 @@ import (
 )
 
 var (
-	shutdown, semaphore chan struct{}
+	refreshWorkerNotif, shutdown, semaphore, startWorkerCh, releaseWorkerCh chan struct{}
 )
 
 type (
@@ -31,12 +34,8 @@ type (
 			handlerFunc   types.WorkerHandlerFunc
 			errorHandlers []types.WorkerErrorHandler
 		}
-		wg sync.WaitGroup
-	}
-
-	handler struct {
-		name    string
-		message []byte
+		consul *candiutils.Consul
+		wg     sync.WaitGroup
 	}
 )
 
@@ -71,8 +70,9 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	}
 
 	shutdown, semaphore = make(chan struct{}, 1), make(chan struct{}, env.BaseEnv().MaxGoroutines)
+	startWorkerCh, releaseWorkerCh = make(chan struct{}), make(chan struct{})
 
-	return &redisWorker{
+	workerInstance := &redisWorker{
 		service:  service,
 		handlers: handlers,
 		pubSubConn: func() redis.PubSubConn {
@@ -86,18 +86,35 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 		},
 		isHaveJob: len(handlers) != 0,
 	}
+
+	if env.BaseEnv().UseConsul {
+		consul, err := candiutils.NewConsul(&candiutils.ConsulConfig{
+			ConsulAgentHost:   env.BaseEnv().ConsulAgentHost,
+			ConsulKey:         fmt.Sprintf("%s_redis_worker", service.Name()),
+			LockRetryInterval: time.Second,
+		})
+		if err != nil {
+			panic(err)
+		}
+		workerInstance.consul = consul
+	}
+
+	return workerInstance
 }
 
 func (r *redisWorker) Serve() {
 	if !r.isHaveJob {
 		return
 	}
+	r.createConsulSession()
 
-	psc := r.pubSubConn()
+START:
+	select {
+	case <-startWorkerCh:
+		psc := r.pubSubConn()
+		totalRunJobs := 0
 
-	// listen redis subscriber
-	handlerReceiver := make(chan handler)
-	go func() {
+		// listen redis subscriber
 		for {
 			switch msg := psc.Receive().(type) {
 			case redis.Message:
@@ -105,9 +122,23 @@ func (r *redisWorker) Serve() {
 				handlerName, messageData := candihelper.ParseRedisPubSubKeyTopic(string(msg.Data))
 				_, ok := r.handlers[handlerName]
 				if ok {
-					handlerReceiver <- handler{
-						name:    handlerName,
-						message: []byte(messageData),
+					semaphore <- struct{}{}
+					r.wg.Add(1)
+					go func(handlerName string, message []byte) {
+						defer func() {
+							r.wg.Done()
+							<-semaphore
+						}()
+
+						r.processMessage(handlerName, message)
+					}(handlerName, []byte(messageData))
+
+					totalRunJobs++
+					// if already running 10 jobs, release lock so that run in another instance
+					if totalRunJobs >= 2 {
+						// recreate session
+						r.createConsulSession()
+						goto START
 					}
 				}
 
@@ -116,33 +147,22 @@ func (r *redisWorker) Serve() {
 				psc = r.pubSubConn()
 			}
 		}
-	}()
 
-	// run worker with listen shutdown channel
-	for {
-		select {
-		case recv := <-handlerReceiver:
-
-			semaphore <- struct{}{}
-			r.wg.Add(1)
-			go func(h handler) {
-				defer func() {
-					r.wg.Done()
-					<-semaphore
-				}()
-
-				r.processMessage(h)
-			}(recv)
-
-		case <-shutdown:
-			return
-		}
+	case <-shutdown:
+		return
 	}
 }
 
 func (r *redisWorker) Shutdown(ctx context.Context) {
 	log.Println("\x1b[33;1mStopping Redis Subscriber worker...\x1b[0m")
-	defer func() { log.Println("\x1b[33;1mStopping Redis Subscriber:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
+	defer func() {
+		if r.consul != nil {
+			if err := r.consul.DestroySession(); err != nil {
+				panic(err)
+			}
+		}
+		log.Println("\x1b[33;1mStopping Redis Subscriber:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
+	}()
 
 	if !r.isHaveJob {
 		return
@@ -157,7 +177,20 @@ func (r *redisWorker) Shutdown(ctx context.Context) {
 	r.wg.Wait()
 }
 
-func (r *redisWorker) processMessage(h handler) {
+func (r *redisWorker) createConsulSession() {
+	if r.consul == nil {
+		go func() { startWorkerCh <- struct{}{} }()
+		return
+	}
+	r.consul.DestroySession()
+	hostname, _ := os.Hostname()
+	value := map[string]string{
+		"hostname": hostname,
+	}
+	go r.consul.RetryLockAcquire(value, startWorkerCh, releaseWorkerCh)
+}
+
+func (r *redisWorker) processMessage(handlerName string, message []byte) {
 	trace := tracer.StartTrace(context.Background(), "RedisSubscriber")
 	defer trace.Finish()
 	ctx, tags := trace.Context(), trace.Tags()
@@ -169,16 +202,16 @@ func (r *redisWorker) processMessage(h handler) {
 	}()
 
 	if env.BaseEnv().DebugMode {
-		log.Printf("\x1b[35;3mRedis Key Expired Subscriber: executing event key '%s'\x1b[0m", h.name)
+		log.Printf("\x1b[35;3mRedis Key Expired Subscriber: executing event key '%s'\x1b[0m", handlerName)
 	}
 
-	tags["handler_name"] = h.name
-	tags["message"] = string(h.message)
+	tags["handler_name"] = handlerName
+	tags["message"] = string(message)
 
-	handler := r.handlers[h.name]
-	if err := handler.handlerFunc(ctx, h.message); err != nil {
+	handler := r.handlers[handlerName]
+	if err := handler.handlerFunc(ctx, message); err != nil {
 		for _, errHandler := range handler.errorHandlers {
-			errHandler(ctx, types.RedisSubscriber, h.name, h.message, err)
+			errHandler(ctx, types.RedisSubscriber, handlerName, message, err)
 		}
 		tracer.SetError(ctx, err)
 	}
