@@ -2,9 +2,11 @@ package candiutils
 
 import (
 	"encoding/json"
+	"net/url"
 	"time"
 
 	api "github.com/hashicorp/consul/api"
+	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
 // Consul configured for lock acquisition
@@ -25,85 +27,93 @@ type ConsulConfig struct {
 }
 
 // NewConsul constructor
-func NewConsul(o *ConsulConfig) (*Consul, error) {
-	var d Consul
+func NewConsul(opt *ConsulConfig) (*Consul, error) {
+	var c Consul
 	cfg := api.DefaultConfig()
-	cfg.Address = o.ConsulAgentHost
+	cfg.Address = opt.ConsulAgentHost
 	Client, err := api.NewClient(cfg)
 	if err != nil {
-		return &d, err
+		return nil, err
 	}
 
-	d.Client = Client
-	d.Key = o.ConsulKey
-	d.LockRetryInterval = 30 * time.Second
-	d.SessionTTL = 5 * time.Minute
+	c.Client = Client
+	c.Key = opt.ConsulKey
+	c.LockRetryInterval = 30 * time.Second
+	c.SessionTTL = 5 * time.Minute
 
-	if o.LockRetryInterval != 0 {
-		d.LockRetryInterval = o.LockRetryInterval
+	if opt.LockRetryInterval != 0 {
+		c.LockRetryInterval = opt.LockRetryInterval
 	}
-	if o.SessionTTL != 0 {
-		d.SessionTTL = o.SessionTTL
+	if opt.SessionTTL != 0 {
+		c.SessionTTL = opt.SessionTTL
 	}
 
-	return &d, nil
+	return &c, nil
 }
 
 // RetryLockAcquire attempts to acquire the lock at `LockRetryInterval`
-func (d *Consul) RetryLockAcquire(value map[string]string, acquired chan<- struct{}, released chan<- struct{}) {
-	ticker := time.NewTicker(d.LockRetryInterval)
+func (c *Consul) RetryLockAcquire(value map[string]string, acquired chan<- struct{}, released chan<- struct{}) {
+	ticker := time.NewTicker(c.LockRetryInterval)
 	for range ticker.C {
 		value["lockAcquisitionTime"] = time.Now().Format(time.RFC3339)
-		lock, err := d.acquireLock(value, released)
+		lock, err := c.acquireLock(value, released)
 		if err != nil {
-			continue
+			logger.LogYellow("Cannot connect to consul, " + err.Error())
+			switch err.(type) {
+			case *url.Error:
+				goto ACQUIRED
+			default:
+				continue
+			}
 		}
 		if lock {
-			ticker.Stop()
-			acquired <- struct{}{}
-			break
+			goto ACQUIRED
 		}
 	}
+
+ACQUIRED:
+	ticker.Stop()
+	acquired <- struct{}{}
 }
 
 // DestroySession method
-func (d *Consul) DestroySession() error {
-	if d.SessionID == "" {
+func (c *Consul) DestroySession() error {
+	if c.SessionID == "" {
 		return nil
 	}
-	_, err := d.Client.Session().Destroy(d.SessionID, nil)
+	_, err := c.Client.Session().Destroy(c.SessionID, nil)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (d *Consul) createSession() (string, error) {
-	return createSession(d.Client, d.Key, d.SessionTTL)
+func (c *Consul) createSession() (string, error) {
+	return createSession(c.Client, c.Key, c.SessionTTL)
 }
 
 // RecreateSession method
-func (d *Consul) RecreateSession() error {
-	sessionID, err := d.createSession()
+func (c *Consul) RecreateSession() error {
+	sessionID, err := c.createSession()
 	if err != nil {
 		return err
 	}
-	d.SessionID = sessionID
+	c.SessionID = sessionID
 	return nil
 }
 
-func (d *Consul) acquireLock(value map[string]string, released chan<- struct{}) (bool, error) {
-	if d.SessionID == "" {
-		err := d.RecreateSession()
+func (c *Consul) acquireLock(value map[string]string, released chan<- struct{}) (bool, error) {
+	if c.SessionID == "" {
+		err := c.RecreateSession()
 		if err != nil {
 			return false, err
 		}
 	}
 	b, _ := json.Marshal(value)
 	lockOpts := &api.LockOptions{
-		Key:          d.Key,
+		Key:          c.Key,
 		Value:        b,
-		Session:      d.SessionID,
+		Session:      c.SessionID,
 		LockWaitTime: 1 * time.Millisecond,
 		LockTryOnce:  true,
 		LockDelay:    1 * time.Millisecond,
@@ -112,13 +122,13 @@ func (d *Consul) acquireLock(value map[string]string, released chan<- struct{}) 
 			LockDelay: 1 * time.Millisecond,
 		},
 	}
-	lock, err := d.Client.LockOpts(lockOpts)
+	lock, err := c.Client.LockOpts(lockOpts)
 	if err != nil {
 		return false, err
 	}
-	a, _, err := d.Client.Session().Info(d.SessionID, nil)
+	a, _, err := c.Client.Session().Info(c.SessionID, nil)
 	if err == nil && a == nil {
-		d.SessionID = ""
+		c.SessionID = ""
 		return false, nil
 	}
 	if err != nil {
@@ -131,7 +141,7 @@ func (d *Consul) acquireLock(value map[string]string, released chan<- struct{}) 
 	}
 	if resp != nil {
 		doneCh := make(chan struct{})
-		go func() { d.Client.Session().RenewPeriodic(d.SessionTTL.String(), d.SessionID, nil, doneCh) }()
+		go func() { c.Client.Session().RenewPeriodic(c.SessionTTL.String(), c.SessionID, nil, doneCh) }()
 		go func() {
 			<-resp
 			close(doneCh)
