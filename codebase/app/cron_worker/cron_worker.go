@@ -128,14 +128,16 @@ START:
 				c.processJob(j)
 			}(job)
 
-			totalRunJobs++
-			// if already running 10 jobs, release lock so that run in another instance
-			if totalRunJobs >= 10 {
-				// recreate session
-				c.createConsulSession()
-				goto START
+			if c.consul != nil {
+				totalRunJobs++
+				// if already running 10 jobs, release lock so that run in another instance
+				if totalRunJobs == 10 {
+					// recreate session
+					c.createConsulSession()
+					<-releaseWorkerCh
+					goto START
+				}
 			}
-
 		}
 
 	case <-shutdown:
