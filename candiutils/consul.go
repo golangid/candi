@@ -135,16 +135,17 @@ func (c *Consul) acquireLock(value map[string]string, released chan<- struct{}) 
 		return false, err
 	}
 
-	resp, err := lock.Lock(nil)
+	unlock, err := lock.Lock(nil)
 	if err != nil {
 		return false, err
 	}
-	if resp != nil {
+	if unlock != nil {
 		doneCh := make(chan struct{})
 		go func() { c.Client.Session().RenewPeriodic(c.SessionTTL.String(), c.SessionID, nil, doneCh) }()
 		go func() {
-			<-resp
+			<-unlock
 			close(doneCh)
+			time.Sleep(c.LockRetryInterval)
 			released <- struct{}{}
 		}()
 		return true, nil
