@@ -27,7 +27,7 @@ var (
 
 type (
 	redisWorker struct {
-		pubSubConn func() redis.PubSubConn
+		pubSubConn func() (subFn func() *redis.PubSubConn, unsubFn func(*redis.PubSubConn))
 		isHaveJob  bool
 		service    factory.ServiceFactory
 		handlers   map[string]struct {
@@ -36,6 +36,11 @@ type (
 		}
 		consul *candiutils.Consul
 		wg     sync.WaitGroup
+	}
+
+	handler struct {
+		name    string
+		message []byte
 	}
 )
 
@@ -75,14 +80,17 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	workerInstance := &redisWorker{
 		service:  service,
 		handlers: handlers,
-		pubSubConn: func() redis.PubSubConn {
+		pubSubConn: func() (func() *redis.PubSubConn, func(*redis.PubSubConn)) {
 			conn := redisPool.Get()
 			conn.Do("CONFIG", "SET", "notify-keyspace-events", "Ex")
 
-			psc := redis.PubSubConn{Conn: conn}
-			psc.PSubscribe("__keyevent@*__:expired")
-
-			return psc
+			return func() *redis.PubSubConn {
+					psc := &redis.PubSubConn{Conn: conn}
+					psc.PSubscribe("__keyevent@*__:expired")
+					return psc
+				}, func(psc *redis.PubSubConn) {
+					psc.Unsubscribe()
+				}
 		},
 		isHaveJob: len(handlers) != 0,
 	}
@@ -91,7 +99,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 		consul, err := candiutils.NewConsul(&candiutils.ConsulConfig{
 			ConsulAgentHost:   env.BaseEnv().ConsulAgentHost,
 			ConsulKey:         fmt.Sprintf("%s_redis_worker", service.Name()),
-			LockRetryInterval: time.Second,
+			LockRetryInterval: 1 * time.Second,
 		})
 		if err != nil {
 			panic(err)
@@ -111,40 +119,43 @@ func (r *redisWorker) Serve() {
 START:
 	select {
 	case <-startWorkerCh:
-		psc := r.pubSubConn()
-		totalRunJobs := 0
+		subFunc, unsubFunc := r.pubSubConn()
+		psc := subFunc()
 
-		// listen redis subscriber
+		recv := make(chan handler)
+		rebalance := time.NewTicker(1 * time.Minute)
+		go r.runListener(recv, psc)
+
+		if r.consul == nil {
+			rebalance.Stop()
+		}
+
 		for {
-			switch msg := psc.Receive().(type) {
-			case redis.Message:
+			select {
+			case handlerData := <-recv:
+				semaphore <- struct{}{}
+				r.wg.Add(1)
+				go func(handlerName string, message []byte) {
+					defer func() {
+						r.wg.Done()
+						<-semaphore
+					}()
 
-				handlerName, messageData := candihelper.ParseRedisPubSubKeyTopic(string(msg.Data))
-				_, ok := r.handlers[handlerName]
-				if ok {
-					semaphore <- struct{}{}
-					r.wg.Add(1)
-					go func(handlerName string, message []byte) {
-						defer func() {
-							r.wg.Done()
-							<-semaphore
-						}()
+					r.processMessage(handlerName, message)
+				}(handlerData.name, handlerData.message)
 
-						r.processMessage(handlerName, message)
-					}(handlerName, []byte(messageData))
-
-					totalRunJobs++
-					// if already running 10 jobs, release lock so that run in another instance
-					if totalRunJobs >= 2 {
-						// recreate session
-						r.createConsulSession()
-						goto START
-					}
+			case <-rebalance.C:
+				rebalance.Stop()
+				if r.consul != nil {
+					// recreate session
+					r.createConsulSession()
+					<-releaseWorkerCh
+					unsubFunc(psc)
+					goto START
 				}
 
-			case error:
-				// if network connection error, create new connection from pool
-				psc = r.pubSubConn()
+			case <-shutdown:
+				return
 			}
 		}
 
@@ -188,6 +199,30 @@ func (r *redisWorker) createConsulSession() {
 		"hostname": hostname,
 	}
 	go r.consul.RetryLockAcquire(value, startWorkerCh, releaseWorkerCh)
+}
+
+func (r *redisWorker) runListener(recv chan<- handler, psc *redis.PubSubConn) {
+
+	// listen redis subscriber
+	for {
+		switch msg := psc.Receive().(type) {
+		case redis.Message:
+
+			handlerName, messageData := candihelper.ParseRedisPubSubKeyTopic(string(msg.Data))
+			if _, ok := r.handlers[handlerName]; ok {
+				recv <- handler{
+					name:    handlerName,
+					message: []byte(messageData),
+				}
+			}
+
+		case error:
+			psc.Close()
+			// if network connection error, create new connection from pool
+			subFn, _ := r.pubSubConn()
+			psc = subFn()
+		}
+	}
 }
 
 func (r *redisWorker) processMessage(handlerName string, message []byte) {
