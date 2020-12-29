@@ -14,7 +14,7 @@
 </p>
 
 
-### Install `binary` from source
+### Install `CLI`
 ```
 $ go get -u pkg.agungdwiprasetyo.com/candi/cmd/candi
 ```
@@ -24,6 +24,7 @@ $ go get -u pkg.agungdwiprasetyo.com/candi/cmd/candi
 ```
 $ candi
 ```
+![](https://storage.googleapis.com/agungdp/static/candi/candi.gif)
 
 ### Build and run service
 ```
