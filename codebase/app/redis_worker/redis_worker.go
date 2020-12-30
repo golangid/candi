@@ -115,15 +115,15 @@ func (r *redisWorker) Serve() {
 		return
 	}
 	r.createConsulSession()
+	subFunc, unsubFunc := r.pubSubConn()
 
 START:
 	select {
 	case <-startWorkerCh:
-		subFunc, unsubFunc := r.pubSubConn()
 		psc := subFunc()
 
 		recv := make(chan handler)
-		rebalance := time.NewTicker(1 * time.Minute)
+		rebalance := time.NewTicker(env.BaseEnv().ConsulRedisWorkerRebalanceInterval)
 		go r.runListener(recv, psc)
 
 		if r.consul == nil {
@@ -202,6 +202,11 @@ func (r *redisWorker) createConsulSession() {
 }
 
 func (r *redisWorker) runListener(recv chan<- handler, psc *redis.PubSubConn) {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.LogE(fmt.Sprint(r))
+		}
+	}()
 
 	// listen redis subscriber
 	for {

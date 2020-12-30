@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
@@ -55,6 +56,9 @@ type Env struct {
 	UseConsul bool
 	// ConsulAgentHost consul agent host
 	ConsulAgentHost string
+
+	// ConsulRedisWorkerRebalanceInterval env
+	ConsulRedisWorkerRebalanceInterval time.Duration
 
 	// BasicAuthUsername config
 	BasicAuthUsername string
@@ -193,6 +197,11 @@ func Load(serviceName string) {
 		env.ConsulAgentHost, ok = os.LookupEnv("CONSUL_AGENT_HOST")
 		if !ok {
 			panic("consul is active, missing CONSUL_AGENT_HOST environment")
+		}
+		if dur, err := time.ParseDuration(os.Getenv("CONSUL_REDIS_WORKER_REBALANCE_INTERVAL")); err == nil {
+			env.ConsulRedisWorkerRebalanceInterval = dur
+		} else {
+			env.ConsulRedisWorkerRebalanceInterval = 1 * time.Minute
 		}
 	}
 
