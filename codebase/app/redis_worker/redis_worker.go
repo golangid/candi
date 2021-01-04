@@ -27,7 +27,7 @@ var (
 
 type (
 	redisWorker struct {
-		pubSubConn func() (subFn func() *redis.PubSubConn, unsubFn func(*redis.PubSubConn))
+		pubSubConn func() (subFn func() *redis.PubSubConn)
 		isHaveJob  bool
 		service    factory.ServiceFactory
 		handlers   map[string]struct {
@@ -36,11 +36,6 @@ type (
 		}
 		consul *candiutils.Consul
 		wg     sync.WaitGroup
-	}
-
-	handler struct {
-		name    string
-		message []byte
 	}
 )
 
@@ -80,17 +75,15 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	workerInstance := &redisWorker{
 		service:  service,
 		handlers: handlers,
-		pubSubConn: func() (func() *redis.PubSubConn, func(*redis.PubSubConn)) {
+		pubSubConn: func() func() *redis.PubSubConn {
 			conn := redisPool.Get()
 			conn.Do("CONFIG", "SET", "notify-keyspace-events", "Ex")
 
 			return func() *redis.PubSubConn {
-					psc := &redis.PubSubConn{Conn: conn}
-					psc.PSubscribe("__keyevent@*__:expired")
-					return psc
-				}, func(psc *redis.PubSubConn) {
-					psc.Unsubscribe()
-				}
+				psc := &redis.PubSubConn{Conn: conn}
+				psc.PSubscribe("__keyevent@*__:expired")
+				return psc
+			}
 		},
 		isHaveJob: len(handlers) != 0,
 	}
@@ -114,49 +107,39 @@ func (r *redisWorker) Serve() {
 	if !r.isHaveJob {
 		return
 	}
+
 	r.createConsulSession()
-	subFunc, unsubFunc := r.pubSubConn()
+	subFunc := r.pubSubConn()
 
 START:
 	select {
 	case <-startWorkerCh:
 		psc := subFunc()
 
-		recv := make(chan handler)
-		rebalance := time.NewTicker(env.BaseEnv().ConsulRedisWorkerRebalanceInterval)
-		go r.runListener(recv, psc)
+		stopListener := make(chan struct{})
+		go r.runListener(stopListener, psc)
 
+		rebalance := time.NewTicker(env.BaseEnv().ConsulRedisWorkerRebalanceInterval)
 		if r.consul == nil {
 			rebalance.Stop()
 		}
 
-		for {
-			select {
-			case handlerData := <-recv:
-				semaphore <- struct{}{}
-				r.wg.Add(1)
-				go func(handlerName string, message []byte) {
-					defer func() {
-						r.wg.Done()
-						<-semaphore
-					}()
-
-					r.processMessage(handlerName, message)
-				}(handlerData.name, handlerData.message)
-
-			case <-rebalance.C:
-				rebalance.Stop()
-				if r.consul != nil {
-					// recreate session
-					r.createConsulSession()
-					<-releaseWorkerCh
-					unsubFunc(psc)
-					goto START
-				}
-
-			case <-shutdown:
-				return
+		select {
+		case <-rebalance.C:
+			rebalance.Stop()
+			if r.consul != nil {
+				// recreate session
+				r.createConsulSession()
+				<-releaseWorkerCh
+				psc.PUnsubscribe()
+				go func() { stopListener <- struct{}{} }()
+				goto START
 			}
+
+		case <-shutdown:
+			rebalance.Stop()
+			go func() { stopListener <- struct{}{} }()
+			return
 		}
 
 	case <-shutdown:
@@ -201,7 +184,7 @@ func (r *redisWorker) createConsulSession() {
 	go r.consul.RetryLockAcquire(value, startWorkerCh, releaseWorkerCh)
 }
 
-func (r *redisWorker) runListener(recv chan<- handler, psc *redis.PubSubConn) {
+func (r *redisWorker) runListener(stop <-chan struct{}, psc *redis.PubSubConn) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.LogE(fmt.Sprint(r))
@@ -210,22 +193,37 @@ func (r *redisWorker) runListener(recv chan<- handler, psc *redis.PubSubConn) {
 
 	// listen redis subscriber
 	for {
-		switch msg := psc.Receive().(type) {
-		case redis.Message:
+		select {
+		case <-stop:
+			return
 
-			handlerName, messageData := candihelper.ParseRedisPubSubKeyTopic(string(msg.Data))
-			if _, ok := r.handlers[handlerName]; ok {
-				recv <- handler{
-					name:    handlerName,
-					message: []byte(messageData),
+		default:
+			switch msg := psc.Receive().(type) {
+			case redis.Message:
+
+				log.Println(string(msg.Data))
+				handlerName, messageData := candihelper.ParseRedisPubSubKeyTopic(string(msg.Data))
+				if _, ok := r.handlers[handlerName]; ok {
+
+					semaphore <- struct{}{}
+					r.wg.Add(1)
+					go func(handlerName string, message []byte) {
+						defer func() {
+							r.wg.Done()
+							<-semaphore
+						}()
+
+						r.processMessage(handlerName, message)
+					}(handlerName, []byte(messageData))
+
 				}
-			}
 
-		case error:
-			psc.Close()
-			// if network connection error, create new connection from pool
-			subFn, _ := r.pubSubConn()
-			psc = subFn()
+			case error:
+				psc.Close()
+				// if network connection error, create new connection from pool
+				subFn := r.pubSubConn()
+				psc = subFn()
+			}
 		}
 	}
 }
