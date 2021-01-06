@@ -5,7 +5,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/joho/godotenv"
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
@@ -56,9 +55,8 @@ type Env struct {
 	UseConsul bool
 	// ConsulAgentHost consul agent host
 	ConsulAgentHost string
-
-	// ConsulRedisWorkerRebalanceInterval env
-	ConsulRedisWorkerRebalanceInterval time.Duration
+	// ConsulMaxJobRebalance env, if worker execute total job in env config, rebalance worker to another active intance
+	ConsulMaxJobRebalance int
 
 	// BasicAuthUsername config
 	BasicAuthUsername string
@@ -198,10 +196,9 @@ func Load(serviceName string) {
 		if !ok {
 			panic("consul is active, missing CONSUL_AGENT_HOST environment")
 		}
-		if dur, err := time.ParseDuration(os.Getenv("CONSUL_REDIS_WORKER_REBALANCE_INTERVAL")); err == nil {
-			env.ConsulRedisWorkerRebalanceInterval = dur
-		} else {
-			env.ConsulRedisWorkerRebalanceInterval = 1 * time.Minute
+		env.ConsulMaxJobRebalance = 10
+		if count, err := strconv.Atoi(os.Getenv("CONSUL_MAX_JOB_REBALANCE")); err == nil {
+			env.ConsulMaxJobRebalance = count
 		}
 	}
 

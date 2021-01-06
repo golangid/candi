@@ -130,8 +130,8 @@ START:
 
 			if c.consul != nil {
 				totalRunJobs++
-				// if already running 10 jobs, release lock so that run in another instance
-				if totalRunJobs == 10 {
+				// if already running n jobs, release lock so that run in another instance
+				if totalRunJobs == env.BaseEnv().ConsulMaxJobRebalance {
 					// recreate session
 					c.createConsulSession()
 					<-releaseWorkerCh

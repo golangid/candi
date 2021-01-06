@@ -117,29 +117,25 @@ START:
 		psc := subFunc()
 
 		stopListener := make(chan struct{})
-		go r.runListener(stopListener, psc)
+		countJobs := make(chan int)
+		go r.runListener(stopListener, countJobs, psc)
 
-		rebalance := time.NewTicker(env.BaseEnv().ConsulRedisWorkerRebalanceInterval)
-		if r.consul == nil {
-			rebalance.Stop()
-		}
+		for {
+			select {
+			case count := <-countJobs:
+				if r.consul != nil && count == env.BaseEnv().ConsulMaxJobRebalance {
+					// recreate session
+					r.createConsulSession()
+					<-releaseWorkerCh
+					psc.PUnsubscribe()
+					go func() { stopListener <- struct{}{} }()
+					goto START
+				}
 
-		select {
-		case <-rebalance.C:
-			rebalance.Stop()
-			if r.consul != nil {
-				// recreate session
-				r.createConsulSession()
-				<-releaseWorkerCh
-				psc.PUnsubscribe()
+			case <-shutdown:
 				go func() { stopListener <- struct{}{} }()
-				goto START
+				return
 			}
-
-		case <-shutdown:
-			rebalance.Stop()
-			go func() { stopListener <- struct{}{} }()
-			return
 		}
 
 	case <-shutdown:
@@ -184,13 +180,14 @@ func (r *redisWorker) createConsulSession() {
 	go r.consul.RetryLockAcquire(value, startWorkerCh, releaseWorkerCh)
 }
 
-func (r *redisWorker) runListener(stop <-chan struct{}, psc *redis.PubSubConn) {
+func (r *redisWorker) runListener(stop <-chan struct{}, count chan<- int, psc *redis.PubSubConn) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.LogE(fmt.Sprint(r))
 		}
 	}()
 
+	totalRunJobs := 0
 	// listen redis subscriber
 	for {
 		select {
@@ -201,7 +198,6 @@ func (r *redisWorker) runListener(stop <-chan struct{}, psc *redis.PubSubConn) {
 			switch msg := psc.Receive().(type) {
 			case redis.Message:
 
-				log.Println(string(msg.Data))
 				handlerName, messageData := candihelper.ParseRedisPubSubKeyTopic(string(msg.Data))
 				if _, ok := r.handlers[handlerName]; ok {
 
@@ -211,6 +207,8 @@ func (r *redisWorker) runListener(stop <-chan struct{}, psc *redis.PubSubConn) {
 						defer func() {
 							r.wg.Done()
 							<-semaphore
+							totalRunJobs++
+							count <- totalRunJobs
 						}()
 
 						r.processMessage(handlerName, message)

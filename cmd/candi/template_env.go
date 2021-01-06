@@ -24,7 +24,7 @@ TASK_QUEUE_DASHBOARD_MAX_CLIENT=5
 # use consul for distributed lock if run in multiple instance
 USE_CONSUL=false
 CONSUL_AGENT_HOST=127.0.0.1:8500
-CONSUL_REDIS_WORKER_REBALANCE_INTERVAL=1m # if not set, default value is 1 minute
+CONSUL_MAX_JOB_REBALANCE=10 # if worker execute total job in env config, rebalance worker to another active intance
 
 BASIC_AUTH_USERNAME=user
 BASIC_AUTH_PASS=pass
