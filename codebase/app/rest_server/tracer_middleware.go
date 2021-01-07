@@ -1,4 +1,4 @@
-package tracer
+package restserver
 
 import (
 	"bytes"
@@ -11,7 +11,9 @@ import (
 	"github.com/labstack/echo"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/logger"
+	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
 
 type httpResponseWriter struct {
@@ -26,42 +28,39 @@ func (w *httpResponseWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
-// EchoRestTracerMiddleware for wrap from http inbound (request from client)
-func EchoRestTracerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+// echoRestTracerMiddleware for wrap from http inbound (request from client)
+func echoRestTracerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		req := c.Request()
-		tracer := opentracing.GlobalTracer()
+		globalTracer := opentracing.GlobalTracer()
 		operationName := fmt.Sprintf("%s %s%s", req.Method, req.Host, req.URL.Path)
 
 		var span opentracing.Span
 		var ctx context.Context
-		if spanCtx, err := tracer.Extract(opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(req.Header)); err != nil {
+		if spanCtx, err := globalTracer.Extract(opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(req.Header)); err != nil {
 			span, ctx = opentracing.StartSpanFromContext(req.Context(), operationName)
 			ext.SpanKindRPCServer.Set(span)
 		} else {
-			span = tracer.StartSpan(operationName, ext.RPCServerOption((spanCtx)))
+			span = globalTracer.StartSpan(operationName, ext.RPCServerOption((spanCtx)))
 			ctx = opentracing.ContextWithSpan(req.Context(), span)
 			ext.SpanKindRPCClient.Set(span)
 		}
 
 		body, _ := ioutil.ReadAll(req.Body)
-		if len(body) < maxPacketSize { // limit request body size to 65000 bytes (if higher tracer cannot show root span)
-			span.SetTag("request.body", string(body))
+		if len(body) < tracer.MaxPacketSize { // limit request body size to 65000 bytes (if higher tracer cannot show root span)
+			span.LogKV("request.body", string(body))
 		} else {
 			span.SetTag("request.body.size", len(body))
 		}
 		req.Body = ioutil.NopCloser(bytes.NewBuffer(body)) // reuse body
 
-		span.SetTag("http.headers", req.Header)
+		span.SetTag("http.headers", string(candihelper.ToBytes(req.Header)))
 		ext.HTTPUrl.Set(span, req.Host+req.RequestURI)
 		ext.HTTPMethod.Set(span, req.Method)
 
-		span.LogEvent("start_handling_request")
-
 		defer func() {
-			span.LogEvent("complete_handling_request")
 			span.Finish()
-			logger.LogGreen(GetTraceURL(ctx))
+			logger.LogGreen("rest api " + tracer.GetTraceURL(ctx))
 		}()
 
 		resBody := new(bytes.Buffer)
@@ -77,8 +76,8 @@ func EchoRestTracerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			ext.Error.Set(span, true)
 		}
 
-		if resBody.Len() < maxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
-			span.SetTag("response.body", resBody.String())
+		if resBody.Len() < tracer.MaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
+			span.LogKV("response.body", resBody.String())
 		} else {
 			span.SetTag("response.body.size", resBody.Len())
 		}

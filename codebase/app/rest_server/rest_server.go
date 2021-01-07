@@ -18,7 +18,6 @@ import (
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
 	"pkg.agungdwiprasetyo.com/candi/config/env"
 	"pkg.agungdwiprasetyo.com/candi/logger"
-	"pkg.agungdwiprasetyo.com/candi/tracer"
 	"pkg.agungdwiprasetyo.com/candi/wrapper"
 )
 
@@ -52,7 +51,7 @@ func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.Ap
 	})
 
 	restRootPath := server.serverEngine.Group("",
-		tracer.EchoRestTracerMiddleware, echoMidd.Logger(),
+		echoRestTracerMiddleware, echoMidd.Logger(),
 	)
 	for _, m := range service.GetModules() {
 		if h := m.RestHandler(); h != nil {

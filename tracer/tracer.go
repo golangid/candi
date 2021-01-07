@@ -4,27 +4,59 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"runtime"
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	ext "github.com/opentracing/opentracing-go/ext"
+	"github.com/opentracing/opentracing-go/log"
+	config "github.com/uber/jaeger-client-go/config"
 	"google.golang.org/grpc/metadata"
+	"pkg.agungdwiprasetyo.com/candi/candihelper"
+	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
 	"pkg.agungdwiprasetyo.com/candi/config/env"
+	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
-// Tracer for trace
-type Tracer interface {
-	Context() context.Context
-	Tags() map[string]interface{}
-	InjectHTTPHeader(req *http.Request)
-	InjectGRPCMetadata(md metadata.MD)
-	SetError(err error)
-	Finish(additionalTags ...map[string]interface{})
+// MaxPacketSize max packet size of UDP
+const MaxPacketSize = int(65000 * candihelper.Byte)
+
+// InitOpenTracing with agent and service name
+func InitOpenTracing() error {
+	serviceName := env.BaseEnv().ServiceName
+	if env.BaseEnv().Environment != "" {
+		serviceName = fmt.Sprintf("%s-%s", serviceName, strings.ToLower(env.BaseEnv().Environment))
+	}
+	cfg := &config.Configuration{
+		Sampler: &config.SamplerConfig{
+			Type:  "const",
+			Param: 1,
+		},
+		Reporter: &config.ReporterConfig{
+			LogSpans:            true,
+			BufferFlushInterval: 1 * time.Second,
+			LocalAgentHostPort:  env.BaseEnv().JaegerTracingHost,
+		},
+		ServiceName: serviceName,
+		Tags: []opentracing.Tag{
+			{Key: "num_cpu", Value: runtime.NumCPU()},
+			{Key: "max_goroutines", Value: env.BaseEnv().MaxGoroutines},
+			{Key: "go_version", Value: runtime.Version()},
+		},
+	}
+	tracer, _, err := cfg.NewTracer(config.MaxTagValueLength(math.MaxInt32))
+	if err != nil {
+		logger.LogEf("ERROR: cannot init opentracing connection: %v\n", err)
+		return err
+	}
+	opentracing.SetGlobalTracer(tracer)
+	return nil
 }
 
 type tracerImpl struct {
@@ -34,7 +66,7 @@ type tracerImpl struct {
 }
 
 // StartTrace starting trace child span from parent span
-func StartTrace(ctx context.Context, operationName string) Tracer {
+func StartTrace(ctx context.Context, operationName string) interfaces.Tracer {
 	span := opentracing.SpanFromContext(ctx)
 	if span == nil {
 		// init new span
@@ -58,6 +90,14 @@ func (t *tracerImpl) Context() context.Context {
 func (t *tracerImpl) Tags() map[string]interface{} {
 	t.tags = make(map[string]interface{})
 	return t.tags
+}
+
+// SetTag set tags in tracer span
+func (t *tracerImpl) SetTag(key string, value interface{}) {
+	if t.tags == nil {
+		t.tags = make(map[string]interface{})
+	}
+	t.tags[key] = value
 }
 
 // InjectHTTPHeader to continue tracer to http request host
@@ -86,14 +126,14 @@ func (t *tracerImpl) SetError(err error) {
 }
 
 // Finish trace with additional tags data, must in deferred function
-func (t *tracerImpl) Finish(tags ...map[string]interface{}) {
+func (t *tracerImpl) Finish(additionalTags ...map[string]interface{}) {
 	defer t.span.Finish()
 
-	if tags != nil && t.tags == nil {
+	if additionalTags != nil && t.tags == nil {
 		t.tags = make(map[string]interface{})
 	}
 
-	for _, tag := range tags {
+	for _, tag := range additionalTags {
 		for k, v := range tag {
 			t.tags[k] = v
 		}
@@ -124,6 +164,21 @@ func Log(ctx context.Context, event string, payload ...interface{}) {
 	}
 }
 
+// LogKV trace
+func LogKV(ctx context.Context, kv ...interface{}) {
+	span := opentracing.SpanFromContext(ctx)
+	if span == nil {
+		return
+	}
+
+	for _, p := range kv {
+		if e, ok := p.(error); ok && e != nil {
+			ext.Error.Set(span, true)
+		}
+	}
+	span.LogKV(kv...)
+}
+
 // WithTraceFunc functional with context and tags in function params
 func WithTraceFunc(ctx context.Context, operationName string, fn func(context.Context, map[string]interface{})) {
 	t := StartTrace(ctx, operationName)
@@ -132,8 +187,8 @@ func WithTraceFunc(ctx context.Context, operationName string, fn func(context.Co
 	fn(t.Context(), t.Tags())
 }
 
-// WithTraceFuncTracer functional with Tracer in function params
-func WithTraceFuncTracer(ctx context.Context, operationName string, fn func(t Tracer)) {
+// WithTraceFuncTracer functional with Tracer instance in function params
+func WithTraceFuncTracer(ctx context.Context, operationName string, fn func(t interfaces.Tracer)) {
 	t := StartTrace(ctx, operationName)
 	defer t.Finish()
 
@@ -155,8 +210,8 @@ func toString(v interface{}) (s string) {
 		s = string(b)
 	}
 
-	if len(s) >= maxPacketSize {
-		s = fmt.Sprintf("overflow, size is: %d, max: %d", len(s), maxPacketSize)
+	if len(s) >= MaxPacketSize {
+		s = fmt.Sprintf("<<Overflow, cannot show data. Size is: %d, max: %d>>", len(s), MaxPacketSize)
 	}
 	return
 }
@@ -186,7 +241,7 @@ func SetError(ctx context.Context, err error) {
 
 	ext.Error.Set(span, true)
 	span.SetTag("error.message", err.Error())
-	span.SetTag("stacktrace", string(debug.Stack()))
+	span.LogFields(log.String("stacktrace", string(debug.Stack())))
 }
 
 // GetTraceURL log trace url

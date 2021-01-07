@@ -53,10 +53,11 @@ func (t *graphQLTracer) TraceQuery(ctx context.Context, queryString string, oper
 		tags["http.header"] = headers
 	}
 
-	return trace.Context(), func(data []byte, errs []*gqlerrors.QueryError) {
+	ctx = trace.Context()
+	return ctx, func(data []byte, errs []*gqlerrors.QueryError) {
 		defer trace.Finish()
 		logger.LogGreen("graphql " + tracer.GetTraceURL(trace.Context()))
-		tags["response.data"] = string(data)
+		tracer.LogKV(ctx, "response.data", string(data))
 
 		if len(errs) > 0 {
 			tags["errors"] = errs

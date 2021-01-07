@@ -57,6 +57,7 @@ func unaryTracerInterceptor(ctx context.Context, req interface{}, info *grpc.Una
 		ext.SpanKindRPCClient.Set(span)
 	}
 	defer func() {
+		span.LogKV("response.body", string(candihelper.ToBytes(resp)))
 		span.Finish()
 		logger.LogGreen("grpc " + tracer.GetTraceURL(ctx))
 	}()
@@ -65,7 +66,7 @@ func unaryTracerInterceptor(ctx context.Context, req interface{}, info *grpc.Una
 		span.SetTag("metadata", string(candihelper.ToBytes(meta)))
 	}
 
-	span.SetTag("req.body", req)
+	span.LogKV("request.body", string(candihelper.ToBytes(req)))
 
 	resp, err = handler(ctx, req)
 	if err != nil {
