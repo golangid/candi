@@ -57,6 +57,7 @@ func New(service factory.ServiceFactory) *App {
 			panic(err)
 		}
 		appInstance.cMux = cmux.New(listener)
+		appInstance.cMux.SetReadTimeout(30 * time.Second)
 	}
 
 	if env.BaseEnv().UseREST {
