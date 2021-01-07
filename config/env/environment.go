@@ -160,19 +160,14 @@ func Load(serviceName string) {
 			}
 			env.HTTPPort = uint16(port)
 		}
-	}
-
-	if env.UseGRPC {
-		if grpcPort, ok := os.LookupEnv("GRPC_PORT"); !ok {
+	} else if env.UseGRPC {
+		if _, ok = os.LookupEnv("GRPC_PORT"); !ok {
 			panic("missing GRPC_PORT environment")
-		} else {
-			port, err := strconv.Atoi(grpcPort)
-			if err != nil {
-				panic("GRPC_PORT environment must in integer format")
-			}
-			env.GRPCPort = uint16(port)
 		}
 	}
+
+	port, _ := strconv.Atoi(os.Getenv("GRPC_PORT"))
+	env.GRPCPort = uint16(port)
 
 	if env.UseTaskQueueWorker {
 		taskQueueDashboardPort, ok := os.LookupEnv("TASK_QUEUE_DASHBOARD_PORT")

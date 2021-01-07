@@ -12,6 +12,7 @@ import (
 
 	"github.com/labstack/echo"
 	echoMidd "github.com/labstack/echo/middleware"
+	"github.com/soheilhy/cmux"
 
 	graphqlserver "pkg.agungdwiprasetyo.com/candi/codebase/app/graphql_server"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
@@ -25,14 +26,19 @@ type restServer struct {
 	serverEngine *echo.Echo
 	service      factory.ServiceFactory
 	httpPort     string
+	listener     net.Listener
 }
 
 // NewServer create new REST server
-func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
+func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.AppServerFactory {
 	server := &restServer{
 		serverEngine: echo.New(),
 		service:      service,
 		httpPort:     fmt.Sprintf(":%d", env.BaseEnv().HTTPPort),
+	}
+
+	if muxListener != nil {
+		server.listener = muxListener.Match(cmux.HTTP1Fast())
 	}
 
 	server.serverEngine.HTTPErrorHandler = wrapper.CustomHTTPErrorHandler
@@ -85,17 +91,28 @@ func (h *restServer) Serve() {
 
 	h.serverEngine.HideBanner = true
 	h.serverEngine.HidePort = true
-	if err := h.serverEngine.Start(h.httpPort); err != nil {
-		switch e := err.(type) {
-		case *net.OpError:
-			panic(fmt.Errorf("rest server: %v", e))
-		}
+
+	var err error
+	if h.listener != nil {
+		h.serverEngine.Listener = h.listener
+		err = h.serverEngine.Start("")
+	} else {
+		err = h.serverEngine.Start(h.httpPort)
+	}
+
+	switch e := err.(type) {
+	case *net.OpError:
+		panic(fmt.Errorf("rest server: %v", e))
 	}
 }
 
 func (h *restServer) Shutdown(ctx context.Context) {
 	log.Println("\x1b[33;1mStopping HTTP server...\x1b[0m")
 	defer func() { log.Println("\x1b[33;1mStopping HTTP server:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
+
+	if h.listener != nil {
+		h.listener.Close()
+	}
 
 	if err := h.serverEngine.Shutdown(ctx); err != nil {
 		panic(err)

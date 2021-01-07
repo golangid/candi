@@ -7,6 +7,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
@@ -21,13 +22,7 @@ type grpcServer struct {
 }
 
 // NewServer create new GRPC server
-func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
-
-	grpcPort := fmt.Sprintf(":%d", env.BaseEnv().GRPCPort)
-	listener, err := net.Listen("tcp", grpcPort)
-	if err != nil {
-		panic(err)
-	}
+func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.AppServerFactory {
 
 	var (
 		kaep = keepalive.EnforcementPolicy{
@@ -58,8 +53,19 @@ func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
 				streamPanicInterceptor,
 			)),
 		),
-		service:  service,
-		listener: listener,
+		service: service,
+	}
+
+	grpcPort := fmt.Sprintf(":%d", env.BaseEnv().GRPCPort)
+	if muxListener == nil {
+		var err error
+		server.listener, err = net.Listen("tcp", grpcPort)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		server.listener = muxListener.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
+		grpcPort = server.listener.Addr().String()
 	}
 
 	fmt.Printf("\x1b[34;1m⇨ GRPC server run at port [::]%s\x1b[0m\n\n", grpcPort)
@@ -84,5 +90,6 @@ func (s *grpcServer) Shutdown(ctx context.Context) {
 	log.Println("\x1b[33;1mStopping GRPC server...\x1b[0m")
 	defer func() { log.Println("\x1b[33;1mStopping GRPC server:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
 
+	s.listener.Close()
 	s.serverEngine.GracefulStop()
 }

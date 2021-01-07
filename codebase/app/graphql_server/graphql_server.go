@@ -20,6 +20,7 @@ import (
 	"pkg.agungdwiprasetyo.com/candi/logger"
 
 	graphql "github.com/golangid/graphql-go"
+	"github.com/soheilhy/cmux"
 )
 
 const (
@@ -30,10 +31,11 @@ const (
 
 type graphqlServer struct {
 	httpEngine *http.Server
+	listener   net.Listener
 }
 
 // NewServer create new GraphQL server
-func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
+func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.AppServerFactory {
 
 	httpEngine := new(http.Server)
 	httpHandler := NewHandler(service)
@@ -51,17 +53,28 @@ func NewServer(service factory.ServiceFactory) factory.AppServerFactory {
 	logger.LogYellow("[GraphQL] voyager : " + rootGraphQLVoyager)
 	fmt.Printf("\x1b[34;1m⇨ GraphQL HTTP server run at port [::]%s\x1b[0m\n\n", httpEngine.Addr)
 
-	return &graphqlServer{
+	server := &graphqlServer{
 		httpEngine: httpEngine,
 	}
+
+	if muxListener != nil {
+		server.listener = muxListener.Match(cmux.HTTP1Fast())
+	}
+
+	return server
 }
 
 func (s *graphqlServer) Serve() {
-	if err := s.httpEngine.ListenAndServe(); err != nil {
-		switch e := err.(type) {
-		case *net.OpError:
-			panic(fmt.Errorf("gql http server: %v", e))
-		}
+	var err error
+	if s.listener != nil {
+		err = s.httpEngine.Serve(s.listener)
+	} else {
+		err = s.httpEngine.ListenAndServe()
+	}
+
+	switch e := err.(type) {
+	case *net.OpError:
+		panic(fmt.Errorf("gql http server: %v", e))
 	}
 }
 
@@ -69,6 +82,9 @@ func (s *graphqlServer) Shutdown(ctx context.Context) {
 	log.Println("\x1b[33;1mStopping GraphQL HTTP server...\x1b[0m")
 	defer func() { log.Println("\x1b[33;1mStopping GraphQL HTTP server:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
 
+	if s.listener != nil {
+		s.listener.Close()
+	}
 	s.httpEngine.Shutdown(ctx)
 }
 

@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/soheilhy/cmux"
 	cronworker "pkg.agungdwiprasetyo.com/candi/codebase/app/cron_worker"
 	graphqlserver "pkg.agungdwiprasetyo.com/candi/codebase/app/graphql_server"
 	grpcserver "pkg.agungdwiprasetyo.com/candi/codebase/app/grpc_server"
@@ -23,6 +25,7 @@ import (
 // App service
 type App struct {
 	servers []factory.AppServerFactory
+	cMux    cmux.CMux
 }
 
 // New service app
@@ -47,16 +50,25 @@ func New(service factory.ServiceFactory) *App {
 		appInstance.servers = append(appInstance.servers, redisworker.NewWorker(service))
 	}
 
+	useSharedListener := (env.BaseEnv().UseREST || env.BaseEnv().UseGraphQL) && (env.BaseEnv().UseGRPC && env.BaseEnv().GRPCPort == 0)
+	if useSharedListener {
+		listener, err := net.Listen("tcp", fmt.Sprintf(":%d", env.BaseEnv().HTTPPort))
+		if err != nil {
+			panic(err)
+		}
+		appInstance.cMux = cmux.New(listener)
+	}
+
 	if env.BaseEnv().UseREST {
-		appInstance.servers = append(appInstance.servers, restserver.NewServer(service))
+		appInstance.servers = append(appInstance.servers, restserver.NewServer(service, appInstance.cMux))
 	}
 
 	if env.BaseEnv().UseGRPC {
-		appInstance.servers = append(appInstance.servers, grpcserver.NewServer(service))
+		appInstance.servers = append(appInstance.servers, grpcserver.NewServer(service, appInstance.cMux))
 	}
 
 	if !env.BaseEnv().UseREST && env.BaseEnv().UseGraphQL {
-		appInstance.servers = append(appInstance.servers, graphqlserver.NewServer(service))
+		appInstance.servers = append(appInstance.servers, graphqlserver.NewServer(service, appInstance.cMux))
 	}
 
 	return appInstance
@@ -79,6 +91,10 @@ func (a *App) Run() {
 			}()
 			srv.Serve()
 		}(server)
+	}
+
+	if a.cMux != nil {
+		go func() { a.cMux.Serve() }()
 	}
 
 	quitSignal := make(chan os.Signal, 1)
@@ -112,10 +128,10 @@ func (a *App) shutdown(forceShutdown chan os.Signal) {
 	case <-done:
 		log.Println("\x1b[32;1mSuccess shutdown all server & worker\x1b[0m")
 	case <-forceShutdown:
-		fmt.Println("\x1b[31;1mForce shutdown server & worker\x1b[0m")
+		log.Println("\x1b[31;1mForce shutdown server & worker\x1b[0m")
 		cancel()
 	case <-ctx.Done():
-		fmt.Println("\x1b[31;1mContext timeout\x1b[0m")
+		log.Println("\x1b[31;1mContext timeout\x1b[0m")
 		return
 	}
 }
