@@ -1,6 +1,7 @@
 package env
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"strconv"
@@ -98,6 +99,7 @@ func SetEnv(newEnv Env) {
 
 // Load environment
 func Load(serviceName string) {
+	var ok bool
 	env.ServiceName = serviceName
 
 	// load main .env and additional .env in app
@@ -107,47 +109,7 @@ func Load(serviceName string) {
 	}
 
 	// ------------------------------------
-	useREST, ok := os.LookupEnv("USE_REST")
-	if !ok {
-		panic("missing USE_REST environment")
-	}
-	env.UseREST, _ = strconv.ParseBool(useREST)
-
-	useGraphQL, ok := os.LookupEnv("USE_GRAPHQL")
-	if !ok {
-		panic("missing USE_GRAPHQL environment")
-	}
-	env.UseGraphQL, _ = strconv.ParseBool(useGraphQL)
-
-	useGRPC, ok := os.LookupEnv("USE_GRPC")
-	if !ok {
-		panic("missing USE_GRPC environment")
-	}
-	env.UseGRPC, _ = strconv.ParseBool(useGRPC)
-
-	useKafkaConsumer, ok := os.LookupEnv("USE_KAFKA_CONSUMER")
-	if !ok {
-		panic("missing USE_KAFKA_CONSUMER environment")
-	}
-	env.UseKafkaConsumer, _ = strconv.ParseBool(useKafkaConsumer)
-
-	useCronScheduler, ok := os.LookupEnv("USE_CRON_SCHEDULER")
-	if !ok {
-		panic("missing USE_CRON_SCHEDULER environment")
-	}
-	env.UseCronScheduler, _ = strconv.ParseBool(useCronScheduler)
-
-	useRedisSubs, ok := os.LookupEnv("USE_REDIS_SUBSCRIBER")
-	if !ok {
-		panic("missing USE_REDIS_SUBSCRIBER environment")
-	}
-	env.UseRedisSubscriber, _ = strconv.ParseBool(useRedisSubs)
-
-	useTaskQueue, ok := os.LookupEnv("USE_TASK_QUEUE_WORKER")
-	if !ok {
-		panic("missing USE_TASK_QUEUE_WORKER environment")
-	}
-	env.UseTaskQueueWorker, _ = strconv.ParseBool(useTaskQueue)
+	parseAppConfig()
 
 	// ------------------------------------
 	if env.UseREST || env.UseGraphQL {
@@ -243,6 +205,69 @@ func Load(serviceName string) {
 
 	// Parse database environment
 	parseDatabaseEnv()
+}
+
+func parseAppConfig() {
+
+	useREST, ok := os.LookupEnv("USE_REST")
+	if !ok {
+		flag.BoolVar(&env.UseREST, "USE_REST", false, "USE REST")
+	} else {
+		env.UseREST, _ = strconv.ParseBool(useREST)
+	}
+
+	useGraphQL, ok := os.LookupEnv("USE_GRAPHQL")
+	if !ok {
+		flag.BoolVar(&env.UseGraphQL, "USE_GRAPHQL", false, "USE GRAPHQL")
+	} else {
+		env.UseGraphQL, _ = strconv.ParseBool(useGraphQL)
+	}
+
+	useGRPC, ok := os.LookupEnv("USE_GRPC")
+	if !ok {
+		flag.BoolVar(&env.UseGRPC, "USE_GRPC", false, "USE GRPC")
+	} else {
+		env.UseGRPC, _ = strconv.ParseBool(useGRPC)
+	}
+
+	useKafkaConsumer, ok := os.LookupEnv("USE_KAFKA_CONSUMER")
+	if !ok {
+		flag.BoolVar(&env.UseKafkaConsumer, "USE_KAFKA_CONSUMER", false, "USE KAFKA CONSUMER")
+	} else {
+		env.UseKafkaConsumer, _ = strconv.ParseBool(useKafkaConsumer)
+	}
+
+	useCronScheduler, ok := os.LookupEnv("USE_CRON_SCHEDULER")
+	if !ok {
+		flag.BoolVar(&env.UseCronScheduler, "USE_CRON_SCHEDULER", false, "USE CRON SCHEDULER")
+	} else {
+		env.UseCronScheduler, _ = strconv.ParseBool(useCronScheduler)
+	}
+
+	useRedisSubs, ok := os.LookupEnv("USE_REDIS_SUBSCRIBER")
+	if !ok {
+		flag.BoolVar(&env.UseRedisSubscriber, "USE_REDIS_SUBSCRIBER", false, "USE REDIS SUBSCRIBER")
+	} else {
+		env.UseRedisSubscriber, _ = strconv.ParseBool(useRedisSubs)
+	}
+
+	useTaskQueue, ok := os.LookupEnv("USE_TASK_QUEUE_WORKER")
+	if !ok {
+		flag.BoolVar(&env.UseTaskQueueWorker, "USE_TASK_QUEUE_WORKER", false, "USE TASK QUEUE WORKER")
+	} else {
+		env.UseTaskQueueWorker, _ = strconv.ParseBool(useTaskQueue)
+	}
+
+	flag.Usage = func() {
+		fmt.Println("	-USE_REST :=> Activate REST Server")
+		fmt.Println("	-USE_GRPC :=> Activate GRPC Server")
+		fmt.Println("	-USE_GRAPHQL :=> Activate GraphQL Server")
+		fmt.Println("	-USE_KAFKA_CONSUMER :=> Activate Kafka Consumer Worker")
+		fmt.Println("	-USE_CRON_SCHEDULER :=> Activate Cron Scheduler Worker")
+		fmt.Println("	-USE_REDIS_SUBSCRIBER :=> Activate Redis Subscriber Worker")
+		fmt.Println("	-USE_TASK_QUEUE_WORKER :=> Activate Task Queue Worker")
+	}
+	flag.Parse()
 }
 
 func parseBrokerEnv() {
