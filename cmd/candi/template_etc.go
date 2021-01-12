@@ -49,7 +49,8 @@ run: build
 
 proto:
 	$(foreach proto_file, $(shell find api/proto -name '*.proto'),\
-	protoc -I . $(proto_file) --go_out=plugins=grpc:.;)
+	protoc --proto_path=api/proto --go_out=plugins=grpc:api/proto \
+	--go_opt=paths=source_relative $(proto_file);)
 
 docker:
 	docker build -t {{.ServiceName}}:latest .
@@ -72,5 +73,15 @@ require pkg.agungdwiprasetyo.com/candi {{.Version}}
 	gitignoreTemplate = `bin
 vendor
 main_service.go
+{{.ServiceName}}
+`
+
+	jsonSchemaTemplate = `{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "example",
+	"title": "json schema type",
+	"type": "object",
+	"properties": {}
+}
 `
 )

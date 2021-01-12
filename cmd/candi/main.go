@@ -197,7 +197,7 @@ func main() {
 		{
 			TargetDir: "jsonschema/", IsDir: true,
 			Childs: []FileStructure{
-				{DataSource: `{}`, FileName: "schema.json"},
+				{Source: jsonSchemaTemplate, FromTemplate: true, FileName: "schema.json"},
 			},
 		},
 		apiProtoStructure,
@@ -233,7 +233,7 @@ func main() {
 			{TargetDir: "docs/", IsDir: true, Childs: []FileStructure{
 				{FileName: ".gitkeep"},
 			}},
-			{Source: gitignoreTemplate, FileName: ".gitignore"},
+			{FromTemplate: true, DataSource: srvConfig, Source: gitignoreTemplate, FileName: ".gitignore"},
 			{FromTemplate: true, DataSource: srvConfig, Source: makefileTemplate, FileName: "Makefile"},
 			{FromTemplate: true, DataSource: srvConfig, Source: dockerfileTemplate, FileName: "Dockerfile"},
 			{FromTemplate: true, DataSource: srvConfig, Source: gomodTemplate, FileName: "go.mod"},

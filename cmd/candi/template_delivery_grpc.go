@@ -45,11 +45,11 @@ func (h *GRPCHandler) Hello(ctx context.Context, req *proto.Request) (*proto.Res
 		Message: req.Message + "; "+ h.uc.Hello(ctx),
 	}, nil
 }
-
 `
 
 	defaultGRPCProto = `syntax="proto3";
 package {{clean .ModuleName}};
+option go_package = "{{.GoModName}}/api/proto/{{.ModuleName}}";
 
 service {{clean (upper .ModuleName)}}Handler {
 	rpc Hello(Request) returns (Response);

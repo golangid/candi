@@ -2,6 +2,7 @@ package main
 
 const (
 	templateSharedTokenValidator = `// {{.Header}}
+
 package shared
 
 import (
