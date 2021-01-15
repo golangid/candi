@@ -31,7 +31,7 @@ $ candi
 $ cd {{service_name}}
 $ make run
 ```
-If include GRPC handler, run `$ make proto` for generate rpc files from proto (must install `protoc` compiler)
+If include GRPC handler, run `$ make proto` for generate rpc files from proto (must install `protoc` compiler min version `libprotoc 3.14.0`)
 
 
 ## Service handlers example:
