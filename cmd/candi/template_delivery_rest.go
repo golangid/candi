@@ -12,6 +12,7 @@ import (
 	"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 
 	"{{.PackageName}}/candihelper"
+	"{{.PackageName}}/candishared"
 	"{{.PackageName}}/codebase/interfaces"
 	"{{.PackageName}}/tracer"
 	"{{.PackageName}}/wrapper"
