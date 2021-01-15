@@ -27,20 +27,20 @@ func LogWithDefer(str string) (deferFunc func()) {
 // LogYellow log with yellow color
 func LogYellow(str string) {
 	if env.BaseEnv().DebugMode {
-		fmt.Printf("\x1b[33;2m%s\x1b[0m\n", str)
+		fmt.Printf("\x1b[33;5m%s\x1b[0m\n", str)
 	}
 }
 
 // LogRed log with red color
 func LogRed(str string) {
 	if env.BaseEnv().DebugMode {
-		fmt.Printf("\x1b[31;2m%s\x1b[0m\n", str)
+		fmt.Printf("\x1b[31;5m%s\x1b[0m\n", str)
 	}
 }
 
 // LogGreen log with green color
 func LogGreen(str string) {
 	if env.BaseEnv().DebugMode {
-		fmt.Printf("\x1b[32;2m%s\x1b[0m\n", str)
+		fmt.Printf("\x1b[32;5m%s\x1b[0m\n", str)
 	}
 }

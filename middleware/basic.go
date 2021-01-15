@@ -60,22 +60,22 @@ func (m *Middleware) Basic(ctx context.Context, key string) error {
 func (m *Middleware) HTTPBasicAuth(showAlert bool) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			trace := tracer.StartTrace(c.Request().Context(), "Middleware:HTTPBasicAuth")
+			defer trace.Finish()
 
 			if showAlert {
 				c.Response().Header().Set(echo.HeaderWWWAuthenticate, `Basic realm=""`)
 			}
 
 			authorization := c.Request().Header.Get(echo.HeaderAuthorization)
-			if authorization == "" {
-				return wrapper.NewHTTPResponse(http.StatusUnauthorized, "Invalid authorization").JSON(c.Response())
-			}
-
 			key, err := extractAuthType(Basic, authorization)
 			if err != nil {
+				trace.SetError(err)
 				return wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(c.Response())
 			}
 
 			if err := m.Basic(c.Request().Context(), key); err != nil {
+				trace.SetError(err)
 				return wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(c.Response())
 			}
 
@@ -91,10 +91,10 @@ func (m *Middleware) GraphQLBasicAuth(ctx context.Context) context.Context {
 
 	headers := ctx.Value(candishared.ContextKeyHTTPHeader).(http.Header)
 	authorization := headers.Get(echo.HeaderAuthorization)
-	ctx = trace.Context()
 
 	key, err := extractAuthType(Basic, authorization)
 	if err != nil {
+		trace.SetError(err)
 		panic(&gqlerr.QueryError{
 			Message: err.Error(),
 			Extensions: map[string]interface{}{
@@ -104,7 +104,8 @@ func (m *Middleware) GraphQLBasicAuth(ctx context.Context) context.Context {
 		})
 	}
 
-	if err := m.Basic(ctx, key); err != nil {
+	if err := m.Basic(trace.Context(), key); err != nil {
+		trace.SetError(err)
 		panic(&gqlerr.QueryError{
 			Message: err.Error(),
 			Extensions: map[string]interface{}{
@@ -117,24 +118,34 @@ func (m *Middleware) GraphQLBasicAuth(ctx context.Context) context.Context {
 }
 
 // GRPCBasicAuth method
-func (m *Middleware) GRPCBasicAuth(ctx context.Context) {
+func (m *Middleware) GRPCBasicAuth(ctx context.Context) context.Context {
+	trace := tracer.StartTrace(ctx, "Middleware:GRPCBasicAuth")
+	defer trace.Finish()
 
 	meta, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		panic("missing context metadata")
+		err := errors.New("missing context metadata")
+		trace.SetError(err)
+		panic(err)
 	}
 
 	authorizationMap := meta["authorization"]
 	if len(authorizationMap) != 1 {
-		panic(grpc.Errorf(codes.Unauthenticated, "Invalid authorization"))
+		err := grpc.Errorf(codes.Unauthenticated, "Invalid authorization")
+		trace.SetError(err)
+		panic(err)
 	}
 
 	key, err := extractAuthType(Basic, authorizationMap[0])
 	if err != nil {
+		trace.SetError(err)
 		panic(err)
 	}
 
 	if err := m.Basic(ctx, key); err != nil {
+		trace.SetError(err)
 		panic(err)
 	}
+
+	return ctx
 }

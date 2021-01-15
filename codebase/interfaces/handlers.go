@@ -13,7 +13,7 @@ type EchoRestHandler interface {
 
 // GRPCHandler delivery factory for grpc handler
 type GRPCHandler interface {
-	Register(server *grpc.Server)
+	Register(server *grpc.Server, middlewareGroup *types.MiddlewareGroup)
 }
 
 // GraphQLHandler delivery factory for graphql resolver handler
@@ -21,7 +21,7 @@ type GraphQLHandler interface {
 	Query() interface{}
 	Mutation() interface{}
 	Subscription() interface{}
-	RegisterMiddleware(group *types.GraphQLMiddlewareGroup)
+	RegisterMiddleware(group *types.MiddlewareGroup)
 }
 
 // WorkerHandler delivery factory for all worker handler

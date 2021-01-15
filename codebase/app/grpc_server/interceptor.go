@@ -12,10 +12,15 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
 	"pkg.agungdwiprasetyo.com/candi/config/env"
 	"pkg.agungdwiprasetyo.com/candi/logger"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
+
+type interceptor struct {
+	middleware types.MiddlewareGroup
+}
 
 // for unary server
 // chainUnaryServer creates a single interceptor out of a chain of many interceptors.
@@ -39,7 +44,8 @@ func chainUnaryServer(interceptors ...grpc.UnaryServerInterceptor) grpc.UnarySer
 }
 
 // unaryTracerInterceptor for extract incoming tracer
-func unaryTracerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	start := time.Now()
 	meta, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, grpc.Errorf(codes.Aborted, "missing context metadata")
@@ -57,9 +63,10 @@ func unaryTracerInterceptor(ctx context.Context, req interface{}, info *grpc.Una
 		ext.SpanKindRPCClient.Set(span)
 	}
 	defer func() {
+		logInterceptor(start, err, info.FullMethod, "GRPC")
+		logger.LogGreen("grpc " + tracer.GetTraceURL(ctx))
 		span.LogKV("response.body", string(candihelper.ToBytes(resp)))
 		span.Finish()
-		logger.LogGreen("grpc " + tracer.GetTraceURL(ctx))
 	}()
 
 	if meta, ok := metadata.FromIncomingContext(ctx); ok {
@@ -68,30 +75,38 @@ func unaryTracerInterceptor(ctx context.Context, req interface{}, info *grpc.Una
 
 	span.LogKV("request.body", string(candihelper.ToBytes(req)))
 
-	resp, err = handler(ctx, req)
-	if err != nil {
-		ext.Error.Set(span, true)
-		span.SetTag("error.value", err)
-	}
-	return
-}
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				err = grpc.Errorf(codes.Aborted, "%v", r)
+				tracer.SetError(ctx, err)
+			}
+		}()
 
-func unaryLogInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-	start := time.Now()
-	defer func() {
-		logInterceptor(start, err, info.FullMethod, "GRPC")
-	}()
-
-	resp, err = handler(ctx, req)
-	return
-}
-
-func unaryPanicInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = grpc.Errorf(codes.Aborted, "%v", r)
+		resp, err = handler(ctx, req)
+		if err != nil {
+			ext.Error.Set(span, true)
+			span.SetTag("error.value", err)
 		}
 	}()
+	return
+}
+
+func (i *interceptor) unaryMiddlewareInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	if middFunc, ok := i.middleware[info.FullMethod]; ok {
+		execMiddleware := func() (err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					err = grpc.Errorf(codes.Unauthenticated, "%v", r)
+				}
+			}()
+			ctx = middFunc(ctx)
+			return nil
+		}
+		if err := execMiddleware(); err != nil {
+			return nil, err
+		}
+	}
 
 	resp, err = handler(ctx, req)
 	return
@@ -119,7 +134,7 @@ func chainStreamServer(interceptors ...grpc.StreamServerInterceptor) grpc.Stream
 }
 
 // streamTracerInterceptor for extract incoming tracer
-func streamTracerInterceptor(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+func (i *interceptor) streamTracerInterceptor(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
 	ctx := stream.Context()
 	meta, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -154,7 +169,7 @@ func streamTracerInterceptor(srv interface{}, stream grpc.ServerStream, info *gr
 	return
 }
 
-func streamLogInterceptor(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+func (i *interceptor) streamLogInterceptor(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
 	start := time.Now()
 	defer func() {
 		logInterceptor(start, err, info.FullMethod, "GRPC-STREAM")
@@ -163,7 +178,7 @@ func streamLogInterceptor(srv interface{}, stream grpc.ServerStream, info *grpc.
 	return handler(srv, stream)
 }
 
-func streamPanicInterceptor(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+func (i *interceptor) streamPanicInterceptor(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = grpc.Errorf(codes.Aborted, "%v", r)

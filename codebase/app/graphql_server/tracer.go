@@ -2,7 +2,6 @@ package graphqlserver
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -30,13 +29,13 @@ var gqlTypeNotShowLog = map[string]bool{
 
 // graphQLTracer struct
 type graphQLTracer struct {
-	midd types.GraphQLMiddlewareGroup
+	middleware types.MiddlewareGroup
 }
 
 // newGraphQLTracer constructor
-func newGraphQLTracer(midd types.GraphQLMiddlewareGroup) *graphQLTracer {
+func newGraphQLTracer(middleware types.MiddlewareGroup) *graphQLTracer {
 	return &graphQLTracer{
-		midd: midd,
+		middleware: middleware,
 	}
 }
 
@@ -81,7 +80,7 @@ func (t *graphQLTracer) TraceQuery(ctx context.Context, queryString string, oper
 // TraceField method
 func (t *graphQLTracer) TraceField(ctx context.Context, label, typeName, fieldName string, trivial bool, args map[string]interface{}) (context.Context, trace.TraceFieldFinishFunc) {
 	start := time.Now()
-	if middFunc, ok := t.midd[fmt.Sprintf("%s.%s", typeName, fieldName)]; ok {
+	if middFunc, ok := t.middleware[fmt.Sprintf("%s.%s", typeName, fieldName)]; ok {
 		ctx = middFunc(ctx)
 	}
 	return ctx, func(data []byte, err *gqlerrors.QueryError) {
@@ -94,15 +93,13 @@ func (t *graphQLTracer) TraceField(ctx context.Context, label, typeName, fieldNa
 				status = "ERROR"
 			}
 
-			arg, _ := json.Marshal(args)
-			fmt.Fprintf(os.Stdout, "%s[GRAPHQL]%s => %s %10s %s | %v | %s %s %s | %13v | %s %s %s | %s\n",
+			fmt.Fprintf(os.Stdout, "%s[GRAPHQL]%s => %s %10s %s | %v | %s %s %s | %13v | %s %s %s\n",
 				candihelper.White, candihelper.Reset,
 				candihelper.Blue, typeName, candihelper.Reset,
 				end.Format("2006/01/02 - 15:04:05"),
 				statusColor, status, candihelper.Reset,
 				end.Sub(start),
 				candihelper.Magenta, label, candihelper.Reset,
-				arg,
 			)
 		}
 	}

@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/dgrijalva/jwt-go"
@@ -45,15 +46,19 @@ func (m *Middleware) Bearer(ctx context.Context, tokenString string) (*candishar
 func (m *Middleware) HTTPBearerAuth() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			trace := tracer.StartTrace(c.Request().Context(), "Middleware:HTTPBearerAuth")
+			defer trace.Finish()
 
 			authorization := c.Request().Header.Get(echo.HeaderAuthorization)
 			tokenValue, err := extractAuthType(Bearer, authorization)
 			if err != nil {
+				trace.SetError(err)
 				return wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(c.Response())
 			}
 
-			tokenClaim, err := m.Bearer(c.Request().Context(), tokenValue)
+			tokenClaim, err := m.Bearer(trace.Context(), tokenValue)
 			if err != nil {
+				trace.SetError(err)
 				return wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(c.Response())
 			}
 
@@ -74,6 +79,7 @@ func (m *Middleware) GraphQLBearerAuth(ctx context.Context) context.Context {
 
 	tokenValue, err := extractAuthType(Bearer, authorization)
 	if err != nil {
+		trace.SetError(err)
 		panic(&gqlerr.QueryError{
 			Message: err.Error(),
 			Extensions: map[string]interface{}{
@@ -84,9 +90,9 @@ func (m *Middleware) GraphQLBearerAuth(ctx context.Context) context.Context {
 	}
 	tags["token"] = tokenValue
 
-	ctx = trace.Context()
-	tokenClaim, err := m.Bearer(ctx, tokenValue)
+	tokenClaim, err := m.Bearer(trace.Context(), tokenValue)
 	if err != nil {
+		trace.SetError(err)
 		panic(&gqlerr.QueryError{
 			Message: err.Error(),
 			Extensions: map[string]interface{}{
@@ -101,22 +107,29 @@ func (m *Middleware) GraphQLBearerAuth(ctx context.Context) context.Context {
 }
 
 // GRPCBearerAuth method
-func (m *Middleware) GRPCBearerAuth(ctx context.Context) *candishared.TokenClaim {
+func (m *Middleware) GRPCBearerAuth(ctx context.Context) context.Context {
+	trace := tracer.StartTrace(ctx, "Middleware:GRPCBearerAuth")
+	defer trace.Finish()
 
 	meta, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		panic("missing context metadata")
+		err := errors.New("missing context metadata")
+		trace.SetError(err)
+		panic(err)
 	}
 
 	authorizationMap := meta["authorization"]
 	if len(authorizationMap) != 1 {
-		panic(grpc.Errorf(codes.Unauthenticated, "Invalid authorization"))
+		err := grpc.Errorf(codes.Unauthenticated, "Invalid authorization")
+		trace.SetError(err)
+		panic(err)
 	}
 
 	tokenClaim, err := m.Bearer(ctx, authorizationMap[0])
 	if err != nil {
+		trace.SetError(err)
 		panic(err)
 	}
 
-	return tokenClaim
+	return candishared.SetToContext(ctx, candishared.ContextKeyTokenClaim, tokenClaim)
 }

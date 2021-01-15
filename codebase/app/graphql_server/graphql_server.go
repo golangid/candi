@@ -102,7 +102,7 @@ func NewHandler(service factory.ServiceFactory) Handler {
 	queryResolverValues := make(map[string]interface{})
 	mutationResolverValues := make(map[string]interface{})
 	subscriptionResolverValues := make(map[string]interface{})
-	middlewareResolvers := make(types.GraphQLMiddlewareGroup)
+	middlewareResolvers := make(types.MiddlewareGroup)
 	var queryResolverFields, mutationResolverFields, subscriptionResolverFields []reflect.StructField
 	for _, m := range service.GetModules() {
 		if resolverModule := m.GraphQLHandler(); resolverModule != nil {

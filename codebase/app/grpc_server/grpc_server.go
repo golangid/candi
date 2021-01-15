@@ -12,7 +12,9 @@ import (
 	"google.golang.org/grpc/keepalive"
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
+	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
 	"pkg.agungdwiprasetyo.com/candi/config/env"
+	"pkg.agungdwiprasetyo.com/candi/logger"
 )
 
 type grpcServer struct {
@@ -37,20 +39,21 @@ func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.Ap
 		}
 	)
 
+	intercept := new(interceptor)
+
 	server := &grpcServer{
 		serverEngine: grpc.NewServer(
 			grpc.KeepaliveEnforcementPolicy(kaep),
 			grpc.KeepaliveParams(kasp),
 			grpc.MaxSendMsgSize(200*int(candihelper.MByte)), grpc.MaxRecvMsgSize(200*int(candihelper.MByte)),
 			grpc.UnaryInterceptor(chainUnaryServer(
-				unaryTracerInterceptor,
-				unaryLogInterceptor,
-				unaryPanicInterceptor,
+				intercept.unaryTracerInterceptor,
+				intercept.unaryMiddlewareInterceptor,
 			)),
 			grpc.StreamInterceptor(chainStreamServer(
-				streamTracerInterceptor,
-				streamLogInterceptor,
-				streamPanicInterceptor,
+				intercept.streamLogInterceptor,
+				intercept.streamTracerInterceptor,
+				intercept.streamPanicInterceptor,
 			)),
 		),
 		service: service,
@@ -68,14 +71,20 @@ func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.Ap
 		grpcPort = server.listener.Addr().String()
 	}
 
-	fmt.Printf("\x1b[34;1m⇨ GRPC server run at port [::]%s\x1b[0m\n\n", grpcPort)
-
 	// register all module
+	intercept.middleware = make(types.MiddlewareGroup)
 	for _, m := range service.GetModules() {
 		if h := m.GRPCHandler(); h != nil {
-			h.Register(server.serverEngine)
+			h.Register(server.serverEngine, &intercept.middleware)
 		}
 	}
+
+	for root, info := range server.serverEngine.GetServiceInfo() {
+		for _, method := range info.Methods {
+			logger.LogGreen(fmt.Sprintf("[GRPC-METHOD] /%s/%-15s [metadata]--> %v", root, method.Name, info.Metadata))
+		}
+	}
+	fmt.Printf("\x1b[34;1m⇨ GRPC server run at port [::]%s\x1b[0m\n\n", grpcPort)
 
 	return server
 }

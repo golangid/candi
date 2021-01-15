@@ -9,8 +9,8 @@ import (
 
 // Middleware abstraction
 type Middleware interface {
-	Basic(context.Context, string) error
-	Bearer(context.Context, string) (*candishared.TokenClaim, error)
+	Basic(ctx context.Context, authKey string) error
+	Bearer(ctx context.Context, token string) (*candishared.TokenClaim, error)
 
 	HTTPMiddleware
 	GRPCMiddleware
@@ -26,8 +26,8 @@ type HTTPMiddleware interface {
 
 // GRPCMiddleware interface, common middleware for grpc handler
 type GRPCMiddleware interface {
-	GRPCBasicAuth(ctx context.Context)
-	GRPCBearerAuth(ctx context.Context) *candishared.TokenClaim
+	GRPCBasicAuth(ctx context.Context) context.Context
+	GRPCBearerAuth(ctx context.Context) context.Context
 }
 
 // GraphQLMiddleware interface, common middleware for graphql handler, as directive in graphql schema
