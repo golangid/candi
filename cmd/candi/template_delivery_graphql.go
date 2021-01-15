@@ -14,23 +14,22 @@ import (
 
 // GraphQLHandler model
 type GraphQLHandler struct {
-	mw interfaces.Middleware
-	uc usecase.{{clean (upper .ModuleName)}}Usecase
+	mw        interfaces.Middleware
+	uc        usecase.{{clean (upper .ModuleName)}}Usecase
+	validator interfaces.Validator
 }
 
 // NewGraphQLHandler delivery
-func NewGraphQLHandler(mw interfaces.Middleware, uc usecase.{{clean (upper .ModuleName)}}Usecase) *GraphQLHandler {
-
-	h := &GraphQLHandler{
-		mw: mw, uc: uc,
+func NewGraphQLHandler(mw interfaces.Middleware, uc usecase.{{clean (upper .ModuleName)}}Usecase, validator interfaces.Validator) *GraphQLHandler {
+	return &GraphQLHandler{
+		mw: mw, uc: uc, validator: validator,
 	}
-
-	return h
 }
 
 // RegisterMiddleware register resolver based on schema in "api/graphql/*" path
-func (h *GraphQLHandler) RegisterMiddleware(group *types.GraphQLMiddlewareGroup) {
-	group.Add("{{clean (upper .ModuleName)}}QueryModule.hello", h.mw.GraphQLBearerAuth)
+func (h *GraphQLHandler) RegisterMiddleware(mwGroup *types.MiddlewareGroup) {
+	mwGroup.Add("{{clean (upper .ModuleName)}}QueryModule.hello", h.mw.GraphQLBearerAuth)
+	mwGroup.Add("{{clean (upper .ModuleName)}}MutationModule.hello", h.mw.GraphQLBasicAuth)
 }
 
 // Query method
@@ -56,6 +55,7 @@ package graphqlhandler
 import (
 	"context"
 
+	"{{.PackageName}}/candishared"
 	"{{.PackageName}}/tracer"
 )
 
@@ -69,7 +69,9 @@ func (q *queryResolver) Hello(ctx context.Context) (string, error) {
 	defer trace.Finish()
 	ctx = trace.Context()
 
-	return q.root.uc.Hello(ctx), nil
+	tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
+
+	return q.root.uc.Hello(ctx) + ", with your session (" + tokenClaim.Audience + ")", nil
 }
 `
 	deliveryGraphqlMutationTemplate = `// {{.Header}}

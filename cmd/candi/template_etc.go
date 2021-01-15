@@ -58,6 +58,13 @@ docker:
 run-container:
 	docker run --name={{.ServiceName}} --network="host" -d {{.ServiceName}}
 
+# unit test & calculate code coverage
+test:
+	@if [ -f coverage.txt ]; then rm coverage.txt; fi;
+	@echo ">> running unit test and calculate coverage"
+	@go test ./... -cover -coverprofile=coverage.txt -covermode=count -coverpkg=$(PACKAGES)
+	@go tool cover -func=coverage.txt
+
 clear:
 	rm bin {{.ServiceName}}
 `
@@ -74,6 +81,7 @@ require pkg.agungdwiprasetyo.com/candi {{.Version}}
 vendor
 main_service.go
 {{.ServiceName}}
+coverage.txt
 `
 
 	jsonSchemaTemplate = `{

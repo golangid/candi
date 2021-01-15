@@ -3,7 +3,7 @@ package main
 const envTemplate = `# Basic env configuration
 ENVIRONMENT=development #development,staging,production
 DEBUG_MODE=true
-NO_AUTH=false
+NO_AUTH=true
 
 # Service Handlers
 ## Server

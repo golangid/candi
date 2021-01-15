@@ -19,14 +19,15 @@ import (
 
 // RestHandler handler
 type RestHandler struct {
-	mw interfaces.Middleware
-	uc usecase.{{clean (upper .ModuleName)}}Usecase
+	mw        interfaces.Middleware
+	uc        usecase.{{clean (upper .ModuleName)}}Usecase
+	validator interfaces.Validator
 }
 
 // NewRestHandler create new rest handler
-func NewRestHandler(mw interfaces.Middleware, uc usecase.{{clean (upper .ModuleName)}}Usecase) *RestHandler {
+func NewRestHandler(mw interfaces.Middleware, uc usecase.{{clean (upper .ModuleName)}}Usecase, validator interfaces.Validator) *RestHandler {
 	return &RestHandler{
-		mw: mw, uc: uc,
+		mw: mw, uc: uc, validator: validator,
 	}
 }
 
@@ -44,7 +45,9 @@ func (h *RestHandler) hello(c echo.Context) error {
 	defer trace.Finish()
 	ctx := trace.Context()
 
-	return wrapper.NewHTTPResponse(http.StatusOK, h.uc.Hello(ctx)).JSON(c.Response())
+	tokenClaim := c.Get(string(candishared.ContextKeyTokenClaim)).(*candishared.TokenClaim) // must using HTTPBearerAuth in middleware for this handler
+
+	return wrapper.NewHTTPResponse(http.StatusOK, h.uc.Hello(ctx) + ", with your session (" + tokenClaim.Audience + ")").JSON(c.Response())
 }
 
 `

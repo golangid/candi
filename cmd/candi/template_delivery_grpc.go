@@ -13,36 +13,44 @@ import (
 
 	"google.golang.org/grpc"
 
+	"{{.PackageName}}/candishared"
+	"{{.PackageName}}/codebase/factory/types"
 	"{{.PackageName}}/codebase/interfaces"
 	"{{.PackageName}}/tracer"
 )
 
 // GRPCHandler rpc handler
 type GRPCHandler struct {
-	mw interfaces.Middleware
-	uc usecase.{{clean (upper .ModuleName)}}Usecase
+	mw        interfaces.Middleware
+	uc        usecase.{{clean (upper .ModuleName)}}Usecase
+	validator interfaces.Validator
 }
 
 // NewGRPCHandler func
-func NewGRPCHandler(mw interfaces.Middleware, uc usecase.{{clean (upper .ModuleName)}}Usecase) *GRPCHandler {
+func NewGRPCHandler(mw interfaces.Middleware, uc usecase.{{clean (upper .ModuleName)}}Usecase, validator interfaces.Validator) *GRPCHandler {
 	return &GRPCHandler{
-		mw: mw, uc: uc,
+		mw: mw, uc: uc, validator: validator,
 	}
 }
 
 // Register grpc server
-func (h *GRPCHandler) Register(server *grpc.Server) {
+func (h *GRPCHandler) Register(server *grpc.Server, mwGroup *types.MiddlewareGroup) {
 	proto.Register{{clean (upper .ModuleName)}}HandlerServer(server, h)
+
+	// register middleware for method
+	mwGroup.AddProto(proto.File_{{cleanPathModule .ModuleName}}_{{cleanPathModule .ModuleName}}_proto, "Hello", h.mw.GRPCBearerAuth)
 }
 
-// Hello rpc
+// Hello rpc method
 func (h *GRPCHandler) Hello(ctx context.Context, req *proto.Request) (*proto.Response, error) {
-	trace := tracer.StartTrace(ctx, "DeliveryGRPC:Hello")
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGRPC:Hello")
 	defer trace.Finish()
 	ctx = trace.Context()
 
+	tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
+
 	return &proto.Response{
-		Message: req.Message + "; "+ h.uc.Hello(ctx),
+		Message: h.uc.Hello(ctx) + ", with your session (" + tokenClaim.Audience + ")",
 	}, nil
 }
 `

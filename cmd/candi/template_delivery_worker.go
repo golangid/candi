@@ -12,18 +12,21 @@ import (
 	"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 
 	"{{.PackageName}}/codebase/factory/types"
+	"{{.PackageName}}/codebase/interfaces"
 	"{{.PackageName}}/tracer"
 )
 
 // KafkaHandler struct
 type KafkaHandler struct {
-	uc usecase.{{clean (upper .ModuleName)}}Usecase
+	uc        usecase.{{clean (upper .ModuleName)}}Usecase
+	validator interfaces.Validator
 }
 
 // NewKafkaHandler constructor
-func NewKafkaHandler(uc usecase.{{clean (upper .ModuleName)}}Usecase) *KafkaHandler {
+func NewKafkaHandler(uc usecase.{{clean (upper .ModuleName)}}Usecase, validator interfaces.Validator) *KafkaHandler {
 	return &KafkaHandler{
-		uc: uc,
+		uc:        uc,
+		validator: validator,
 	}
 }
 
@@ -56,18 +59,21 @@ import (
 
 	"{{.PackageName}}/candihelper"
 	"{{.PackageName}}/codebase/factory/types"
+	"{{.PackageName}}/codebase/interfaces"
 	"{{.PackageName}}/tracer"
 )
 
 // CronHandler struct
 type CronHandler struct {
-	uc usecase.{{clean (upper .ModuleName)}}Usecase
+	uc        usecase.{{clean (upper .ModuleName)}}Usecase
+	validator interfaces.Validator
 }
 
 // NewCronHandler constructor
-func NewCronHandler(uc usecase.{{clean (upper .ModuleName)}}Usecase) *CronHandler {
+func NewCronHandler(uc usecase.{{clean (upper .ModuleName)}}Usecase, validator interfaces.Validator) *CronHandler {
 	return &CronHandler{
-		uc: uc,
+		uc:        uc,
+		validator: validator,
 	}
 }
 
@@ -98,18 +104,21 @@ import (
 	"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 
 	"{{.PackageName}}/codebase/factory/types"
+	"{{.PackageName}}/codebase/interfaces"
 	"{{.PackageName}}/tracer"
 )
 
 // RedisHandler struct
 type RedisHandler struct {
-	uc usecase.{{clean (upper .ModuleName)}}Usecase
+	uc        usecase.{{clean (upper .ModuleName)}}Usecase
+	validator interfaces.Validator
 }
 
 // NewRedisHandler constructor
-func NewRedisHandler(uc usecase.{{clean (upper .ModuleName)}}Usecase) *RedisHandler {
+func NewRedisHandler(uc usecase.{{clean (upper .ModuleName)}}Usecase, validator interfaces.Validator) *RedisHandler {
 	return &RedisHandler{
-		uc: uc,
+		uc:        uc,
+		validator: validator,
 	}
 }
 
@@ -141,18 +150,21 @@ import (
 
 	taskqueueworker "{{.PackageName}}/codebase/app/task_queue_worker"
 	"{{.PackageName}}/codebase/factory/types"
+	"{{.PackageName}}/codebase/interfaces"
 	"{{.PackageName}}/tracer"
 )
 
 // TaskQueueHandler struct
 type TaskQueueHandler struct {
-	uc usecase.{{clean (upper .ModuleName)}}Usecase
+	uc        usecase.{{clean (upper .ModuleName)}}Usecase
+	validator interfaces.Validator
 }
 
 // NewTaskQueueHandler constructor
-func NewTaskQueueHandler(uc usecase.{{clean (upper .ModuleName)}}Usecase) *TaskQueueHandler {
+func NewTaskQueueHandler(uc usecase.{{clean (upper .ModuleName)}}Usecase, validator interfaces.Validator) *TaskQueueHandler {
 	return &TaskQueueHandler{
-		uc: uc,
+		uc:        uc,
+		validator: validator,
 	}
 }
 
