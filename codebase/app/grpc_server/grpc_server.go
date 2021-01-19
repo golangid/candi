@@ -67,7 +67,10 @@ func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.Ap
 			panic(err)
 		}
 	} else {
-		server.listener = muxListener.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
+		server.listener = muxListener.MatchWithWriters(
+			cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"),
+			cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc+proto"),
+		)
 		grpcPort = server.listener.Addr().String()
 	}
 
@@ -81,7 +84,7 @@ func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.Ap
 
 	for root, info := range server.serverEngine.GetServiceInfo() {
 		for _, method := range info.Methods {
-			logger.LogGreen(fmt.Sprintf("[GRPC-METHOD] /%s/%-15s [metadata]--> %v", root, method.Name, info.Metadata))
+			logger.LogGreen(fmt.Sprintf("[GRPC-METHOD] /%s/%s \t\t[metadata]--> %v", root, method.Name, info.Metadata))
 		}
 	}
 	fmt.Printf("\x1b[34;1m⇨ GRPC server run at port [::]%s\x1b[0m\n\n", grpcPort)
