@@ -3,6 +3,7 @@ package candiutils
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,26 +16,71 @@ import (
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 )
 
-// Request struct
-type Request struct {
-	client           *httpclient.Client
-	minHTTPErrorCode int
+// httpRequestImpl struct
+type httpRequestImpl struct {
+	client *httpclient.Client
+
+	retries                   int
+	sleepBetweenRetry         time.Duration
+	tlsConfig                 *tls.Config
+	minHTTPErrorCodeThreshold int
+}
+
+// HTTPRequestOption func type
+type HTTPRequestOption func(*httpRequestImpl)
+
+// HTTPRequestSetRetries option func
+func HTTPRequestSetRetries(retries int) HTTPRequestOption {
+	return func(h *httpRequestImpl) {
+		h.retries = retries
+	}
+}
+
+// HTTPRequestSetSleepBetweenRetry option func
+func HTTPRequestSetSleepBetweenRetry(sleepBetweenRetry time.Duration) HTTPRequestOption {
+	return func(h *httpRequestImpl) {
+		h.sleepBetweenRetry = sleepBetweenRetry
+	}
+}
+
+// HTTPRequestSetTLS option func
+func HTTPRequestSetTLS(tlsConfig *tls.Config) HTTPRequestOption {
+	return func(h *httpRequestImpl) {
+		h.tlsConfig = tlsConfig
+	}
+}
+
+// HTTPRequestSetHTTPErrorCodeThreshold option func, set minimum http response code for return error when exec client request
+func HTTPRequestSetHTTPErrorCodeThreshold(minHTTPStatusCode int) HTTPRequestOption {
+	return func(h *httpRequestImpl) {
+		h.minHTTPErrorCodeThreshold = minHTTPStatusCode
+	}
 }
 
 // HTTPRequest interface
 type HTTPRequest interface {
-	Do(context context.Context, method, url string, reqBody []byte, headers map[string]string) ([]byte, error)
+	Do(context context.Context, method, url string, reqBody []byte, headers map[string]string) ([]byte, int, error)
 }
 
 // NewHTTPRequest function
 // Request's Constructor
 // Returns : *Request
-func NewHTTPRequest(retries int, sleepBetweenRetry time.Duration, minHTTPErrorCode int) HTTPRequest {
+func NewHTTPRequest(opts ...HTTPRequestOption) HTTPRequest {
+	httpReq := new(httpRequestImpl)
+	// set default value
+	httpReq.retries = 5
+	httpReq.sleepBetweenRetry = 500 * time.Millisecond
+	httpReq.minHTTPErrorCodeThreshold = http.StatusInternalServerError
+
+	for _, o := range opts {
+		o(httpReq)
+	}
+
 	// define a maximum jitter interval
 	maximumJitterInterval := 5 * time.Millisecond
 
 	// create a backoff
-	backoff := heimdall.NewConstantBackoff(sleepBetweenRetry, maximumJitterInterval)
+	backoff := heimdall.NewConstantBackoff(httpReq.sleepBetweenRetry, maximumJitterInterval)
 
 	// create a new retry mechanism with the backoff
 	retrier := heimdall.NewRetrier(backoff)
@@ -42,29 +88,32 @@ func NewHTTPRequest(retries int, sleepBetweenRetry time.Duration, minHTTPErrorCo
 	// set http timeout
 	timeout := 10000 * time.Millisecond
 
-	// set http client
-	client := httpclient.NewClient(
+	heimdallClientOpt := []httpclient.Option{
 		httpclient.WithHTTPTimeout(timeout),
 		httpclient.WithRetrier(retrier),
-		httpclient.WithRetryCount(retries),
-	)
-
-	if minHTTPErrorCode <= 0 {
-		minHTTPErrorCode = http.StatusBadRequest
+		httpclient.WithRetryCount(httpReq.retries),
+	}
+	if httpReq.tlsConfig != nil {
+		heimdallClientOpt = append(heimdallClientOpt, httpclient.WithHTTPClient(&http.Client{
+			Transport: &http.Transport{TLSClientConfig: httpReq.tlsConfig},
+		}))
 	}
 
-	return &Request{
-		client:           client,
-		minHTTPErrorCode: minHTTPErrorCode,
+	// set http client
+	client := httpclient.NewClient(heimdallClientOpt...)
+
+	return &httpRequestImpl{
+		client: client,
 	}
 }
 
 // Do function, for http client call
-func (request *Request) Do(ctx context.Context, method, url string, requestBody []byte, headers map[string]string) (respBody []byte, err error) {
+func (request *httpRequestImpl) Do(ctx context.Context, method, url string, requestBody []byte, headers map[string]string) (respBody []byte, respCode int, err error) {
 	// set request http
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(requestBody))
 	if err != nil {
-		return nil, err
+		tracer.SetError(ctx, err)
+		return nil, 0, err
 	}
 
 	// set tracer
@@ -75,6 +124,7 @@ func (request *Request) Do(ctx context.Context, method, url string, requestBody 
 		}
 		trace.Finish()
 	}()
+	ctx = trace.Context()
 
 	// iterate optional data of headers
 	for key, value := range headers {
@@ -82,37 +132,38 @@ func (request *Request) Do(ctx context.Context, method, url string, requestBody 
 	}
 
 	trace.InjectHTTPHeader(req)
-	tags := trace.Tags()
-	tags["http.headers"] = req.Header
-	tags["http.method"] = req.Method
-	tags["http.url"] = req.URL.String()
+	trace.SetTag("http.headers", req.Header)
+	trace.SetTag("http.method", req.Method)
+	trace.SetTag("http.url", req.URL.String())
 	if requestBody != nil {
-		tags["request.body"] = string(requestBody)
+		tracer.LogKV(ctx, "request.body", requestBody)
 	}
 
 	// client request
-	r, err := request.client.Do(req)
+	resp, err := request.client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	// close response body
-	defer r.Body.Close()
+	defer resp.Body.Close()
 
-	respBody, err = ioutil.ReadAll(r.Body)
+	respBody, err = ioutil.ReadAll(resp.Body)
+	respCode = resp.StatusCode
 
-	tags["response.body"] = string(respBody)
-	tags["response.code"] = r.StatusCode
-	tags["response.status"] = r.Status
+	trace.SetTag("response.code", resp.StatusCode)
+	trace.SetTag("response.status", resp.Status)
+	trace.SetTag("response.header", resp.Header)
+	tracer.LogKV(ctx, "response.body", respBody)
 
-	if r.StatusCode >= request.minHTTPErrorCode {
-		err = errors.New(r.Status)
+	if request.minHTTPErrorCodeThreshold != 0 && resp.StatusCode >= request.minHTTPErrorCodeThreshold {
+		err = errors.New(resp.Status)
 		var resp map[string]string
 		json.Unmarshal(respBody, &resp)
 		if resp["message"] != "" {
 			err = errors.New(resp["message"])
 		}
-		return respBody, err
+		return
 	}
 
-	return respBody, err
+	return
 }
