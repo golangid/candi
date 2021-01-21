@@ -5,7 +5,6 @@ import "text/template"
 const (
 	ps1         = "\x1b[32;1m>>> \x1b[0m"
 	redFormat   = "\x1b[31;1m%s \x1b[0m\n"
-	packageName = "pkg.agungdwiprasetyo.com/candi"
 	initService = "initservice"
 	addModule   = "addmodule"
 
@@ -23,8 +22,10 @@ const (
 )
 
 var (
-	scopeFlag, serviceNameFlag, gomodName string
-	scopeMap                              = map[string]string{
+	scopeFlag, serviceNameFlag, packagePrefixFlag, protoOutputPkgFlag, outputFlag, libraryNameFlag string
+	withGoModFlag                                                                                  bool
+
+	scopeMap = map[string]string{
 		"1": initService, "2": addModule,
 	}
 	serviceHandlersMap = map[string]string{
@@ -44,17 +45,18 @@ var (
 )
 
 type configHeader struct {
-	Version     string
-	Header      string
-	PackageName string
-	ServiceName string
-	GoModName   string
+	Version       string
+	Header        string
+	LibraryName   string
+	ServiceName   string
+	PackagePrefix string
+	ProtoSource   string
 }
 
 type config struct {
 	RestHandler, GRPCHandler, GraphQLHandler                                           bool
 	KafkaHandler, SchedulerHandler, RedisSubsHandler, TaskQueueHandler, IsWorkerActive bool
-	RedisDeps, SQLDeps, MongoDeps                                                      bool
+	RedisDeps, SQLDeps, MongoDeps, SQLUseGORM                                          bool
 	SQLDriver                                                                          string
 }
 
@@ -65,10 +67,10 @@ type serviceConfig struct {
 }
 
 type moduleConfig struct {
-	configHeader
-	config
-	ModuleName string
-	Skip       bool
+	configHeader `json:"-"`
+	config       `json:"-"`
+	ModuleName   string
+	Skip         bool `json:"-"`
 }
 
 // FileStructure model

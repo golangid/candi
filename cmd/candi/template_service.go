@@ -5,14 +5,14 @@ const serviceMainTemplate = `// {{.Header}} DO NOT EDIT.
 package {{clean $.ServiceName}}
 
 import (
-	"{{.PackageName}}/codebase/factory"
-	"{{.PackageName}}/codebase/factory/dependency"
-	"{{.PackageName}}/codebase/factory/types"
-	"{{.PackageName}}/config"
+	"{{.LibraryName}}/codebase/factory"
+	"{{.LibraryName}}/codebase/factory/dependency"
+	"{{.LibraryName}}/codebase/factory/types"
+	"{{.LibraryName}}/config"
 
-	"{{$.GoModName}}/configs"
+	"{{$.PackagePrefix}}/configs"
 {{- range $module := .Modules}}
-	"{{$.GoModName}}/internal/modules/{{$module.ModuleName}}"
+	"{{$.PackagePrefix}}/internal/modules/{{$module.ModuleName}}"
 {{- end }}
 )
 

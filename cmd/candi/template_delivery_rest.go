@@ -9,13 +9,13 @@ import (
 
 	"github.com/labstack/echo"
 
-	"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
+	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 
-	"{{.PackageName}}/candihelper"
-	"{{.PackageName}}/candishared"
-	"{{.PackageName}}/codebase/interfaces"
-	"{{.PackageName}}/tracer"
-	"{{.PackageName}}/wrapper"
+	"{{.LibraryName}}/candihelper"
+	"{{.LibraryName}}/candishared"
+	"{{.LibraryName}}/codebase/interfaces"
+	"{{.LibraryName}}/tracer"
+	"{{.LibraryName}}/wrapper"
 )
 
 // RestHandler handler

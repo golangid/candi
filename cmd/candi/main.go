@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -14,41 +15,57 @@ import (
 func main() {
 	flag.StringVar(&scopeFlag, "scope", "", "set scope (1 for init service, 2 for add module(s)")
 	flag.StringVar(&serviceNameFlag, "servicename", "", "define service name")
-	flag.StringVar(&gomodName, "gomod", "", "define module prefix")
+	flag.StringVar(&packagePrefixFlag, "packageprefix", "", "define package prefix")
+	flag.BoolVar(&withGoModFlag, "withgomod", true, "generate go.mod or not")
+	flag.StringVar(&protoOutputPkgFlag, "protooutputpkg", "", "define generated proto output target (if using grpc), with prefix is your go.mod")
+	flag.StringVar(&outputFlag, "output", "", "directory to write project to (default is service name)")
+	flag.StringVar(&libraryNameFlag, "libraryname", "pkg.agungdwiprasetyo.com/candi", "define library name")
 	flag.Parse()
 
 	printBanner()
 
 	scope, headerConfig, srvConfig, modConfigs, baseConfig := parseInput()
 
+	srvConfig.configHeader = headerConfig
+	srvConfig.config = baseConfig
 	if scope == addModule {
-		files, err := ioutil.ReadDir("internal/modules")
-		if err != nil {
-			panic(err)
+		var baseDir string
+		if serviceNameFlag != "" {
+			baseDir = outputFlag + serviceNameFlag + "/"
 		}
-		for _, f := range files {
-			if f.IsDir() {
-				modConfigs = append(modConfigs, moduleConfig{
-					ModuleName: f.Name(), Skip: true,
-				})
+
+		b, err := ioutil.ReadFile(baseDir + "candi.json")
+		if err == nil {
+			json.Unmarshal(b, &srvConfig)
+			for i := range srvConfig.Modules {
+				srvConfig.Modules[i].Skip = true
 			}
-		}
-		if serviceNameFlag == "" {
-			pwd, _ := os.Getwd()
-			headerConfig.ServiceName = filepath.Base(pwd)
+			modConfigs = append(modConfigs, srvConfig.Modules...)
+		} else {
+			files, err := ioutil.ReadDir(baseDir + "internal/modules")
+			if err != nil {
+				panic(err)
+			}
+			for _, f := range files {
+				if f.IsDir() {
+					modConfigs = append(modConfigs, moduleConfig{
+						ModuleName: f.Name(), Skip: true,
+					})
+				}
+			}
+			if serviceNameFlag == "" {
+				pwd, _ := os.Getwd()
+				headerConfig.ServiceName = filepath.Base(pwd)
+			}
 		}
 	}
 
 	sort.Slice(modConfigs, func(i, j int) bool {
 		return modConfigs[i].ModuleName < modConfigs[j].ModuleName
 	})
-
-	srvConfig.configHeader = headerConfig
-	srvConfig.config = baseConfig
 	srvConfig.Modules = modConfigs
-	srvConfigEdited := srvConfig
 
-	tpl = template.New(packageName)
+	tpl = template.New(libraryNameFlag)
 
 	apiStructure := FileStructure{
 		TargetDir: "api/", IsDir: true,
@@ -77,23 +94,9 @@ func main() {
 	}
 	var sharedDomainFiles []FileStructure
 
-	for i, mod := range srvConfig.Modules {
+	for _, mod := range srvConfig.Modules {
 		mod.configHeader = srvConfig.configHeader
 		mod.config = srvConfig.config
-		if mod.Skip && scope == addModule {
-			_, err := ioutil.ReadFile(fmt.Sprintf("internal/modules/%s/repository/repository_sql.go", mod.ModuleName))
-			mod.SQLDeps = err == nil
-			_, err = ioutil.ReadFile(fmt.Sprintf("internal/modules/%s/repository/repository_mongo.go", mod.ModuleName))
-			mod.MongoDeps = err == nil
-		}
-
-		if mod.SQLDeps {
-			srvConfigEdited.SQLDeps = mod.SQLDeps
-		}
-		if mod.MongoDeps {
-			srvConfigEdited.MongoDeps = mod.MongoDeps
-		}
-		srvConfigEdited.Modules[i] = mod
 		if mod.Skip {
 			continue
 		}
@@ -180,11 +183,10 @@ func main() {
 	configsStructure := FileStructure{
 		TargetDir: "configs/", IsDir: true,
 		Childs: []FileStructure{
-			{FromTemplate: true, DataSource: srvConfigEdited, Source: configsTemplate, FileName: "configs.go"},
+			{FromTemplate: true, DataSource: srvConfig, Source: configsTemplate, FileName: "configs.go"},
 		},
 	}
 
-	internalServiceStructure.Childs = append(internalServiceStructure.Childs, moduleStructure)
 	internalServiceStructure.Childs = append(internalServiceStructure.Childs, FileStructure{
 		FromTemplate: true, DataSource: srvConfig, Source: serviceMainTemplate, FileName: "service.go",
 	})
@@ -203,12 +205,15 @@ func main() {
 		apiProtoStructure,
 	}
 
+	configJSON, _ := json.Marshal(srvConfig)
+
 	var baseDirectoryFile FileStructure
-	baseDirectoryFile.TargetDir = "{{.ServiceName}}/"
+	baseDirectoryFile.TargetDir = outputFlag + "{{.ServiceName}}/"
 	baseDirectoryFile.DataSource = srvConfig
 	baseDirectoryFile.IsDir = true
 	switch scope {
 	case initService:
+		internalServiceStructure.Childs = append(internalServiceStructure.Childs, moduleStructure)
 		pkgServiceStructure.Childs = append(pkgServiceStructure.Childs, []FileStructure{
 			{TargetDir: "helper/", IsDir: true, Childs: []FileStructure{
 				{FromTemplate: true, FileName: "helper.go"},
@@ -236,18 +241,24 @@ func main() {
 			{FromTemplate: true, DataSource: srvConfig, Source: gitignoreTemplate, FileName: ".gitignore"},
 			{FromTemplate: true, DataSource: srvConfig, Source: makefileTemplate, FileName: "Makefile"},
 			{FromTemplate: true, DataSource: srvConfig, Source: dockerfileTemplate, FileName: "Dockerfile"},
-			{FromTemplate: true, DataSource: srvConfig, Source: gomodTemplate, FileName: "go.mod"},
 			{FromTemplate: true, DataSource: srvConfig, Source: cmdMainTemplate, FileName: "main.go"},
 			{FromTemplate: true, DataSource: srvConfig, Source: envTemplate, FileName: ".env"},
 			{FromTemplate: true, DataSource: srvConfig, Source: envTemplate, FileName: ".env.sample"},
+			{Source: string(configJSON), FileName: "candi.json"},
+			{FromTemplate: true, DataSource: srvConfig, Source: readmeTemplate, FileName: "README.md"},
+		}
+		if withGoModFlag {
+			baseDirectoryFile.Childs = append(baseDirectoryFile.Childs, FileStructure{
+				FromTemplate: true, DataSource: srvConfig, Source: gomodTemplate, FileName: "go.mod",
+			})
 		}
 
 	case addModule:
 		configsStructure.Skip = true
 		moduleStructure.Skip = true
 		pkgServiceStructure.Skip = true
+		internalServiceStructure.Skip = true
 		pkgServiceStructure.Childs = []FileStructure{
-			moduleStructure,
 			{TargetDir: "shared/", IsDir: true, Skip: true, Childs: []FileStructure{
 				{TargetDir: "domain/", IsDir: true, Skip: true, Childs: sharedDomainFiles},
 				{TargetDir: "repository/", IsDir: true, Skip: true, Childs: parseSharedRepository(srvConfig)},
@@ -263,6 +274,7 @@ func main() {
 			})
 		}
 
+		internalServiceStructure.Childs = append(internalServiceStructure.Childs, moduleStructure)
 		apiStructure.Skip = true
 		apiProtoStructure.Skip, apiGraphQLStructure.Skip = true, true
 		apiStructure.Childs = []FileStructure{
@@ -270,10 +282,13 @@ func main() {
 		}
 
 		baseDirectoryFile.Childs = append(baseDirectoryFile.Childs, []FileStructure{
-			apiStructure, configsStructure, pkgServiceStructure,
+			apiStructure, internalServiceStructure, pkgServiceStructure,
 		}...)
 		baseDirectoryFile.Skip = true
 		baseDirectoryFile.TargetDir = ""
+		if serviceNameFlag != "" {
+			baseDirectoryFile.TargetDir = outputFlag + serviceNameFlag + "/"
+		}
 
 	}
 

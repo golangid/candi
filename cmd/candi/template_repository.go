@@ -8,7 +8,7 @@ package repository
 import (
 	"sync"
 
-	"{{.PackageName}}/codebase/factory/dependency"
+	"{{.LibraryName}}/codebase/factory/dependency"
 )
 
 var (
@@ -34,10 +34,10 @@ import (
 	"fmt"
 
 {{- range $module := .Modules}}
-	{{if $module.SQLDeps}}{{clean $module.ModuleName}}repo "{{$.GoModName}}/internal/modules/{{cleanPathModule $module.ModuleName}}/repository"{{end}}
+	{{clean $module.ModuleName}}repo "{{$.PackagePrefix}}/internal/modules/{{cleanPathModule $module.ModuleName}}/repository"
 {{- end }}
 
-	"{{.PackageName}}/tracer"
+	"{{.LibraryName}}/tracer"
 )
 
 // RepoSQL uow
@@ -47,7 +47,7 @@ type RepoSQL struct {
 
 	// register all repository from modules
 {{- range $module := .Modules}}
-	{{if $module.SQLDeps}}{{clean (upper $module.ModuleName)}}Repo {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository{{end}}
+	{{clean (upper $module.ModuleName)}}Repo {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository
 {{- end }}
 }
 
@@ -72,7 +72,7 @@ func NewRepositorySQL(readDB, writeDB *sql.DB, tx *sql.Tx) *RepoSQL {
 		readDB: readDB, writeDB: writeDB, tx: tx,
 
 {{- range $module := .Modules}}
-		{{if $module.SQLDeps}}{{clean (upper $module.ModuleName)}}Repo: {{clean $module.ModuleName}}repo.New{{clean (upper $module.ModuleName)}}RepoSQL(readDB, writeDB, tx),{{end}}
+		{{clean (upper $module.ModuleName)}}Repo: {{clean $module.ModuleName}}repo.New{{clean (upper $module.ModuleName)}}RepoSQL(readDB, writeDB, tx),
 {{- end }}
 	}
 }
@@ -130,7 +130,7 @@ func (r *RepoSQL) WithTransaction(ctx context.Context, txFunc func(ctx context.C
 func (r *RepoSQL) free() {
 	// make nil all repository
 {{- range $module := .Modules}}
-	{{if $module.SQLDeps}}r.{{clean (upper $module.ModuleName)}}Repo = nil{{end}}
+	r.{{clean (upper $module.ModuleName)}}Repo = nil
 {{- end }}
 }	
 `
@@ -143,7 +143,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 
 {{- range $module := .Modules}}
-	{{if $module.MongoDeps}}{{clean $module.ModuleName}}repo "{{$.GoModName}}/internal/modules/{{cleanPathModule $module.ModuleName}}/repository"{{end}}
+	{{clean $module.ModuleName}}repo "{{$.PackagePrefix}}/internal/modules/{{cleanPathModule $module.ModuleName}}/repository"
 {{- end }}
 )
 
@@ -153,7 +153,7 @@ type RepoMongo struct {
 
 	// register all repository from modules
 {{- range $module := .Modules}}
-	{{if $module.MongoDeps}}{{clean (upper $module.ModuleName)}}Repo {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository{{end}}
+	{{clean (upper $module.ModuleName)}}Repo {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository
 {{- end }}
 }
 
@@ -165,7 +165,7 @@ func setSharedRepoMongo(readDB, writeDB *mongo.Database) {
 		readDB: readDB, writeDB: writeDB,
 
 {{- range $module := .Modules}}
-		{{if $module.MongoDeps}}{{clean (upper $module.ModuleName)}}Repo: {{clean $module.ModuleName}}repo.New{{clean (upper $module.ModuleName)}}RepoMongo(readDB, writeDB),{{end}}
+		{{clean (upper $module.ModuleName)}}Repo: {{clean $module.ModuleName}}repo.New{{clean (upper $module.ModuleName)}}RepoMongo(readDB, writeDB),
 {{- end }}
 	}
 }
@@ -200,7 +200,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/mongo"
 
-	"{{.PackageName}}/tracer"
+	"{{.LibraryName}}/tracer"
 )
 
 type {{clean .ModuleName}}RepoMongo struct {
@@ -230,7 +230,7 @@ import (
 	"context"
 	"database/sql"
 
-	"{{.PackageName}}/tracer"
+	"{{.LibraryName}}/tracer"
 )
 
 type {{clean .ModuleName}}RepoSQL struct {

@@ -8,15 +8,15 @@ package grpchandler
 import (
 	"context"
 
-	proto "{{.GoModName}}/api/proto/{{.ModuleName}}"
-	"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
+	proto "{{.ProtoSource}}/{{.ModuleName}}"
+	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 
 	"google.golang.org/grpc"
 
-	"{{.PackageName}}/candishared"
-	"{{.PackageName}}/codebase/factory/types"
-	"{{.PackageName}}/codebase/interfaces"
-	"{{.PackageName}}/tracer"
+	"{{.LibraryName}}/candishared"
+	"{{.LibraryName}}/codebase/factory/types"
+	"{{.LibraryName}}/codebase/interfaces"
+	"{{.LibraryName}}/tracer"
 )
 
 // GRPCHandler rpc handler
@@ -57,7 +57,7 @@ func (h *GRPCHandler) Hello(ctx context.Context, req *proto.Request) (*proto.Res
 
 	defaultGRPCProto = `syntax="proto3";
 package {{clean .ModuleName}};
-option go_package = "{{.GoModName}}/api/proto/{{.ModuleName}}";
+option go_package = "{{.PackagePrefix}}/api/proto/{{.ModuleName}}";
 
 service {{clean (upper .ModuleName)}}Handler {
 	rpc Hello(Request) returns (Response);

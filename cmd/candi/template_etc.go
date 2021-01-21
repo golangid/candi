@@ -71,10 +71,9 @@ clear:
 
 	gomodTemplate = `module {{.ServiceName}}
 
-go 1.14
+go 1.15
 
 require pkg.agungdwiprasetyo.com/candi {{.Version}}
-
 `
 
 	gitignoreTemplate = `bin
@@ -92,4 +91,19 @@ coverage.txt
 	"properties": {}
 }
 `
+
+	readmeTemplate = "# {{upper .ServiceName}}\n\n" +
+		"## Build and run service\n" +
+		"```\n" +
+		"$ make run\n" +
+		"```\n" +
+		"If include GRPC handler, run `$ make proto` for generate rpc files from proto (must install `protoc` compiler min version `libprotoc 3.14.0`)\n\n" +
+		"## Run unit test & calculate code coverage\n" +
+		"```\n" +
+		"$ make test\n" +
+		"```\n\n" +
+		"## Create docker image\n" +
+		"```\n" +
+		"$ make docker\n" +
+		"```\n"
 )

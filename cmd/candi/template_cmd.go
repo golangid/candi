@@ -10,10 +10,10 @@ import (
 
 	{{if eq .SQLDriver "postgres"}}_ "github.com/lib/pq"{{end}}
 
-	"{{.PackageName}}/codebase/app"
-	"{{.PackageName}}/config"
+	"{{.LibraryName}}/codebase/app"
+	"{{.LibraryName}}/config"
 
-	service "{{.GoModName}}/internal"
+	service "{{.PackagePrefix}}/internal"
 )
 
 const serviceName = "{{.ServiceName}}"

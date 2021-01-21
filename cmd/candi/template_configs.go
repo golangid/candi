@@ -8,19 +8,19 @@ package configs
 import (
 	"context"
 
-	"{{.GoModName}}/pkg/shared"
-	"{{.GoModName}}/pkg/shared/repository"
-	"{{.GoModName}}/pkg/shared/usecase"
+	"{{.PackagePrefix}}/pkg/shared"
+	"{{.PackagePrefix}}/pkg/shared/repository"
+	"{{.PackagePrefix}}/pkg/shared/usecase"
 
-	"{{.PackageName}}/codebase/factory/dependency"
-	{{ if not .KafkaHandler }}// {{ end }}"{{.PackageName}}/codebase/factory/types"
-	"{{.PackageName}}/codebase/interfaces"
-	"{{.PackageName}}/config"
-	"{{.PackageName}}/config/broker"
-	{{ if not (or .SQLDeps .MongoDeps .RedisDeps) }}// {{ end }}"{{.PackageName}}/config/database"
-	"{{.PackageName}}/candihelper"
-	"{{.PackageName}}/middleware"
-	"{{.PackageName}}/validator"
+	"{{.LibraryName}}/codebase/factory/dependency"
+	{{ if not .KafkaHandler }}// {{ end }}"{{.LibraryName}}/codebase/factory/types"
+	"{{.LibraryName}}/codebase/interfaces"
+	"{{.LibraryName}}/config"
+	"{{.LibraryName}}/config/broker"
+	{{ if not (or .SQLDeps .MongoDeps .RedisDeps) }}// {{ end }}"{{.LibraryName}}/config/database"
+	"{{.LibraryName}}/candihelper"
+	"{{.LibraryName}}/middleware"
+	"{{.LibraryName}}/validator"
 )
 
 // LoadConfigs load selected dependency configuration in this service

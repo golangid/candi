@@ -5,15 +5,15 @@ const moduleMainTemplate = `// {{.Header}}
 package {{clean .ModuleName}}
 
 import (
-	{{if not .GraphQLHandler}}// {{end}}"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/delivery/graphqlhandler"
-	{{if not .GRPCHandler}}// {{end}}"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/delivery/grpchandler"
-	{{if not .RestHandler}}// {{end}}"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/delivery/resthandler"
-	{{if not .IsWorkerActive}}// {{end}}"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/delivery/workerhandler"
-	"{{.GoModName}}/pkg/shared/usecase"
+	{{if not .GraphQLHandler}}// {{end}}"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/delivery/graphqlhandler"
+	{{if not .GRPCHandler}}// {{end}}"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/delivery/grpchandler"
+	{{if not .RestHandler}}// {{end}}"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/delivery/resthandler"
+	{{if not .IsWorkerActive}}// {{end}}"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/delivery/workerhandler"
+	"{{.PackagePrefix}}/pkg/shared/usecase"
 
-	"{{.PackageName}}/codebase/factory/dependency"
-	"{{.PackageName}}/codebase/factory/types"
-	"{{.PackageName}}/codebase/interfaces"
+	"{{.LibraryName}}/codebase/factory/dependency"
+	"{{.LibraryName}}/codebase/factory/types"
+	"{{.LibraryName}}/codebase/interfaces"
 )
 
 const (

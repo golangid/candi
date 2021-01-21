@@ -9,11 +9,11 @@ import (
 	"context"
 	"fmt"
 
-	"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
+	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 
-	"{{.PackageName}}/codebase/factory/types"
-	"{{.PackageName}}/codebase/interfaces"
-	"{{.PackageName}}/tracer"
+	"{{.LibraryName}}/codebase/factory/types"
+	"{{.LibraryName}}/codebase/interfaces"
+	"{{.LibraryName}}/tracer"
 )
 
 // KafkaHandler struct
@@ -55,12 +55,12 @@ import (
 	"context"
 	"fmt"
 
-	"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
+	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 
-	"{{.PackageName}}/candihelper"
-	"{{.PackageName}}/codebase/factory/types"
-	"{{.PackageName}}/codebase/interfaces"
-	"{{.PackageName}}/tracer"
+	"{{.LibraryName}}/candihelper"
+	"{{.LibraryName}}/codebase/factory/types"
+	"{{.LibraryName}}/codebase/interfaces"
+	"{{.LibraryName}}/tracer"
 )
 
 // CronHandler struct
@@ -101,11 +101,11 @@ import (
 	"context"
 	"fmt"
 
-	"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
+	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 
-	"{{.PackageName}}/codebase/factory/types"
-	"{{.PackageName}}/codebase/interfaces"
-	"{{.PackageName}}/tracer"
+	"{{.LibraryName}}/codebase/factory/types"
+	"{{.LibraryName}}/codebase/interfaces"
+	"{{.LibraryName}}/tracer"
 )
 
 // RedisHandler struct
@@ -146,12 +146,12 @@ import (
 	"context"
 	"time"
 
-	"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
+	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 
-	taskqueueworker "{{.PackageName}}/codebase/app/task_queue_worker"
-	"{{.PackageName}}/codebase/factory/types"
-	"{{.PackageName}}/codebase/interfaces"
-	"{{.PackageName}}/tracer"
+	taskqueueworker "{{.LibraryName}}/codebase/app/task_queue_worker"
+	"{{.LibraryName}}/codebase/factory/types"
+	"{{.LibraryName}}/codebase/interfaces"
+	"{{.LibraryName}}/tracer"
 )
 
 // TaskQueueHandler struct

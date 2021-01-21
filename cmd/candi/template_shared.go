@@ -8,7 +8,7 @@ package shared
 import (
 	"context"
 
-	"{{.PackageName}}/candishared"
+	"{{.LibraryName}}/candishared"
 )
 
 // DefaultTokenValidator for token validator

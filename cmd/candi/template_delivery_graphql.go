@@ -6,10 +6,10 @@ const (
 package graphqlhandler
 
 import (
-	"{{.GoModName}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
+	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 	
-	"{{.PackageName}}/codebase/factory/types"
-	"{{.PackageName}}/codebase/interfaces"
+	"{{.LibraryName}}/codebase/factory/types"
+	"{{.LibraryName}}/codebase/interfaces"
 )
 
 // GraphQLHandler model
@@ -55,8 +55,8 @@ package graphqlhandler
 import (
 	"context"
 
-	"{{.PackageName}}/candishared"
-	"{{.PackageName}}/tracer"
+	"{{.LibraryName}}/candishared"
+	"{{.LibraryName}}/tracer"
 )
 
 type queryResolver struct {

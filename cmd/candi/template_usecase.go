@@ -9,10 +9,10 @@ import (
 	"sync"
 
 {{- range $module := .Modules}}
-	{{clean $module.ModuleName}}usecase "{{$.GoModName}}/internal/modules/{{cleanPathModule $module.ModuleName}}/usecase"
+	{{clean $module.ModuleName}}usecase "{{$.PackagePrefix}}/internal/modules/{{cleanPathModule $module.ModuleName}}/usecase"
 {{- end }}
 
-	"{{.PackageName}}/codebase/factory/dependency"
+	"{{.LibraryName}}/codebase/factory/dependency"
 )
 
 type (
@@ -77,11 +77,11 @@ package usecase
 import (
 	"context"
 
-	{{ if not (or .SQLDeps .MongoDeps) }}// {{end}}"{{.GoModName}}/pkg/shared/repository"
+	{{ if not (or .SQLDeps .MongoDeps) }}// {{end}}"{{.PackagePrefix}}/pkg/shared/repository"
 
-	"{{.PackageName}}/codebase/factory/dependency"
-	"{{.PackageName}}/codebase/interfaces"
-	"{{.PackageName}}/tracer"
+	"{{.LibraryName}}/codebase/factory/dependency"
+	"{{.LibraryName}}/codebase/interfaces"
+	"{{.LibraryName}}/tracer"
 )
 
 type {{clean .ModuleName}}UsecaseImpl struct {
