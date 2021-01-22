@@ -38,9 +38,7 @@ SQL_DB_READ_DSN={{ if .SQLDeps }}{{.SQLDriver}}{{ else }}sql{{ end }}://user:pas
 SQL_DB_WRITE_DSN={{ if .SQLDeps }}{{.SQLDriver}}{{ else }}sql{{ end }}://user:pass@localhost:5432/db_name?sslmode=disable
 
 REDIS_READ_DSN=redis://user:pass@localhost:6379/0
-REDIS_READ_TLS=false
 REDIS_WRITE_DSN=redis://user:pass@localhost:6379/0
-REDIS_WRITE_TLS=false
 
 KAFKA_BROKERS=localhost:9092
 KAFKA_CLIENT_VERSION=2.0.0

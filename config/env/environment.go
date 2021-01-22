@@ -82,7 +82,6 @@ type Env struct {
 	DbMongoWriteHost, DbMongoReadHost, DbMongoDatabaseName string
 	DbSQLWriteDSN, DbSQLReadDSN                            string
 	DbRedisReadDSN, DbRedisWriteDSN                        string
-	DbRedisReadTLS, DbRedisWriteTLS                        bool
 }
 
 var env Env
@@ -297,7 +296,5 @@ func parseDatabaseEnv() {
 	env.DbSQLWriteDSN = os.Getenv("SQL_DB_WRITE_DSN")
 
 	env.DbRedisReadDSN = os.Getenv("REDIS_READ_DSN")
-	env.DbRedisReadTLS, _ = strconv.ParseBool(os.Getenv("REDIS_READ_TLS"))
 	env.DbRedisWriteDSN = os.Getenv("REDIS_WRITE_DSN")
-	env.DbRedisWriteTLS, _ = strconv.ParseBool(os.Getenv("REDIS_WRITE_TLS"))
 }

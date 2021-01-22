@@ -60,7 +60,7 @@ func InitRedis() interfaces.RedisPool {
 
 	inst.read = &redis.Pool{
 		Dial: func() (redis.Conn, error) {
-			return redis.DialURL(env.BaseEnv().DbRedisReadDSN, redis.DialUseTLS(env.BaseEnv().DbRedisReadTLS))
+			return redis.DialURL(env.BaseEnv().DbRedisReadDSN)
 		},
 	}
 
@@ -73,7 +73,7 @@ func InitRedis() interfaces.RedisPool {
 
 	inst.write = &redis.Pool{
 		Dial: func() (redis.Conn, error) {
-			return redis.DialURL(env.BaseEnv().DbRedisWriteDSN, redis.DialUseTLS(env.BaseEnv().DbRedisWriteTLS))
+			return redis.DialURL(env.BaseEnv().DbRedisWriteDSN)
 		},
 	}
 
