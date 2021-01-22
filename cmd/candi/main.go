@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -35,29 +36,14 @@ func main() {
 		}
 
 		b, err := ioutil.ReadFile(baseDir + "candi.json")
-		if err == nil {
-			json.Unmarshal(b, &srvConfig)
-			for i := range srvConfig.Modules {
-				srvConfig.Modules[i].Skip = true
-			}
-			modConfigs = append(modConfigs, srvConfig.Modules...)
-		} else {
-			files, err := ioutil.ReadDir(baseDir + "internal/modules")
-			if err != nil {
-				panic(err)
-			}
-			for _, f := range files {
-				if f.IsDir() {
-					modConfigs = append(modConfigs, moduleConfig{
-						ModuleName: f.Name(), Skip: true,
-					})
-				}
-			}
-			if serviceNameFlag == "" {
-				pwd, _ := os.Getwd()
-				headerConfig.ServiceName = filepath.Base(pwd)
-			}
+		if err != nil {
+			log.Fatal("ERROR: cannot find candi.json file")
 		}
+		json.Unmarshal(b, &srvConfig)
+		for i := range srvConfig.Modules {
+			srvConfig.Modules[i].Skip = true
+		}
+		modConfigs = append(modConfigs, srvConfig.Modules...)
 	}
 
 	sort.Slice(modConfigs, func(i, j int) bool {
@@ -266,12 +252,6 @@ func main() {
 					{FromTemplate: true, DataSource: srvConfig, Source: templateUsecaseUOW, FileName: "usecase.go"},
 				}},
 			}},
-		}
-
-		if srvConfig.SQLDeps {
-			baseDirectoryFile.Childs = append(baseDirectoryFile.Childs, FileStructure{
-				FromTemplate: true, DataSource: srvConfig, Source: cmdMainTemplate, FileName: "main.go",
-			})
 		}
 
 		internalServiceStructure.Childs = append(internalServiceStructure.Childs, moduleStructure)

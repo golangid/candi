@@ -208,6 +208,9 @@ constructConfig:
 }
 
 func parseSharedRepository(data serviceConfig) (repos []FileStructure) {
+	for i := range data.Modules {
+		data.Modules[i].config = data.config
+	}
 	repos = append(repos, []FileStructure{
 		{FromTemplate: true, DataSource: data, Source: templateRepository, FileName: "repository.go"},
 		{FromTemplate: true, DataSource: data, Source: templateRepositoryUOWSQL, FileName: "repository_sql.go"},

@@ -37,13 +37,15 @@ import (
 	{{clean $module.ModuleName}}repo "{{$.PackagePrefix}}/internal/modules/{{cleanPathModule $module.ModuleName}}/repository"
 {{- end }}
 
-	"{{.LibraryName}}/tracer"
+	"{{.LibraryName}}/tracer"` +
+		`{{if .SQLUseGORM}}
+	"gorm.io/driver/{{.SQLDriver}}"
+	"gorm.io/gorm"{{end}}` + `
 )
 
 // RepoSQL uow
 type RepoSQL struct {
-	readDB, writeDB *sql.DB
-	tx              *sql.Tx
+	readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB` + "{{if not .SQLUseGORM}}\n	tx              *sql.Tx{{end}}" + `
 
 	// register all repository from modules
 {{- range $module := .Modules}}
@@ -57,7 +59,22 @@ var (
 
 // setSharedRepoSQL set the global singleton "RepoSQL" implementation
 func setSharedRepoSQL(readDB, writeDB *sql.DB) {
-	globalRepoSQL = NewRepositorySQL(readDB, writeDB, nil)
+	{{if .SQLUseGORM}}gormRead, err := gorm.Open({{.SQLDriver}}.New({{.SQLDriver}}.Config{
+		Conn: readDB,
+	}), &gorm.Config{SkipDefaultTransaction: true})
+
+	if err != nil {
+		panic(err)
+	}
+
+	gormWrite, err := gorm.Open({{.SQLDriver}}.New({{.SQLDriver}}.Config{
+		Conn: writeDB,
+	}), &gorm.Config{})
+
+	if err != nil {
+		panic(err)
+	}{{end}}
+	globalRepoSQL = NewRepositorySQL({{if .SQLUseGORM}}gormRead, gormWrite{{else}}readDB, writeDB, nil{{end}})
 }
 
 // GetSharedRepoSQL returns the global singleton "RepoSQL" implementation
@@ -66,13 +83,14 @@ func GetSharedRepoSQL() *RepoSQL {
 }
 
 // NewRepositorySQL constructor
-func NewRepositorySQL(readDB, writeDB *sql.DB, tx *sql.Tx) *RepoSQL {
+func NewRepositorySQL(readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB{{if not .SQLUseGORM}}, tx *sql.Tx{{end}}) *RepoSQL {
 
 	return &RepoSQL{
-		readDB: readDB, writeDB: writeDB, tx: tx,
+		readDB: readDB, writeDB: writeDB,{{if not .SQLUseGORM}} tx: tx,{{end}}
 
 {{- range $module := .Modules}}
-		{{clean (upper $module.ModuleName)}}Repo: {{clean $module.ModuleName}}repo.New{{clean (upper $module.ModuleName)}}RepoSQL(readDB, writeDB, tx),
+		{{if not .SQLDeps}}// {{end}}{{clean (upper $module.ModuleName)}}Repo: ` +
+		"{{clean $module.ModuleName}}repo.New{{clean (upper $module.ModuleName)}}RepoSQL(readDB, writeDB{{if not .SQLUseGORM}}, tx{{end}})," + `
 {{- end }}
 	}
 }
@@ -83,13 +101,13 @@ func (r *RepoSQL) WithTransaction(ctx context.Context, txFunc func(ctx context.C
 	defer trace.Finish()
 	ctx = trace.Context()
 
-	tx, errInit := r.writeDB.Begin()
-	if errInit != nil {
-		return errInit
+	tx{{if not .SQLUseGORM}}, err{{end}} := r.writeDB.Begin()` + "\n{{if .SQLUseGORM}}	err = tx.Error{{end}}" + `
+	if err != nil {
+		return err
 	}
 
 	// reinit new repository in different memory address with tx value
-	manager := NewRepositorySQL(r.readDB, r.writeDB, tx)
+	manager := NewRepositorySQL(r.readDB, r.writeDB{{if not .SQLUseGORM}}, tx{{end}})
 	defer manager.free()
 
 	defer func() {
@@ -165,7 +183,7 @@ func setSharedRepoMongo(readDB, writeDB *mongo.Database) {
 		readDB: readDB, writeDB: writeDB,
 
 {{- range $module := .Modules}}
-		{{clean (upper $module.ModuleName)}}Repo: {{clean $module.ModuleName}}repo.New{{clean (upper $module.ModuleName)}}RepoMongo(readDB, writeDB),
+		{{if not .MongoDeps}}// {{end}}{{clean (upper $module.ModuleName)}}Repo: {{clean $module.ModuleName}}repo.New{{clean (upper $module.ModuleName)}}RepoMongo(readDB, writeDB),
 {{- end }}
 	}
 }
@@ -227,21 +245,22 @@ func (r *{{clean .ModuleName}}RepoMongo) FindHello(ctx context.Context) (string,
 package repository
 
 import (
-	"context"
-	"database/sql"
+	"context"` + `{{if not .SQLUseGORM}}
+	"database/sql"{{end}}` + `
 
-	"{{.LibraryName}}/tracer"
+	"{{.LibraryName}}/tracer"` +
+		`{{if .SQLUseGORM}}
+	"gorm.io/gorm"{{end}}` + `
 )
 
 type {{clean .ModuleName}}RepoSQL struct {
-	readDB, writeDB *sql.DB
-	tx              *sql.Tx
+	readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB` + "{{if not .SQLUseGORM}}\n	tx              *sql.Tx{{end}}" + `
 }
 
 // New{{clean (upper .ModuleName)}}RepoSQL mongo repo constructor
-func New{{clean (upper .ModuleName)}}RepoSQL(readDB, writeDB *sql.DB, tx *sql.Tx) {{clean (upper .ModuleName)}}Repository {
+func New{{clean (upper .ModuleName)}}RepoSQL(readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB{{if not .SQLUseGORM}}, tx *sql.Tx{{end}}) {{clean (upper .ModuleName)}}Repository {
 	return &{{clean .ModuleName}}RepoSQL{
-		readDB, writeDB, tx,
+		readDB, writeDB,{{if not .SQLUseGORM}} tx,{{end}}
 	}
 }
 
