@@ -8,3 +8,4 @@ main_service.go
 *.key
 coverage.txt
 example/
+.vscode

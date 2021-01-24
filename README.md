@@ -1,6 +1,5 @@
 # Candi, a framework for `Membangun Candi` project in Golang
 
-[![Build Status](https://travis-ci.org/agungdwiprasetyo/candi.svg?branch=master)](https://travis-ci.org/agungdwiprasetyo/candi)
 [![codecov](https://codecov.io/gh/agungdwiprasetyo/candi/branch/master/graph/badge.svg)](https://codecov.io/gh/agungdwiprasetyo/candi)
 
 ## Made with
@@ -43,4 +42,5 @@ If include GRPC handler, run `$ make proto` for generate rpc files from proto (m
 
 ## Todo
 - [x] ~~Add task queue worker like celery and add UI for manage task queue worker~~ => https://github.com/agungdwiprasetyo/task-queue-worker-dashboard
+
 - [] Add Documentation
