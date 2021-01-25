@@ -48,6 +48,7 @@ func InitOpenTracing() error {
 			{Key: "num_cpu", Value: runtime.NumCPU()},
 			{Key: "max_goroutines", Value: env.BaseEnv().MaxGoroutines},
 			{Key: "go_version", Value: runtime.Version()},
+			{Key: "candi_version", Value: candihelper.Version},
 		},
 	}
 	tracer, _, err := cfg.NewTracer(config.MaxTagValueLength(math.MaxInt32))
@@ -171,10 +172,11 @@ func LogKV(ctx context.Context, kv ...interface{}) {
 		return
 	}
 
-	for _, p := range kv {
+	for i, p := range kv {
 		if e, ok := p.(error); ok && e != nil {
 			ext.Error.Set(span, true)
 		}
+		kv[i] = toString(p)
 	}
 	span.LogKV(kv...)
 }

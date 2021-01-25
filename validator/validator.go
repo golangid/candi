@@ -8,7 +8,8 @@ type Validator struct {
 	*StructValidator
 }
 
-// NewValidator instance
+// NewValidator constructor, using jsonschema & struct validator (github.com/go-playground/validator),
+// jsonschema source file load from JSON_SCHEMA_DIR environment
 func NewValidator() *Validator {
 	return &Validator{
 		JSONSchemaValidator: NewJSONSchemaValidator(env.BaseEnv().JSONSchemaDir),

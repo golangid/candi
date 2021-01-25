@@ -183,17 +183,22 @@ func StringInSlice(str string, list []string) bool {
 	return false
 }
 
-// MaskingPasswordURL for hide plain text password
+// MaskingPasswordURL for hide plain text password from given URL format
 func MaskingPasswordURL(stringURL string) string {
-	u, _ := url.Parse(stringURL)
-	pass, _ := u.User.Password()
-	if pass == "" {
+	u, err := url.Parse(stringURL)
+	if err != nil {
 		return stringURL
 	}
-	return strings.ReplaceAll(stringURL, pass, "xxxxx")
+	pass, ok := u.User.Password()
+	if pass == "" || !ok {
+		return stringURL
+	}
+
+	u.User = url.UserPassword(u.User.Username(), "xxxxx")
+	return u.String()
 }
 
-// MustParseEnv must parse env to struct, panic if env is not found
+// MustParseEnv must parse env to struct, panic if env from target struct tag is not found
 func MustParseEnv(target interface{}) {
 	pValue := reflect.ValueOf(target)
 	pValue = pValue.Elem()

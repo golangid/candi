@@ -77,23 +77,20 @@ func (v *JSONSchemaValidator) getSchema(schemaID string) (schema *gojsonschema.S
 }
 
 // ValidateDocument based on schema id
-func (v *JSONSchemaValidator) ValidateDocument(schemaID string, documentSource []byte) error {
-
-	multiError := candihelper.NewMultiError()
+func (v *JSONSchemaValidator) ValidateDocument(schemaID string, documentSource interface{}) error {
 
 	schema, err := v.getSchema(schemaID)
 	if err != nil {
 		return err
 	}
 
-	document := gojsonschema.NewBytesLoader(documentSource)
-
+	document := gojsonschema.NewBytesLoader(candihelper.ToBytes(documentSource))
 	result, err := schema.Validate(document)
 	if err != nil {
-		multiError.Append("validateInput", errors.New("Gagal memuat input data"))
-		return multiError
+		return err
 	}
 
+	multiError := candihelper.NewMultiError()
 	if !result.Valid() {
 		for _, desc := range result.Errors() {
 			if notShowErrorListType[desc.Type()] {

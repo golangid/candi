@@ -20,6 +20,11 @@ func TestCommon(t *testing.T) {
 	assert.Equal(t, true, PtrToBool(ToBoolPtr(true)))
 	assert.Equal(t, 1, PtrToInt(ToIntPtr(1)))
 	assert.Equal(t, 1.3, PtrToFloat(ToFloatPtr(1.3)))
+	assert.Equal(t, true, StringInSlice("a", []string{"a", "b", "c"}))
+	assert.Equal(t, false, StringInSlice("z", []string{"a", "b", "c"}))
+	assert.Equal(t, []byte("a"), ToBytes([]byte("a")))
+	assert.Equal(t, []byte("a"), ToBytes("a"))
+	assert.Equal(t, []byte(`{"a":"a"}`), ToBytes(map[string]string{"a": "a"}))
 }
 
 func TestParseFromQueryParam(t *testing.T) {
@@ -119,4 +124,33 @@ func TestMustParseEnv(t *testing.T) {
 			os.Clearenv()
 		})
 	})
+}
+
+func TestMaskingPasswordURL(t *testing.T) {
+	tests := []struct {
+		name      string
+		stringURL string
+		want      string
+	}{
+		{
+			name:      "Testcase #1: Positive",
+			stringURL: "mongodb://pass:pass@localhost:27017",
+			want:      "mongodb://pass:xxxxx@localhost:27017",
+		},
+		{
+			name:      "Testcase #2: Positive",
+			stringURL: "mongodb://pass:@localhost:27017",
+			want:      "mongodb://pass:@localhost:27017",
+		},
+		{
+			name:      "Testcase #3: Negative",
+			stringURL: "()$%!#!#@!",
+			want:      "()$%!#!#@!",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, MaskingPasswordURL(tt.stringURL))
+		})
+	}
 }
