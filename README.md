@@ -13,19 +13,38 @@
 </p>
 
 
-### Install `CLI`
+## Install `CLI`
 ```
 $ go get -u pkg.agungdwiprasetyo.com/candi/cmd/candi
 ```
+Flag options:
+```
+$ candi --help
+Usage of candi:
+  -libraryname string
+        define library name (default "pkg.agungdwiprasetyo.com/candi")
+  -output string
+        directory to write project to (default is service name)
+  -packageprefix string
+        define package prefix
+  -protooutputpkg string
+        define generated proto output target (if using grpc), with prefix is your go.mod
+  -scope string
+        set scope (1 for init service, 2 for add module(s)
+  -servicename string
+        define service name
+  -withgomod
+        generate go.mod or not (default true)
+```
 
 
-### Create new service or add module in existing service
+## Create new service or add module in existing service
 ```
 $ candi
 ```
 ![](https://storage.googleapis.com/agungdp/static/candi/candi.gif)
 
-### Build and run service
+## Build and run service
 ```
 $ cd {{service_name}}
 $ make run
@@ -42,5 +61,4 @@ If include GRPC handler, run `$ make proto` for generate rpc files from proto (m
 
 ## Todo
 - [x] ~~Add task queue worker like celery and add UI for manage task queue worker~~ => https://github.com/agungdwiprasetyo/task-queue-worker-dashboard
-
 - [] Add Documentation
