@@ -136,7 +136,7 @@ func (request *httpRequestImpl) Do(ctx context.Context, method, url string, requ
 	trace.SetTag("http.method", req.Method)
 	trace.SetTag("http.url", req.URL.String())
 	if requestBody != nil {
-		tracer.LogKV(ctx, "request.body", requestBody)
+		tracer.Log(ctx, "request.body", requestBody)
 	}
 
 	// client request
@@ -153,7 +153,7 @@ func (request *httpRequestImpl) Do(ctx context.Context, method, url string, requ
 	trace.SetTag("response.code", resp.StatusCode)
 	trace.SetTag("response.status", resp.Status)
 	trace.SetTag("response.header", resp.Header)
-	tracer.LogKV(ctx, "response.body", respBody)
+	tracer.Log(ctx, "response.body", respBody)
 
 	if request.minHTTPErrorCodeThreshold != 0 && resp.StatusCode >= request.minHTTPErrorCodeThreshold {
 		err = errors.New(resp.Status)

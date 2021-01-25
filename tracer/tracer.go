@@ -147,7 +147,17 @@ func (t *tracerImpl) Finish(additionalTags ...map[string]interface{}) {
 }
 
 // Log trace
-func Log(ctx context.Context, event string, payload ...interface{}) {
+func Log(ctx context.Context, key string, value interface{}) {
+	span := opentracing.SpanFromContext(ctx)
+	if span == nil {
+		return
+	}
+
+	span.LogKV(key, toString(value))
+}
+
+// LogEvent trace
+func LogEvent(ctx context.Context, event string, payload ...interface{}) {
 	span := opentracing.SpanFromContext(ctx)
 	if span == nil {
 		return
@@ -163,22 +173,6 @@ func Log(ctx context.Context, event string, payload ...interface{}) {
 	} else {
 		span.LogEvent(event)
 	}
-}
-
-// LogKV trace
-func LogKV(ctx context.Context, kv ...interface{}) {
-	span := opentracing.SpanFromContext(ctx)
-	if span == nil {
-		return
-	}
-
-	for i, p := range kv {
-		if e, ok := p.(error); ok && e != nil {
-			ext.Error.Set(span, true)
-		}
-		kv[i] = toString(p)
-	}
-	span.LogKV(kv...)
 }
 
 // WithTraceFunc functional with context and tags in function params
@@ -207,6 +201,8 @@ func toString(v interface{}) (s string) {
 		s = val
 	case int:
 		s = strconv.Itoa(val)
+	case []byte:
+		s = string(val)
 	default:
 		b, _ := json.Marshal(val)
 		s = string(b)

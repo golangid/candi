@@ -6,7 +6,7 @@ import (
 
 const (
 	// Version of this library
-	Version = "v1.3.5"
+	Version = "v1.3.6"
 	// TimeZoneAsia constanta
 	TimeZoneAsia = "Asia/Jakarta"
 	// TokenClaimKey const
