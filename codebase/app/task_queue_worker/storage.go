@@ -223,7 +223,10 @@ func (s *storage) findAllPendingJob() (jobs []Job) {
 			"$in": []jobStatusEnum{statusRetrying, statusQueueing},
 		},
 	}
-	cur, _ := s.mongoRead.Collection(mongoColl).Find(ctx, query)
+	cur, err := s.mongoRead.Collection(mongoColl).Find(ctx, query)
+	if err != nil {
+		return
+	}
 	for cur.Next(ctx) {
 		var job Job
 		cur.Decode(&job)
