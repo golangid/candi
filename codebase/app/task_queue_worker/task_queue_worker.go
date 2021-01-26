@@ -47,9 +47,13 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 				tasks = append(tasks, handler.Pattern)
 				workers = append(workers, reflect.SelectCase{Dir: reflect.SelectRecv})
 
-				logger.LogYellow(fmt.Sprintf(`[TASK-QUEUE-WORKER] Task name: %s`, handler.Pattern))
+				logger.LogYellow(fmt.Sprintf(`[TASK-QUEUE-WORKER] (task name): %-15s  --> (module): "%s"`, `"`+handler.Pattern+`"`, m.Name()))
 			}
 		}
+	}
+
+	if len(tasks) == 0 {
+		logger.LogYellow("Task Queue Worker: warning, no task provided")
 	}
 
 	go func() {

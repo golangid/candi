@@ -55,7 +55,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 					handlerFunc: handler.HandlerFunc, errorHandlers: handler.ErrorHandler,
 				}
 				consumerHandler.topics = append(consumerHandler.topics, handler.Pattern)
-				logger.LogYellow(fmt.Sprintf("[KAFKA-CONSUMER] (topic): %-8s  (consumed by module)--> [%s]", handler.Pattern, m.Name()))
+				logger.LogYellow(fmt.Sprintf(`[KAFKA-CONSUMER] (topic): %-15s  --> (module): "%s"`, `"`+handler.Pattern+`"`, m.Name()))
 			}
 		}
 	}

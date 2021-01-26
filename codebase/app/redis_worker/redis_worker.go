@@ -52,7 +52,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 			var handlerGroup types.WorkerHandlerGroup
 			h.MountHandlers(&handlerGroup)
 			for _, handler := range handlerGroup.Handlers {
-				logger.LogYellow(fmt.Sprintf(`[REDIS-SUBSCRIBER] (key prefix): "%s" (processed by module): %s`, handler.Pattern, m.Name()))
+				logger.LogYellow(fmt.Sprintf(`[REDIS-SUBSCRIBER] (key prefix): %-15s  --> (module): "%s"`, `"`+handler.Pattern+`"`, m.Name()))
 				handlers[strings.Replace(handler.Pattern, "~", "", -1)] = struct {
 					handlerFunc   types.WorkerHandlerFunc
 					errorHandlers []types.WorkerErrorHandler

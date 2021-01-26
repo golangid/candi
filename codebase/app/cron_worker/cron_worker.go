@@ -53,10 +53,10 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 				job.HandlerFunc = handler.HandlerFunc
 				job.Interval = interval
 				if err := AddJob(job); err != nil {
-					panic(err)
+					panic(fmt.Errorf(`Cron Worker: "%s" %v`, interval, err))
 				}
 
-				logger.LogYellow(fmt.Sprintf(`[CRON-WORKER] job_name: %s~%s -> every: %s`, m.Name(), funcName, interval))
+				logger.LogYellow(fmt.Sprintf(`[CRON-WORKER] (job name): %s (every): %-8s  --> (module): "%s"`, `"`+funcName+`"`, interval, m.Name()))
 			}
 		}
 	}
