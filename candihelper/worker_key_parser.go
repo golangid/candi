@@ -15,10 +15,13 @@ type jobKey struct {
 // CronJobKeyToString helper
 /*
 Allowed interval:
+
 * standard time duration string, example: 2s, 10m
+
 * custom start time and repeat duration, example:
 	- 23:00@daily, will repeated at 23:00 every day
 	- 23:00@weekly, will repeated at 23:00 every week
+	- 23:00@10s, will repeated at 23:00 and next repeat every 10 seconds
 */
 func CronJobKeyToString(jobName string, interval string) string {
 	b, _ := json.Marshal(jobKey{
