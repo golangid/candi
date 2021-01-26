@@ -51,9 +51,8 @@ func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.Ap
 				intercept.unaryMiddlewareInterceptor,
 			)),
 			grpc.StreamInterceptor(chainStreamServer(
-				intercept.streamLogInterceptor,
 				intercept.streamTracerInterceptor,
-				intercept.streamPanicInterceptor,
+				intercept.streamMiddlewareInterceptor,
 			)),
 		),
 		service: service,

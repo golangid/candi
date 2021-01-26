@@ -60,22 +60,27 @@ func (m *Middleware) Basic(ctx context.Context, key string) error {
 func (m *Middleware) HTTPBasicAuth(showAlert bool) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			trace := tracer.StartTrace(c.Request().Context(), "Middleware:HTTPBasicAuth")
-			defer trace.Finish()
+			if err := func() error {
+				trace := tracer.StartTrace(c.Request().Context(), "Middleware:HTTPBasicAuth")
+				defer trace.Finish()
 
-			if showAlert {
-				c.Response().Header().Set(echo.HeaderWWWAuthenticate, `Basic realm=""`)
-			}
+				if showAlert {
+					c.Response().Header().Set(echo.HeaderWWWAuthenticate, `Basic realm=""`)
+				}
 
-			authorization := c.Request().Header.Get(echo.HeaderAuthorization)
-			key, err := extractAuthType(Basic, authorization)
-			if err != nil {
-				trace.SetError(err)
-				return wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(c.Response())
-			}
+				authorization := c.Request().Header.Get(echo.HeaderAuthorization)
+				key, err := extractAuthType(Basic, authorization)
+				if err != nil {
+					trace.SetError(err)
+					return err
+				}
 
-			if err := m.Basic(c.Request().Context(), key); err != nil {
-				trace.SetError(err)
+				if err := m.Basic(c.Request().Context(), key); err != nil {
+					trace.SetError(err)
+					return err
+				}
+				return nil
+			}(); err != nil {
 				return wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(c.Response())
 			}
 
@@ -142,7 +147,7 @@ func (m *Middleware) GRPCBasicAuth(ctx context.Context) context.Context {
 		panic(err)
 	}
 
-	if err := m.Basic(ctx, key); err != nil {
+	if err := m.Basic(trace.Context(), key); err != nil {
 		trace.SetError(err)
 		panic(err)
 	}

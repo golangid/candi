@@ -46,23 +46,29 @@ func (m *Middleware) Bearer(ctx context.Context, tokenString string) (*candishar
 func (m *Middleware) HTTPBearerAuth() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			trace := tracer.StartTrace(c.Request().Context(), "Middleware:HTTPBearerAuth")
-			defer trace.Finish()
+			if err := func() error {
+				trace := tracer.StartTrace(c.Request().Context(), "Middleware:HTTPBearerAuth")
+				defer trace.Finish()
 
-			authorization := c.Request().Header.Get(echo.HeaderAuthorization)
-			tokenValue, err := extractAuthType(Bearer, authorization)
-			if err != nil {
-				trace.SetError(err)
+				authorization := c.Request().Header.Get(echo.HeaderAuthorization)
+				tokenValue, err := extractAuthType(Bearer, authorization)
+				if err != nil {
+					trace.SetError(err)
+					return err
+				}
+
+				tokenClaim, err := m.Bearer(trace.Context(), tokenValue)
+				if err != nil {
+					trace.SetError(err)
+					return err
+				}
+
+				c.Set(candihelper.TokenClaimKey, tokenClaim)
+				return nil
+			}(); err != nil {
 				return wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(c.Response())
 			}
 
-			tokenClaim, err := m.Bearer(trace.Context(), tokenValue)
-			if err != nil {
-				trace.SetError(err)
-				return wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(c.Response())
-			}
-
-			c.Set(candihelper.TokenClaimKey, tokenClaim)
 			return next(c)
 		}
 	}
@@ -125,7 +131,7 @@ func (m *Middleware) GRPCBearerAuth(ctx context.Context) context.Context {
 		panic(err)
 	}
 
-	tokenClaim, err := m.Bearer(ctx, authorizationMap[0])
+	tokenClaim, err := m.Bearer(trace.Context(), authorizationMap[0])
 	if err != nil {
 		trace.SetError(err)
 		panic(err)
