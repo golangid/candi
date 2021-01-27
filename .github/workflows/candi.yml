@@ -48,7 +48,7 @@ jobs:
           export_default_credentials: true
 
       - name: Get Artifact
-      - uses: actions/download-artifact@master
+        uses: actions/download-artifact@master
         with:
           name: candi
           path: candi
