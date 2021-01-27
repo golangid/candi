@@ -2,7 +2,7 @@
 
 <a href="https://codeclimate.com/github/agungdwiprasetyo/candi/maintainability"><img src="https://api.codeclimate.com/v1/badges/38c8703e672eb53bea87/maintainability" /></a>
 [![Build Status](https://github.com/agungdwiprasetyo/candi/workflows/Candi%20CI/CD/badge.svg)](https://github.com/agungdwiprasetyo/candi/workflows/Candi%20CI/CD/badge.svg)
-[![Go Report Card](https://goreportcard.com/badge/github.com/agungdwiprasetyo/candi)](https://goreportcard.com/badge/github.com/agungdwiprasetyo/candi)
+[![Go Report Card](https://goreportcard.com/badge/github.com/agungdwiprasetyo/candi)](https://goreportcard.com/report/github.com/agungdwiprasetyo/candi)
 [![codecov](https://codecov.io/gh/agungdwiprasetyo/candi/branch/master/graph/badge.svg)](https://codecov.io/gh/agungdwiprasetyo/candi)
 
 ## Made with
