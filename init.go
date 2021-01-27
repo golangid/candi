@@ -1,5 +1,6 @@
 package candi
 
-func init() {
-
-}
+const (
+	// Version of this library
+	Version = "v1.3.9"
+)

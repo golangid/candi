@@ -18,6 +18,7 @@ import (
 	"github.com/opentracing/opentracing-go/log"
 	config "github.com/uber/jaeger-client-go/config"
 	"google.golang.org/grpc/metadata"
+	"pkg.agungdwiprasetyo.com/candi"
 	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
 	"pkg.agungdwiprasetyo.com/candi/config/env"
@@ -48,7 +49,7 @@ func InitOpenTracing() error {
 			{Key: "num_cpu", Value: runtime.NumCPU()},
 			{Key: "max_goroutines", Value: env.BaseEnv().MaxGoroutines},
 			{Key: "go_version", Value: runtime.Version()},
-			{Key: "candi_version", Value: candihelper.Version},
+			{Key: "candi_version", Value: candi.Version},
 		},
 	}
 	tracer, _, err := cfg.NewTracer(config.MaxTagValueLength(math.MaxInt32))
