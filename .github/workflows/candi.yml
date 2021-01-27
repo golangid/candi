@@ -25,8 +25,9 @@ jobs:
 
     - name: Build binary CLI
       run: |
-        GOOS=linux GOARCH=amd64 go build -o candi-linux cmd/candi/*.go
-        GOOS=darwin GOARCH=amd64 go build -o candi-osx cmd/candi/*.go
+        mkdir candi
+        GOOS=linux GOARCH=amd64 go build -o candi/candi-linux cmd/candi/*.go
+        GOOS=darwin GOARCH=amd64 go build -o candi/candi-osx cmd/candi/*.go
 
   deploy:
     runs-on: ubuntu-latest
@@ -42,7 +43,5 @@ jobs:
 
       - name: Deploy
         run: |-
-          gsutil cp candi-linux gs://agungdp/bin/candi-linux
-          gsutil cp candi-osx gs://agungdp/bin/candi-osx
-          gsutil acl ch -u AllUsers:R gs://agungdp/bin/candi-linux
-          gsutil acl ch -u AllUsers:R gs://agungdp/bin/candi-osx
+          gsutil -m rsync -R candi gs://agungdp/bin/candi
+          gsutil acl ch -u AllUsers:R gs://agungdp/bin/candi
