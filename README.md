@@ -17,9 +17,24 @@
 
 
 ## Install `CLI`
+For linux:
+```
+$ curl -o candi https://storage.googleapis.com/agungdp/bin/candi/candi-linux && chmod +x candi
+$ ./candi
+```
+
+For macOS:
+```
+$ curl -o candi https://storage.googleapis.com/agungdp/bin/candi/candi-osx && chmod +x candi
+$ ./candi
+```
+
+Or build binary from source:
 ```
 $ go get -u pkg.agungdwiprasetyo.com/candi/cmd/candi
+$ candi
 ```
+
 Flag options:
 ```
 $ candi --help
