@@ -56,4 +56,4 @@ jobs:
       - name: Deploy
         run: |-
           gsutil -m rsync -R candi gs://agungdp/bin/candi
-          gsutil acl ch -u AllUsers:R gs://agungdp/bin/candi
+          gsutil acl -r ch -u AllUsers:R gs://agungdp/bin/candi
