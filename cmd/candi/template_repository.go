@@ -107,7 +107,7 @@ func (r *RepoSQL) WithTransaction(ctx context.Context, txFunc func(ctx context.C
 	}
 
 	// reinit new repository in different memory address with tx value
-	manager := NewRepositorySQL(r.readDB, r.writeDB{{if not .SQLUseGORM}}, tx{{end}})
+	manager := NewRepositorySQL(r.readDB, {{if not .SQLUseGORM}}r.writeDB, {{end}}tx)
 	defer manager.free()
 
 	defer func() {
