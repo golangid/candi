@@ -42,5 +42,7 @@ jobs:
 
       - name: Deploy
         run: |-
-          gsutil -m rsync -R candi-linux gs://agungdp/bin/candi-linux
-          gsutil -m rsync -R candi-osx gs://agungdp/bin/candi-osx
+          gsutil cp candi-linux gs://agungdp/bin/candi-linux
+          gsutil cp candi-osx gs://agungdp/bin/candi-osx
+          gsutil acl ch -u AllUsers:R gs://agungdp/bin/candi-linux
+          gsutil acl ch -u AllUsers:R gs://agungdp/bin/candi-osx
