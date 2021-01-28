@@ -6,17 +6,17 @@ import (
 	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
 )
 
-// EchoRestHandler delivery factory for echo handler
-type EchoRestHandler interface {
+// RESTHandler delivery factory for REST handler
+type RESTHandler interface {
 	Mount(group *echo.Group)
 }
 
-// GRPCHandler delivery factory for grpc handler
+// GRPCHandler delivery factory for GRPC handler
 type GRPCHandler interface {
 	Register(server *grpc.Server, middlewareGroup *types.MiddlewareGroup)
 }
 
-// GraphQLHandler delivery factory for graphql resolver handler
+// GraphQLHandler delivery factory for GraphQL resolver handler
 type GraphQLHandler interface {
 	Query() interface{}
 	Mutation() interface{}

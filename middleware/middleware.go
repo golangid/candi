@@ -7,13 +7,11 @@ import (
 
 	"pkg.agungdwiprasetyo.com/candi/candishared"
 	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
-	"pkg.agungdwiprasetyo.com/candi/config/env"
 )
 
 // Middleware impl
 type Middleware struct {
 	tokenValidator      interfaces.TokenValidator
-	username, password  string
 	authTypeCheckerFunc map[string]func(context.Context, string) (*candishared.TokenClaim, error)
 }
 
@@ -21,8 +19,6 @@ type Middleware struct {
 func NewMiddleware(tokenValidator interfaces.TokenValidator) *Middleware {
 	mw := &Middleware{
 		tokenValidator: tokenValidator,
-		username:       env.BaseEnv().BasicAuthUsername,
-		password:       env.BaseEnv().BasicAuthPassword,
 	}
 
 	mw.authTypeCheckerFunc = map[string]func(context.Context, string) (*candishared.TokenClaim, error){

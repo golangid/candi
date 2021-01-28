@@ -50,11 +50,12 @@ func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.Ap
 		})
 	})
 
-	restRootPath := server.serverEngine.Group("",
-		echoRestTracerMiddleware, echoMidd.Logger(),
-	)
+	restRootPath := server.serverEngine.Group("", echoRestTracerMiddleware)
+	if env.BaseEnv().DebugMode {
+		restRootPath.Use(echoMidd.Logger())
+	}
 	for _, m := range service.GetModules() {
-		if h := m.RestHandler(); h != nil {
+		if h := m.RESTHandler(); h != nil {
 			h.Mount(restRootPath)
 		}
 	}

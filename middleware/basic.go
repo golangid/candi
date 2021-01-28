@@ -15,8 +15,6 @@ import (
 	"pkg.agungdwiprasetyo.com/candi/config/env"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 	"pkg.agungdwiprasetyo.com/candi/wrapper"
-
-	"github.com/labstack/echo"
 )
 
 const (
@@ -42,7 +40,7 @@ func (m *Middleware) Basic(ctx context.Context, key string) error {
 		}
 		username, password := decoded[0], decoded[1]
 
-		if username != m.username || password != m.password {
+		if username != env.BaseEnv().BasicAuthUsername || password != env.BaseEnv().BasicAuthPassword {
 			return false
 		}
 
@@ -57,36 +55,33 @@ func (m *Middleware) Basic(ctx context.Context, key string) error {
 }
 
 // HTTPBasicAuth http basic auth middleware
-func (m *Middleware) HTTPBasicAuth(showAlert bool) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			if err := func() error {
-				trace := tracer.StartTrace(c.Request().Context(), "Middleware:HTTPBasicAuth")
-				defer trace.Finish()
+func (m *Middleware) HTTPBasicAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if err := func() error {
+			trace := tracer.StartTrace(req.Context(), "Middleware:HTTPBasicAuth")
+			defer trace.Finish()
 
-				if showAlert {
-					c.Response().Header().Set(echo.HeaderWWWAuthenticate, `Basic realm=""`)
-				}
-
-				authorization := c.Request().Header.Get(echo.HeaderAuthorization)
-				key, err := extractAuthType(Basic, authorization)
-				if err != nil {
-					trace.SetError(err)
-					return err
-				}
-
-				if err := m.Basic(c.Request().Context(), key); err != nil {
-					trace.SetError(err)
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(c.Response())
+			w.Header().Set("WWW-Authenticate", `Basic realm=""`)
+			authorization := req.Header.Get("Authorization")
+			trace.SetTag("authorization", authorization)
+			key, err := extractAuthType(Basic, authorization)
+			if err != nil {
+				trace.SetError(err)
+				return err
 			}
 
-			return next(c)
+			if err := m.Basic(req.Context(), key); err != nil {
+				trace.SetError(err)
+				return err
+			}
+			return nil
+		}(); err != nil {
+			wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(w)
+			return
 		}
-	}
+
+		next.ServeHTTP(w, req)
+	})
 }
 
 // GraphQLBasicAuth for graphql resolver
@@ -95,7 +90,8 @@ func (m *Middleware) GraphQLBasicAuth(ctx context.Context) context.Context {
 	defer trace.Finish()
 
 	headers := ctx.Value(candishared.ContextKeyHTTPHeader).(http.Header)
-	authorization := headers.Get(echo.HeaderAuthorization)
+	authorization := headers.Get("Authorization")
+	trace.SetTag("authorization", authorization)
 
 	key, err := extractAuthType(Basic, authorization)
 	if err != nil {
@@ -135,6 +131,7 @@ func (m *Middleware) GRPCBasicAuth(ctx context.Context) context.Context {
 	}
 
 	authorizationMap := meta["authorization"]
+	trace.SetTag("authorization", authorizationMap)
 	if len(authorizationMap) != 1 {
 		err := grpc.Errorf(codes.Unauthenticated, "Invalid authorization")
 		trace.SetError(err)

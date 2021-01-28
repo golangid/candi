@@ -2,7 +2,7 @@ package factory
 
 import "context"
 
-// AppServerFactory factory
+// AppServerFactory factory for server and/or worker abstraction
 type AppServerFactory interface {
 	Serve()
 	Shutdown(ctx context.Context)

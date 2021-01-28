@@ -2,8 +2,8 @@ package interfaces
 
 import (
 	"context"
+	"net/http"
 
-	"github.com/labstack/echo"
 	"pkg.agungdwiprasetyo.com/candi/candishared"
 )
 
@@ -19,9 +19,9 @@ type Middleware interface {
 
 // HTTPMiddleware interface, common middleware for http handler
 type HTTPMiddleware interface {
-	HTTPBasicAuth(showAlert bool) echo.MiddlewareFunc
-	HTTPBearerAuth() echo.MiddlewareFunc
-	HTTPMultipleAuth() echo.MiddlewareFunc
+	HTTPBasicAuth(next http.Handler) http.Handler
+	HTTPBearerAuth(next http.Handler) http.Handler
+	HTTPMultipleAuth(next http.Handler) http.Handler
 }
 
 // GRPCMiddleware interface, common middleware for grpc handler

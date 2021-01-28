@@ -38,17 +38,16 @@ func (h *RestHandler) Mount(root *echo.Group) {
 	v1Root := root.Group(candihelper.V1)
 
 	{{clean .ModuleName}} := v1Root.Group("/{{clean .ModuleName}}")
-	{{clean .ModuleName}}.GET("", h.hello, h.mw.HTTPBearerAuth())
+	{{clean .ModuleName}}.GET("", h.hello, echo.WrapMiddleware(h.mw.HTTPBearerAuth))
 }
 
 func (h *RestHandler) hello(c echo.Context) error {
-	trace := tracer.StartTrace(c.Request().Context(), "DeliveryREST:Hello")
+	trace := tracer.StartTrace(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:Hello")
 	defer trace.Finish()
 	ctx := trace.Context()
 
-	tokenClaim := c.Get(string(candishared.ContextKeyTokenClaim)).(*candishared.TokenClaim) // must using HTTPBearerAuth in middleware for this handler
+	tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using HTTPBearerAuth in middleware for this handler
 
 	return wrapper.NewHTTPResponse(http.StatusOK, h.uc.Hello(ctx) + ", with your session (" + tokenClaim.Audience + ")").JSON(c.Response())
 }
-
 `

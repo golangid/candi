@@ -10,13 +10,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"pkg.agungdwiprasetyo.com/candi/candihelper"
 	"pkg.agungdwiprasetyo.com/candi/candishared"
 	"pkg.agungdwiprasetyo.com/candi/config/env"
 	"pkg.agungdwiprasetyo.com/candi/tracer"
 	"pkg.agungdwiprasetyo.com/candi/wrapper"
-
-	"github.com/labstack/echo"
 )
 
 const (
@@ -43,35 +40,35 @@ func (m *Middleware) Bearer(ctx context.Context, tokenString string) (*candishar
 }
 
 // HTTPBearerAuth http jwt token middleware
-func (m *Middleware) HTTPBearerAuth() echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			if err := func() error {
-				trace := tracer.StartTrace(c.Request().Context(), "Middleware:HTTPBearerAuth")
-				defer trace.Finish()
+func (m *Middleware) HTTPBearerAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
+		if err := func() error {
+			trace := tracer.StartTrace(ctx, "Middleware:HTTPBearerAuth")
+			defer trace.Finish()
 
-				authorization := c.Request().Header.Get(echo.HeaderAuthorization)
-				tokenValue, err := extractAuthType(Bearer, authorization)
-				if err != nil {
-					trace.SetError(err)
-					return err
-				}
-
-				tokenClaim, err := m.Bearer(trace.Context(), tokenValue)
-				if err != nil {
-					trace.SetError(err)
-					return err
-				}
-
-				c.Set(candihelper.TokenClaimKey, tokenClaim)
-				return nil
-			}(); err != nil {
-				return wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(c.Response())
+			authorization := req.Header.Get("Authorization")
+			trace.SetTag("authorization", authorization)
+			tokenValue, err := extractAuthType(Bearer, authorization)
+			if err != nil {
+				trace.SetError(err)
+				return err
 			}
 
-			return next(c)
+			tokenClaim, err := m.Bearer(trace.Context(), tokenValue)
+			if err != nil {
+				trace.SetError(err)
+				return err
+			}
+			ctx = candishared.SetToContext(ctx, candishared.ContextKeyTokenClaim, tokenClaim)
+			return nil
+		}(); err != nil {
+			wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(w)
+			return
 		}
-	}
+
+		next.ServeHTTP(w, req.WithContext(ctx))
+	})
 }
 
 // GraphQLBearerAuth for graphql resolver
@@ -81,7 +78,8 @@ func (m *Middleware) GraphQLBearerAuth(ctx context.Context) context.Context {
 	tags := trace.Tags()
 
 	headers := ctx.Value(candishared.ContextKeyHTTPHeader).(http.Header)
-	authorization := headers.Get(echo.HeaderAuthorization)
+	authorization := headers.Get("Authorization")
+	trace.SetTag("authorization", authorization)
 
 	tokenValue, err := extractAuthType(Bearer, authorization)
 	if err != nil {
@@ -125,6 +123,7 @@ func (m *Middleware) GRPCBearerAuth(ctx context.Context) context.Context {
 	}
 
 	authorizationMap := meta["authorization"]
+	trace.SetTag("authorization", authorizationMap)
 	if len(authorizationMap) != 1 {
 		err := grpc.Errorf(codes.Unauthenticated, "Invalid authorization")
 		trace.SetError(err)
