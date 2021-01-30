@@ -65,7 +65,7 @@ type queryResolver struct {
 
 // Hello resolver
 func (q *queryResolver) Hello(ctx context.Context) (string, error) {
-	trace := tracer.StartTrace(ctx, "DeliveryGraphQL-Hello")
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL-Hello")
 	defer trace.Finish()
 	ctx = trace.Context()
 
