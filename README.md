@@ -19,13 +19,13 @@
 ## Install `CLI`
 For linux:
 ```
-$ curl -o candi https://storage.googleapis.com/agungdp/bin/candi/candi-linux && chmod +x candi
+$ wget -O candi https://storage.googleapis.com/agungdp/bin/candi/candi-linux && chmod +x candi
 $ ./candi
 ```
 
 For macOS:
 ```
-$ curl -o candi https://storage.googleapis.com/agungdp/bin/candi/candi-osx && chmod +x candi
+$ wget -O candi https://storage.googleapis.com/agungdp/bin/candi/candi-osx && chmod +x candi
 $ ./candi
 ```
 
