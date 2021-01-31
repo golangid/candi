@@ -21,6 +21,8 @@ jobs:
           mkdir candi
           GOOS=linux GOARCH=amd64 go build -o candi/candi-linux cmd/candi/*.go
           GOOS=darwin GOARCH=amd64 go build -o candi/candi-osx cmd/candi/*.go
+          GOOS=windows GOARCH=amd64 go build -o candi/candi-x64.exe cmd/candi/*.go
+          GOOS=windows GOARCH=386 go build -o candi/candi-x86.exe cmd/candi/*.go
 
       - name: Deploy
         run: |-

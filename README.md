@@ -29,6 +29,13 @@ $ wget -O candi https://storage.googleapis.com/agungdp/bin/candi/candi-osx && ch
 $ ./candi
 ```
 
+For windows:
+```
+https://storage.googleapis.com/agungdp/bin/candi/candi-x64.exe (64 bit)
+or 
+https://storage.googleapis.com/agungdp/bin/candi/candi-x86.exe (32 bit)
+```
+
 Or build binary from source:
 ```
 $ go get -u pkg.agungdwiprasetyo.com/candi/cmd/candi
