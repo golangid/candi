@@ -6,7 +6,7 @@ import (
 	"time"
 
 	api "github.com/hashicorp/consul/api"
-	"pkg.agungdwiprasetyo.com/candi/logger"
+	"pkg.agungdp.dev/candi/logger"
 )
 
 // Consul configured for lock acquisition

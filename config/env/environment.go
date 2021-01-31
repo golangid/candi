@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
-	"pkg.agungdwiprasetyo.com/candi/candihelper"
+	"pkg.agungdp.dev/candi/candihelper"
 )
 
 // Env model

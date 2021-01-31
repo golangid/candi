@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/xeipuuv/gojsonschema"
-	"pkg.agungdwiprasetyo.com/candi/candihelper"
+	"pkg.agungdp.dev/candi/candihelper"
 )
 
 var notShowErrorListType = map[string]bool{

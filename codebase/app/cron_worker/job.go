@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"pkg.agungdp.dev/candi/codebase/factory/types"
 )
 
 // Job model

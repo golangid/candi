@@ -38,7 +38,7 @@ https://storage.googleapis.com/agungdp/bin/candi/candi-x86.exe (32 bit)
 
 Or build binary from source:
 ```
-$ go get -u pkg.agungdwiprasetyo.com/candi/cmd/candi
+$ go get -u pkg.agungdp.dev/candi/cmd/candi
 $ candi
 ```
 
@@ -47,7 +47,7 @@ Flag options:
 $ candi --help
 Usage of candi:
   -libraryname string
-        define library name (default "pkg.agungdwiprasetyo.com/candi")
+        define library name (default "pkg.agungdp.dev/candi")
   -output string
         directory to write project to (default is service name)
   -packageprefix string

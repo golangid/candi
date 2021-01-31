@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/metadata"
-	"pkg.agungdwiprasetyo.com/candi/candishared"
-	"pkg.agungdwiprasetyo.com/candi/config/env"
+	"pkg.agungdp.dev/candi/candishared"
+	"pkg.agungdp.dev/candi/config/env"
 )
 
 const (

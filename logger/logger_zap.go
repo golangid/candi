@@ -5,7 +5,7 @@ import (
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"pkg.agungdwiprasetyo.com/candi/config/env"
+	"pkg.agungdp.dev/candi/config/env"
 )
 
 var logger *zap.SugaredLogger

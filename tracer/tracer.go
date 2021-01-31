@@ -18,11 +18,11 @@ import (
 	"github.com/opentracing/opentracing-go/log"
 	config "github.com/uber/jaeger-client-go/config"
 	"google.golang.org/grpc/metadata"
-	"pkg.agungdwiprasetyo.com/candi"
-	"pkg.agungdwiprasetyo.com/candi/candihelper"
-	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
-	"pkg.agungdwiprasetyo.com/candi/config/env"
-	"pkg.agungdwiprasetyo.com/candi/logger"
+	"pkg.agungdp.dev/candi"
+	"pkg.agungdp.dev/candi/candihelper"
+	"pkg.agungdp.dev/candi/codebase/interfaces"
+	"pkg.agungdp.dev/candi/config/env"
+	"pkg.agungdp.dev/candi/logger"
 )
 
 // MaxPacketSize max packet size of UDP

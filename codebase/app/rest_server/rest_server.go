@@ -14,11 +14,11 @@ import (
 	echoMidd "github.com/labstack/echo/middleware"
 	"github.com/soheilhy/cmux"
 
-	graphqlserver "pkg.agungdwiprasetyo.com/candi/codebase/app/graphql_server"
-	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
-	"pkg.agungdwiprasetyo.com/candi/config/env"
-	"pkg.agungdwiprasetyo.com/candi/logger"
-	"pkg.agungdwiprasetyo.com/candi/wrapper"
+	graphqlserver "pkg.agungdp.dev/candi/codebase/app/graphql_server"
+	"pkg.agungdp.dev/candi/codebase/factory"
+	"pkg.agungdp.dev/candi/config/env"
+	"pkg.agungdp.dev/candi/logger"
+	"pkg.agungdp.dev/candi/wrapper"
 )
 
 type restServer struct {

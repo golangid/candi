@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"pkg.agungdwiprasetyo.com/candi/candihelper"
-	"pkg.agungdwiprasetyo.com/candi/config/env"
+	"pkg.agungdp.dev/candi/candihelper"
+	"pkg.agungdp.dev/candi/config/env"
 )
 
 func init() {

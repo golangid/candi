@@ -11,15 +11,15 @@ import (
 	"time"
 
 	"github.com/soheilhy/cmux"
-	cronworker "pkg.agungdwiprasetyo.com/candi/codebase/app/cron_worker"
-	graphqlserver "pkg.agungdwiprasetyo.com/candi/codebase/app/graphql_server"
-	grpcserver "pkg.agungdwiprasetyo.com/candi/codebase/app/grpc_server"
-	kafkaworker "pkg.agungdwiprasetyo.com/candi/codebase/app/kafka_worker"
-	redisworker "pkg.agungdwiprasetyo.com/candi/codebase/app/redis_worker"
-	restserver "pkg.agungdwiprasetyo.com/candi/codebase/app/rest_server"
-	taskqueueworker "pkg.agungdwiprasetyo.com/candi/codebase/app/task_queue_worker"
-	"pkg.agungdwiprasetyo.com/candi/codebase/factory"
-	"pkg.agungdwiprasetyo.com/candi/config/env"
+	cronworker "pkg.agungdp.dev/candi/codebase/app/cron_worker"
+	graphqlserver "pkg.agungdp.dev/candi/codebase/app/graphql_server"
+	grpcserver "pkg.agungdp.dev/candi/codebase/app/grpc_server"
+	kafkaworker "pkg.agungdp.dev/candi/codebase/app/kafka_worker"
+	redisworker "pkg.agungdp.dev/candi/codebase/app/redis_worker"
+	restserver "pkg.agungdp.dev/candi/codebase/app/rest_server"
+	taskqueueworker "pkg.agungdp.dev/candi/codebase/app/task_queue_worker"
+	"pkg.agungdp.dev/candi/codebase/factory"
+	"pkg.agungdp.dev/candi/config/env"
 )
 
 // App service

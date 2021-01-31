@@ -6,9 +6,9 @@ import (
 	"log"
 	"net/url"
 
-	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
-	"pkg.agungdwiprasetyo.com/candi/config/env"
-	"pkg.agungdwiprasetyo.com/candi/logger"
+	"pkg.agungdp.dev/candi/codebase/interfaces"
+	"pkg.agungdp.dev/candi/config/env"
+	"pkg.agungdp.dev/candi/logger"
 )
 
 type sqlInstance struct {

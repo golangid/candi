@@ -9,7 +9,7 @@ import (
 	"strings"
 	"text/template"
 
-	"pkg.agungdwiprasetyo.com/candi"
+	"pkg.agungdp.dev/candi"
 )
 
 func parseInput() (scope string, headerConfig configHeader, srvConfig serviceConfig, modConfigs []moduleConfig, baseConfig config) {

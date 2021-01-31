@@ -3,7 +3,7 @@ package interfaces
 import (
 	"github.com/labstack/echo"
 	"google.golang.org/grpc"
-	"pkg.agungdwiprasetyo.com/candi/codebase/factory/types"
+	"pkg.agungdp.dev/candi/codebase/factory/types"
 )
 
 // RESTHandler delivery factory for REST handler

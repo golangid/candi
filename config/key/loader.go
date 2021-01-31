@@ -5,8 +5,8 @@ import (
 	"io/ioutil"
 
 	"github.com/dgrijalva/jwt-go"
-	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
-	"pkg.agungdwiprasetyo.com/candi/logger"
+	"pkg.agungdp.dev/candi/codebase/interfaces"
+	"pkg.agungdp.dev/candi/logger"
 )
 
 type key struct {

@@ -20,7 +20,7 @@ func main() {
 	flag.BoolVar(&withGoModFlag, "withgomod", true, "generate go.mod or not")
 	flag.StringVar(&protoOutputPkgFlag, "protooutputpkg", "", "define generated proto output target (if using grpc), with prefix is your go.mod")
 	flag.StringVar(&outputFlag, "output", "", "directory to write project to (default is service name)")
-	flag.StringVar(&libraryNameFlag, "libraryname", "pkg.agungdwiprasetyo.com/candi", "define library name")
+	flag.StringVar(&libraryNameFlag, "libraryname", "pkg.agungdp.dev/candi", "define library name")
 	flag.Parse()
 
 	printBanner()

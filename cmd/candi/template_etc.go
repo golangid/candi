@@ -73,7 +73,7 @@ clear:
 
 go 1.15
 
-require pkg.agungdwiprasetyo.com/candi {{.Version}}
+require pkg.agungdp.dev/candi {{.Version}}
 `
 
 	gitignoreTemplate = `bin

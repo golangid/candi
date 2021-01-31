@@ -11,10 +11,10 @@ import (
 	"github.com/golangid/graphql-go"
 	"github.com/golangid/graphql-go/relay"
 
-	"pkg.agungdwiprasetyo.com/candi/candishared"
-	"pkg.agungdwiprasetyo.com/candi/codebase/app/graphql_server/static"
-	"pkg.agungdwiprasetyo.com/candi/codebase/app/graphql_server/ws"
-	"pkg.agungdwiprasetyo.com/candi/config/env"
+	"pkg.agungdp.dev/candi/candishared"
+	"pkg.agungdp.dev/candi/codebase/app/graphql_server/static"
+	"pkg.agungdp.dev/candi/codebase/app/graphql_server/ws"
+	"pkg.agungdp.dev/candi/config/env"
 )
 
 func serveGraphQLAPI(wrk *taskQueueWorker) {

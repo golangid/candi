@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/gomodule/redigo/redis"
-	"pkg.agungdwiprasetyo.com/candi/candishared"
+	"pkg.agungdp.dev/candi/candishared"
 )
 
 // QueueStorage abstraction for queue storage backend

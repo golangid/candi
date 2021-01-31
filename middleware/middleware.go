@@ -5,8 +5,8 @@ import (
 	"errors"
 	"strings"
 
-	"pkg.agungdwiprasetyo.com/candi/candishared"
-	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
+	"pkg.agungdp.dev/candi/candishared"
+	"pkg.agungdp.dev/candi/codebase/interfaces"
 )
 
 // Middleware impl

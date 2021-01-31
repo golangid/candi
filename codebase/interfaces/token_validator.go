@@ -3,7 +3,7 @@ package interfaces
 import (
 	"context"
 
-	"pkg.agungdwiprasetyo.com/candi/candishared"
+	"pkg.agungdp.dev/candi/candishared"
 )
 
 // TokenValidator abstract interface

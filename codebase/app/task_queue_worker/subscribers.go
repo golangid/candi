@@ -1,7 +1,7 @@
 package taskqueueworker
 
 import (
-	"pkg.agungdwiprasetyo.com/candi/config/env"
+	"pkg.agungdp.dev/candi/config/env"
 )
 
 func registerNewTaskListSubscriber(clientID string, clientChannel chan []TaskResolver) error {

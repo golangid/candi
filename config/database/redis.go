@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"github.com/gomodule/redigo/redis"
-	"pkg.agungdwiprasetyo.com/candi/cache"
-	"pkg.agungdwiprasetyo.com/candi/codebase/interfaces"
-	"pkg.agungdwiprasetyo.com/candi/config/env"
-	"pkg.agungdwiprasetyo.com/candi/logger"
+	"pkg.agungdp.dev/candi/cache"
+	"pkg.agungdp.dev/candi/codebase/interfaces"
+	"pkg.agungdp.dev/candi/config/env"
+	"pkg.agungdp.dev/candi/logger"
 )
 
 type redisInstance struct {

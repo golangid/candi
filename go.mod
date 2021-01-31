@@ -1,6 +1,6 @@
-module pkg.agungdwiprasetyo.com/candi
+module pkg.agungdp.dev/candi
 
-go 1.14
+go 1.15
 
 require (
 	github.com/Shopify/sarama v1.24.1
@@ -12,7 +12,6 @@ require (
 	github.com/go-playground/validator/v10 v10.3.0
 	github.com/gojektech/heimdall v5.0.2+incompatible
 	github.com/gojektech/valkyrie v0.0.0-20190210220504-8f62c1e7ba45 // indirect
-	github.com/golang/protobuf v1.4.2
 	github.com/golangid/graphql-go v0.0.6
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/uuid v1.1.2
@@ -20,6 +19,7 @@ require (
 	github.com/hashicorp/consul/api v1.8.1
 	github.com/jinzhu/now v1.1.1
 	github.com/joho/godotenv v1.3.0
+	github.com/klauspost/compress v1.10.7 // indirect
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/gommon v0.3.0 // indirect
 	github.com/opentracing/opentracing-go v1.1.0
@@ -33,7 +33,8 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.mongodb.org/mongo-driver v1.4.3
 	go.uber.org/zap v1.15.0
-	golang.org/x/net v0.0.0-20200822124328-c89045814202 // indirect
+	golang.org/x/net v0.0.0-20201016165138-7b1cca2348c0 // indirect
+	golang.org/x/sys v0.0.0-20201210223839-7e3030f88018 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/grpc v1.33.1
 	google.golang.org/grpc/examples v0.0.0-20210105215357-f4a20d2f414f // indirect
