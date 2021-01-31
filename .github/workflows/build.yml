@@ -22,15 +22,3 @@ jobs:
       run: |
         make test
         bash <(curl -s https://codecov.io/bash)
-
-    - name: Build binary CLI
-      run: |
-        mkdir candi
-        GOOS=linux GOARCH=amd64 go build -o candi/candi-linux cmd/candi/*.go
-        GOOS=darwin GOARCH=amd64 go build -o candi/candi-osx cmd/candi/*.go
-
-    - name: Upload Artifact
-      uses: actions/upload-artifact@master
-      with:
-        name: candi
-        path: candi

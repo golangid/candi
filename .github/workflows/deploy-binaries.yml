@@ -1,4 +1,4 @@
-name: Deploy
+name: deploy
 
 on:
   push:
@@ -16,11 +16,11 @@ jobs:
           project_id: ${{ secrets.GCS_PROJECT }}
           export_default_credentials: true
 
-      - name: Get Artifact
-        uses: actions/download-artifact@master
-        with:
-          name: candi
-          path: candi
+      - name: Build binaries
+        run: |
+          mkdir candi
+          GOOS=linux GOARCH=amd64 go build -o candi/candi-linux cmd/candi/*.go
+          GOOS=darwin GOARCH=amd64 go build -o candi/candi-osx cmd/candi/*.go
 
       - name: Deploy
         run: |-
