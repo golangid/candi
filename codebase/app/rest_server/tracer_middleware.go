@@ -7,26 +7,15 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 
 	"github.com/labstack/echo"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
-	"pkg.agungdp.dev/candi/candihelper"
 	"pkg.agungdp.dev/candi/logger"
 	"pkg.agungdp.dev/candi/tracer"
+	"pkg.agungdp.dev/candi/wrapper"
 )
-
-type httpResponseWriter struct {
-	io.Writer
-	http.ResponseWriter
-}
-
-func (w *httpResponseWriter) WriteHeader(code int) {
-	w.ResponseWriter.WriteHeader(code)
-}
-func (w *httpResponseWriter) Write(b []byte) (int, error) {
-	return w.Writer.Write(b)
-}
 
 // echoRestTracerMiddleware for wrap from http inbound (request from client)
 func echoRestTracerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
@@ -41,9 +30,8 @@ func echoRestTracerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			span, ctx = opentracing.StartSpanFromContext(req.Context(), operationName)
 			ext.SpanKindRPCServer.Set(span)
 		} else {
-			span = globalTracer.StartSpan(operationName, ext.RPCServerOption((spanCtx)))
+			span = globalTracer.StartSpan(operationName, opentracing.ChildOf(spanCtx), ext.SpanKindRPCClient)
 			ctx = opentracing.ContextWithSpan(req.Context(), span)
-			ext.SpanKindRPCClient.Set(span)
 		}
 
 		body, _ := ioutil.ReadAll(req.Body)
@@ -54,8 +42,8 @@ func echoRestTracerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 		req.Body = ioutil.NopCloser(bytes.NewBuffer(body)) // reuse body
 
-		span.SetTag("http.headers", string(candihelper.ToBytes(req.Header)))
-		ext.HTTPUrl.Set(span, req.Host+req.RequestURI)
+		httpDump, _ := httputil.DumpRequest(req, false)
+		span.SetTag("http.request", string(httpDump))
 		ext.HTTPMethod.Set(span, req.Method)
 
 		defer func() {
@@ -65,8 +53,7 @@ func echoRestTracerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		resBody := new(bytes.Buffer)
 		mw := io.MultiWriter(c.Response().Writer, resBody)
-		writer := &httpResponseWriter{Writer: mw, ResponseWriter: c.Response().Writer}
-		c.Response().Writer = writer
+		c.Response().Writer = wrapper.NewWrapHTTPResponseWriter(mw, c.Response().Writer)
 		c.SetRequest(req.WithContext(ctx))
 
 		err := next(c)

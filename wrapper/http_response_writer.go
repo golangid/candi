@@ -1,34 +1,42 @@
 package wrapper
 
-import "net/http"
+import (
+	"io"
+	"net/http"
+)
 
-type WrapResponseWriter struct {
-	StatusCode int
+// WrapHTTPResponseWriter wrapper
+type WrapHTTPResponseWriter struct {
+	statusCode int
+	io.Writer
 	http.ResponseWriter
 }
 
-func NewWrapResponseWriter(res http.ResponseWriter) *WrapResponseWriter {
+// NewWrapHTTPResponseWriter init new wrapper for http response writter
+func NewWrapHTTPResponseWriter(w io.Writer, httpResponseWriter http.ResponseWriter) *WrapHTTPResponseWriter {
 	// Default the status code to 200
-	return &WrapResponseWriter{200, res}
+	return &WrapHTTPResponseWriter{statusCode: 200, Writer: w, ResponseWriter: httpResponseWriter}
 }
 
-// Give a way to get the status
-func (w WrapResponseWriter) Status() int {
-	return w.StatusCode
+// StatusCode give a way to get the Code
+func (w *WrapHTTPResponseWriter) StatusCode() int {
+	return w.statusCode
 }
 
-// Satisfy the http.ResponseWriter interface
-func (w WrapResponseWriter) Header() http.Header {
+// Header Satisfy the http.ResponseWriter interface
+func (w *WrapHTTPResponseWriter) Header() http.Header {
 	return w.ResponseWriter.Header()
 }
 
-func (w WrapResponseWriter) Write(data []byte) (int, error) {
-	return w.ResponseWriter.Write(data)
+func (w *WrapHTTPResponseWriter) Write(data []byte) (int, error) {
+	// Store response body to writer
+	return w.Writer.Write(data)
 }
 
-func (w WrapResponseWriter) WriteHeader(statusCode int) {
+// WriteHeader method
+func (w *WrapHTTPResponseWriter) WriteHeader(statusCode int) {
 	// Store the status code
-	w.StatusCode = statusCode
+	w.statusCode = statusCode
 
 	// Write the status code onward.
 	w.ResponseWriter.WriteHeader(statusCode)
