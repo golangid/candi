@@ -106,4 +106,174 @@ coverage.txt
 		"```\n" +
 		"$ make docker\n" +
 		"```\n"
+
+	readmeMonorepoTemplate = "# Backend Microservices\n\n" +
+		"## Made with\n" +
+		`<p align="center">` + "\n" +
+		` <img src="https://storage.googleapis.com/agungdp/static/logo/golang.png" width="80" alt="golang logo" />\` + "\n" +
+		` <img src="https://storage.googleapis.com/agungdp/static/logo/docker.png" width="80" hspace="10" alt="docker logo" />` + "\n" +
+		` <img src="https://storage.googleapis.com/agungdp/static/logo/rest.png" width="80" hspace="10" alt="rest logo" />` + "\n" +
+		` <img src="https://storage.googleapis.com/agungdp/static/logo/graphql.png" width="80" alt="graphql logo" />` + "\n" +
+		` <img src="https://storage.googleapis.com/agungdp/static/logo/grpc.png" width="160" hspace="15" vspace="15" alt="grpc logo" />` + "\n" +
+		` <img src="https://storage.googleapis.com/agungdp/static/logo/kafka.png" height="80" alt="kafka logo" />` + "\n" +
+		"</p>\n\n" +
+		"This repository explain implementation of Go for building multiple microservices using a single codebase. Using [Standard Golang Project Layout](https://github.com/golang-standards/project-layout) and [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)\n\n" +
+		"## Create new service (for new project)\n" +
+		"Please install [**candi**](https://github.com/agungdwiprasetyo/candi) CLI first (min version v1.3.3), and then:\n" +
+		"```\n" +
+		"$ make init\n" +
+		"```\n" +
+		"If include GRPC handler, run `$ make proto service={{service_name}}` after init service for generate rpc files from proto (must install `protoc` compiler min version `libprotoc 3.14.0`)\n\n" +
+		"## Run specific service or multiple services\n" +
+		"```\n" +
+		"$ candi -run -service {{service_a}},{{service_b}}\n" +
+		"```\n\n" +
+
+		"## Add module(s) in specific service (project)\n" +
+		"```\n" +
+		"$ make add-module service={{service_name}}\n" +
+		"```\n\n" +
+
+		"## Run unit test and calculate code coverage\n" +
+		"* **Generate mocks first (using [mockery](https://github.com/vektra/mockery)):**\n" +
+		"```\n" +
+		"$ make mocks service={{service_name}}\n" +
+		"```\n" +
+		"* **Run test:**\n" +
+		"```\n" +
+		"$ make test service={{service_name}}\n" +
+		"```\n" +
+
+		"## Run sonar scanner\n" +
+		"```\n" +
+		"$ make sonar level={{level}} service={{service_name}}\n" +
+		"```\n" +
+		"`{{level}}` is service environment, example is one of `dev`, `staging`, or `prod`\n\n" +
+
+		"## Create docker image a service\n" +
+		"```\n" +
+		"$ make docker service={{service_name}}\n" +
+		"```\n"
+
+	dockerfileMonorepoTemplate = `# Stage 1
+FROM golang:1.15.7-alpine3.13 AS dependency_builder
+
+WORKDIR /go/src
+ENV GO111MODULE=on
+
+RUN apk update
+RUN apk add --no-cache bash ca-certificates git
+
+COPY go.mod .
+COPY go.sum .
+
+RUN go mod download
+
+# Stage 2
+FROM dependency_builder AS service_builder
+
+ARG SERVICE_NAME
+WORKDIR /usr/app
+
+COPY sdk sdk
+COPY services/$SERVICE_NAME services/$SERVICE_NAME
+COPY go.mod .
+COPY go.sum .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags '-w -s' -a -o bin services/$SERVICE_NAME/*.go
+
+# Stage 3
+FROM alpine:latest  
+
+ARG SERVICE_NAME
+RUN apk --no-cache add ca-certificates tzdata
+WORKDIR /root/
+ENV WORKDIR=services/$SERVICE_NAME/
+
+RUN mkdir -p /root/services/$SERVICE_NAME
+RUN mkdir -p /root/services/$SERVICE_NAME/api
+RUN mkdir -p /root/services/$SERVICE_NAME/api/configs
+COPY --from=service_builder /usr/app/bin bin
+COPY --from=service_builder /usr/app/services/$SERVICE_NAME/.env /root/services/$SERVICE_NAME/.env
+COPY --from=service_builder /usr/app/services/$SERVICE_NAME/api /root/services/$SERVICE_NAME/api
+COPY --from=service_builder /usr/app/services/$SERVICE_NAME/configs /root/services/$SERVICE_NAME/configs
+
+ENTRYPOINT ["./bin"]
+`
+
+	makefileMonorepoTemplate = `.PHONY : prepare build run
+
+$(eval $(service):;@:)
+
+check:
+	@[ "${service}" ] || ( echo "\x1b[31;1mERROR: 'service' is not set\x1b[0m"; exit 1 )
+	@if [ ! -d "services/$(service)" ]; then  echo "\x1b[31;1mERROR: service '$(service)' undefined\x1b[0m"; exit 1; fi
+
+prepare: check
+	@if [ ! -f services/$(service)/.env ]; then cp services/$(service)/.env.sample services/$(service)/.env; fi;
+
+init:
+	@candi -scope=4
+
+add-module: check
+	@candi -scope=5 -servicename=$(service)
+
+build: check
+	@go build -o services/$(service)/bin services/$(service)/*.go
+
+run: build
+	@WORKDIR="services/$(service)/" ./services/$(service)/bin
+
+proto: check
+	@if [ ! -d "sdk/$(service)" ]; then echo "creating new proto files..." &&  mkdir sdk/$(service) && mkdir sdk/$(service)/proto; fi
+	$(foreach proto_file, $(shell find services/$(service)/api/proto -name '*.proto'),\
+	protoc --proto_path=services/$(service)/api/proto --go_out=plugins=grpc:sdk/$(service)/proto \
+	--go_opt=paths=source_relative $(proto_file);)
+
+docker: check
+	docker build --build-arg SERVICE_NAME=$(service) -t $(service):latest .
+
+run-container:
+	docker run --name=$(service) --network="host" -d $(service)
+
+# mocks all interfaces in sdk for unit test
+mocks:
+	@mockery --all --keeptree --dir=sdk --output=./sdk/mocks
+	@if [ -f sdk/mocks/Option.go ]; then rm sdk/mocks/Option.go; fi;
+
+# unit test & calculate code coverage from selected service (please run mocks before run this rule)
+test: check
+	@echo "\x1b[32;1m>>> running unit test and calculate coverage for service $(service)\x1b[0m"
+	@if [ -f services/$(service)/coverage.txt ]; then rm services/$(service)/coverage.txt; fi;
+	@go test -race ./services/$(service)/... -cover -coverprofile=services/$(service)/coverage.txt -covermode=atomic \
+		-coverpkg=$$(go list ./services/$(service)/... | grep -v -e mocks -e codebase | tr '\n' ',')
+	@go tool cover -func=services/$(service)/coverage.txt
+
+sonar: check
+	@echo "\x1b[32;1m>>> running sonar scanner for service $(service)\x1b[0m"
+	@[ "${level}" ] || ( echo "\x1b[31;1mERROR: 'level' is not set\x1b[0m" ; exit 1 )
+	@sonar-scanner -Dsonar.projectKey=$(service)-$(level) \
+	-Dsonar.projectName=$(service)-$(level) \
+	-Dsonar.sources=./services/$(service) \
+	-Dsonar.exclusions=**/mocks/**,**/module.go \
+	-Dsonar.test.inclusions=**/*_test.go \
+	-Dsonar.test.exclusions=**/mocks/** \
+	-Dsonar.coverage.exclusions=**/mocks/**,**/*_test.go,**/main.go \
+	-Dsonar.go.coverage.reportPaths=./services/$(service)/coverage.txt
+
+clear:
+	rm -rf sdk/mocks services/$(service)/mocks services/$(service)/bin bin
+`
+
+	gitignoreMonorepoTemplate = `vendor
+bin
+.env
+*.pem
+*.key
+.vscode/
+__debug_bin
+coverage.txt
+mocks/
+.DS_Store
+.scannerwork/
+`
 )

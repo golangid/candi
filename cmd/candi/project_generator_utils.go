@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -12,35 +13,22 @@ import (
 	"pkg.agungdp.dev/candi"
 )
 
-func parseInput() (scope string, headerConfig configHeader, srvConfig serviceConfig, modConfigs []moduleConfig, baseConfig config) {
+func parseInput(flagParam *flagParameter) (headerConfig configHeader, srvConfig serviceConfig, modConfigs []moduleConfig, baseConfig config) {
+
+	logger := log.New(os.Stdout, "\x1b[32;1m[project generator]: \x1b[0m", log.Lmsgprefix)
 
 	reader := bufio.NewReader(os.Stdin)
 	serviceHandlers := make(map[string]bool)
 	workerHandlers := make(map[string]bool)
 	dependencies := make(map[string]bool)
-
-selectScope:
 	var cmdInput string
-	if scopeFlag == "" {
-		fmt.Println("\033[1mWhat do you want?\n" +
-			"1) Init service\n" +
-			"2) Add module(s)\033[0m")
-		cmdInput, _ := reader.ReadString('\n')
-		cmdInput = strings.TrimRight(cmdInput, "\n")
-		scopeFlag = cmdInput
-	}
 
-	var ok bool
-	scope, ok = scopeMap[scopeFlag]
-	if !ok {
-		fmt.Printf(redFormat, "Invalid option, try again")
-		scopeFlag = ""
-		goto selectScope
-	}
-
-	if scope == initService {
+	scope, ok := scopeMap[flagParam.scopeFlag]
+	switch {
+	case scope == initService || scope == initMonorepoService:
 	inputServiceName:
-		fmt.Print(ps1 + "\033[1mPlease input service name:\033[0m ")
+		logger.Printf("\033[1mPlease input service name:\033[0m")
+		fmt.Printf(">> ")
 		cmdInput, _ := reader.ReadString('\n')
 		headerConfig.ServiceName = strings.TrimRight(cmdInput, "\n")
 		_, err := os.Stat(headerConfig.ServiceName)
@@ -56,12 +44,42 @@ selectScope:
 			cmdInput = ""
 			goto inputServiceName
 		}
-	} else if scope == addModule && serviceNameFlag != "" {
-		headerConfig.ServiceName = serviceNameFlag
+
+	case scope == addModule || scope == addModuleMonorepoService:
+		if flagParam.serviceNameFlag != "" {
+			headerConfig.ServiceName = flagParam.serviceNameFlag
+			_, err := os.Stat(flagParam.outputFlag + headerConfig.ServiceName)
+			if os.IsNotExist(err) {
+				log.Fatalf(redFormat, fmt.Sprintf(`Service "%s" is not exist in "%s" directory`, headerConfig.ServiceName, flagParam.outputFlag))
+			}
+		} else {
+			if scope == addModuleMonorepoService {
+			inputServiceNameMonorepo:
+				logger.Printf("\033[1mPlease input service name to be added module(s):\033[0m")
+				fmt.Printf(">> ")
+				cmdInput, _ := reader.ReadString('\n')
+				headerConfig.ServiceName = strings.TrimRight(cmdInput, "\n")
+				_, err := os.Stat(flagParam.outputFlag + headerConfig.ServiceName)
+				var errMessage string
+				if strings.TrimSpace(headerConfig.ServiceName) == "" {
+					errMessage = "Service name cannot empty"
+				}
+				if os.IsNotExist(err) {
+					errMessage = fmt.Sprintf(`Service "%s" is not exist in "%s" directory`, headerConfig.ServiceName, flagParam.outputFlag)
+				}
+				if errMessage != "" {
+					fmt.Printf(redFormat, errMessage+", try again")
+					cmdInput = ""
+					goto inputServiceNameMonorepo
+				}
+				flagParam.serviceNameFlag = headerConfig.ServiceName
+			}
+		}
 	}
 
 inputModules:
-	fmt.Print(ps1 + "\033[1mPlease input module names (separated by comma):\033[0m ")
+	logger.Printf("\033[1mPlease input module names (separated by comma):\033[0m ")
+	fmt.Printf(">> ")
 	cmdInput, _ = reader.ReadString('\n')
 	cmdInput = strings.TrimRight(cmdInput, "\n")
 	if strings.TrimSpace(cmdInput) == "" {
@@ -74,15 +92,16 @@ inputModules:
 			ModuleName: strings.TrimSpace(moduleName), Skip: false,
 		})
 	}
-	if scope == addModule {
+	if scope == addModule || scope == addModuleMonorepoService {
 		goto constructConfig
 	}
 
 selectServiceHandler:
-	fmt.Print(ps1 + "\033[1mPlease select service handlers (separated by comma, enter for skip)\n" +
+	logger.Printf("\033[1mPlease select service handlers (separated by comma, enter for skip)\n" +
 		"1) Rest API\n" +
 		"2) GRPC\n" +
-		"3) GraphQL\033[0m\n")
+		"3) GraphQL\033[0m")
+	fmt.Printf(">> ")
 	cmdInput, _ = reader.ReadString('\n')
 	cmdInput = strings.TrimRight(cmdInput, "\n")
 	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
@@ -96,11 +115,12 @@ selectServiceHandler:
 	}
 
 selectWorkerHandlers:
-	fmt.Print(ps1 + "\033[1mPlease select worker handlers (separated by comma, enter for skip)\n" +
+	logger.Printf("\033[1mPlease select worker handlers (separated by comma, enter for skip)\n" +
 		"1) Kafka Consumer\n" +
 		"2) Scheduler\n" +
 		"3) Redis Subscriber\n" +
-		"4) Task Queue Worker\033[0m\n")
+		"4) Task Queue Worker\033[0m")
+	fmt.Printf(">> ")
 	cmdInput, _ = reader.ReadString('\n')
 	cmdInput = strings.TrimRight(cmdInput, "\n")
 	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
@@ -120,10 +140,11 @@ selectWorkerHandlers:
 	}
 
 selectDependencies:
-	fmt.Print(ps1 + "\033[1mPlease select dependencies (separated by comma, enter for skip)\n" +
+	logger.Printf("\033[1mPlease select dependencies (separated by comma, enter for skip)\n" +
 		"1) Redis\n" +
 		"2) SQL Database\n" +
-		"3) Mongo Database\033[0m\n")
+		"3) Mongo Database\033[0m")
+	fmt.Printf(">> ")
 	cmdInput, _ = reader.ReadString('\n')
 	cmdInput = strings.TrimRight(cmdInput, "\n")
 
@@ -150,9 +171,10 @@ selectDependencies:
 
 	if dependencies[sqldbDeps] {
 	selectSQLDriver:
-		fmt.Print(ps1 + "\033[1mPlease select SQL database driver (choose one)\n" +
+		logger.Printf("\033[1mPlease select SQL database driver (choose one)\n" +
 			"1) Postgres\n" +
-			"2) MySQL\033[0m\n")
+			"2) MySQL\033[0m")
+		fmt.Printf(">> ")
 		cmdInput, _ = reader.ReadString('\n')
 		cmdInput = strings.TrimRight(strings.TrimSpace(cmdInput), "\n")
 		baseConfig.SQLDriver, ok = sqlDrivers[cmdInput]
@@ -163,7 +185,8 @@ selectDependencies:
 		}
 
 	useGORMLabel:
-		fmt.Print(ps1 + "\033[1mUse GORM? (y/n)\033[0m\n")
+		logger.Printf("\033[1mUse GORM? (y/n)\033[0m")
+		fmt.Printf(">> ")
 		cmdInput, _ = reader.ReadString('\n')
 		cmdInput = strings.TrimRight(strings.TrimSpace(cmdInput), "\n")
 		gormOpts := map[string]bool{"y": true, "n": false}
@@ -177,15 +200,15 @@ selectDependencies:
 constructConfig:
 	headerConfig.Header = fmt.Sprintf("Code generated by candi %s.", candi.Version)
 	headerConfig.Version = candi.Version
-	headerConfig.LibraryName = libraryNameFlag
-	if packagePrefixFlag != "" {
-		packagePrefixFlag = strings.TrimSuffix(packagePrefixFlag, "/") + "/"
-		headerConfig.PackagePrefix = packagePrefixFlag + headerConfig.ServiceName
+	headerConfig.LibraryName = flagParam.libraryNameFlag
+	if flagParam.packagePrefixFlag != "" {
+		flagParam.packagePrefixFlag = strings.TrimSuffix(flagParam.packagePrefixFlag, "/") + "/"
+		headerConfig.PackagePrefix = flagParam.packagePrefixFlag + headerConfig.ServiceName
 	} else {
 		headerConfig.PackagePrefix = headerConfig.ServiceName
 	}
-	if protoOutputPkgFlag != "" {
-		headerConfig.ProtoSource = protoOutputPkgFlag + "/" + headerConfig.ServiceName + "/proto"
+	if flagParam.protoOutputPkgFlag != "" {
+		headerConfig.ProtoSource = flagParam.protoOutputPkgFlag + "/" + headerConfig.ServiceName + "/proto"
 	} else {
 		headerConfig.ProtoSource = headerConfig.PackagePrefix + "/api/proto"
 	}

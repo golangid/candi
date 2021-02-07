@@ -3,10 +3,14 @@ package main
 import "text/template"
 
 const (
-	ps1         = "\x1b[32;1m>>> \x1b[0m"
-	redFormat   = "\x1b[31;1m%s \x1b[0m\n"
-	initService = "initservice"
-	addModule   = "addmodule"
+	ps1                      = "\x1b[32;1m>>> \x1b[0m"
+	redFormat                = "\x1b[31;1m%s \x1b[0m\n"
+	initService              = "initservice"
+	addModule                = "addmodule"
+	initMonorepo             = "initMonorepo"
+	initMonorepoService      = "initMonorepoService"
+	addModuleMonorepoService = "addModuleMonorepoService"
+	runServiceMonorepo       = "runServiceMonorepo"
 
 	restHandler      = "restHandler"
 	grpcHandler      = "grpcHandler"
@@ -22,11 +26,8 @@ const (
 )
 
 var (
-	scopeFlag, serviceNameFlag, packagePrefixFlag, protoOutputPkgFlag, outputFlag, libraryNameFlag string
-	withGoModFlag                                                                                  bool
-
 	scopeMap = map[string]string{
-		"1": initService, "2": addModule,
+		"1": initService, "2": addModule, "3": initMonorepo, "4": initMonorepoService, "5": addModuleMonorepoService, "6": runServiceMonorepo,
 	}
 	serviceHandlersMap = map[string]string{
 		"1": restHandler, "2": grpcHandler, "3": graphqlHandler,
@@ -43,6 +44,13 @@ var (
 
 	tpl *template.Template
 )
+
+type flagParameter struct {
+	scopeFlag, serviceNameFlag, packagePrefixFlag, protoOutputPkgFlag, outputFlag, libraryNameFlag string
+	withGoModFlag                                                                                  bool
+	run, all                                                                                       bool
+	service                                                                                        string
+}
 
 type configHeader struct {
 	Version       string

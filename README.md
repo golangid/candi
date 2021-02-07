@@ -47,19 +47,29 @@ Flag options:
 $ candi --help
 Usage of candi:
   -libraryname string
-        define library name (default "pkg.agungdp.dev/candi")
+        [project generator] define library name (default "pkg.agungdp.dev/candi")
   -output string
-        directory to write project to (default is service name)
+        [project generator] directory to write project to (default is service name)
   -packageprefix string
-        define package prefix
+        [project generator] define package prefix
   -protooutputpkg string
-        define generated proto output target (if using grpc), with prefix is your go.mod
+        [project generator] define generated proto output target (if using grpc), with prefix is your go.mod
+  -run
+        [service runner] run selected service or all service in monorepo
   -scope string
-        set scope (1 for init service, 2 for add module(s)
+        [project generator] set scope 
+        1 for init service, 
+        2 for add module(s), 
+        3 for init monorepo codebase, 
+        4 for init service in monorepo, 
+        5 for add module(s) service in monorepo, 
+        6 for run multiple service in monorepo
+  -service string
+        [service runner] depend to "-run" flag, run specific services (if multiple services, separate by comma)
   -servicename string
-        define service name
+        [project generator] define service name
   -withgomod
-        generate go.mod or not (default true)
+        [project generator] generate go.mod or not (default true)
 ```
 
 
