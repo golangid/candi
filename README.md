@@ -19,14 +19,14 @@
 ## Install `CLI`
 For linux:
 ```
-$ wget -O candi https://storage.googleapis.com/agungdp/bin/candi/candi-linux && chmod +x candi
-$ ./candi
+$ wget -O candi https://storage.googleapis.com/agungdp/bin/candi/candi-linux && chmod +x candi && sudo mv candi /usr/local/bin
+$ candi
 ```
 
 For macOS:
 ```
-$ wget -O candi https://storage.googleapis.com/agungdp/bin/candi/candi-osx && chmod +x candi
-$ ./candi
+$ wget -O candi https://storage.googleapis.com/agungdp/bin/candi/candi-osx && chmod +x candi && mv candi /usr/local/bin
+$ candi
 ```
 
 For windows:
@@ -97,3 +97,7 @@ If include GRPC handler, run `$ make proto` for generate rpc files from proto (m
 ## Todo
 - [x] ~~Add task queue worker like celery and add UI for manage task queue worker~~ => https://github.com/agungdwiprasetyo/task-queue-worker-dashboard
 - [ ] Add Documentation
+
+
+## Pronunciation
+`/can·di/` lihat! beliau membangun seribu candi dalam satu malam.
