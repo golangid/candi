@@ -3,40 +3,34 @@ module pkg.agungdp.dev/candi
 go 1.15
 
 require (
-	github.com/Shopify/sarama v1.24.1
-	github.com/agungdwiprasetyo/task-queue-worker-dashboard/external v0.0.0-20201210084424-a2cdc62b48b1
-	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
+	github.com/HdrHistogram/hdrhistogram-go v1.0.1 // indirect
+	github.com/Shopify/sarama v1.27.2
+	github.com/agungdwiprasetyo/task-queue-worker-dashboard/external v0.0.0-20201223075606-aa2e8417e545
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-playground/locales v0.13.0
 	github.com/go-playground/universal-translator v0.17.0
-	github.com/go-playground/validator/v10 v10.3.0
+	github.com/go-playground/validator/v10 v10.4.1
 	github.com/gojektech/heimdall v5.0.2+incompatible
 	github.com/gojektech/valkyrie v0.0.0-20190210220504-8f62c1e7ba45 // indirect
 	github.com/golangid/graphql-go v0.0.6
-	github.com/gomodule/redigo v2.0.0+incompatible
-	github.com/google/uuid v1.1.2
+	github.com/gomodule/redigo v1.8.3
+	github.com/google/uuid v1.2.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/consul/api v1.8.1
 	github.com/jinzhu/now v1.1.1
 	github.com/joho/godotenv v1.3.0
-	github.com/klauspost/compress v1.10.7 // indirect
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/gommon v0.3.0 // indirect
-	github.com/opentracing/opentracing-go v1.1.0
+	github.com/opentracing/opentracing-go v1.2.0
 	github.com/soheilhy/cmux v0.1.4
-	github.com/stretchr/testify v1.6.1
-	github.com/tidwall/pretty v1.0.1 // indirect
+	github.com/stretchr/testify v1.7.0
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
-	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
-	github.com/valyala/fasttemplate v1.1.0 // indirect
-	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
+	github.com/uber/jaeger-lib v2.4.0+incompatible // indirect
+	github.com/valyala/fasttemplate v1.2.1 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0
-	go.mongodb.org/mongo-driver v1.4.3
-	go.uber.org/zap v1.15.0
-	golang.org/x/net v0.0.0-20201016165138-7b1cca2348c0 // indirect
-	golang.org/x/sys v0.0.0-20201210223839-7e3030f88018 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	google.golang.org/grpc v1.33.1
-	google.golang.org/grpc/examples v0.0.0-20210105215357-f4a20d2f414f // indirect
+	go.mongodb.org/mongo-driver v1.4.6
+	go.uber.org/zap v1.16.0
+	google.golang.org/grpc v1.35.0
+	google.golang.org/grpc/examples v0.0.0-20210208035533-9280052d3665 // indirect
 	google.golang.org/protobuf v1.25.0
 )

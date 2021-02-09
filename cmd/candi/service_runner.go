@@ -27,7 +27,7 @@ func serviceRunner(serviceName string) {
 		logger.Printf("\x1b[34;1mRUNNING ALL SERVICE in \"services/\" directory\x1b[0m\n")
 		files, err := ioutil.ReadDir("services")
 		if err != nil {
-			logger.Fatal("ERROR: ", err, " (must in monorepo root)")
+			logger.Fatalf(redFormat, "ERROR: "+err.Error()+" (must in monorepo root)")
 		}
 		for _, f := range files {
 			if f.IsDir() {
