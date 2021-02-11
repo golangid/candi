@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Shopify/sarama"
 	"pkg.agungdp.dev/candi/codebase/factory"
@@ -81,7 +82,14 @@ func (h *kafkaWorker) Serve() {
 		defer wg.Done()
 		for {
 			if err := h.engine.Consume(ctx, h.consumerHandler.topics, h.consumerHandler); err != nil {
-				log.Printf("Error from kafka consumer: %v", err)
+				logger.LogRed("Error from kafka consumer: " + err.Error())
+				if errCode, ok := err.(sarama.KError); ok {
+					switch errCode {
+					case sarama.ErrInvalidTopic:
+						log.Fatal(errCode.Error())
+					}
+				}
+				time.Sleep(time.Second)
 			}
 
 			if ctx.Err() != nil {

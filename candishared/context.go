@@ -14,6 +14,9 @@ const (
 
 	// ContextKeyTokenClaim context key
 	ContextKeyTokenClaim ContextKey = "tokenClaim"
+
+	// ContextKeyWorkerKey context key
+	ContextKeyWorkerKey ContextKey = "workerKey"
 )
 
 // SetToContext will set context with specific key
@@ -29,4 +32,9 @@ func GetValueFromContext(ctx context.Context, key ContextKey) interface{} {
 // ParseTokenClaimFromContext parse token claim from given context
 func ParseTokenClaimFromContext(ctx context.Context) *TokenClaim {
 	return GetValueFromContext(ctx, ContextKeyTokenClaim).(*TokenClaim)
+}
+
+// ParseWorkerKeyFromContext parse token claim from given context
+func ParseWorkerKeyFromContext(ctx context.Context) []byte {
+	return GetValueFromContext(ctx, ContextKeyWorkerKey).([]byte)
 }

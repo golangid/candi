@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/Shopify/sarama"
+	"pkg.agungdp.dev/candi/candishared"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
 	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
@@ -58,9 +59,11 @@ func (c *consumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 					log.Printf("\x1b[35;3mKafka Consumer: message consumed, timestamp = %v, topic = %s\x1b[0m", message.Timestamp, message.Topic)
 				}
 
-				tags["topic"], tags["key"], tags["value"] = message.Topic, string(message.Key), string(message.Value)
+				tags["topic"], tags["key"] = message.Topic, string(message.Key)
 				tags["partition"], tags["offset"] = message.Partition, message.Offset
+				tracer.Log(ctx, "message", message.Value)
 
+				ctx = candishared.SetToContext(ctx, candishared.ContextKeyWorkerKey, message.Key)
 				handler := c.handlerFuncs[message.Topic]
 				if err := handler.handlerFunc(ctx, message.Value); err != nil {
 					for _, errHandler := range handler.errorHandlers {
