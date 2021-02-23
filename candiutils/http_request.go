@@ -100,11 +100,8 @@ func NewHTTPRequest(opts ...HTTPRequestOption) HTTPRequest {
 	}
 
 	// set http client
-	client := httpclient.NewClient(heimdallClientOpt...)
-
-	return &httpRequestImpl{
-		client: client,
-	}
+	httpReq.client = httpclient.NewClient(heimdallClientOpt...)
+	return httpReq
 }
 
 // Do function, for http client call
@@ -132,6 +129,9 @@ func (request *httpRequestImpl) Do(ctx context.Context, method, url string, requ
 	}
 
 	trace.InjectHTTPHeader(req)
+	trace.SetTag("http.min_error_code", request.minHTTPErrorCodeThreshold)
+	trace.SetTag("http.retries", request.retries)
+	trace.SetTag("http.sleep_between_retry", request.sleepBetweenRetry)
 	trace.SetTag("http.headers", req.Header)
 	trace.SetTag("http.method", req.Method)
 	trace.SetTag("http.url", req.URL.String())
