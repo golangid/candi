@@ -83,23 +83,36 @@ func TestMustParseEnv(t *testing.T) {
 		Now      time.Time     `env:"NOW"`
 		Duration time.Duration `env:"DURATION"`
 	}
+	type SubField struct {
+		SubString string `env:"SUBSTRING"`
+	}
 
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
+		now := time.Now().Format(time.RFC3339)
 		os.Setenv("HOST", "localhost")
 		os.Setenv("PORT", "8000")
 		os.Setenv("USE_HTTP", "true")
 		os.Setenv("FLOAT", "1.3")
-		os.Setenv("NOW", "2020-11-19")
+		os.Setenv("NOW", now)
 		os.Setenv("DURATION", "10m")
+		os.Setenv("UNEXPORTED", "none")
+		os.Setenv("SUBSTRING", "substring")
 		var env struct {
-			Host string `env:"HOST"`
-			Port int    `env:"PORT"`
+			Host       string `env:"HOST"`
+			Port       int    `env:"PORT"`
+			unexported string `env:"UNEXPORTED"`
+			SubField   SubField
 			Embed
 		}
 		MustParseEnv(&env)
 		assert.Equal(t, "localhost", env.Host)
 		assert.Equal(t, 8000, env.Port)
 		assert.Equal(t, true, env.UseHTTP)
+		assert.Equal(t, 1.3, env.Float)
+		assert.Equal(t, now, env.Now.Format(time.RFC3339))
+		assert.Equal(t, time.Duration(10)*time.Minute, env.Duration)
+		assert.Equal(t, "substring", env.SubField.SubString)
+		assert.Equal(t, "", env.unexported)
 		os.Clearenv()
 	})
 	t.Run("Testcase #2: Negative", func(t *testing.T) {
@@ -153,4 +166,25 @@ func TestMaskingPasswordURL(t *testing.T) {
 			assert.Equal(t, tt.want, MaskingPasswordURL(tt.stringURL))
 		})
 	}
+}
+
+func TestParseToQueryParam(t *testing.T) {
+	type VariantRequestParams struct {
+		Filter      string `json:"filter,omitempty"`
+		FilterQuery string `json:"filter[query],omitempty"`
+		FilterSkuNo string `json:"filter[skuNo],omitempty"`
+		Page        int    `json:"page"`
+		Limit       int    `json:"limit"`
+		Ignore      string `json:"-"`
+	}
+
+	var param VariantRequestParams
+	param.Filter = "product"
+	param.FilterQuery = "kulkas"
+	param.FilterSkuNo = "sku001"
+	param.Page = 1
+	param.Limit = 10
+
+	want := "filter=product&filter[query]=kulkas&filter[skuNo]=sku001&page=1&limit=10"
+	assert.Equal(t, want, ParseToQueryParam(&param))
 }

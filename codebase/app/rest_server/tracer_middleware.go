@@ -48,7 +48,7 @@ func echoRestTracerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		defer func() {
 			span.Finish()
-			logger.LogGreen("rest api " + tracer.GetTraceURL(ctx))
+			logger.LogGreen("rest_api > trace_url: " + tracer.GetTraceURL(ctx))
 		}()
 
 		resBody := new(bytes.Buffer)

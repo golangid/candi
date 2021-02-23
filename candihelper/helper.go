@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/jinzhu/now"
 )
 
 // ParseFromQueryParam parse url query string to struct target (with multiple data type in struct field), target must in pointer
@@ -88,6 +86,36 @@ func ParseFromQueryParam(query url.Values, target interface{}) (err error) {
 	}
 
 	return
+}
+
+// ParseToQueryParam parse struct data to query param
+func ParseToQueryParam(source interface{}) (s string) {
+	defer func() { recover() }()
+
+	pValue := reflect.ValueOf(source)
+	pType := reflect.TypeOf(source)
+	if pValue.Kind() == reflect.Ptr {
+		pValue = pValue.Elem()
+		pType = pType.Elem()
+	}
+
+	var uri []string
+	for i := 0; i < pValue.NumField(); i++ {
+		field := pValue.Field(i)
+		key := strings.TrimSuffix(pType.Field(i).Tag.Get("json"), ",omitempty")
+		if key == "-" {
+			continue
+		}
+
+		switch field.Interface().(type) {
+		case string:
+			uri = append(uri, fmt.Sprintf("%s=%s", key, field.String()))
+		default:
+			uri = append(uri, fmt.Sprintf("%s=%v", key, field.Interface()))
+		}
+	}
+
+	return strings.Join(uri, "&")
 }
 
 // StringYellow func
@@ -206,8 +234,13 @@ func MustParseEnv(target interface{}) {
 	mErrs := NewMultiError()
 	for i := 0; i < pValue.NumField(); i++ {
 		field := pValue.Field(i)
+		if !field.CanSet() { // skip if field cannot set a value (usually an unexported field in struct), to avoid a panic
+			continue
+		}
+
 		typ := pType.Field(i)
-		if typ.Anonymous { // embedded struct
+		if typ.Anonymous ||
+			(typ.Type.Kind() == reflect.Struct && !reflect.DeepEqual(field.Interface(), time.Time{})) { // embedded struct or struct field
 			MustParseEnv(field.Addr().Interface())
 			continue
 		}
@@ -232,7 +265,7 @@ func MustParseEnv(target interface{}) {
 			}
 			field.Set(reflect.ValueOf(dur))
 		case time.Time:
-			t, err := now.Parse(val)
+			t, err := time.Parse(time.RFC3339, val)
 			if err != nil {
 				mErrs.Append(key, fmt.Errorf("env '%s': %v", key, err))
 				continue

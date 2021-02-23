@@ -26,7 +26,13 @@ type Config struct {
 func Init(serviceName string) *Config {
 	env.Load(serviceName)
 	logger.InitZap()
-	tracer.InitOpenTracing()
+	tracer.InitOpenTracing(tracer.Param{
+		AgentHost:       env.BaseEnv().JaegerTracingHost,
+		ServiceName:     serviceName,
+		Level:           env.BaseEnv().Environment,
+		BuildNumberTag:  env.BaseEnv().BuildNumber,
+		MaxGoroutineTag: env.BaseEnv().MaxGoroutines,
+	})
 	return &Config{}
 }
 

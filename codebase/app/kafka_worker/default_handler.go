@@ -50,7 +50,7 @@ func (c *consumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 						trace.SetError(fmt.Errorf("%v", r))
 					}
 					session.MarkMessage(message, "")
-					logger.LogGreen("kafka consumer " + tracer.GetTraceURL(ctx))
+					logger.LogGreen("kafka_consumer > trace_url: " + tracer.GetTraceURL(ctx))
 					trace.Finish()
 					<-c.semaphore
 				}()

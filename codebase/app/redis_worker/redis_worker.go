@@ -234,7 +234,7 @@ func (r *redisWorker) processMessage(handlerName string, message []byte) {
 		if r := recover(); r != nil {
 			tracer.SetError(ctx, fmt.Errorf("%v", r))
 		}
-		logger.LogGreen("redis subscriber " + tracer.GetTraceURL(ctx))
+		logger.LogGreen("redis_subscriber > trace_url: " + tracer.GetTraceURL(ctx))
 	}()
 
 	if env.BaseEnv().DebugMode {

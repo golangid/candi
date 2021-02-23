@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"net/http"
 	"net/url"
@@ -15,24 +16,46 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	ext "github.com/opentracing/opentracing-go/ext"
-	"github.com/opentracing/opentracing-go/log"
+	otlog "github.com/opentracing/opentracing-go/log"
 	config "github.com/uber/jaeger-client-go/config"
 	"google.golang.org/grpc/metadata"
 	"pkg.agungdp.dev/candi"
 	"pkg.agungdp.dev/candi/candihelper"
 	"pkg.agungdp.dev/candi/codebase/interfaces"
 	"pkg.agungdp.dev/candi/config/env"
-	"pkg.agungdp.dev/candi/logger"
 )
 
 // MaxPacketSize max packet size of UDP
 const MaxPacketSize = int(65000 * candihelper.Byte)
 
-// InitOpenTracing with agent and service name
-func InitOpenTracing() error {
-	serviceName := env.BaseEnv().ServiceName
-	if env.BaseEnv().Environment != "" {
-		serviceName = fmt.Sprintf("%s-%s", serviceName, strings.ToLower(env.BaseEnv().Environment))
+// Param for init jaeger opentracing
+type Param struct {
+	AgentHost       string
+	ServiceName     string
+	Level           string
+	BuildNumberTag  string
+	MaxGoroutineTag int
+}
+
+// InitOpenTracing with agent and service name in parameter
+func InitOpenTracing(param Param) error {
+	if param.Level != "" {
+		param.ServiceName = fmt.Sprintf("%s-%s", param.ServiceName, strings.ToLower(param.Level))
+	}
+	defaultTags := []opentracing.Tag{
+		{Key: "num_cpu", Value: runtime.NumCPU()},
+		{Key: "go_version", Value: runtime.Version()},
+		{Key: "candi_version", Value: candi.Version},
+	}
+	if param.MaxGoroutineTag != 0 {
+		defaultTags = append(defaultTags, opentracing.Tag{
+			Key: "max_goroutines", Value: param.MaxGoroutineTag,
+		})
+	}
+	if param.BuildNumberTag != "" {
+		defaultTags = append(defaultTags, opentracing.Tag{
+			Key: "build_number", Value: param.BuildNumberTag,
+		})
 	}
 	cfg := &config.Configuration{
 		Sampler: &config.SamplerConfig{
@@ -42,19 +65,14 @@ func InitOpenTracing() error {
 		Reporter: &config.ReporterConfig{
 			LogSpans:            true,
 			BufferFlushInterval: 1 * time.Second,
-			LocalAgentHostPort:  env.BaseEnv().JaegerTracingHost,
+			LocalAgentHostPort:  param.AgentHost,
 		},
-		ServiceName: serviceName,
-		Tags: []opentracing.Tag{
-			{Key: "num_cpu", Value: runtime.NumCPU()},
-			{Key: "max_goroutines", Value: env.BaseEnv().MaxGoroutines},
-			{Key: "go_version", Value: runtime.Version()},
-			{Key: "candi_version", Value: candi.Version},
-		},
+		ServiceName: param.ServiceName,
+		Tags:        defaultTags,
 	}
 	tracer, _, err := cfg.NewTracer(config.MaxTagValueLength(math.MaxInt32))
 	if err != nil {
-		logger.LogEf("ERROR: cannot init opentracing connection: %v\n", err)
+		log.Printf("ERROR: cannot init opentracing connection: %v\n", err)
 		return err
 	}
 	opentracing.SetGlobalTracer(tracer)
@@ -240,15 +258,14 @@ func SetError(ctx context.Context, err error) {
 
 	ext.Error.Set(span, true)
 	span.SetTag("error.message", err.Error())
-	span.LogFields(log.String("stacktrace", string(debug.Stack())))
+	span.LogFields(otlog.String("stacktrace", string(debug.Stack())))
 }
 
 // GetTraceURL log trace url
 func GetTraceURL(ctx context.Context) (u string) {
-	defer func() { recover() }()
 	urlAgent, err := url.Parse("//" + env.BaseEnv().JaegerTracingHost)
-	if err == nil {
-		u = fmt.Sprintf("> tracing_url: %s:16686/trace/%s", urlAgent.Hostname(), GetTraceID(ctx))
+	if urlAgent != nil && err == nil {
+		u = fmt.Sprintf("http://%s:16686/trace/%s", urlAgent.Hostname(), GetTraceID(ctx))
 	}
 	return
 }

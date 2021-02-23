@@ -167,7 +167,7 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 		job.FinishedAt = time.Now().Format(time.RFC3339)
 		repo.saveJob(job)
 		broadcastAllToSubscribers()
-		logger.LogGreen("task queue: " + tracer.GetTraceURL(ctx))
+		logger.LogGreen("task_queue > trace_url: " + tracer.GetTraceURL(ctx))
 	}()
 
 	job.Retries++

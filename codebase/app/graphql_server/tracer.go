@@ -51,9 +51,8 @@ func (t *graphQLTracer) TraceQuery(ctx context.Context, queryString string, oper
 		span, ctx = opentracing.StartSpanFromContext(ctx, traceName)
 		ext.SpanKindRPCServer.Set(span)
 	} else {
-		span = globalTracer.StartSpan(traceName, ext.RPCServerOption((spanCtx)))
+		span = globalTracer.StartSpan(traceName, opentracing.ChildOf(spanCtx), ext.SpanKindRPCClient)
 		ctx = opentracing.ContextWithSpan(ctx, span)
-		ext.SpanKindRPCClient.Set(span)
 	}
 
 	if len(headers) > 0 {
@@ -73,7 +72,7 @@ func (t *graphQLTracer) TraceQuery(ctx context.Context, queryString string, oper
 			span.LogKV("errors", string(candihelper.ToBytes(errs)))
 			ext.Error.Set(span, true)
 		}
-		logger.LogGreen("graphql " + tracer.GetTraceURL(ctx))
+		logger.LogGreen("graphql > trace_url: " + tracer.GetTraceURL(ctx))
 	}
 }
 

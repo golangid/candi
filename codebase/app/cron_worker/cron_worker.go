@@ -192,7 +192,7 @@ func (c *cronWorker) processJob(job *Job) {
 		if r := recover(); r != nil {
 			trace.SetError(fmt.Errorf("%v", r))
 		}
-		logger.LogGreen("cron scheduler " + tracer.GetTraceURL(ctx))
+		logger.LogGreen("cron scheduler > trace_url: " + tracer.GetTraceURL(ctx))
 	}()
 
 	if env.BaseEnv().DebugMode {

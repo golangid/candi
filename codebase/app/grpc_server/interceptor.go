@@ -58,9 +58,8 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 		span, ctx = opentracing.StartSpanFromContext(ctx, opName)
 		ext.SpanKindRPCServer.Set(span)
 	} else {
-		span = globalTracer.StartSpan(opName, ext.RPCServerOption((spanCtx)))
+		span = globalTracer.StartSpan(opName, opentracing.ChildOf(spanCtx), ext.SpanKindRPCClient)
 		ctx = opentracing.ContextWithSpan(ctx, span)
-		ext.SpanKindRPCClient.Set(span)
 	}
 	defer func() {
 		if r := recover(); r != nil {
@@ -68,7 +67,7 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 			tracer.SetError(ctx, err)
 		}
 		logInterceptor(start, err, info.FullMethod, "GRPC")
-		logger.LogGreen("grpc " + tracer.GetTraceURL(ctx))
+		logger.LogGreen("grpc > trace_url: " + tracer.GetTraceURL(ctx))
 		span.LogKV("response.body", string(candihelper.ToBytes(resp)))
 		span.Finish()
 	}()
@@ -133,9 +132,8 @@ func (i *interceptor) streamTracerInterceptor(srv interface{}, stream grpc.Serve
 		span, ctx = opentracing.StartSpanFromContext(ctx, opName)
 		ext.SpanKindRPCServer.Set(span)
 	} else {
-		span = globalTracer.StartSpan(opName, ext.RPCServerOption((spanCtx)))
+		span = globalTracer.StartSpan(opName, opentracing.ChildOf(spanCtx), ext.SpanKindRPCClient)
 		ctx = opentracing.ContextWithSpan(ctx, span)
-		ext.SpanKindRPCClient.Set(span)
 	}
 	defer func() {
 		if r := recover(); r != nil {
@@ -143,7 +141,7 @@ func (i *interceptor) streamTracerInterceptor(srv interface{}, stream grpc.Serve
 			tracer.SetError(ctx, err)
 		}
 		logInterceptor(start, err, info.FullMethod, "GRPC-STREAM")
-		logger.LogGreen("grpc_stream " + tracer.GetTraceURL(ctx))
+		logger.LogGreen("grpc_stream > trace_url: " + tracer.GetTraceURL(ctx))
 		span.Finish()
 	}()
 

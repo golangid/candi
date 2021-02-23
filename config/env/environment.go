@@ -14,6 +14,9 @@ import (
 // Env model
 type Env struct {
 	RootApp, ServiceName string
+	BuildNumber          string
+	// Env on application
+	Environment string
 
 	useSQL, useMongo, useRedis, useRSAKey bool
 	NoAuth                                bool
@@ -37,9 +40,6 @@ type Env struct {
 	GraphQLSchemaDir string
 	// JSONSchemaDir env
 	JSONSchemaDir string
-
-	// Env on application
-	Environment string
 
 	IsProduction, DebugMode bool
 
@@ -109,6 +109,7 @@ func Load(serviceName string) {
 
 	// ------------------------------------
 	parseAppConfig()
+	env.BuildNumber = os.Getenv("BUILD_NUMBER")
 
 	// ------------------------------------
 	if env.UseREST || env.UseGraphQL {
