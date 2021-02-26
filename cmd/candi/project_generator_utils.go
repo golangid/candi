@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
@@ -46,11 +47,12 @@ func parseInput(flagParam *flagParameter) (headerConfig configHeader, srvConfig 
 		}
 
 	case scope == addModule || scope == addModuleMonorepoService:
-		if flagParam.serviceNameFlag != "" {
-			headerConfig.ServiceName = flagParam.serviceNameFlag
+		if flagParam.serviceName != "" {
+			headerConfig.ServiceName = flagParam.serviceName
 			_, err := os.Stat(flagParam.outputFlag + headerConfig.ServiceName)
 			if os.IsNotExist(err) {
-				log.Fatalf(redFormat, fmt.Sprintf(`Service "%s" is not exist in "%s" directory`, headerConfig.ServiceName, flagParam.outputFlag))
+				fmt.Printf(redFormat, fmt.Sprintf(`Service "%s" is not exist in "%s" directory`, headerConfig.ServiceName, flagParam.outputFlag))
+				os.Exit(1)
 			}
 		} else {
 			if scope == addModuleMonorepoService {
@@ -72,7 +74,7 @@ func parseInput(flagParam *flagParameter) (headerConfig configHeader, srvConfig 
 					cmdInput = ""
 					goto inputServiceNameMonorepo
 				}
-				flagParam.serviceNameFlag = headerConfig.ServiceName
+				flagParam.serviceName = headerConfig.ServiceName
 			}
 		}
 	}
@@ -307,4 +309,10 @@ func printBanner() {
 	 \____/\_| |_/\_| \_/___/  \___/  %s
 
 `, candi.Version)
+}
+
+func isWorkdirMonorepo() bool {
+	_, errSdk := ioutil.ReadDir("sdk/")
+	_, errService := ioutil.ReadDir("services/")
+	return (errSdk == nil) && (errService == nil)
 }

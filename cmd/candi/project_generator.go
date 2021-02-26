@@ -20,8 +20,8 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 	srvConfig.config = baseConfig
 	if scope == addModule || scope == addModuleMonorepoService {
 		var baseDir string
-		if flagParam.serviceNameFlag != "" {
-			baseDir = flagParam.outputFlag + flagParam.serviceNameFlag + "/"
+		if flagParam.serviceName != "" {
+			baseDir = flagParam.outputFlag + flagParam.serviceName + "/"
 		}
 
 		b, err := ioutil.ReadFile(baseDir + "candi.json")
@@ -46,7 +46,7 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 	cmdStructure := FileStructure{
 		TargetDir: "cmd/", IsDir: true,
 		Childs: []FileStructure{
-			{TargetDir: "{{.ServiceName}}/", IsDir: true, DataSource: srvConfig},
+			{TargetDir: srvConfig.ServiceName + "/", IsDir: true, DataSource: srvConfig},
 		},
 	}
 	internalServiceStructure := FileStructure{
@@ -138,7 +138,7 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 		}...)
 
 		apiProtoStructure.Childs = append(apiProtoStructure.Childs, FileStructure{
-			TargetDir: mod.ModuleName, IsDir: true,
+			TargetDir: mod.ModuleName + "/", IsDir: true,
 			Childs: []FileStructure{
 				{FromTemplate: true, DataSource: mod, Source: defaultGRPCProto, FileName: mod.ModuleName + ".proto"},
 			},
@@ -181,7 +181,7 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 	configJSON, _ := json.Marshal(srvConfig)
 
 	var baseDirectoryFile FileStructure
-	baseDirectoryFile.TargetDir = flagParam.outputFlag + "{{.ServiceName}}/"
+	baseDirectoryFile.TargetDir = flagParam.outputFlag + srvConfig.ServiceName + "/"
 	baseDirectoryFile.DataSource = srvConfig
 	baseDirectoryFile.IsDir = true
 	switch {
@@ -205,7 +205,7 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 			apiStructure, cmdStructure, configsStructure, internalServiceStructure, pkgServiceStructure,
 			{TargetDir: "deployments/", IsDir: true, Childs: []FileStructure{
 				{TargetDir: "k8s/", IsDir: true, Childs: []FileStructure{
-					{FileName: srvConfig.ServiceName + ".yml"},
+					{FileName: srvConfig.ServiceName + ".yaml"},
 				}},
 			}},
 			{TargetDir: "docs/", IsDir: true, Childs: []FileStructure{
@@ -251,10 +251,13 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 		baseDirectoryFile.Childs = append(baseDirectoryFile.Childs, []FileStructure{
 			apiStructure, internalServiceStructure, pkgServiceStructure,
 		}...)
+		baseDirectoryFile.Childs = append(baseDirectoryFile.Childs, FileStructure{
+			Source: string(configJSON), FileName: "candi.json",
+		})
 		baseDirectoryFile.Skip = true
 		baseDirectoryFile.TargetDir = ""
-		if flagParam.serviceNameFlag != "" {
-			baseDirectoryFile.TargetDir = flagParam.outputFlag + flagParam.serviceNameFlag + "/"
+		if flagParam.serviceName != "" {
+			baseDirectoryFile.TargetDir = flagParam.outputFlag + flagParam.serviceName + "/"
 		}
 
 	}
@@ -280,20 +283,17 @@ func monorepoGenerator(flagParam flagParameter) {
 }
 
 func execGenerator(fl FileStructure) {
-	dirBuff := loadTemplate(fl.TargetDir, fl.DataSource)
-	dirName := string(dirBuff)
-
 	if fl.Skip {
 		goto execChild
 	}
 
-	if _, err := os.Stat(dirName); os.IsExist(err) {
+	if _, err := os.Stat(fl.TargetDir); os.IsExist(err) {
 		panic(err)
 	}
 
 	if fl.IsDir {
-		fmt.Printf("creating %s...\n", dirName)
-		if err := os.Mkdir(dirName, 0700); err != nil {
+		fmt.Printf("creating %s...\n", fl.TargetDir)
+		if err := os.Mkdir(fl.TargetDir, 0700); err != nil {
 			fmt.Println("mkdir err:", err)
 			panic(err)
 		}
@@ -311,15 +311,14 @@ func execGenerator(fl FileStructure) {
 		} else {
 			buff = []byte(fl.Source)
 		}
-		dirName = strings.TrimSuffix(dirName, "/")
-		if err := ioutil.WriteFile(dirName+"/"+fl.FileName, buff, 0644); err != nil {
+		if err := ioutil.WriteFile(fl.TargetDir+fl.FileName, buff, 0644); err != nil {
 			panic(err)
 		}
 	}
 
 execChild:
 	for _, child := range fl.Childs {
-		child.TargetDir = dirName + child.TargetDir
+		child.TargetDir = fl.TargetDir + child.TargetDir
 		execGenerator(child)
 	}
 }

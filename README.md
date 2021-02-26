@@ -46,6 +46,12 @@ Flag options:
 ```
 $ candi --help
 Usage of candi:
+  -add-module
+        [project generator] add module in service
+  -init
+        [project generator] init service
+  -init-monorepo
+        [project generator] init monorepo codebase
   -libraryname string
         [project generator] define library name (default "pkg.agungdp.dev/candi")
   -output string
@@ -65,9 +71,9 @@ Usage of candi:
         5 for add module(s) service in monorepo, 
         6 for run multiple service in monorepo
   -service string
-        [service runner] depend to "-run" flag, run specific services (if multiple services, separate by comma)
-  -servicename string
-        [project generator] define service name
+        Describe service name (if run multiple services, separate by comma)
+  -version
+        print version
   -withgomod
         [project generator] generate go.mod or not (default true)
 ```

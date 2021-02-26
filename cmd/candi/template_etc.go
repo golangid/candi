@@ -121,7 +121,7 @@ coverage.txt
 		"## Create new service (for new project)\n" +
 		"Please install [**candi**](https://github.com/agungdwiprasetyo/candi) CLI first (min version v1.3.3), and then:\n" +
 		"```\n" +
-		"$ make init\n" +
+		"$ candi -init\n" +
 		"```\n" +
 		"If include GRPC handler, run `$ make proto service={{service_name}}` after init service for generate rpc files from proto (must install `protoc` compiler min version `libprotoc 3.14.0`)\n\n" +
 		"## Run specific service or multiple services\n" +
@@ -131,7 +131,7 @@ coverage.txt
 
 		"## Add module(s) in specific service (project)\n" +
 		"```\n" +
-		"$ make add-module service={{service_name}}\n" +
+		"$ candi -add-module -service {{service_name}}\n" +
 		"```\n\n" +
 
 		"## Run unit test and calculate code coverage\n" +

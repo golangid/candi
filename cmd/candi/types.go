@@ -46,10 +46,26 @@ var (
 )
 
 type flagParameter struct {
-	scopeFlag, serviceNameFlag, packagePrefixFlag, protoOutputPkgFlag, outputFlag, libraryNameFlag string
-	withGoModFlag                                                                                  bool
-	run, all                                                                                       bool
-	service                                                                                        string
+	scopeFlag, packagePrefixFlag, protoOutputPkgFlag, outputFlag, libraryNameFlag string
+	withGoModFlag                                                                 bool
+	run, all                                                                      bool
+	initService, addModule, initMonorepo, version                                 bool
+	serviceName                                                                   string
+}
+
+func (f *flagParameter) parseInitMonorepoService() {
+	f.packagePrefixFlag = "monorepo/services"
+	f.withGoModFlag = false
+	f.protoOutputPkgFlag = "monorepo/sdk"
+	f.outputFlag = "services/"
+	f.scopeFlag = "4"
+}
+func (f *flagParameter) parseAddModuleMonorepoService() {
+	f.packagePrefixFlag = "monorepo/services"
+	f.withGoModFlag = false
+	f.protoOutputPkgFlag = "monorepo/sdk"
+	f.outputFlag = "services/"
+	f.scopeFlag = "5"
 }
 
 type configHeader struct {
