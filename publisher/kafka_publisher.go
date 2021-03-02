@@ -7,13 +7,7 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	"pkg.agungdp.dev/candi/config/env"
-	"pkg.agungdp.dev/candi/logger"
 	"pkg.agungdp.dev/candi/tracer"
-)
-
-var (
-	semaphore chan struct{}
 )
 
 // KafkaPublisher kafka
@@ -21,24 +15,15 @@ type KafkaPublisher struct {
 	producer sarama.SyncProducer
 }
 
-// NewKafkaPublisher constructor
-func NewKafkaPublisher(client sarama.Client) *KafkaPublisher {
-
-	producer, err := sarama.NewSyncProducerFromClient(client)
-	if err != nil {
-		logger.LogYellow(fmt.Sprintf("(Kafka publisher: warning, %v. Should be panicked when using kafka publisher.) ", err))
-		return nil
-	}
-
-	semaphore = make(chan struct{}, env.BaseEnv().MaxGoroutines)
-	return &KafkaPublisher{
-		producer: producer,
-	}
-}
-
 // PublishMessage method
 func (p *KafkaPublisher) PublishMessage(ctx context.Context, topic, key string, data interface{}) (err error) {
-	opName := "kafka:publish_message"
+	trace := tracer.StartTrace(ctx, "kafka:publish_message")
+	defer func() {
+		if r := recover(); r != nil {
+			tracer.SetError(ctx, fmt.Errorf("%v", r))
+		}
+		trace.Finish()
+	}()
 
 	var payload []byte
 
@@ -51,31 +36,21 @@ func (p *KafkaPublisher) PublishMessage(ctx context.Context, topic, key string, 
 		payload, _ = json.Marshal(data)
 	}
 
-	semaphore <- struct{}{}
-	go tracer.WithTraceFunc(ctx, opName, func(ctx context.Context, tag map[string]interface{}) {
-		defer func() {
-			if r := recover(); r != nil {
-				tracer.SetError(ctx, fmt.Errorf("%v", r))
-			}
-			<-semaphore
-		}()
+	// set tracer tag
+	trace.SetTag("topic", topic)
+	trace.SetTag("key", key)
+	trace.SetTag("message", string(payload))
 
-		// set tracer tag
-		tag["topic"] = topic
-		tag["key"] = key
-		tag["message"] = string(payload)
-
-		msg := &sarama.ProducerMessage{
-			Topic:     topic,
-			Key:       sarama.ByteEncoder([]byte(key)),
-			Value:     sarama.ByteEncoder(payload),
-			Timestamp: time.Now(),
-		}
-		_, _, err = p.producer.SendMessage(msg)
-		if err != nil {
-			tracer.SetError(ctx, err)
-		}
-	})
+	msg := &sarama.ProducerMessage{
+		Topic:     topic,
+		Key:       sarama.ByteEncoder([]byte(key)),
+		Value:     sarama.ByteEncoder(payload),
+		Timestamp: time.Now(),
+	}
+	_, _, err = p.producer.SendMessage(msg)
+	if err != nil {
+		tracer.SetError(ctx, err)
+	}
 
 	return
 }
