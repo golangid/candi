@@ -26,8 +26,10 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags '-w -s' -a -o bin
 # Stage 3
 FROM alpine:latest  
 
+ARG BUILD_NUMBER
 RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /root/
+ENV BUILD_NUMBER=$BUILD_NUMBER
 
 RUN mkdir -p /root/api
 RUN mkdir -p /root/cmd/{{.ServiceName}}
@@ -119,16 +121,19 @@ coverage.txt
 		"</p>\n\n" +
 		"This repository explain implementation of Go for building multiple microservices using a single codebase. Using [Standard Golang Project Layout](https://github.com/golang-standards/project-layout) and [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)\n\n" +
 		"## Create new service (for new project)\n" +
-		"Please install [**candi**](https://github.com/agungdwiprasetyo/candi) CLI first (min version v1.3.3), and then:\n" +
+		"Please install **latest** [**candi**](https://github.com/agungdwiprasetyo/candi) CLI first, and then:\n" +
 		"```\n" +
 		"$ candi -init\n" +
 		"```\n" +
 		"If include GRPC handler, run `$ make proto service={{service_name}}` after init service for generate rpc files from proto (must install `protoc` compiler min version `libprotoc 3.14.0`)\n\n" +
+		"## Run all services\n" +
+		"```\n" +
+		"$ candi -run\n" +
+		"```\n\n" +
 		"## Run specific service or multiple services\n" +
 		"```\n" +
 		"$ candi -run -service {{service_a}},{{service_b}}\n" +
 		"```\n\n" +
-
 		"## Add module(s) in specific service (project)\n" +
 		"```\n" +
 		"$ candi -add-module -service {{service_name}}\n" +
@@ -184,10 +189,12 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags '-w -s' -a -o bin services/$SERVI
 # Stage 3
 FROM alpine:latest  
 
+ARG BUILD_NUMBER
 ARG SERVICE_NAME
 RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /root/
 ENV WORKDIR=services/$SERVICE_NAME/
+ENV BUILD_NUMBER=$BUILD_NUMBER
 
 RUN mkdir -p /root/services/$SERVICE_NAME
 RUN mkdir -p /root/services/$SERVICE_NAME/api

@@ -11,6 +11,7 @@ import (
 
 	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 
+	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
 	"{{.LibraryName}}/tracer"
@@ -41,7 +42,8 @@ func (h *KafkaHandler) handle{{clean (upper .ModuleName)}}(ctx context.Context, 
 	defer trace.Finish()
 	ctx = trace.Context()
 
-	fmt.Printf("message consumed by module {{.ModuleName}}. message: %s\n", string(message))
+	key := candishared.GetValueFromContext(ctx, candishared.ContextKeyWorkerKey).([]byte)
+	fmt.Printf("message consumed by module {{.ModuleName}}. key: %s, message: %s\n", key, message)
 	h.uc.Hello(ctx)
 	return nil
 }

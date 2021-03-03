@@ -196,6 +196,9 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 				{TargetDir: "repository/", IsDir: true, Childs: parseSharedRepository(srvConfig)},
 				{TargetDir: "usecase/", IsDir: true, Childs: []FileStructure{
 					{FromTemplate: true, DataSource: srvConfig, Source: templateUsecaseUOW, FileName: "usecase.go"},
+					{TargetDir: "common/", IsDir: true, Childs: []FileStructure{
+						{FromTemplate: true, DataSource: srvConfig, Source: templateUsecaseCommon, FileName: "common.go"},
+					}},
 				}},
 				{FromTemplate: true, DataSource: srvConfig, Source: templateSharedTokenValidator, FileName: "token_validator.go"},
 				{Source: additionalEnvTemplate, FromTemplate: true, DataSource: srvConfig, FileName: "environment.go"},

@@ -11,6 +11,7 @@ import (
 {{- range $module := .Modules}}
 	{{clean $module.ModuleName}}usecase "{{$.PackagePrefix}}/internal/modules/{{cleanPathModule $module.ModuleName}}/usecase"
 {{- end }}
+	"{{$.PackagePrefix}}/pkg/shared/usecase/common"
 
 	"{{.LibraryName}}/codebase/factory/dependency"
 )
@@ -25,7 +26,7 @@ type (
 
 	usecaseUow struct {
 	{{- range $module := .Modules}}
-		{{clean $module.ModuleName}} {{clean $module.ModuleName}}usecase.{{clean (upper $module.ModuleName)}}Usecase
+		{{clean $module.ModuleName}}usecase.{{clean (upper $module.ModuleName)}}Usecase
 	{{- end }}
 	}
 )
@@ -38,9 +39,10 @@ func SetSharedUsecase(deps dependency.Dependency) {
 	once.Do(func() {
 		usecaseInst = &usecaseUow{
 		{{- range $module := .Modules}}
-			{{clean $module.ModuleName}}: {{clean $module.ModuleName}}usecase.New{{clean (upper $module.ModuleName)}}Usecase(deps),
+			{{clean (upper $module.ModuleName)}}Usecase: {{clean $module.ModuleName}}usecase.New{{clean (upper $module.ModuleName)}}Usecase(deps),
 		{{- end }}
 		}
+		common.SetCommonUsecase(usecaseInst)
 	})
 }
 
@@ -51,9 +53,31 @@ func GetSharedUsecase() Usecase {
 
 {{- range $module := .Modules}}
 func (uc *usecaseUow) {{clean (upper $module.ModuleName)}}() {{clean $module.ModuleName}}usecase.{{clean (upper $module.ModuleName)}}Usecase {
-	return uc.{{clean $module.ModuleName}}
+	return uc.{{clean (upper $module.ModuleName)}}Usecase
 }
 {{- end }}
+`
+
+	templateUsecaseCommon = `// {{.Header}}
+	
+package common
+
+var commonUC Usecase
+
+// Usecase common abstraction for bridging shared method inter usecase in module
+type Usecase interface {
+	// shared method from another usecase
+}
+
+// SetCommonUsecase constructor
+func SetCommonUsecase(uc Usecase) {
+	commonUC = uc
+}
+
+// GetCommonUsecase get common usecase
+func GetCommonUsecase() Usecase {
+	return commonUC
+}
 `
 
 	templateUsecaseAbstraction = `// {{.Header}}
