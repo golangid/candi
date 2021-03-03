@@ -27,6 +27,7 @@ func (m *Middleware) Bearer(ctx context.Context, tokenString string) (*candishar
 		return &candishared.TokenClaim{
 			StandardClaims: jwt.StandardClaims{
 				Audience: "ANONYMOUS",
+				Subject:  "USER_ID_DUMMY",
 			},
 		}, nil
 	}
