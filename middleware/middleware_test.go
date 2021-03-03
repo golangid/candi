@@ -7,6 +7,6 @@ import (
 )
 
 func TestNewMiddleware(t *testing.T) {
-	mw := NewMiddleware(nil)
+	mw := NewMiddleware(nil, nil)
 	assert.NotNil(t, mw)
 }

@@ -80,7 +80,9 @@ func (t *graphQLTracer) TraceQuery(ctx context.Context, queryString string, oper
 func (t *graphQLTracer) TraceField(ctx context.Context, label, typeName, fieldName string, trivial bool, args map[string]interface{}) (context.Context, trace.TraceFieldFinishFunc) {
 	start := time.Now()
 	if middFunc, ok := t.middleware[fmt.Sprintf("%s.%s", typeName, fieldName)]; ok {
-		ctx = middFunc(ctx)
+		for _, mw := range middFunc {
+			ctx = mw(ctx)
+		}
 	}
 	return ctx, func(data []byte, err *gqlerrors.QueryError) {
 		end := time.Now()

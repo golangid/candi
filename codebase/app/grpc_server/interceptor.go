@@ -173,7 +173,9 @@ func (i *interceptor) middlewareInterceptor(ctx context.Context, fullMethod stri
 					err = grpc.Errorf(codes.Unauthenticated, "%v", r)
 				}
 			}()
-			ctx = middFunc(ctx)
+			for _, mw := range middFunc {
+				ctx = mw(ctx)
+			}
 			return nil
 		}
 		if err := execMiddleware(); err != nil {
