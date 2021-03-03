@@ -7,12 +7,27 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
+	"pkg.agungdp.dev/candi/logger"
 	"pkg.agungdp.dev/candi/tracer"
 )
 
 // KafkaPublisher kafka
 type KafkaPublisher struct {
 	producer sarama.SyncProducer
+}
+
+// NewKafkaPublisher constructor
+func NewKafkaPublisher(client sarama.Client) *KafkaPublisher {
+
+	producer, err := sarama.NewSyncProducerFromClient(client)
+	if err != nil {
+		logger.LogYellow(fmt.Sprintf("(Kafka publisher: warning, %v. Should be panicked when using kafka publisher.) ", err))
+		return nil
+	}
+
+	return &KafkaPublisher{
+		producer: producer,
+	}
 }
 
 // PublishMessage method
