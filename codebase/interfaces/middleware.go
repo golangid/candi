@@ -23,6 +23,10 @@ type HTTPMiddleware interface {
 	HTTPBasicAuth(next http.Handler) http.Handler
 	HTTPBearerAuth(next http.Handler) http.Handler
 	HTTPMultipleAuth(next http.Handler) http.Handler
+
+	// HTTPPermissionACL method.
+	// This middleware required TokenValidator (HTTPBearerAuth middleware must executed before) for extract userID
+	// from token (from `Subject` field in token claim payload)
 	HTTPPermissionACL(permissionCode string) func(http.Handler) http.Handler
 }
 
@@ -30,6 +34,10 @@ type HTTPMiddleware interface {
 type GRPCMiddleware interface {
 	GRPCBasicAuth(ctx context.Context) context.Context
 	GRPCBearerAuth(ctx context.Context) context.Context
+
+	// GRPCPermissionACL method.
+	// This middleware required TokenValidator (GRPCBearerAuth middleware must executed before) for extract userID
+	// from token (from `Subject` field in token claim payload)
 	GRPCPermissionACL(permissionCode string) types.MiddlewareFunc
 }
 
@@ -37,6 +45,10 @@ type GRPCMiddleware interface {
 type GraphQLMiddleware interface {
 	GraphQLBasicAuth(ctx context.Context) context.Context
 	GraphQLBearerAuth(ctx context.Context) context.Context
+
+	// GraphQLPermissionACL method.
+	// This middleware required TokenValidator (GraphQLBearerAuth middleware must executed before) for extract userID
+	// from token (from `Subject` field in token claim payload)
 	GraphQLPermissionACL(permissionCode string) types.MiddlewareFunc
 }
 
