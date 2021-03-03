@@ -50,7 +50,7 @@ func (h *GRPCHandler) Hello(ctx context.Context, req *proto.Request) (*proto.Res
 	tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
 
 	return &proto.Response{
-		Message: h.uc.Hello(ctx) + ", with your session (" + tokenClaim.Audience + ")",
+		Message: "Hello, with your user id ("+tokenClaim.Subject+")",
 	}, nil
 }
 `

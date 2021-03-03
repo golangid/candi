@@ -28,8 +28,8 @@ func NewGraphQLHandler(mw interfaces.Middleware, uc usecase.{{clean (upper .Modu
 
 // RegisterMiddleware register resolver based on schema in "api/graphql/*" path
 func (h *GraphQLHandler) RegisterMiddleware(mwGroup *types.MiddlewareGroup) {
-	mwGroup.Add("{{clean (upper .ModuleName)}}QueryModule.hello", h.mw.GraphQLBearerAuth)
-	mwGroup.Add("{{clean (upper .ModuleName)}}MutationModule.hello", h.mw.GraphQLBasicAuth)
+	mwGroup.Add("{{clean (upper .ModuleName)}}QueryModule.hello", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("{{clean .ModuleName}}.getAll{{clean (upper .ModuleName)}}"))
+	mwGroup.Add("{{clean (upper .ModuleName)}}MutationModule.hello", h.mw.GraphQLBasicAuth, h.mw.GraphQLPermissionACL("resource.public"))
 }
 
 // Query method
@@ -55,7 +55,6 @@ package graphqlhandler
 import (
 	"context"
 
-	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/tracer"
 )
 
@@ -63,15 +62,26 @@ type queryResolver struct {
 	root *GraphQLHandler
 }
 
-// Hello resolver
-func (q *queryResolver) Hello(ctx context.Context) (string, error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL-Hello")
+// GetAll{{clean (upper .ModuleName)}} resolver
+func (q *queryResolver) GetAll{{clean (upper .ModuleName)}}(ctx context.Context, input struct{ Filter *CommonFilter }) (results {{clean (upper .ModuleName)}}ListResolver, err error) {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:GetAll{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 	ctx = trace.Context()
 
-	tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
+	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
-	return q.root.uc.Hello(ctx) + ", with your session (" + tokenClaim.Audience + ")", nil
+	if input.Filter == nil {
+		input.Filter = new(CommonFilter)
+	}
+	filter := input.Filter.toSharedFilter()
+	data, meta, err := q.root.uc.GetAll{{clean (upper .ModuleName)}}(ctx, filter)
+	if err != nil {
+		return results, err
+	}
+
+	return {{clean (upper .ModuleName)}}ListResolver{
+		Meta: meta, Data: data,
+	}, nil
 }
 `
 	deliveryGraphqlMutationTemplate = `// {{.Header}}
@@ -111,6 +121,53 @@ func (s *subscriptionResolver) Hello(ctx context.Context) <-chan string {
 }
 `
 
+	deliveryGraphqlFieldResolverTemplate = `package graphqlhandler
+
+import (
+	shareddomain "{{.PackagePrefix}}/pkg/shared/domain"
+
+	"{{.LibraryName}}/candihelper"
+	"{{.LibraryName}}/candishared"
+)
+
+// CommonFilter basic filter model
+type CommonFilter struct {
+	Limit   *int
+	Page    *int
+	Search  *string
+	Sort    *string
+	ShowAll *bool
+	OrderBy *string
+}
+
+// toSharedFilter method
+func (f *CommonFilter) toSharedFilter() (filter candishared.Filter) {
+	filter.Search = candihelper.PtrToString(f.Search)
+	filter.OrderBy = candihelper.PtrToString(f.OrderBy)
+	filter.Sort = candihelper.PtrToString(f.Sort)
+	filter.ShowAll = candihelper.PtrToBool(f.ShowAll)
+
+	if f.Limit == nil {
+		filter.Limit = 10
+	} else {
+		filter.Limit = *f.Limit
+	}
+	if f.Page == nil {
+		filter.Page = 1
+	} else {
+		filter.Page = *f.Page
+	}
+
+	return
+}
+
+// {{clean (upper .ModuleName)}}ListResolver resolver
+type {{clean (upper .ModuleName)}}ListResolver struct {
+	Meta candishared.Meta
+	Data []shareddomain.{{clean (upper .ModuleName)}}
+}
+`
+
 	defaultGraphqlRootSchema = `# {{.Header}}
 
 schema {
@@ -121,36 +178,73 @@ schema {
 
 type Query {
 {{- range $module := .Modules}}
-	{{clean $module.ModuleName}}: {{clean (upper $module.ModuleName)}}QueryModule
+	{{clean $module.ModuleName}}: {{clean (upper $module.ModuleName)}}QueryResolver
 {{- end }}
 }
 
 type Mutation {
 {{- range $module := .Modules}}
-	{{clean $module.ModuleName}}: {{clean (upper $module.ModuleName)}}MutationModule
+	{{clean $module.ModuleName}}: {{clean (upper $module.ModuleName)}}MutationResolver
 {{- end }}
 }
 
 type Subscription {
 {{- range $module := .Modules}}
-	{{clean $module.ModuleName}}: {{clean (upper $module.ModuleName)}}SubscriptionModule
+	{{clean $module.ModuleName}}: {{clean (upper $module.ModuleName)}}SubscriptionResolver
 {{- end }}
 }
 `
 
 	defaultGraphqlSchema = `# {{.Header}}
 
-# {{clean (upper .ModuleName)}}Module Module Area
-type {{clean (upper .ModuleName)}}QueryModule {
-    hello(): String!
+# {{clean (upper .ModuleName)}}Module Resolver Area
+type {{clean (upper .ModuleName)}}QueryResolver {
+	get_all_{{clean .ModuleName}}(filter: FilterListInputResolver): {{clean (upper .ModuleName)}}ListResolver!
 }
 
-type {{clean (upper .ModuleName)}}MutationModule {
-    hello(): String!
+type {{clean (upper .ModuleName)}}MutationResolver {
+	hello(): String!
 }
 
-type {{clean (upper .ModuleName)}}SubscriptionModule {
-    hello(): String!
+type {{clean (upper .ModuleName)}}SubscriptionResolver {
+	hello(): String!
+}
+
+type {{clean (upper .ModuleName)}}ListResolver {
+	meta: MetaResolver!
+	data: [{{clean (upper .ModuleName)}}Resolver!]!
+}
+
+type {{clean (upper .ModuleName)}}Resolver {
+	id: String!
+}
+`
+
+	templateGraphqlCommon = `# {{.Header}}
+
+input FilterListInputResolver {
+	limit: Int
+	page: Int
+	"Optional (asc desc)"
+	sort: FilterSortEnum
+	"Optional"
+	order_by: String
+	"Optional"
+	show_all: Boolean
+	"Optional"
+	search: String
+}
+
+type MetaResolver {
+	page: Int!
+	limit: Int!
+	total_records: Int!
+	total_pages: Int!
+}
+
+enum FilterSortEnum {
+	asc
+	desc
 }
 `
 )

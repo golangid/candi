@@ -86,12 +86,17 @@ package usecase
 
 import (
 	"context"
+
+	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
+
+	"{{.LibraryName}}/candishared"
 )
 
 // {{clean (upper .ModuleName)}}Usecase abstraction
 type {{clean (upper .ModuleName)}}Usecase interface {
-	// add method
-	Hello(ctx context.Context) string
+	GetAll{{clean (upper .ModuleName)}}(ctx context.Context, filter candishared.Filter) (data []shareddomain.{{clean (upper .ModuleName)}}, meta candishared.Meta, err error)
+	GetDetail{{clean (upper .ModuleName)}}(ctx context.Context, id string) (data shareddomain.{{clean (upper .ModuleName)}}, err error)
+	Save{{clean (upper .ModuleName)}}(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error)
 }
 `
 	templateUsecaseImpl = `// {{.Header}}
@@ -101,8 +106,10 @@ package usecase
 import (
 	"context"
 
+	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 	{{ if not (or .SQLDeps .MongoDeps) }}// {{end}}"{{.PackagePrefix}}/pkg/shared/repository"
 
+	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/interfaces"
 	"{{.LibraryName}}/tracer"
@@ -123,14 +130,38 @@ func New{{clean (upper .ModuleName)}}Usecase(deps dependency.Dependency) {{clean
 	}
 }
 
-func (uc *{{clean .ModuleName}}UsecaseImpl) Hello(ctx context.Context) (msg string) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}Usecase:Hello")
+func (uc *{{clean .ModuleName}}UsecaseImpl) GetAll{{clean (upper .ModuleName)}}(ctx context.Context, filter candishared.Filter) (data []shareddomain.{{clean (upper .ModuleName)}}, meta candishared.Meta, err error) {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}Usecase:GetAll{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 	ctx = trace.Context()
 
-	{{if .SQLDeps}}msg, _ = uc.repoSQL.{{clean (upper .ModuleName)}}Repo.FindHello(ctx){{end}}
-	{{if .MongoDeps}}msg, _ = uc.repoMongo.{{clean (upper .ModuleName)}}Repo.FindHello(ctx){{end}}
+	{{if or .SQLDeps .MongoDeps}}data, err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo.FetchAll(ctx, &filter)
+	if err != nil {
+		return data, meta, err
+	}
+	count := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo.Count(ctx, &filter)
+	meta = candishared.NewMeta(filter.Page, filter.Limit, count){{end}}
+
 	return
-}	
+}
+
+func (uc *{{clean .ModuleName}}UsecaseImpl) GetDetail{{clean (upper .ModuleName)}}(ctx context.Context, id string) (data shareddomain.{{clean (upper .ModuleName)}}, err error) {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}Usecase:GetDetail{{clean (upper .ModuleName)}}")
+	defer trace.Finish()
+	ctx = trace.Context()
+
+	{{if or .SQLDeps .MongoDeps}}data.ID = id
+	err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo.Find(ctx, &data){{end}}
+	return
+}
+
+func (uc *{{clean .ModuleName}}UsecaseImpl) Save{{clean (upper .ModuleName)}}(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}Usecase:Save{{clean (upper .ModuleName)}}")
+	defer trace.Finish()
+	ctx = trace.Context()
+
+	return{{if or .SQLDeps .MongoDeps}} uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo.Save(ctx, data){{end}}
+}
+
 `
 )

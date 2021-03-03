@@ -89,6 +89,7 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 							{FromTemplate: true, DataSource: mod, Source: deliveryGraphqlQueryTemplate, FileName: "query_resolver.go"},
 							{FromTemplate: true, DataSource: mod, Source: deliveryGraphqlMutationTemplate, FileName: "mutation_resolver.go"},
 							{FromTemplate: true, DataSource: mod, Source: deliveryGraphqlSubscriptionTemplate, FileName: "subscription_resolver.go"},
+							{FromTemplate: true, DataSource: mod, Source: deliveryGraphqlFieldResolverTemplate, FileName: "field_serializer_resolver.go"},
 						}},
 					{TargetDir: "grpchandler/", IsDir: true,
 						Childs: []FileStructure{
@@ -149,7 +150,7 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 
 		// for shared domain
 		sharedDomainFiles = append(sharedDomainFiles, FileStructure{
-			Source: "package domain", FileName: mod.ModuleName + ".go",
+			FromTemplate: true, DataSource: mod, Source: templateDomain, FileName: mod.ModuleName + ".go",
 		})
 	}
 
@@ -166,6 +167,7 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 
 	apiGraphQLStructure.Childs = append(apiGraphQLStructure.Childs, []FileStructure{
 		{FromTemplate: true, DataSource: srvConfig, Source: defaultGraphqlRootSchema, FileName: "_schema.graphql"},
+		{FromTemplate: true, DataSource: srvConfig, Source: templateGraphqlCommon, FileName: "_common.graphql"},
 	}...)
 	apiStructure.Childs = []FileStructure{
 		apiGraphQLStructure,
@@ -200,7 +202,7 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 						{FromTemplate: true, DataSource: srvConfig, Source: templateUsecaseCommon, FileName: "common.go"},
 					}},
 				}},
-				{FromTemplate: true, DataSource: srvConfig, Source: templateSharedTokenValidator, FileName: "token_validator.go"},
+				{FromTemplate: true, DataSource: srvConfig, Source: templateSharedMiddlewareImpl, FileName: "middleware_impl_example.go"},
 				{Source: additionalEnvTemplate, FromTemplate: true, DataSource: srvConfig, FileName: "environment.go"},
 			}},
 		}...)

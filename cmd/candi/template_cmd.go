@@ -7,8 +7,7 @@ package main
 import (
 	"fmt"
 	"runtime/debug"
-
-	{{if eq .SQLDriver "postgres"}}_ "github.com/lib/pq"{{end}}
+	{{if eq .SQLDriver "postgres"}}_ "github.com/lib/pq"{{else if eq .SQLDriver "mysql"}}_ "github.com/go-sql-driver/mysql"{{end}}
 
 	"{{.LibraryName}}/codebase/app"
 	"{{.LibraryName}}/config"

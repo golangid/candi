@@ -44,7 +44,6 @@ func (h *KafkaHandler) handle{{clean (upper .ModuleName)}}(ctx context.Context, 
 
 	key := candishared.GetValueFromContext(ctx, candishared.ContextKeyWorkerKey).([]byte)
 	fmt.Printf("message consumed by module {{.ModuleName}}. key: %s, message: %s\n", key, message)
-	h.uc.Hello(ctx)
 	return nil
 }
 `
@@ -90,7 +89,6 @@ func (h *CronHandler) handle{{clean (upper .ModuleName)}}(ctx context.Context, m
 	ctx = trace.Context()
 
 	fmt.Println("cron: execute in module {{.ModuleName}}")
-	h.uc.Hello(ctx)
 	return nil
 }
 `
@@ -135,7 +133,6 @@ func (h *RedisHandler) handle{{clean (upper .ModuleName)}}(ctx context.Context, 
 	ctx = trace.Context()
 
 	fmt.Println("redis subs: execute sample")
-	h.uc.Hello(ctx)
 	return nil
 }
 `
@@ -181,7 +178,6 @@ func (h *TaskQueueHandler) taskOne(ctx context.Context, message []byte) error {
 	defer trace.Finish()
 	ctx = trace.Context()
 
-	h.uc.Hello(ctx)
 
 	return &taskqueueworker.ErrorRetrier{
 		Delay:   10 * time.Second,
@@ -194,7 +190,6 @@ func (h *TaskQueueHandler) taskTwo(ctx context.Context, message []byte) error {
 	defer trace.Finish()
 	ctx = trace.Context()
 
-	h.uc.Hello(ctx)
 
 	return &taskqueueworker.ErrorRetrier{
 		Delay:   3 * time.Second,
