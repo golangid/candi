@@ -45,30 +45,34 @@ func InitSQLDatabase() interfaces.SQLDatabase {
 
 	inst := new(sqlInstance)
 
-	u, err := url.Parse(env.BaseEnv().DbSQLReadDSN)
-	if err != nil {
-		log.Panicf("SQL Read URL: %v", err)
-	}
-	inst.read, err = sql.Open(u.Scheme, env.BaseEnv().DbSQLReadDSN)
-	if err != nil {
-		log.Panicf("SQL Read: %v", err)
+	if env.BaseEnv().DbSQLReadDSN != "" {
+		u, err := url.Parse(env.BaseEnv().DbSQLReadDSN)
+		if err != nil {
+			log.Panicf("SQL Read URL: %v", err)
+		}
+		inst.read, err = sql.Open(u.Scheme, env.BaseEnv().DbSQLReadDSN)
+		if err != nil {
+			log.Panicf("SQL Read: %v", err)
+		}
+
+		if err = inst.read.Ping(); err != nil {
+			log.Panicf("SQL Read: %v", err)
+		}
 	}
 
-	if err = inst.read.Ping(); err != nil {
-		log.Panicf("SQL Read: %v", err)
-	}
+	if env.BaseEnv().DbSQLWriteDSN != "" {
+		u, err := url.Parse(env.BaseEnv().DbSQLWriteDSN)
+		if err != nil {
+			log.Panicf("SQL Write URL: %v", err)
+		}
+		inst.write, err = sql.Open(u.Scheme, env.BaseEnv().DbSQLWriteDSN)
+		if err != nil {
+			log.Panicf("SQL Write: %v", err)
+		}
 
-	u, err = url.Parse(env.BaseEnv().DbSQLWriteDSN)
-	if err != nil {
-		log.Panicf("SQL Write URL: %v", err)
-	}
-	inst.write, err = sql.Open(u.Scheme, env.BaseEnv().DbSQLWriteDSN)
-	if err != nil {
-		log.Panicf("SQL Write: %v", err)
-	}
-
-	if err = inst.write.Ping(); err != nil {
-		log.Panicf("SQL Write: %v", err)
+		if err = inst.write.Ping(); err != nil {
+			log.Panicf("SQL Write: %v", err)
+		}
 	}
 
 	return inst
