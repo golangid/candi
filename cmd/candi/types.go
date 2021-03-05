@@ -106,5 +106,6 @@ type FileStructure struct {
 	Source       string
 	FileName     string
 	Skip         bool
+	SkipFunc     func() bool
 	Childs       []FileStructure
 }

@@ -111,10 +111,6 @@ func (r *RepoSQL) WithTransaction(ctx context.Context, txFunc func(ctx context.C
 	defer manager.free()
 
 	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic: %v", r)
-		}
-
 		if err != nil {
 			tx.Rollback()
 			trace.SetError(err)
@@ -123,13 +119,26 @@ func (r *RepoSQL) WithTransaction(ctx context.Context, txFunc func(ctx context.C
 		}
 	}()
 
+	errChan := make(chan error)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				errChan <- fmt.Errorf("panic: %v", r)
+			}
+			close(errChan)
+		}()
+
+		if err := txFunc(ctx, manager); err != nil {
+			errChan <- err
+		}
+	}()
+
 	select {
 	case <-ctx.Done():
 		return fmt.Errorf("Canceled or timeout: %v", ctx.Err())
-	default:
+	case e := <-errChan:
+		return e
 	}
-
-	return txFunc(ctx, manager)
 }
 
 func (r *RepoSQL) free() {
@@ -235,8 +244,7 @@ func New{{clean (upper .ModuleName)}}RepoMongo(readDB, writeDB *mongo.Database) 
 
 func (r *{{clean .ModuleName}}RepoMongo) FetchAll(ctx context.Context, filter *candishared.Filter) (data []shareddomain.{{clean (upper .ModuleName)}}, err error) {
 	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoMongo:FetchAll")
-	defer trace.Finish()
-	defer func() { trace.SetError(err) }()
+	defer func() { trace.SetError(err); trace.Finish() }()
 	ctx = trace.Context()
 
 	where := bson.M{}
@@ -263,8 +271,7 @@ func (r *{{clean .ModuleName}}RepoMongo) FetchAll(ctx context.Context, filter *c
 
 func (r *{{clean .ModuleName}}RepoMongo) Find(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
 	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Find")
-	defer trace.Finish()
-	defer func() { trace.SetError(err) }()
+	defer func() { trace.SetError(err); trace.Finish() }()
 	ctx = trace.Context()
 
 	bsonWhere := make(bson.M)
@@ -288,8 +295,7 @@ func (r *{{clean .ModuleName}}RepoMongo) Count(ctx context.Context, filter *cand
 
 func (r *{{clean .ModuleName}}RepoMongo) Save(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
 	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Save")
-	defer trace.Finish()
-	defer func() { trace.SetError(err) }()
+	defer func() { trace.SetError(err); trace.Finish() }()
 	ctx = trace.Context()
 	tracer.Log(ctx, "data", data)
 
@@ -322,6 +328,7 @@ package repository
 import (
 	"context"` + `{{if not .SQLUseGORM}}
 	"database/sql"{{end}}` + `
+	"time"
 
 	"{{.LibraryName}}/candishared"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
@@ -344,8 +351,16 @@ func New{{clean (upper .ModuleName)}}RepoSQL(readDB, writeDB *{{if .SQLUseGORM}}
 
 func (r *{{clean .ModuleName}}RepoSQL) FetchAll(ctx context.Context, filter *candishared.Filter) (data []shareddomain.{{clean (upper .ModuleName)}}, err error) {
 	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoSQL:FetchAll")
-	defer trace.Finish()
+	defer func() { trace.SetError(err); trace.Finish() }()
 
+	if filter.OrderBy == "" {
+		filter.OrderBy = ` + `"modified_at"` + `
+	}
+	
+	{{if .SQLUseGORM}}err = r.readDB.
+		Order(filter.OrderBy + " " + filter.Sort).
+		Limit(filter.Limit).Offset(filter.Offset).
+		Find(&data).Error{{end}}
 	return
 }
 
@@ -353,21 +368,29 @@ func (r *{{clean .ModuleName}}RepoSQL) Count(ctx context.Context, filter *candis
 	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Count")
 	defer trace.Finish()
 
+	var total int64{{if .SQLUseGORM}}
+	r.readDB.Model(&shareddomain.{{clean (upper .ModuleName)}}{}).Count(&total){{end}}
+	count = int(total)
 	return
 }
 
 func (r *{{clean .ModuleName}}RepoSQL) Find(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
 	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Find")
-	defer trace.Finish()
+	defer func() { trace.SetError(err); trace.Finish() }()
 
-	return
+	return{{if .SQLUseGORM}} r.readDB.First(data).Error{{end}}
 }
 
 func (r *{{clean .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
 	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Save")
-	defer trace.Finish()
+	defer func() { trace.SetError(err); trace.Finish() }()
+	tracer.Log(ctx, "data", data)
 
-	return
+	data.ModifiedAt = time.Now()
+	if data.CreatedAt.IsZero() {
+		data.CreatedAt = time.Now()
+	}
+	return{{if .SQLUseGORM}} r.readDB.Save(data).Error{{end}}
 }
 `
 )

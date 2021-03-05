@@ -28,8 +28,8 @@ func NewGraphQLHandler(mw interfaces.Middleware, uc usecase.{{clean (upper .Modu
 
 // RegisterMiddleware register resolver based on schema in "api/graphql/*" path
 func (h *GraphQLHandler) RegisterMiddleware(mwGroup *types.MiddlewareGroup) {
-	mwGroup.Add("{{clean (upper .ModuleName)}}QueryModule.hello", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("{{clean .ModuleName}}.getAll{{clean (upper .ModuleName)}}"))
-	mwGroup.Add("{{clean (upper .ModuleName)}}MutationModule.hello", h.mw.GraphQLBasicAuth, h.mw.GraphQLPermissionACL("resource.public"))
+	mwGroup.Add("{{clean (upper .ModuleName)}}QueryModule.hello", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("resource.public"))
+	mwGroup.Add("{{clean (upper .ModuleName)}}MutationModule.hello", h.mw.GraphQLBasicAuth, h.mw.GraphQLPermissionACL("{{clean .ModuleName}}.getAll{{clean (upper .ModuleName)}}"))
 }
 
 // Query method

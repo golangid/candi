@@ -47,6 +47,11 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 		TargetDir: "cmd/", IsDir: true,
 		Childs: []FileStructure{
 			{TargetDir: srvConfig.ServiceName + "/", IsDir: true, DataSource: srvConfig},
+			{TargetDir: "migration/", IsDir: true, Childs: []FileStructure{
+				{FromTemplate: true, DataSource: srvConfig, Source: templateCmdMigration, FileName: "migration.go", SkipFunc: func() bool {
+					return !srvConfig.SQLDeps
+				}},
+			}},
 		},
 	}
 	internalServiceStructure := FileStructure{
@@ -218,7 +223,9 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 			}},
 			{FromTemplate: true, DataSource: srvConfig, Source: gitignoreTemplate, FileName: ".gitignore"},
 			{FromTemplate: true, DataSource: srvConfig, Source: makefileTemplate, FileName: "Makefile"},
-			{FromTemplate: true, DataSource: srvConfig, Source: dockerfileTemplate, FileName: "Dockerfile"},
+			{FromTemplate: true, DataSource: srvConfig, Source: dockerfileTemplate, FileName: "Dockerfile", SkipFunc: func() bool {
+				return isWorkdirMonorepo()
+			}},
 			{FromTemplate: true, DataSource: srvConfig, Source: cmdMainTemplate, FileName: "main.go"},
 			{FromTemplate: true, DataSource: srvConfig, Source: envTemplate, FileName: ".env"},
 			{FromTemplate: true, DataSource: srvConfig, Source: envTemplate, FileName: ".env.sample"},
@@ -232,6 +239,7 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 		}
 
 	case scope == addModule || scope == addModuleMonorepoService:
+		cmdStructure.Skip = true
 		configsStructure.Skip = true
 		moduleStructure.Skip = true
 		pkgServiceStructure.Skip = true
@@ -245,6 +253,13 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 				}},
 			}},
 		}
+		cmdStructure.Childs = []FileStructure{
+			{TargetDir: "migration/", IsDir: true, Skip: true, Childs: []FileStructure{
+				{FromTemplate: true, DataSource: srvConfig, Source: templateCmdMigration, FileName: "migration.go", SkipFunc: func() bool {
+					return !srvConfig.SQLDeps
+				}},
+			}},
+		}
 
 		internalServiceStructure.Childs = append(internalServiceStructure.Childs, moduleStructure)
 		apiStructure.Skip = true
@@ -254,7 +269,7 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 		}
 
 		baseDirectoryFile.Childs = append(baseDirectoryFile.Childs, []FileStructure{
-			apiStructure, internalServiceStructure, pkgServiceStructure,
+			apiStructure, cmdStructure, internalServiceStructure, pkgServiceStructure,
 		}...)
 		baseDirectoryFile.Childs = append(baseDirectoryFile.Childs, FileStructure{
 			Source: string(configJSON), FileName: "candi.json",
@@ -288,7 +303,7 @@ func monorepoGenerator(flagParam flagParameter) {
 }
 
 func execGenerator(fl FileStructure) {
-	if fl.Skip {
+	if fl.Skip || (fl.SkipFunc != nil && fl.SkipFunc()) {
 		goto execChild
 	}
 

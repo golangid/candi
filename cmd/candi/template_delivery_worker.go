@@ -178,7 +178,6 @@ func (h *TaskQueueHandler) taskOne(ctx context.Context, message []byte) error {
 	defer trace.Finish()
 	ctx = trace.Context()
 
-
 	return &taskqueueworker.ErrorRetrier{
 		Delay:   10 * time.Second,
 		Message: "Error one",
@@ -189,7 +188,6 @@ func (h *TaskQueueHandler) taskTwo(ctx context.Context, message []byte) error {
 	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryTaskQueue:Hello")
 	defer trace.Finish()
 	ctx = trace.Context()
-
 
 	return &taskqueueworker.ErrorRetrier{
 		Delay:   3 * time.Second,

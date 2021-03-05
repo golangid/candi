@@ -162,6 +162,5 @@ func (uc *{{clean .ModuleName}}UsecaseImpl) Save{{clean (upper .ModuleName)}}(ct
 
 	return{{if or .SQLDeps .MongoDeps}} uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo.Save(ctx, data){{end}}
 }
-
 `
 )

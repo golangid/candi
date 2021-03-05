@@ -93,5 +93,4 @@ func (h *RestHandler) save{{clean (upper .ModuleName)}}(c echo.Context) error {
 
 	return wrapper.NewHTTPResponse(http.StatusOK, "Success").JSON(c.Response())
 }
-
 `

@@ -43,16 +43,19 @@ ENTRYPOINT ["./bin"]
 
 	makefileTemplate = `.PHONY : build run
 
+proto:
+	$(foreach proto_file, $(shell find api/proto -name '*.proto'),\
+	protoc --proto_path=api/proto --go_out=plugins=grpc:api/proto \
+	--go_opt=paths=source_relative $(proto_file);)
+
+migration:
+	@go run cmd/migration/migration.go -dbconn "$(dbconn)"
+
 build:
 	go build -o bin
 
 run: build
 	./bin
-
-proto:
-	$(foreach proto_file, $(shell find api/proto -name '*.proto'),\
-	protoc --proto_path=api/proto --go_out=plugins=grpc:api/proto \
-	--go_opt=paths=source_relative $(proto_file);)
 
 docker:
 	docker build -t {{.ServiceName}}:latest .
@@ -96,10 +99,18 @@ coverage.txt
 
 	readmeTemplate = "# {{upper .ServiceName}}\n\n" +
 		"## Build and run service\n" +
+		"If include GRPC handler, run this command (must install `protoc` compiler min version `libprotoc 3.14.0`):\n\n" +
+		"```\n" +
+		"$ make proto\n" +
+		"```\n\n" +
+		"If using SQL database, run this command for migration:\n" +
+		"```\n" +
+		"$ make migration dbconn=\"(YOUR DATABASE URL CONNECTION)\"\n" +
+		"```\n\n" +
+		"And then, build and run this service:\n" +
 		"```\n" +
 		"$ make run\n" +
-		"```\n" +
-		"If include GRPC handler, run `$ make proto` for generate rpc files from proto (must install `protoc` compiler min version `libprotoc 3.14.0`)\n\n" +
+		"```\n\n" +
 		"## Run unit test & calculate code coverage\n" +
 		"```\n" +
 		"$ make test\n" +
@@ -121,11 +132,18 @@ coverage.txt
 		"</p>\n\n" +
 		"This repository explain implementation of Go for building multiple microservices using a single codebase. Using [Standard Golang Project Layout](https://github.com/golang-standards/project-layout) and [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)\n\n" +
 		"## Create new service (for new project)\n" +
-		"Please install **latest** [**candi**](https://github.com/agungdwiprasetyo/candi) CLI first, and then:\n" +
+		"Please install **latest** [**candi**](https://pkg.agungdp.dev/candi) CLI first, and then:\n" +
 		"```\n" +
 		"$ candi -init\n" +
 		"```\n" +
-		"If include GRPC handler, run `$ make proto service={{service_name}}` after init service for generate rpc files from proto (must install `protoc` compiler min version `libprotoc 3.14.0`)\n\n" +
+		"If include GRPC handler, run this command (must install `protoc` compiler min version `libprotoc 3.14.0`):\n\n" +
+		"```\n" +
+		"$ make proto service={{service_name}}\n" +
+		"```\n\n" +
+		"If using SQL database, run this command for migration:\n" +
+		"```\n" +
+		"$ make migration service={{service_name}} dbconn=\"{{YOUR DATABASE URL CONNECTION}}\"\n" +
+		"```\n\n" +
 		"## Run all services\n" +
 		"```\n" +
 		"$ candi -run\n" +
@@ -153,7 +171,7 @@ coverage.txt
 		"```\n" +
 		"$ make sonar level={{level}} service={{service_name}}\n" +
 		"```\n" +
-		"`{{level}}` is service environment, example is one of `dev`, `staging`, or `prod`\n\n" +
+		"`{{level}}` is service environment, example: `dev`, `staging`, or `prod`\n\n" +
 
 		"## Create docker image a service\n" +
 		"```\n" +
@@ -224,17 +242,20 @@ init:
 add-module: check
 	@candi -scope=5 -servicename=$(service)
 
-build: check
-	@go build -o services/$(service)/bin services/$(service)/*.go
-
-run: build
-	@WORKDIR="services/$(service)/" ./services/$(service)/bin
-
 proto: check
 	@if [ ! -d "sdk/$(service)" ]; then echo "creating new proto files..." &&  mkdir sdk/$(service) && mkdir sdk/$(service)/proto; fi
 	$(foreach proto_file, $(shell find services/$(service)/api/proto -name '*.proto'),\
 	protoc --proto_path=services/$(service)/api/proto --go_out=plugins=grpc:sdk/$(service)/proto \
 	--go_opt=paths=source_relative $(proto_file);)
+
+migration: check
+	@go run services/$(service)/cmd/migration/migration.go -dbconn "$(dbconn)"
+
+build: check
+	@go build -o services/$(service)/bin services/$(service)/*.go
+
+run: build
+	@WORKDIR="services/$(service)/" ./services/$(service)/bin
 
 docker: check
 	docker build --build-arg SERVICE_NAME=$(service) -t $(service):latest .
