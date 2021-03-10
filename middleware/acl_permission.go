@@ -15,7 +15,7 @@ import (
 
 func (m *Middleware) checkACLPermissionFromContext(ctx context.Context, permissionCode string) (*candishared.TokenClaim, error) {
 	tokenClaim := candishared.ParseTokenClaimFromContext(ctx)
-	role, err := m.aclPermissionChecker.CheckPermission(ctx, tokenClaim.Subject, permissionCode)
+	role, err := m.ACLPermissionChecker.CheckPermission(ctx, tokenClaim.Subject, permissionCode)
 	if err != nil {
 		return tokenClaim, err
 	}

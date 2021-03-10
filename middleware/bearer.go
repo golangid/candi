@@ -32,7 +32,7 @@ func (m *Middleware) Bearer(ctx context.Context, tokenString string) (*candishar
 		}, nil
 	}
 
-	tokenClaim, err := m.tokenValidator.ValidateToken(ctx, tokenString)
+	tokenClaim, err := m.TokenValidator.ValidateToken(ctx, tokenString)
 	if err != nil {
 		return nil, err
 	}

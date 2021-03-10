@@ -7,13 +7,22 @@ import (
 // Dependency base
 type Dependency interface {
 	GetMiddleware() interfaces.Middleware
+	SetMiddleware(mw interfaces.Middleware)
+
 	GetBroker() interfaces.Broker
+	SetBroker(i interfaces.Broker)
+
 	GetSQLDatabase() interfaces.SQLDatabase
 	GetMongoDatabase() interfaces.MongoDatabase
 	GetRedisPool() interfaces.RedisPool
+
 	GetKey() interfaces.RSAKey
+	SetKey(i interfaces.RSAKey)
+
 	GetValidator() interfaces.Validator
-	GetExtended() map[string]interface{}
+	SetValidator(v interfaces.Validator)
+
+	GetExtended(key string) interface{}
 	AddExtended(key string, value interface{})
 }
 
@@ -101,8 +110,14 @@ func InitDependency(opts ...Option) Dependency {
 func (d *deps) GetMiddleware() interfaces.Middleware {
 	return d.mw
 }
+func (d *deps) SetMiddleware(mw interfaces.Middleware) {
+	d.mw = mw
+}
 func (d *deps) GetBroker() interfaces.Broker {
 	return d.broker
+}
+func (d *deps) SetBroker(b interfaces.Broker) {
+	d.broker = b
 }
 func (d *deps) GetSQLDatabase() interfaces.SQLDatabase {
 	return d.sqlDB
@@ -116,11 +131,17 @@ func (d *deps) GetRedisPool() interfaces.RedisPool {
 func (d *deps) GetKey() interfaces.RSAKey {
 	return d.key
 }
+func (d *deps) SetKey(i interfaces.RSAKey) {
+	d.key = i
+}
 func (d *deps) GetValidator() interfaces.Validator {
 	return d.validator
 }
-func (d *deps) GetExtended() map[string]interface{} {
-	return d.extended
+func (d *deps) SetValidator(v interfaces.Validator) {
+	d.validator = v
+}
+func (d *deps) GetExtended(key string) interface{} {
+	return d.extended[key]
 }
 func (d *deps) AddExtended(key string, value interface{}) {
 	if d.extended != nil {

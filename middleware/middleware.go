@@ -11,15 +11,15 @@ import (
 
 // Middleware impl
 type Middleware struct {
-	tokenValidator       interfaces.TokenValidator
-	aclPermissionChecker interfaces.ACLPermissionChecker
+	TokenValidator       interfaces.TokenValidator
+	ACLPermissionChecker interfaces.ACLPermissionChecker
 	authTypeCheckerFunc  map[string]func(context.Context, string) (*candishared.TokenClaim, error)
 }
 
 // NewMiddleware create new middleware instance
 func NewMiddleware(tokenValidator interfaces.TokenValidator, aclPermissionChecker interfaces.ACLPermissionChecker) *Middleware {
 	mw := &Middleware{
-		tokenValidator: tokenValidator, aclPermissionChecker: aclPermissionChecker,
+		TokenValidator: tokenValidator, ACLPermissionChecker: aclPermissionChecker,
 	}
 
 	mw.authTypeCheckerFunc = map[string]func(context.Context, string) (*candishared.TokenClaim, error){
