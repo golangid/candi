@@ -6,152 +6,93 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
-	"pkg.agungdp.dev/candi/codebase/interfaces"
 	"pkg.agungdp.dev/candi/tracer"
 )
 
-// RedisCache redis
+// RedisCache redis implement interfaces.Cache
 type RedisCache struct {
 	read, write *redis.Pool
 }
 
 // NewRedisCache constructor
-func NewRedisCache(read, write *redis.Pool) interfaces.Cache {
+func NewRedisCache(read, write *redis.Pool) *RedisCache {
 	return &RedisCache{read: read, write: write}
 }
 
 // Get method
 func (r *RedisCache) Get(ctx context.Context, key string) (data []byte, err error) {
-	opName := "redis:get"
+	trace := tracer.StartTrace(ctx, "redis:get")
+	defer func() { trace.SetError(err); tracer.Log(trace.Context(), "result", data); trace.Finish() }()
 
-	// set tracer
-	tracer := tracer.StartTrace(ctx, opName)
-	defer tracer.Finish()
+	trace.SetTag("db.statement", "GET")
+	trace.SetTag("db.key", key)
 
-	tag := tracer.Tags()
-	tag["db.statement"] = "GET"
-	tag["db.key"] = key
-
-	// set client
 	cl := r.read.Get()
 	defer cl.Close()
 
-	data, err = redis.Bytes(cl.Do("GET", key))
-	if err != nil {
-		tracer.SetError(err)
-	}
-
-	return
+	return redis.Bytes(cl.Do("GET", key))
 }
 
 // GetKeys method
-func (r *RedisCache) GetKeys(ctx context.Context, pattern string) ([]string, error) {
-	opName := "redis:get_keys"
+func (r *RedisCache) GetKeys(ctx context.Context, pattern string) (data []string, err error) {
+	trace := tracer.StartTrace(ctx, "redis:get_keys")
+	defer func() { trace.SetError(err); tracer.Log(trace.Context(), "result", data); trace.Finish() }()
 
-	// set tracer
-	tracer := tracer.StartTrace(ctx, opName)
-	defer tracer.Finish()
+	trace.SetTag("db.statement", "KEYS")
+	trace.SetTag("db.key", pattern)
 
-	tag := tracer.Tags()
-	tag["db.statement"] = "KEYS"
-	tag["db.key"] = pattern
-
-	// set client
 	cl := r.read.Get()
 	defer cl.Close()
 
-	var datas []string
-	var err error
-	datas, err = redis.Strings(cl.Do("KEYS", fmt.Sprintf("%s*", pattern)))
-	if err != nil {
-		tracer.SetError(err)
-		return datas, err
-	}
-
-	return datas, nil
+	return redis.Strings(cl.Do("KEYS", fmt.Sprintf("%s*", pattern)))
 }
 
 // Set method
 func (r *RedisCache) Set(ctx context.Context, key string, value interface{}, expire time.Duration) (err error) {
-	opName := "redis:set"
+	trace := tracer.StartTrace(ctx, "redis:set")
+	defer func() { trace.SetError(err); trace.Finish() }()
 
-	// set tracer
-	trace := tracer.StartTrace(ctx, opName)
-	defer func() {
-		if err != nil {
-			trace.SetError(err)
-		}
-		trace.Finish()
-	}()
+	trace.SetTag("db.statement", "SET")
+	trace.SetTag("db.key", key)
+	trace.SetTag("db.expired", expire.String())
 
-	tag := trace.Tags()
-	tag["db.statement"] = "SET"
-	tag["db.key"] = key
-	tag["db.expired"] = expire.String()
-
-	// set client
 	cl := r.write.Get()
 	defer cl.Close()
 
-	_, err = cl.Do("SET", key, value)
-	if err != nil {
+	if _, err = cl.Do("SET", key, value); err != nil {
 		return
 	}
-
-	_, err = cl.Do("EXPIRE", key, int(expire.Seconds()))
-	if err != nil {
+	if _, err = cl.Do("EXPIRE", key, int(expire.Seconds())); err != nil {
 		return
 	}
-
 	return nil
 }
 
 // Exists method
-func (r RedisCache) Exists(ctx context.Context, key string) (bool, error) {
-	opName := "redis:exists"
+func (r RedisCache) Exists(ctx context.Context, key string) (exist bool, err error) {
+	trace := tracer.StartTrace(ctx, "redis:exists")
+	defer func() { trace.SetError(err); tracer.Log(trace.Context(), "result", exist); trace.Finish() }()
 
-	// set tracer
-	tracer := tracer.StartTrace(ctx, opName)
-	defer tracer.Finish()
+	trace.SetTag("db.statement", "EXISTS")
+	trace.SetTag("db.key", key)
 
-	tag := tracer.Tags()
-	tag["db.statement"] = "EXISTS"
-	tag["db.key"] = key
-
-	// set client
 	cl := r.read.Get()
 	defer cl.Close()
 
-	ok, err := redis.Bool(cl.Do("EXISTS", key))
-	if err != nil {
-		tracer.SetError(err)
-		return ok, err
-	}
-
-	return ok, nil
+	return redis.Bool(cl.Do("EXISTS", key))
 }
 
 // Delete method
-func (r *RedisCache) Delete(ctx context.Context, key string) error {
-	opName := "redis:delete"
+func (r *RedisCache) Delete(ctx context.Context, key string) (err error) {
+	trace := tracer.StartTrace(ctx, "redis:delete")
+	defer func() { trace.SetError(err); trace.Finish() }()
 
-	// set tracer
-	tracer := tracer.StartTrace(ctx, opName)
-	defer tracer.Finish()
+	trace.SetTag("db.statement", "DEL")
+	trace.SetTag("db.key", key)
 
-	tag := tracer.Tags()
-	tag["db.statement"] = "DEL"
-	tag["db.key"] = key
-
-	// set client
 	cl := r.write.Get()
 	defer cl.Close()
 
-	_, err := cl.Do("DEL", key)
-	if err != nil {
-		tracer.SetError(err)
-		return err
-	}
-
+	_, err = cl.Do("DEL", key)
 	return nil
 }
