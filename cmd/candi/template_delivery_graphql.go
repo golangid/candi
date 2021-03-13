@@ -54,6 +54,8 @@ package graphqlhandler
 
 import (
 	"context"
+	
+	shareddomain "{{.PackagePrefix}}/pkg/shared/domain"
 
 	"{{.LibraryName}}/tracer"
 )
@@ -83,20 +85,47 @@ func (q *queryResolver) GetAll{{clean (upper .ModuleName)}}(ctx context.Context,
 		Meta: meta, Data: data,
 	}, nil
 }
+
+// GetDetail{{clean (upper .ModuleName)}} resolver
+func (q *queryResolver) GetDetail{{clean (upper .ModuleName)}}(ctx context.Context, input struct{ ID string }) (data shareddomain.{{clean (upper .ModuleName)}}, err error) {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:GetDetail{{clean (upper .ModuleName)}}")
+	defer trace.Finish()
+	ctx = trace.Context()
+
+	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
+
+	return q.root.uc.GetDetail{{clean (upper .ModuleName)}}(ctx, input.ID)
+}
+
 `
 	deliveryGraphqlMutationTemplate = `// {{.Header}}
 
 package graphqlhandler
 
-import "context"
+import (
+	"context"
+	
+	shareddomain "{{.PackagePrefix}}/pkg/shared/domain"
+
+	"{{.LibraryName}}/tracer"
+)
 
 type mutationResolver struct {
 	root *GraphQLHandler
 }
 
-// Hello resolver
-func (m *mutationResolver) Hello(ctx context.Context) (string, error) {
-	return "Hello", nil
+// Save{{clean (upper .ModuleName)}} resolver
+func (m *mutationResolver) Save{{clean (upper .ModuleName)}}(ctx context.Context, input struct{ Data shareddomain.{{clean (upper .ModuleName)}} }) (ok string, err error) {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:Save{{clean (upper .ModuleName)}}")
+	defer trace.Finish()
+	ctx = trace.Context()
+
+	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
+
+	if err := m.root.uc.Save{{clean (upper .ModuleName)}}(ctx, &input.Data); err != nil {
+		return ok, err
+	}
+	return "Success", nil
 }	
 `
 	deliveryGraphqlSubscriptionTemplate = `// {{.Header}}
@@ -114,7 +143,7 @@ func (s *subscriptionResolver) Hello(ctx context.Context) <-chan string {
 	output := make(chan string)
 
 	go func() {
-		output <- "Hello"
+		output <- "Hello from {{clean (upper .ModuleName)}}"
 	}()
 
 	return output
@@ -200,10 +229,11 @@ type Subscription {
 # {{clean (upper .ModuleName)}}Module Resolver Area
 type {{clean (upper .ModuleName)}}QueryResolver {
 	get_all_{{clean .ModuleName}}(filter: FilterListInputResolver): {{clean (upper .ModuleName)}}ListResolver!
+	get_detail_{{clean .ModuleName}}(id: String!): {{clean (upper .ModuleName)}}Resolver!
 }
 
 type {{clean (upper .ModuleName)}}MutationResolver {
-	hello(): String!
+	save_{{clean .ModuleName}}(data: {{clean (upper .ModuleName)}}InputResolver!): String!
 }
 
 type {{clean (upper .ModuleName)}}SubscriptionResolver {
@@ -216,6 +246,10 @@ type {{clean (upper .ModuleName)}}ListResolver {
 }
 
 type {{clean (upper .ModuleName)}}Resolver {
+	id: String!
+}
+
+input {{clean (upper .ModuleName)}}InputResolver {
 	id: String!
 }
 `

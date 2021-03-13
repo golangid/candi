@@ -61,10 +61,10 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 		TargetDir: "pkg/", IsDir: true, DataSource: srvConfig,
 	}
 	apiProtoStructure := FileStructure{
-		TargetDir: "proto/", IsDir: true,
+		TargetDir: "proto/", IsDir: true, SkipFunc: func() bool { return !srvConfig.GRPCHandler },
 	}
 	apiGraphQLStructure := FileStructure{
-		TargetDir: "graphql/", IsDir: true,
+		TargetDir: "graphql/", IsDir: true, SkipFunc: func() bool { return !srvConfig.GraphQLHandler },
 	}
 
 	moduleStructure := FileStructure{
@@ -88,7 +88,7 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 			{
 				TargetDir: "delivery/", IsDir: true,
 				Childs: []FileStructure{
-					{TargetDir: "graphqlhandler/", IsDir: true,
+					{TargetDir: "graphqlhandler/", IsDir: true, SkipFunc: func() bool { return !srvConfig.GraphQLHandler },
 						Childs: []FileStructure{
 							{FromTemplate: true, DataSource: mod, Source: deliveryGraphqlRootTemplate, FileName: "root_resolver.go"},
 							{FromTemplate: true, DataSource: mod, Source: deliveryGraphqlQueryTemplate, FileName: "query_resolver.go"},
@@ -96,20 +96,20 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 							{FromTemplate: true, DataSource: mod, Source: deliveryGraphqlSubscriptionTemplate, FileName: "subscription_resolver.go"},
 							{FromTemplate: true, DataSource: mod, Source: deliveryGraphqlFieldResolverTemplate, FileName: "field_serializer_resolver.go"},
 						}},
-					{TargetDir: "grpchandler/", IsDir: true,
+					{TargetDir: "grpchandler/", IsDir: true, SkipFunc: func() bool { return !srvConfig.GRPCHandler },
 						Childs: []FileStructure{
 							{FromTemplate: true, DataSource: mod, Source: deliveryGRPCTemplate, FileName: "grpchandler.go"},
 						}},
-					{TargetDir: "resthandler/", IsDir: true,
+					{TargetDir: "resthandler/", IsDir: true, SkipFunc: func() bool { return !srvConfig.RestHandler },
 						Childs: []FileStructure{
 							{FromTemplate: true, DataSource: mod, Source: deliveryRestTemplate, FileName: "resthandler.go"},
 						}},
 					{TargetDir: "workerhandler/", IsDir: true,
 						Childs: []FileStructure{
-							{FromTemplate: true, DataSource: mod, Source: deliveryKafkaTemplate, FileName: "kafka_handler.go"},
-							{FromTemplate: true, DataSource: mod, Source: deliveryRedisTemplate, FileName: "redis_handler.go"},
-							{FromTemplate: true, DataSource: mod, Source: deliveryCronTemplate, FileName: "cron_handler.go"},
-							{FromTemplate: true, DataSource: mod, Source: deliveryTaskQueueTemplate, FileName: "taskqueue_handler.go"},
+							{FromTemplate: true, DataSource: mod, Source: deliveryKafkaTemplate, FileName: "kafka_handler.go", SkipFunc: func() bool { return !srvConfig.KafkaHandler }},
+							{FromTemplate: true, DataSource: mod, Source: deliveryRedisTemplate, FileName: "redis_handler.go", SkipFunc: func() bool { return !srvConfig.RedisSubsHandler }},
+							{FromTemplate: true, DataSource: mod, Source: deliveryCronTemplate, FileName: "cron_handler.go", SkipFunc: func() bool { return !srvConfig.SchedulerHandler }},
+							{FromTemplate: true, DataSource: mod, Source: deliveryTaskQueueTemplate, FileName: "taskqueue_handler.go", SkipFunc: func() bool { return !srvConfig.TaskQueueHandler }},
 						}},
 				},
 			},
@@ -303,8 +303,12 @@ func monorepoGenerator(flagParam flagParameter) {
 }
 
 func execGenerator(fl FileStructure) {
-	if fl.Skip || (fl.SkipFunc != nil && fl.SkipFunc()) {
+	if fl.Skip {
 		goto execChild
+	}
+
+	if fl.SkipFunc != nil && fl.SkipFunc() {
+		return
 	}
 
 	if _, err := os.Stat(fl.TargetDir); os.IsExist(err) {
