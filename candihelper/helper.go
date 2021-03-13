@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -300,4 +302,11 @@ func MustParseEnv(target interface{}) {
 	if mErrs.HasError() {
 		panic("Environment error: \n" + mErrs.Error())
 	}
+}
+
+// GetFuncName get function name in string
+func GetFuncName(fn interface{}) string {
+	defer func() { recover() }()
+	handlerName := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
+	return strings.TrimSuffix(strings.TrimPrefix(filepath.Ext(handlerName), "."), "-fm") // if `fn` is method, trim `-fm`
 }

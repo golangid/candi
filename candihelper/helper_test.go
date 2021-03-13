@@ -188,3 +188,8 @@ func TestParseToQueryParam(t *testing.T) {
 	want := "filter=product&filter[query]=kulkas&filter[skuNo]=sku001&page=1&limit=10"
 	assert.Equal(t, want, ParseToQueryParam(&param))
 }
+
+func TestGetFuncName(t *testing.T) {
+	assert.Equal(t, "MustParseEnv", GetFuncName(MustParseEnv))
+	assert.Equal(t, "LoadAllFile", GetFuncName(LoadAllFile))
+}
