@@ -90,8 +90,7 @@ func main() {
 }
 
 func selectScope(flagParam flagParameter, scope string) {
-
-	switch flagParam.scopeFlag {
+	switch scope {
 	case initMonorepo: // 3
 		monorepoGenerator(flagParam)
 	case initMonorepoService: // 4
