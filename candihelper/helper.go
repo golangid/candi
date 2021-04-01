@@ -182,10 +182,16 @@ func PtrToFloat(ptr *float64) (f float64) {
 	return
 }
 
-// ToAsiaJakartaTime convert time location to AsiaJakarta local time
+// ToAsiaJakartaTime convert only time location to AsiaJakarta local time
 func ToAsiaJakartaTime(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(),
 		t.Nanosecond(), AsiaJakartaLocalTime)
+}
+
+// ToUTC convert only location to UTC
+func ToUTC(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(),
+		t.Nanosecond(), time.UTC)
 }
 
 // ToBytes convert all types to bytes

@@ -2,11 +2,11 @@ package publisher
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/Shopify/sarama"
+	"pkg.agungdp.dev/candi/candihelper"
 	"pkg.agungdp.dev/candi/logger"
 	"pkg.agungdp.dev/candi/tracer"
 )
@@ -35,26 +35,18 @@ func (p *KafkaPublisher) PublishMessage(ctx context.Context, topic, key string, 
 	trace := tracer.StartTrace(ctx, "kafka:publish_message")
 	defer func() {
 		if r := recover(); r != nil {
-			tracer.SetError(ctx, fmt.Errorf("%v", r))
+			err = fmt.Errorf("%v", r)
 		}
+		trace.SetError(err)
 		trace.Finish()
 	}()
 
-	var payload []byte
-
-	switch d := data.(type) {
-	case string:
-		payload = []byte(d)
-	case []byte:
-		payload = d
-	default:
-		payload, _ = json.Marshal(data)
-	}
+	payload := candihelper.ToBytes(data)
 
 	// set tracer tag
 	trace.SetTag("topic", topic)
 	trace.SetTag("key", key)
-	trace.SetTag("message", string(payload))
+	tracer.Log(trace.Context(), "message", payload)
 
 	msg := &sarama.ProducerMessage{
 		Topic:     topic,
@@ -63,9 +55,5 @@ func (p *KafkaPublisher) PublishMessage(ctx context.Context, topic, key string, 
 		Timestamp: time.Now(),
 	}
 	_, _, err = p.producer.SendMessage(msg)
-	if err != nil {
-		tracer.SetError(ctx, err)
-	}
-
 	return
 }
