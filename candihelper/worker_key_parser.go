@@ -2,14 +2,11 @@ package candihelper
 
 import (
 	"encoding/json"
-	"fmt"
-	"strings"
 )
 
 type jobKey struct {
 	JobName  string `json:"jobName"`
 	Interval string `json:"interval,omitempty"`
-	MaxRetry int    `json:"maxRetry,omitempty"`
 }
 
 // CronJobKeyToString helper
@@ -37,17 +34,21 @@ func ParseCronJobKey(str string) (string, string) {
 	return cronKey.JobName, cronKey.Interval
 }
 
+// RedisMessage model for redis subscriber key
+type RedisMessage struct {
+	HandlerName string `json:"h"`
+	Message     string `json:"message"`
+}
+
 // BuildRedisPubSubKeyTopic helper
-func BuildRedisPubSubKeyTopic(handlerName string, payload interface{}) string {
-	return fmt.Sprintf("%s~%s", strings.Replace(handlerName, "~", "", -1), ToBytes(payload))
+func BuildRedisPubSubKeyTopic(handlerName string, message interface{}) string {
+	key, _ := json.Marshal(RedisMessage{HandlerName: handlerName, Message: string(ToBytes(message))})
+	return string(key)
 }
 
 // ParseRedisPubSubKeyTopic helper
 func ParseRedisPubSubKeyTopic(str string) (handlerName, messageData string) {
-	defer func() { recover() }()
-
-	split := strings.Split(str, "~")
-	handlerName = split[0]
-	messageData = strings.Join(split[1:], "~")
-	return
+	var redisMessage RedisMessage
+	json.Unmarshal([]byte(str), &redisMessage)
+	return redisMessage.HandlerName, redisMessage.Message
 }

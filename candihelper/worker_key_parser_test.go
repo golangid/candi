@@ -7,10 +7,10 @@ import (
 )
 
 func TestRedisPubSubKeyTopic(t *testing.T) {
-	got := BuildRedisPubSubKeyTopic("scheduled-notif", "test~123")
-	assert.Equal(t, "scheduled-notif~test~123", got)
+	got := BuildRedisPubSubKeyTopic("scheduled-notif", map[string]string{"test": "testing"})
+	assert.Equal(t, "{\"h\":\"scheduled-notif\",\"message\":\"{\\\"test\\\":\\\"testing\\\"}\"}", got)
 
-	prefix, suffix := ParseRedisPubSubKeyTopic(got)
-	assert.Equal(t, "scheduled-notif", prefix)
-	assert.Equal(t, "test~123", suffix)
+	handlerName, message := ParseRedisPubSubKeyTopic(got)
+	assert.Equal(t, "scheduled-notif", handlerName)
+	assert.Equal(t, "{\"test\":\"testing\"}", message)
 }
