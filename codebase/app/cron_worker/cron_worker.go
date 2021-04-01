@@ -46,12 +46,13 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 			var handlerGroup types.WorkerHandlerGroup
 			h.MountHandlers(&handlerGroup)
 			for _, handler := range handlerGroup.Handlers {
-				funcName, interval := candihelper.ParseCronJobKey(handler.Pattern)
+				funcName, args, interval := candihelper.ParseCronJobKey(handler.Pattern)
 
 				var job Job
 				job.HandlerName = funcName
 				job.HandlerFunc = handler.HandlerFunc
 				job.Interval = interval
+				job.Params = args
 				if err := AddJob(job); err != nil {
 					panic(fmt.Errorf(`Cron Worker: "%s" %v`, interval, err))
 				}

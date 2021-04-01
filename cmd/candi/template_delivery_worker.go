@@ -80,7 +80,7 @@ func NewCronHandler(uc usecase.{{clean (upper .ModuleName)}}Usecase, validator i
 
 // MountHandlers mount handler group
 func (h *CronHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	group.Add(candihelper.CronJobKeyToString("{{.ModuleName}}-scheduler", "10s"), h.handle{{clean (upper .ModuleName)}})
+	group.Add(candihelper.CronJobKeyToString("{{.ModuleName}}-scheduler", "message", "10s"), h.handle{{clean (upper .ModuleName)}})
 }
 
 func (h *CronHandler) handle{{clean (upper .ModuleName)}}(ctx context.Context, message []byte) error {
@@ -88,7 +88,7 @@ func (h *CronHandler) handle{{clean (upper .ModuleName)}}(ctx context.Context, m
 	defer trace.Finish()
 	ctx = trace.Context()
 
-	fmt.Println("cron: execute in module {{.ModuleName}}")
+	fmt.Println("cron: execute in module {{.ModuleName}}, message:", string(message))
 	return nil
 }
 `

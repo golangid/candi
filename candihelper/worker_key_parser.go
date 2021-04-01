@@ -4,9 +4,17 @@ import (
 	"encoding/json"
 )
 
-type jobKey struct {
+// CronJobKey model
+type CronJobKey struct {
 	JobName  string `json:"jobName"`
-	Interval string `json:"interval,omitempty"`
+	Args     string `json:"args"`
+	Interval string `json:"interval"`
+}
+
+// String implement stringer
+func (c CronJobKey) String() string {
+	b, _ := json.Marshal(c)
+	return string(b)
 }
 
 // CronJobKeyToString helper
@@ -20,18 +28,17 @@ Allowed interval:
 	- 23:00@weekly, will repeated at 23:00 every week
 	- 23:00@10s, will repeated at 23:00 and next repeat every 10 seconds
 */
-func CronJobKeyToString(jobName string, interval string) string {
-	b, _ := json.Marshal(jobKey{
-		JobName: jobName, Interval: interval,
-	})
-	return string(b)
+func CronJobKeyToString(jobName, args, interval string) string {
+	return CronJobKey{
+		JobName: jobName, Args: args, Interval: interval,
+	}.String()
 }
 
 // ParseCronJobKey helper
-func ParseCronJobKey(str string) (string, string) {
-	var cronKey jobKey
+func ParseCronJobKey(str string) (jobName, args, interval string) {
+	var cronKey CronJobKey
 	json.Unmarshal([]byte(str), &cronKey)
-	return cronKey.JobName, cronKey.Interval
+	return cronKey.JobName, cronKey.Args, cronKey.Interval
 }
 
 // RedisMessage model for redis subscriber key
