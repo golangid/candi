@@ -61,6 +61,7 @@ func (m *Middleware) HTTPBearerAuth(next http.Handler) http.Handler {
 				trace.SetError(err)
 				return err
 			}
+			trace.Log("token_claim", tokenClaim)
 			ctx = candishared.SetToContext(ctx, candishared.ContextKeyTokenClaim, tokenClaim)
 			return nil
 		}(); err != nil {
@@ -76,7 +77,6 @@ func (m *Middleware) HTTPBearerAuth(next http.Handler) http.Handler {
 func (m *Middleware) GraphQLBearerAuth(ctx context.Context) context.Context {
 	trace := tracer.StartTrace(ctx, "Middleware:GraphQLBearerAuth")
 	defer trace.Finish()
-	tags := trace.Tags()
 
 	headers := ctx.Value(candishared.ContextKeyHTTPHeader).(http.Header)
 	authorization := headers.Get("Authorization")
@@ -93,7 +93,6 @@ func (m *Middleware) GraphQLBearerAuth(ctx context.Context) context.Context {
 			},
 		})
 	}
-	tags["token"] = tokenValue
 
 	tokenClaim, err := m.Bearer(trace.Context(), tokenValue)
 	if err != nil {
@@ -107,7 +106,7 @@ func (m *Middleware) GraphQLBearerAuth(ctx context.Context) context.Context {
 		})
 	}
 
-	tags["token_claim"] = tokenClaim
+	trace.Log("token_claim", tokenClaim)
 	return candishared.SetToContext(ctx, candishared.ContextKeyTokenClaim, tokenClaim)
 }
 
@@ -137,5 +136,6 @@ func (m *Middleware) GRPCBearerAuth(ctx context.Context) context.Context {
 		panic(err)
 	}
 
+	trace.Log("token_claim", tokenClaim)
 	return candishared.SetToContext(ctx, candishared.ContextKeyTokenClaim, tokenClaim)
 }

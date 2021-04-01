@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"pkg.agungdp.dev/candi"
 	"pkg.agungdp.dev/candi/candihelper"
+	"pkg.agungdp.dev/candi/candishared"
 	"pkg.agungdp.dev/candi/codebase/interfaces"
 	"pkg.agungdp.dev/candi/config/env"
 )
@@ -87,6 +88,10 @@ type tracerImpl struct {
 
 // StartTrace starting trace child span from parent span
 func StartTrace(ctx context.Context, operationName string) interfaces.Tracer {
+	if candishared.GetValueFromContext(ctx, skipTracer) != nil {
+		return &tracerImpl{ctx: ctx}
+	}
+
 	span := opentracing.SpanFromContext(ctx)
 	if span == nil {
 		// init new span
@@ -114,6 +119,10 @@ func (t *tracerImpl) Tags() map[string]interface{} {
 
 // SetTag set tags in tracer span
 func (t *tracerImpl) SetTag(key string, value interface{}) {
+	if t.span == nil {
+		return
+	}
+
 	if t.tags == nil {
 		t.tags = make(map[string]interface{})
 	}
@@ -122,6 +131,9 @@ func (t *tracerImpl) SetTag(key string, value interface{}) {
 
 // InjectHTTPHeader to continue tracer to http request host
 func (t *tracerImpl) InjectHTTPHeader(req *http.Request) {
+	if t.span == nil {
+		return
+	}
 	ext.SpanKindRPCClient.Set(t.span)
 	t.span.Tracer().Inject(
 		t.span.Context(),
@@ -132,6 +144,10 @@ func (t *tracerImpl) InjectHTTPHeader(req *http.Request) {
 
 // InjectGRPCMetaData to continue tracer to grpc metadata context
 func (t *tracerImpl) InjectGRPCMetadata(md metadata.MD) {
+	if t.span == nil {
+		return
+	}
+
 	ext.SpanKindRPCClient.Set(t.span)
 	t.span.Tracer().Inject(
 		t.span.Context(),
@@ -145,10 +161,18 @@ func (t *tracerImpl) SetError(err error) {
 	SetError(t.ctx, err)
 }
 
+// SetError log data
+func (t *tracerImpl) Log(key string, value interface{}) {
+	Log(t.ctx, key, value)
+}
+
 // Finish trace with additional tags data, must in deferred function
 func (t *tracerImpl) Finish(additionalTags ...map[string]interface{}) {
-	defer t.span.Finish()
+	if t.span == nil {
+		return
+	}
 
+	defer t.span.Finish()
 	if additionalTags != nil && t.tags == nil {
 		t.tags = make(map[string]interface{})
 	}
@@ -295,4 +319,11 @@ func (mrw GRPCMetadataReaderWriter) Set(key, value string) {
 	// headers should be lowercase
 	k := strings.ToLower(key)
 	mrw[k] = append(mrw[k], value)
+}
+
+var skipTracer candishared.ContextKey = "nooptracer"
+
+// SkipTraceContext inject to context for skip span tracer
+func SkipTraceContext(ctx context.Context) context.Context {
+	return candishared.SetToContext(ctx, skipTracer, struct{}{})
 }

@@ -7,6 +7,7 @@ import (
 
 	"pkg.agungdp.dev/candi/candishared"
 	"pkg.agungdp.dev/candi/codebase/interfaces"
+	"pkg.agungdp.dev/candi/config/env"
 )
 
 // Middleware impl
@@ -35,6 +36,10 @@ func NewMiddleware(tokenValidator interfaces.TokenValidator, aclPermissionChecke
 }
 
 func extractAuthType(prefix, authorization string) (string, error) {
+	if env.BaseEnv().NoAuth {
+		return "", nil
+	}
+
 	authValues := strings.Split(authorization, " ")
 	if len(authValues) == 2 && strings.ToLower(authValues[0]) == prefix {
 		return authValues[1], nil

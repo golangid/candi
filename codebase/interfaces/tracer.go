@@ -15,5 +15,6 @@ type Tracer interface {
 	InjectHTTPHeader(req *http.Request)
 	InjectGRPCMetadata(md metadata.MD)
 	SetError(err error)
+	Log(key string, value interface{})
 	Finish(additionalTags ...map[string]interface{})
 }

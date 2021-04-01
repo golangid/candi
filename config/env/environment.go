@@ -167,6 +167,9 @@ func Load(serviceName string) {
 		env.DebugMode = true
 	}
 	env.NoAuth, _ = strconv.ParseBool(os.Getenv("NO_AUTH"))
+	if env.NoAuth {
+		fmt.Println("\x1b[33;1mWARNING: env NO_AUTH is true (basic & bearer auth middleware is inactive)\x1b[0m")
+	}
 
 	env.BasicAuthUsername, ok = os.LookupEnv("BASIC_AUTH_USERNAME")
 	if !ok {
