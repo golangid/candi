@@ -9,17 +9,20 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"time"
 
-	"github.com/gojektech/heimdall"
-	"github.com/gojektech/heimdall/httpclient"
+	"github.com/gojektech/heimdall/v6"
+	"github.com/gojektech/heimdall/v6/hystrix"
 	"pkg.agungdp.dev/candi/tracer"
 )
 
 // httpRequestImpl struct
 type httpRequestImpl struct {
-	client *httpclient.Client
+	client *hystrix.Client
 
+	breakerName               string
+	timeout                   time.Duration
 	retries                   int
 	sleepBetweenRetry         time.Duration
 	tlsConfig                 *tls.Config
@@ -57,6 +60,20 @@ func HTTPRequestSetHTTPErrorCodeThreshold(minHTTPStatusCode int) HTTPRequestOpti
 	}
 }
 
+// HTTPRequestSetTimeout option func
+func HTTPRequestSetTimeout(timeout time.Duration) HTTPRequestOption {
+	return func(h *httpRequestImpl) {
+		h.timeout = timeout
+	}
+}
+
+// HTTPRequestSetBreakerName option func
+func HTTPRequestSetBreakerName(breakerName string) HTTPRequestOption {
+	return func(h *httpRequestImpl) {
+		h.breakerName = breakerName
+	}
+}
+
 // HTTPRequest interface
 type HTTPRequest interface {
 	Do(context context.Context, method, url string, reqBody []byte, headers map[string]string) ([]byte, int, error)
@@ -70,37 +87,36 @@ func NewHTTPRequest(opts ...HTTPRequestOption) HTTPRequest {
 	// set default value
 	httpReq.retries = 5
 	httpReq.sleepBetweenRetry = 500 * time.Millisecond
-	httpReq.minHTTPErrorCodeThreshold = http.StatusInternalServerError
+	httpReq.minHTTPErrorCodeThreshold = http.StatusBadRequest
+	httpReq.timeout = 10 * time.Second
+	httpReq.breakerName = "default"
 
 	for _, o := range opts {
 		o(httpReq)
 	}
 
 	// define a maximum jitter interval
-	maximumJitterInterval := 5 * time.Millisecond
-
+	maximumJitterInterval := 10 * time.Millisecond
 	// create a backoff
 	backoff := heimdall.NewConstantBackoff(httpReq.sleepBetweenRetry, maximumJitterInterval)
-
 	// create a new retry mechanism with the backoff
 	retrier := heimdall.NewRetrier(backoff)
 
-	// set http timeout
-	timeout := 10000 * time.Millisecond
-
-	heimdallClientOpt := []httpclient.Option{
-		httpclient.WithHTTPTimeout(timeout),
-		httpclient.WithRetrier(retrier),
-		httpclient.WithRetryCount(httpReq.retries),
+	hystrixClientOpt := []hystrix.Option{
+		hystrix.WithHTTPTimeout(httpReq.timeout),
+		hystrix.WithRetrier(retrier),
+		hystrix.WithRetryCount(httpReq.retries),
+		hystrix.WithCommandName(httpReq.breakerName),
+		hystrix.WithFallbackFunc(httpReq.fallbackErr),
 	}
 	if httpReq.tlsConfig != nil {
-		heimdallClientOpt = append(heimdallClientOpt, httpclient.WithHTTPClient(&http.Client{
+		hystrixClientOpt = append(hystrixClientOpt, hystrix.WithHTTPClient(&http.Client{
 			Transport: &http.Transport{TLSClientConfig: httpReq.tlsConfig},
 		}))
 	}
 
 	// set http client
-	httpReq.client = httpclient.NewClient(heimdallClientOpt...)
+	httpReq.client = hystrix.NewClient(hystrixClientOpt...)
 	return httpReq
 }
 
@@ -129,12 +145,14 @@ func (request *httpRequestImpl) Do(ctx context.Context, method, url string, requ
 	}
 
 	trace.InjectHTTPHeader(req)
+	dumpRequest, _ := httputil.DumpRequest(req, false)
+	trace.SetTag("http.request", dumpRequest)
+	trace.SetTag("http.method", req.Method)
+	trace.SetTag("http.url", req.URL.String())
 	trace.SetTag("http.min_error_code", request.minHTTPErrorCodeThreshold)
 	trace.SetTag("http.retries", request.retries)
 	trace.SetTag("http.sleep_between_retry", request.sleepBetweenRetry)
-	trace.SetTag("http.headers", req.Header)
-	trace.SetTag("http.method", req.Method)
-	trace.SetTag("http.url", req.URL.String())
+	trace.SetTag("http.breaker_name", request.breakerName)
 	if requestBody != nil {
 		tracer.Log(ctx, "request.body", requestBody)
 	}
@@ -150,9 +168,10 @@ func (request *httpRequestImpl) Do(ctx context.Context, method, url string, requ
 	respBody, err = ioutil.ReadAll(resp.Body)
 	respCode = resp.StatusCode
 
+	dumpResponse, _ := httputil.DumpResponse(resp, false)
+	trace.SetTag("response.header", dumpResponse)
 	trace.SetTag("response.code", resp.StatusCode)
 	trace.SetTag("response.status", resp.Status)
-	trace.SetTag("response.header", resp.Header)
 	tracer.Log(ctx, "response.body", respBody)
 
 	if request.minHTTPErrorCodeThreshold != 0 && resp.StatusCode >= request.minHTTPErrorCodeThreshold {
@@ -162,8 +181,12 @@ func (request *httpRequestImpl) Do(ctx context.Context, method, url string, requ
 		if resp["message"] != "" {
 			err = errors.New(resp["message"])
 		}
-		return
 	}
-
 	return
+}
+
+func (request *httpRequestImpl) fallbackErr(err error) error {
+	// log error
+	// ...
+	return err
 }
