@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -16,68 +14,44 @@ import (
 
 func parseInput(flagParam *flagParameter) (headerConfig configHeader, srvConfig serviceConfig, modConfigs []moduleConfig, baseConfig config) {
 
-	logger := log.New(os.Stdout, "\x1b[32;1m[project generator]: \x1b[0m", log.Lmsgprefix)
-
-	reader := bufio.NewReader(os.Stdin)
 	serviceHandlers := make(map[string]bool)
 	workerHandlers := make(map[string]bool)
 	dependencies := make(map[string]bool)
 	var cmdInput string
 
 	scope, ok := scopeMap[flagParam.scopeFlag]
-	switch {
-	case scope == initService || scope == initMonorepoService:
-	inputServiceName:
-		logger.Printf("\033[1mPlease input service name:\033[0m")
-		fmt.Printf(">> ")
-		cmdInput, _ := reader.ReadString('\n')
-		headerConfig.ServiceName = strings.TrimRight(cmdInput, "\n")
-		_, err := os.Stat(headerConfig.ServiceName)
-		var errMessage string
-		if strings.TrimSpace(headerConfig.ServiceName) == "" {
-			errMessage = "Service name cannot empty"
-		}
-		if !os.IsNotExist(err) {
-			errMessage = "Folder already exists"
-		}
-		if errMessage != "" {
-			fmt.Printf(redFormat, errMessage+", try again")
-			cmdInput = ""
-			goto inputServiceName
-		}
+	switch scope {
+	case initService:
+		headerConfig.ServiceName = inputServiceName()
 
-	case scope == addModule || scope == addModuleMonorepoService:
+	case addModule:
 		if flagParam.serviceName != "" {
 			headerConfig.ServiceName = flagParam.serviceName
+		} else if flagParam.isMonorepo {
+		inputServiceNameModule:
+			logger.Printf("\033[1mPlease input service name to be added module(s):\033[0m")
+			fmt.Printf(">> ")
+			cmdInput, _ := reader.ReadString('\n')
+			headerConfig.ServiceName = strings.TrimRight(cmdInput, "\n")
 			_, err := os.Stat(flagParam.outputFlag + headerConfig.ServiceName)
+			var errMessage string
+			if strings.TrimSpace(headerConfig.ServiceName) == "" {
+				errMessage = "Service name cannot empty"
+			}
 			if os.IsNotExist(err) {
-				fmt.Printf(redFormat, fmt.Sprintf(`Service "%s" is not exist in "%s" directory`, headerConfig.ServiceName, flagParam.outputFlag))
-				os.Exit(1)
+				errMessage = fmt.Sprintf(`Service "%s" is not exist in "%s" directory`, headerConfig.ServiceName, flagParam.outputFlag)
 			}
-		} else {
-			if scope == addModuleMonorepoService {
-			inputServiceNameMonorepo:
-				logger.Printf("\033[1mPlease input service name to be added module(s):\033[0m")
-				fmt.Printf(">> ")
-				cmdInput, _ := reader.ReadString('\n')
-				headerConfig.ServiceName = strings.TrimRight(cmdInput, "\n")
-				_, err := os.Stat(flagParam.outputFlag + headerConfig.ServiceName)
-				var errMessage string
-				if strings.TrimSpace(headerConfig.ServiceName) == "" {
-					errMessage = "Service name cannot empty"
-				}
-				if os.IsNotExist(err) {
-					errMessage = fmt.Sprintf(`Service "%s" is not exist in "%s" directory`, headerConfig.ServiceName, flagParam.outputFlag)
-				}
-				if errMessage != "" {
-					fmt.Printf(redFormat, errMessage+", try again")
-					cmdInput = ""
-					goto inputServiceNameMonorepo
-				}
-				flagParam.serviceName = headerConfig.ServiceName
+			if errMessage != "" {
+				fmt.Printf(redFormat, errMessage+", try again")
+				cmdInput = ""
+				goto inputServiceNameModule
 			}
+			flagParam.validateServiceName()
 		}
+
 	}
+
+	flagParam.serviceName = headerConfig.ServiceName
 
 inputModules:
 	logger.Printf("\033[1mPlease input module names (separated by comma):\033[0m ")
@@ -315,4 +289,25 @@ func isWorkdirMonorepo() bool {
 	_, errSdk := ioutil.ReadDir("sdk/")
 	_, errService := ioutil.ReadDir("services/")
 	return (errSdk == nil) && (errService == nil)
+}
+
+func inputServiceName() (serviceName string) {
+	logger.Printf("\033[1mPlease input service name:\033[0m")
+	fmt.Printf(">> ")
+	cmdInput, _ := reader.ReadString('\n')
+	serviceName = strings.TrimRight(cmdInput, "\n")
+	_, err := os.Stat(serviceName)
+	var errMessage string
+	if strings.TrimSpace(serviceName) == "" {
+		errMessage = "Service name cannot empty"
+	}
+	if !os.IsNotExist(err) {
+		errMessage = "Folder already exists"
+	}
+	if errMessage != "" {
+		fmt.Printf(redFormat, errMessage+", try again")
+		cmdInput = ""
+		inputServiceName()
+	}
+	return
 }

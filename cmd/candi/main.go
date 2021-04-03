@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"runtime"
 	"strings"
@@ -20,7 +21,9 @@ func main() {
 		"6 for run multiple service in monorepo")
 	flag.BoolVar(&flagParam.initService, "init", false, "[project generator] init service")
 	flag.BoolVar(&flagParam.addModule, "add-module", false, "[project generator] add module in service")
+	flag.BoolVar(&flagParam.addHandler, "add-handler", false, "[project generator] add handler in delivery module in service")
 	flag.BoolVar(&flagParam.initMonorepo, "init-monorepo", false, "[project generator] init monorepo codebase")
+	flag.StringVar(&flagParam.monorepoProjectName, "monorepo-name", "monorepo", "[project generator] set monorepo project name (default 'monorepo')")
 	flag.StringVar(&flagParam.packagePrefixFlag, "packageprefix", "", "[project generator] define package prefix")
 	flag.BoolVar(&flagParam.withGoModFlag, "withgomod", true, "[project generator] generate go.mod or not")
 	flag.StringVar(&flagParam.protoOutputPkgFlag, "protooutputpkg", "", "[project generator] define generated proto output target (if using grpc), with prefix is your go.mod")
@@ -32,6 +35,9 @@ func main() {
 	flag.Parse()
 
 	tpl = template.New(flagParam.libraryNameFlag)
+	logger = log.New(os.Stdout, "\x1b[32;1m[project generator]: \x1b[0m", log.Lmsgprefix)
+	reader = bufio.NewReader(os.Stdin)
+	flagParam.isMonorepo = isWorkdirMonorepo()
 
 	switch {
 	case flagParam.version:
@@ -45,35 +51,41 @@ func main() {
 
 	case flagParam.initService:
 		flagParam.scopeFlag = "1"
-		if isWorkdirMonorepo() {
-			flagParam.parseInitMonorepoService()
+		if flagParam.isMonorepo {
+			flagParam.parseMonorepoFlag()
 		}
 		headerConfig, srvConfig, modConfigs, baseConfig := parseInput(&flagParam)
 		projectGenerator(flagParam, initService, headerConfig, srvConfig, modConfigs, baseConfig)
 
 	case flagParam.addModule:
 		flagParam.scopeFlag = "2"
-		if isWorkdirMonorepo() {
-			if flagParam.serviceName == "" {
-				fmt.Printf(redFormat, "missing service name, make sure to include '-service' flag")
+		if flagParam.isMonorepo {
+			if err := flagParam.parseMonorepoFlag(); err != nil {
+				fmt.Print(err.Error())
 				return
 			}
-			flagParam.parseAddModuleMonorepoService()
 		}
 		headerConfig, srvConfig, modConfigs, baseConfig := parseInput(&flagParam)
 		projectGenerator(flagParam, addModule, headerConfig, srvConfig, modConfigs, baseConfig)
 
+	case flagParam.addHandler:
+		flagParam.scopeFlag = "3"
+		if isWorkdirMonorepo() {
+			if err := flagParam.parseMonorepoFlag(); err != nil {
+				fmt.Print(err.Error())
+				return
+			}
+		}
+
 	default:
 	selectScope:
-		reader := bufio.NewReader(os.Stdin)
 		if flagParam.scopeFlag == "" {
 			fmt.Printf("\033[1mWhat do you want?\n" +
 				"1) Init service\n" +
 				"2) Add module(s)\n" +
-				"3) Init monorepo codebase\n" +
-				"4) Init service in monorepo\n" +
-				"5) Add module(s) service in monorepo\n" +
-				"6) Run multiple service in monorepo\033[0m\n>> ")
+				"3) Add handler(s)\n" +
+				"4) Init monorepo codebase\n" +
+				"5) Run multiple service in monorepo\033[0m\n>> ")
 			cmdInput, _ := reader.ReadString('\n')
 			cmdInput = strings.TrimRight(cmdInput, "\n")
 			flagParam.scopeFlag = cmdInput
@@ -86,26 +98,29 @@ func main() {
 			goto selectScope
 		}
 		selectScope(flagParam, scope)
+		return
 	}
+
 }
 
 func selectScope(flagParam flagParameter, scope string) {
 	switch scope {
-	case initMonorepo: // 3
+	case initMonorepo: // 4
+		logger.Printf("\033[1mPlease input monorepo project name (enter for default):\033[0m")
+		fmt.Printf(">> ")
+		if cmdInput, _ := reader.ReadString('\n'); strings.TrimRight(cmdInput, "\n") != "" {
+			flagParam.monorepoProjectName = strings.TrimRight(cmdInput, "\n")
+		}
 		monorepoGenerator(flagParam)
-	case initMonorepoService: // 4
-		flagParam.parseInitMonorepoService()
-		headerConfig, srvConfig, modConfigs, baseConfig := parseInput(&flagParam)
-		projectGenerator(flagParam, scope, headerConfig, srvConfig, modConfigs, baseConfig)
-	case addModuleMonorepoService: // 5
-		flagParam.parseAddModuleMonorepoService()
-		headerConfig, srvConfig, modConfigs, baseConfig := parseInput(&flagParam)
-		projectGenerator(flagParam, scope, headerConfig, srvConfig, modConfigs, baseConfig)
-	case runServiceMonorepo: // 6
+		return
+	case runServiceMonorepo: // 5
 		serviceRunner(flagParam.serviceName)
-
-	default:
-		headerConfig, srvConfig, modConfigs, baseConfig := parseInput(&flagParam)
-		projectGenerator(flagParam, scope, headerConfig, srvConfig, modConfigs, baseConfig)
+		return
 	}
+
+	if flagParam.isMonorepo {
+		flagParam.parseMonorepoFlag()
+	}
+	headerConfig, srvConfig, modConfigs, baseConfig := parseInput(&flagParam)
+	projectGenerator(flagParam, scope, headerConfig, srvConfig, modConfigs, baseConfig)
 }

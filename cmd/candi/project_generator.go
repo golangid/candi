@@ -148,9 +148,11 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 			Childs: []FileStructure{
 				{FromTemplate: true, DataSource: mod, Source: defaultGRPCProto, FileName: mod.ModuleName + ".proto"},
 			},
+			SkipFunc: func() bool { return !srvConfig.GRPCHandler },
 		})
 		apiGraphQLStructure.Childs = append(apiGraphQLStructure.Childs, FileStructure{
 			FromTemplate: true, DataSource: mod, Source: defaultGraphqlSchema, FileName: mod.ModuleName + ".graphql",
+			SkipFunc: func() bool { return !srvConfig.GraphQLHandler },
 		})
 
 		// for shared domain
@@ -171,8 +173,10 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 	})
 
 	apiGraphQLStructure.Childs = append(apiGraphQLStructure.Childs, []FileStructure{
-		{FromTemplate: true, DataSource: srvConfig, Source: defaultGraphqlRootSchema, FileName: "_schema.graphql"},
-		{FromTemplate: true, DataSource: srvConfig, Source: templateGraphqlCommon, FileName: "_common.graphql"},
+		{FromTemplate: true, DataSource: srvConfig, Source: defaultGraphqlRootSchema, FileName: "_schema.graphql",
+			SkipFunc: func() bool { return !srvConfig.GRPCHandler }},
+		{FromTemplate: true, DataSource: srvConfig, Source: templateGraphqlCommon, FileName: "_common.graphql",
+			SkipFunc: func() bool { return !srvConfig.GRPCHandler }},
 	}...)
 	apiStructure.Childs = []FileStructure{
 		apiGraphQLStructure,
@@ -191,8 +195,8 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 	baseDirectoryFile.TargetDir = flagParam.outputFlag + srvConfig.ServiceName + "/"
 	baseDirectoryFile.DataSource = srvConfig
 	baseDirectoryFile.IsDir = true
-	switch {
-	case scope == initService || scope == initMonorepoService:
+	switch scope {
+	case initService:
 		internalServiceStructure.Childs = append(internalServiceStructure.Childs, moduleStructure)
 		pkgServiceStructure.Childs = append(pkgServiceStructure.Childs, []FileStructure{
 			{TargetDir: "helper/", IsDir: true, Childs: []FileStructure{
@@ -238,7 +242,7 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 			})
 		}
 
-	case scope == addModule || scope == addModuleMonorepoService:
+	case addModule:
 		cmdStructure.Skip = true
 		configsStructure.Skip = true
 		moduleStructure.Skip = true
@@ -280,6 +284,13 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 			baseDirectoryFile.TargetDir = flagParam.outputFlag + flagParam.serviceName + "/"
 		}
 
+	case addHandler:
+		cmdStructure.Skip = true
+		configsStructure.Skip = true
+		moduleStructure.Skip = true
+		pkgServiceStructure.Skip = true
+		internalServiceStructure.Skip = true
+
 	}
 
 	execGenerator(baseDirectoryFile)
@@ -287,7 +298,7 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 
 func monorepoGenerator(flagParam flagParameter) {
 	var baseDirectoryFile FileStructure
-	baseDirectoryFile.TargetDir = "monorepo/"
+	baseDirectoryFile.TargetDir = flagParam.monorepoProjectName + "/"
 	baseDirectoryFile.IsDir = true
 	baseDirectoryFile.Childs = []FileStructure{
 		{TargetDir: "sdk/", IsDir: true, Childs: []FileStructure{{FileName: ".gitkeep"}}},

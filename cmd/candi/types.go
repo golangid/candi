@@ -1,6 +1,12 @@
 package main
 
-import "text/template"
+import (
+	"bufio"
+	"fmt"
+	"log"
+	"os"
+	"text/template"
+)
 
 const (
 	ps1                      = "\x1b[32;1m>>> \x1b[0m"
@@ -11,6 +17,7 @@ const (
 	initMonorepoService      = "initMonorepoService"
 	addModuleMonorepoService = "addModuleMonorepoService"
 	runServiceMonorepo       = "runServiceMonorepo"
+	addHandler               = "addHandler"
 
 	restHandler      = "restHandler"
 	grpcHandler      = "grpcHandler"
@@ -27,7 +34,7 @@ const (
 
 var (
 	scopeMap = map[string]string{
-		"1": initService, "2": addModule, "3": initMonorepo, "4": initMonorepoService, "5": addModuleMonorepoService, "6": runServiceMonorepo,
+		"1": initService, "2": addModule, "3": addHandler, "4": initMonorepo, "5": runServiceMonorepo,
 	}
 	serviceHandlersMap = map[string]string{
 		"1": restHandler, "2": grpcHandler, "3": graphqlHandler,
@@ -42,30 +49,47 @@ var (
 		"1": "postgres", "2": "mysql",
 	}
 
-	tpl *template.Template
+	tpl    *template.Template
+	logger *log.Logger
+	reader *bufio.Reader
 )
 
 type flagParameter struct {
 	scopeFlag, packagePrefixFlag, protoOutputPkgFlag, outputFlag, libraryNameFlag string
 	withGoModFlag                                                                 bool
 	run, all                                                                      bool
-	initService, addModule, initMonorepo, version                                 bool
-	serviceName                                                                   string
+	initService, addModule, addHandler, initMonorepo, version, isMonorepo         bool
+	serviceName, monorepoProjectName                                              string
 }
 
-func (f *flagParameter) parseInitMonorepoService() {
+func (f *flagParameter) parseMonorepoFlag() error {
 	f.packagePrefixFlag = "monorepo/services"
 	f.withGoModFlag = false
 	f.protoOutputPkgFlag = "monorepo/sdk"
 	f.outputFlag = "services/"
-	f.scopeFlag = "4"
+
+	if (f.scopeFlag == "2" || f.scopeFlag == "3") && f.serviceName == "" {
+		return fmt.Errorf(redFormat, "missing service name, make sure to include '-service' flag")
+	}
+	return nil
 }
-func (f *flagParameter) parseAddModuleMonorepoService() {
-	f.packagePrefixFlag = "monorepo/services"
-	f.withGoModFlag = false
-	f.protoOutputPkgFlag = "monorepo/sdk"
-	f.outputFlag = "services/"
-	f.scopeFlag = "5"
+
+func (f *flagParameter) validateServiceName() (err error) {
+	_, err = os.Stat(f.outputFlag + f.serviceName)
+	if os.IsNotExist(err) {
+		fmt.Printf(redFormat, fmt.Sprintf(`Service "%s" is not exist in "%s" directory`, f.serviceName, f.outputFlag))
+		os.Exit(1)
+	}
+	return
+}
+
+func (f *flagParameter) validateModuleName(moduleName string) (err error) {
+	_, err = os.Stat(f.outputFlag + f.serviceName + "/internal/modules/" + moduleName)
+	if os.IsNotExist(err) {
+		fmt.Printf(redFormat, fmt.Sprintf(`Module "%s" is not exist in service "%s"`, moduleName, f.serviceName))
+		os.Exit(1)
+	}
+	return
 }
 
 type configHeader struct {
