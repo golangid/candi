@@ -13,32 +13,14 @@ import (
 	"pkg.agungdp.dev/candi"
 )
 
-func projectGenerator(flagParam flagParameter, scope string, headerConfig configHeader,
-	srvConfig serviceConfig, modConfigs []moduleConfig, baseConfig config) {
-
-	srvConfig.configHeader = headerConfig
-	srvConfig.config = baseConfig
-	if scope == addModule || scope == addModuleMonorepoService {
-		var baseDir string
-		if flagParam.serviceName != "" {
-			baseDir = flagParam.outputFlag + flagParam.serviceName + "/"
-		}
-
-		b, err := ioutil.ReadFile(baseDir + "candi.json")
-		if err != nil {
-			log.Fatal("ERROR: cannot find candi.json file")
-		}
-		json.Unmarshal(b, &srvConfig)
-		for i := range srvConfig.Modules {
-			srvConfig.Modules[i].Skip = true
-		}
-		modConfigs = append(modConfigs, srvConfig.Modules...)
+func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceConfig) {
+	if flagParam.addHandler {
+		return
 	}
 
-	sort.Slice(modConfigs, func(i, j int) bool {
-		return modConfigs[i].ModuleName < modConfigs[j].ModuleName
+	sort.Slice(srvConfig.Modules, func(i, j int) bool {
+		return srvConfig.Modules[i].ModuleName < srvConfig.Modules[j].ModuleName
 	})
-	srvConfig.Modules = modConfigs
 
 	apiStructure := FileStructure{
 		TargetDir: "api/", IsDir: true,
@@ -104,7 +86,7 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 						Childs: []FileStructure{
 							{FromTemplate: true, DataSource: mod, Source: deliveryRestTemplate, FileName: "resthandler.go"},
 						}},
-					{TargetDir: "workerhandler/", IsDir: true,
+					{TargetDir: "workerhandler/", IsDir: true, Skip: !srvConfig.IsWorkerActive,
 						Childs: []FileStructure{
 							{FromTemplate: true, DataSource: mod, Source: deliveryKafkaTemplate, FileName: "kafka_handler.go", SkipFunc: func() bool { return !srvConfig.KafkaHandler }},
 							{FromTemplate: true, DataSource: mod, Source: deliveryRedisTemplate, FileName: "redis_handler.go", SkipFunc: func() bool { return !srvConfig.RedisSubsHandler }},
@@ -174,9 +156,9 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 
 	apiGraphQLStructure.Childs = append(apiGraphQLStructure.Childs, []FileStructure{
 		{FromTemplate: true, DataSource: srvConfig, Source: defaultGraphqlRootSchema, FileName: "_schema.graphql",
-			SkipFunc: func() bool { return !srvConfig.GRPCHandler }},
+			SkipFunc: func() bool { return !srvConfig.GraphQLHandler }},
 		{FromTemplate: true, DataSource: srvConfig, Source: templateGraphqlCommon, FileName: "_common.graphql",
-			SkipFunc: func() bool { return !srvConfig.GRPCHandler }},
+			SkipFunc: func() bool { return !srvConfig.GraphQLHandler }},
 	}...)
 	apiStructure.Childs = []FileStructure{
 		apiGraphQLStructure,
@@ -283,14 +265,6 @@ func projectGenerator(flagParam flagParameter, scope string, headerConfig config
 		if flagParam.serviceName != "" {
 			baseDirectoryFile.TargetDir = flagParam.outputFlag + flagParam.serviceName + "/"
 		}
-
-	case addHandler:
-		cmdStructure.Skip = true
-		configsStructure.Skip = true
-		moduleStructure.Skip = true
-		pkgServiceStructure.Skip = true
-		internalServiceStructure.Skip = true
-
 	}
 
 	execGenerator(baseDirectoryFile)
@@ -322,15 +296,19 @@ func execGenerator(fl FileStructure) {
 		return
 	}
 
-	if _, err := os.Stat(fl.TargetDir); os.IsExist(err) {
-		panic(err)
-	}
-
 	if fl.IsDir {
-		fmt.Printf("creating %s...\n", fl.TargetDir)
+		if _, err := os.Stat(fl.TargetDir); os.IsExist(err) {
+			if fl.SkipIfExist {
+				goto execChild
+			}
+			log.Fatal(err)
+		}
+
 		if err := os.Mkdir(fl.TargetDir, 0700); err != nil {
-			fmt.Println("mkdir err:", err)
-			panic(err)
+			if fl.SkipIfExist {
+				goto execChild
+			}
+			log.Fatal("mkdir err:", err)
 		}
 	}
 
@@ -346,8 +324,12 @@ func execGenerator(fl FileStructure) {
 		} else {
 			buff = []byte(fl.Source)
 		}
+		if _, err := os.Stat(fl.TargetDir + fl.FileName); os.IsExist(err) && fl.SkipIfExist {
+			goto execChild
+		}
+		fmt.Printf("creating %s...\n", fl.TargetDir+fl.FileName)
 		if err := ioutil.WriteFile(fl.TargetDir+fl.FileName, buff, 0644); err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}
 

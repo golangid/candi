@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -12,196 +14,219 @@ import (
 	"pkg.agungdp.dev/candi"
 )
 
-func parseInput(flagParam *flagParameter) (headerConfig configHeader, srvConfig serviceConfig, modConfigs []moduleConfig, baseConfig config) {
+func parseInput(flagParam *flagParameter) (srvConfig serviceConfig) {
 
 	serviceHandlers := make(map[string]bool)
 	workerHandlers := make(map[string]bool)
 	dependencies := make(map[string]bool)
 	var cmdInput string
+	var deliveryHandlerOption string
+	var deliveryHandlerMap map[string]string
 
 	scope, ok := scopeMap[flagParam.scopeFlag]
 	switch scope {
 	case initService:
-		headerConfig.ServiceName = inputServiceName()
+		srvConfig.ServiceName = inputServiceName()
 
 	case addModule:
 		if flagParam.serviceName != "" {
-			headerConfig.ServiceName = flagParam.serviceName
+			srvConfig.ServiceName = flagParam.serviceName
 		} else if flagParam.isMonorepo {
-		inputServiceNameModule:
-			logger.Printf("\033[1mPlease input service name to be added module(s):\033[0m")
-			fmt.Printf(">> ")
-			cmdInput, _ := reader.ReadString('\n')
-			headerConfig.ServiceName = strings.TrimRight(cmdInput, "\n")
-			_, err := os.Stat(flagParam.outputFlag + headerConfig.ServiceName)
+		stageInputServiceNameModule:
+			srvConfig.ServiceName = readInput("Please input existing service name to be added module(s):")
+			_, err := os.Stat(flagParam.outputFlag + srvConfig.ServiceName)
 			var errMessage string
-			if strings.TrimSpace(headerConfig.ServiceName) == "" {
+			if strings.TrimSpace(srvConfig.ServiceName) == "" {
 				errMessage = "Service name cannot empty"
 			}
 			if os.IsNotExist(err) {
-				errMessage = fmt.Sprintf(`Service "%s" is not exist in "%s" directory`, headerConfig.ServiceName, flagParam.outputFlag)
+				errMessage = fmt.Sprintf(`Service "%s" is not exist in "%s" directory`, srvConfig.ServiceName, flagParam.outputFlag)
 			}
 			if errMessage != "" {
 				fmt.Printf(redFormat, errMessage+", try again")
-				cmdInput = ""
-				goto inputServiceNameModule
+				goto stageInputServiceNameModule
 			}
-			flagParam.validateServiceName()
 		}
 
+	case addHandler:
+		flagParam.addHandler = true
+		if flagParam.serviceName != "" {
+			srvConfig.ServiceName = flagParam.serviceName
+		} else if flagParam.isMonorepo {
+		stageInputServiceName:
+			flagParam.serviceName = readInput("Please input existing service name to be added delivery handler(s):")
+			srvConfig.ServiceName = flagParam.serviceName
+			if err := flagParam.validateServiceName(); err != nil {
+				fmt.Print(err.Error())
+				goto stageInputServiceName
+			}
+		}
+
+	stageReadInputModule:
+		flagParam.moduleName = readInput("Please input existing module name to be added delivery handler(s):")
+		moduleDir := flagParam.getFullModuleChildDir()
+		if err := validateDir(moduleDir); err != nil {
+			fmt.Print(err.Error())
+			goto stageReadInputModule
+		}
+		srvConfig = loadSavedConfig(flagParam)
+		goto stageSelectServerHandler
 	}
 
-	flagParam.serviceName = headerConfig.ServiceName
+	flagParam.serviceName = srvConfig.ServiceName
 
-inputModules:
-	logger.Printf("\033[1mPlease input module names (separated by comma):\033[0m ")
-	fmt.Printf(">> ")
-	cmdInput, _ = reader.ReadString('\n')
-	cmdInput = strings.TrimRight(cmdInput, "\n")
-	if strings.TrimSpace(cmdInput) == "" {
-		fmt.Printf(redFormat, "Modules cannot empty")
-		cmdInput = ""
-		goto inputModules
-	}
+stageInputModules:
+	cmdInput = readInput("Please input new module names (if more than one, separated by comma):")
 	for _, moduleName := range strings.Split(cmdInput, ",") {
-		modConfigs = append(modConfigs, moduleConfig{
+		if err := validateDir(flagParam.outputFlag + flagParam.serviceName + "/internal/modules/" + moduleName); scope != initService && err == nil {
+			fmt.Printf(redFormat, "module '"+moduleName+"' is exist")
+			goto stageInputModules
+		}
+		srvConfig.Modules = append(srvConfig.Modules, moduleConfig{
 			ModuleName: strings.TrimSpace(moduleName), Skip: false,
 		})
 	}
-	if scope == addModule || scope == addModuleMonorepoService {
-		goto constructConfig
+	if len(srvConfig.Modules) == 0 {
+		fmt.Printf(redFormat, "Modules cannot empty")
+		goto stageInputModules
 	}
 
-selectServiceHandler:
-	logger.Printf("\033[1mPlease select service handlers (separated by comma, enter for skip)\n" +
-		"1) Rest API\n" +
-		"2) GRPC\n" +
-		"3) GraphQL\033[0m")
-	fmt.Printf(">> ")
-	cmdInput, _ = reader.ReadString('\n')
-	cmdInput = strings.TrimRight(cmdInput, "\n")
+	if scope == addModule {
+		savedConfig := loadSavedConfig(flagParam)
+		savedConfig.Modules = append(savedConfig.Modules, srvConfig.Modules...)
+		srvConfig = savedConfig
+		return
+	}
+
+stageSelectServerHandler:
+	deliveryHandlerOption, deliveryHandlerMap = filterServerHandler(srvConfig, flagParam)
+	if len(deliveryHandlerMap) == 0 {
+		goto stageSelectWorkerHandlers
+	}
+	cmdInput = readInput("Please select server handlers (separated by comma, enter for skip)\n" + deliveryHandlerOption)
 	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
-		if serverName, ok := serviceHandlersMap[strings.TrimSpace(str)]; ok {
+		if serverName, ok := deliveryHandlerMap[strings.TrimSpace(str)]; ok {
 			serviceHandlers[serverName] = true
 		} else if str != "" {
 			fmt.Printf(redFormat, "Invalid option, try again")
-			cmdInput = ""
-			goto selectServiceHandler
+			goto stageSelectServerHandler
 		}
 	}
 
-selectWorkerHandlers:
-	logger.Printf("\033[1mPlease select worker handlers (separated by comma, enter for skip)\n" +
-		"1) Kafka Consumer\n" +
-		"2) Scheduler\n" +
-		"3) Redis Subscriber\n" +
-		"4) Task Queue Worker\033[0m")
-	fmt.Printf(">> ")
-	cmdInput, _ = reader.ReadString('\n')
-	cmdInput = strings.TrimRight(cmdInput, "\n")
+stageSelectWorkerHandlers:
+	deliveryHandlerOption, deliveryHandlerMap = filterWorkerHandler(srvConfig, flagParam)
+	cmdInput = readInput("Please select worker handlers (separated by comma, enter for skip)\n" + deliveryHandlerOption)
 	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
-		if workerName, ok := workerHandlersMap[strings.TrimSpace(str)]; ok {
+		if workerName, ok := deliveryHandlerMap[strings.TrimSpace(str)]; ok {
 			workerHandlers[workerName] = true
 		} else if str != "" {
 			fmt.Printf(redFormat, "Invalid option, try again")
-			cmdInput = ""
-			goto selectWorkerHandlers
+			goto stageSelectWorkerHandlers
 		}
 	}
 
 	if len(serviceHandlers) == 0 && len(workerHandlers) == 0 {
-		fmt.Printf(redFormat, "No service/worker selected, try again")
-		cmdInput = ""
-		goto selectServiceHandler
+		fmt.Printf(redFormat, "No server/worker handler selected, try again")
+		goto stageSelectServerHandler
 	}
 
-selectDependencies:
-	logger.Printf("\033[1mPlease select dependencies (separated by comma, enter for skip)\n" +
+	if scope == addHandler {
+		if b, ok := serviceHandlers[restHandler]; ok {
+			srvConfig.RestHandler = b
+		}
+		if b, ok := serviceHandlers[grpcHandler]; ok {
+			srvConfig.GRPCHandler = b
+		}
+		if b, ok := serviceHandlers[graphqlHandler]; ok {
+			srvConfig.GraphQLHandler = b
+		}
+		if b, ok := workerHandlers[kafkaHandler]; ok {
+			srvConfig.KafkaHandler = b
+		}
+		if b, ok := workerHandlers[schedulerHandler]; ok {
+			srvConfig.SchedulerHandler = b
+		}
+		if b, ok := workerHandlers[redissubsHandler]; ok {
+			srvConfig.RedisSubsHandler = b
+		}
+		if b, ok := workerHandlers[taskqueueHandler]; ok {
+			srvConfig.TaskQueueHandler = b
+		}
+		srvConfig.checkWorkerActive()
+
+		srvConfig.OutputDir = flagParam.outputFlag
+		scopeAddHandler(flagParam, srvConfig, serviceHandlers, workerHandlers)
+		return
+	}
+
+stageSelectDependencies:
+	cmdInput = readInput("Please select dependencies (separated by comma, enter for skip)\n" +
 		"1) Redis\n" +
 		"2) SQL Database\n" +
-		"3) Mongo Database\033[0m")
-	fmt.Printf(">> ")
-	cmdInput, _ = reader.ReadString('\n')
-	cmdInput = strings.TrimRight(cmdInput, "\n")
-
+		"3) Mongo Database")
 	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
 		str = strings.TrimSpace(str)
 		if depsName, ok := dependencyMap[str]; ok {
 			dependencies[depsName] = true
 		} else if str != "" {
 			fmt.Printf(redFormat, "Invalid option, try again")
-			cmdInput = ""
-			goto selectDependencies
+			goto stageSelectDependencies
 		}
 	}
 	if workerHandlers[redissubsHandler] && !dependencies[redisDeps] {
 		fmt.Printf(redFormat, "Redis Subscriber need redis, try again")
-		cmdInput = ""
-		goto selectDependencies
+		goto stageSelectDependencies
 	}
 	if workerHandlers[taskqueueHandler] && !(dependencies[redisDeps] && dependencies[mongodbDeps]) {
 		fmt.Printf(redFormat, "Task Queue Worker need redis (for queue) and mongo (for log storage), try again")
-		cmdInput = ""
-		goto selectDependencies
+		goto stageSelectDependencies
 	}
 
 	if dependencies[sqldbDeps] {
-	selectSQLDriver:
-		logger.Printf("\033[1mPlease select SQL database driver (choose one)\n" +
+	stageSelectSQLDriver:
+		cmdInput = readInput("Please select SQL database driver (choose one)\n" +
 			"1) Postgres\n" +
-			"2) MySQL\033[0m")
-		fmt.Printf(">> ")
-		cmdInput, _ = reader.ReadString('\n')
-		cmdInput = strings.TrimRight(strings.TrimSpace(cmdInput), "\n")
-		baseConfig.SQLDriver, ok = sqlDrivers[cmdInput]
+			"2) MySQL")
+		srvConfig.SQLDriver, ok = sqlDrivers[cmdInput]
 		if !ok {
 			fmt.Printf(redFormat, "Invalid option, try again")
-			cmdInput = ""
-			goto selectSQLDriver
+			goto stageSelectSQLDriver
 		}
 
-	useGORMLabel:
-		logger.Printf("\033[1mUse GORM? (y/n)\033[0m")
-		fmt.Printf(">> ")
-		cmdInput, _ = reader.ReadString('\n')
-		cmdInput = strings.TrimRight(strings.TrimSpace(cmdInput), "\n")
+	stageUseGORMLabel:
+		cmdInput = readInput("Use GORM? (y/n)")
 		gormOpts := map[string]bool{"y": true, "n": false}
-		if baseConfig.SQLUseGORM, ok = gormOpts[cmdInput]; !ok {
+		if srvConfig.SQLUseGORM, ok = gormOpts[cmdInput]; !ok {
 			fmt.Printf(redFormat, "Invalid option, try again")
-			cmdInput = ""
-			goto useGORMLabel
+			goto stageUseGORMLabel
 		}
 	}
 
-constructConfig:
-	headerConfig.Header = fmt.Sprintf("Code generated by candi %s.", candi.Version)
-	headerConfig.Version = candi.Version
-	headerConfig.LibraryName = flagParam.libraryNameFlag
+	srvConfig.Header = fmt.Sprintf("Code generated by candi %s.", candi.Version)
+	srvConfig.Version = candi.Version
+	srvConfig.LibraryName = flagParam.libraryNameFlag
 	if flagParam.packagePrefixFlag != "" {
 		flagParam.packagePrefixFlag = strings.TrimSuffix(flagParam.packagePrefixFlag, "/") + "/"
-		headerConfig.PackagePrefix = flagParam.packagePrefixFlag + headerConfig.ServiceName
+		srvConfig.PackagePrefix = flagParam.packagePrefixFlag + srvConfig.ServiceName
 	} else {
-		headerConfig.PackagePrefix = headerConfig.ServiceName
+		srvConfig.PackagePrefix = srvConfig.ServiceName
 	}
 	if flagParam.protoOutputPkgFlag != "" {
-		headerConfig.ProtoSource = flagParam.protoOutputPkgFlag + "/" + headerConfig.ServiceName + "/proto"
+		srvConfig.ProtoSource = flagParam.protoOutputPkgFlag + "/" + srvConfig.ServiceName + "/proto"
 	} else {
-		headerConfig.ProtoSource = headerConfig.PackagePrefix + "/api/proto"
+		srvConfig.ProtoSource = srvConfig.PackagePrefix + "/api/proto"
 	}
 
-	baseConfig.RestHandler = serviceHandlers[restHandler]
-	baseConfig.GRPCHandler = serviceHandlers[grpcHandler]
-	baseConfig.GraphQLHandler = serviceHandlers[graphqlHandler]
-	baseConfig.KafkaHandler = workerHandlers[kafkaHandler]
-	baseConfig.SchedulerHandler = workerHandlers[schedulerHandler]
-	baseConfig.RedisSubsHandler = workerHandlers[redissubsHandler]
-	baseConfig.TaskQueueHandler = workerHandlers[taskqueueHandler]
-	baseConfig.RedisDeps = dependencies[redisDeps]
-	baseConfig.SQLDeps, baseConfig.MongoDeps = dependencies[sqldbDeps], dependencies[mongodbDeps]
-	baseConfig.IsWorkerActive = baseConfig.KafkaHandler ||
-		baseConfig.SchedulerHandler ||
-		baseConfig.RedisSubsHandler ||
-		baseConfig.TaskQueueHandler
+	srvConfig.RestHandler = serviceHandlers[restHandler]
+	srvConfig.GRPCHandler = serviceHandlers[grpcHandler]
+	srvConfig.GraphQLHandler = serviceHandlers[graphqlHandler]
+	srvConfig.KafkaHandler = workerHandlers[kafkaHandler]
+	srvConfig.SchedulerHandler = workerHandlers[schedulerHandler]
+	srvConfig.RedisSubsHandler = workerHandlers[redissubsHandler]
+	srvConfig.TaskQueueHandler = workerHandlers[taskqueueHandler]
+	srvConfig.RedisDeps = dependencies[redisDeps]
+	srvConfig.SQLDeps, srvConfig.MongoDeps = dependencies[sqldbDeps], dependencies[mongodbDeps]
+	srvConfig.checkWorkerActive()
 
 	return
 }
@@ -292,10 +317,7 @@ func isWorkdirMonorepo() bool {
 }
 
 func inputServiceName() (serviceName string) {
-	logger.Printf("\033[1mPlease input service name:\033[0m")
-	fmt.Printf(">> ")
-	cmdInput, _ := reader.ReadString('\n')
-	serviceName = strings.TrimRight(cmdInput, "\n")
+	serviceName = readInput("Please input service name:")
 	_, err := os.Stat(serviceName)
 	var errMessage string
 	if strings.TrimSpace(serviceName) == "" {
@@ -306,8 +328,104 @@ func inputServiceName() (serviceName string) {
 	}
 	if errMessage != "" {
 		fmt.Printf(redFormat, errMessage+", try again")
-		cmdInput = ""
 		inputServiceName()
 	}
 	return
+}
+
+func readInput(cmd string) string {
+	logger.Printf("\033[1m%s\033[0m ", cmd)
+	fmt.Printf(">> ")
+	cmdInput, _ := reader.ReadString('\n')
+	return strings.TrimRight(strings.TrimSpace(cmdInput), "\n")
+}
+
+func validateDir(dir string) error {
+	_, err := os.Stat(dir)
+	if os.IsNotExist(err) {
+		return fmt.Errorf(redFormat, fmt.Sprintf(`Directory "%s" is not exist`, dir))
+	}
+	return nil
+}
+
+func isDirExist(dir string) bool {
+	_, err := os.Stat(dir)
+	if err == nil {
+		return true
+	}
+	return os.IsExist(err)
+}
+
+func loadSavedConfig(flagParam *flagParameter) serviceConfig {
+	var baseDir string
+	if flagParam.serviceName != "" {
+		baseDir = flagParam.outputFlag + flagParam.serviceName + "/"
+	}
+
+	b, err := ioutil.ReadFile(baseDir + "candi.json")
+	if err != nil {
+		log.Fatal("ERROR: cannot find candi.json file")
+	}
+	var savedConfig serviceConfig
+	json.Unmarshal(b, &savedConfig)
+	for i := range savedConfig.Modules {
+		savedConfig.Modules[i].Skip = true
+	}
+	return savedConfig
+}
+
+func filterServerHandler(cfg serviceConfig, flagParam *flagParameter) (wording string, handlers map[string]string) {
+	handlers = make(map[string]string)
+	var options []string
+	if !cfg.RestHandler || (flagParam.addHandler && validateDir(flagParam.getFullModuleChildDir("delivery", "resthandler")) != nil) {
+		options = append(options, fmt.Sprintf("%d) REST API", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = restHandler
+	}
+	if !cfg.GRPCHandler || (flagParam.addHandler && validateDir(flagParam.getFullModuleChildDir("delivery", "grpchandler")) != nil) {
+		options = append(options, fmt.Sprintf("%d) GRPC", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = grpcHandler
+	}
+	if !cfg.GraphQLHandler || (flagParam.addHandler && validateDir(flagParam.getFullModuleChildDir("delivery", "graphqlhandler")) != nil) {
+		options = append(options, fmt.Sprintf("%d) GraphQL", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = graphqlHandler
+	}
+
+	wording = strings.Join(options, "\n")
+	return
+}
+
+func filterWorkerHandler(cfg serviceConfig, flagParam *flagParameter) (wording string, handlers map[string]string) {
+	handlers = make(map[string]string)
+	var options []string
+	if !cfg.KafkaHandler || (flagParam.addHandler &&
+		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "kafka_handler.go")) != nil) {
+		options = append(options, fmt.Sprintf("%d) Kafka Consumer", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = kafkaHandler
+	}
+	if !cfg.SchedulerHandler || (flagParam.addHandler &&
+		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "cron_handler.go")) != nil) {
+		options = append(options, fmt.Sprintf("%d) Scheduler", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = schedulerHandler
+	}
+	if !cfg.RedisSubsHandler || (flagParam.addHandler &&
+		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "redis_handler.go")) != nil) {
+		options = append(options, fmt.Sprintf("%d) Redis Subscriber", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = redissubsHandler
+	}
+	if !cfg.TaskQueueHandler || (flagParam.addHandler &&
+		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "taskqueue_handler.go")) != nil) {
+		options = append(options, fmt.Sprintf("%d) Task Queue Worker", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = taskqueueHandler
+	}
+
+	wording = strings.Join(options, "\n")
+	return
+}
+
+func readFileAndApply(filepath string, oldContent, newContent string) {
+	b, err := os.ReadFile(filepath)
+	if err != nil {
+		return
+	}
+	os.WriteFile(filepath, bytes.Replace(b, []byte(oldContent), []byte(newContent), -1), 0644)
 }

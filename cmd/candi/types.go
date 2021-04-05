@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"text/template"
 )
 
@@ -59,7 +60,7 @@ type flagParameter struct {
 	withGoModFlag                                                                 bool
 	run, all                                                                      bool
 	initService, addModule, addHandler, initMonorepo, version, isMonorepo         bool
-	serviceName, monorepoProjectName                                              string
+	serviceName, moduleName, monorepoProjectName                                  string
 }
 
 func (f *flagParameter) parseMonorepoFlag() error {
@@ -74,13 +75,12 @@ func (f *flagParameter) parseMonorepoFlag() error {
 	return nil
 }
 
-func (f *flagParameter) validateServiceName() (err error) {
-	_, err = os.Stat(f.outputFlag + f.serviceName)
+func (f *flagParameter) validateServiceName() error {
+	_, err := os.Stat(f.outputFlag + f.serviceName)
 	if os.IsNotExist(err) {
-		fmt.Printf(redFormat, fmt.Sprintf(`Service "%s" is not exist in "%s" directory`, f.serviceName, f.outputFlag))
-		os.Exit(1)
+		return fmt.Errorf(redFormat, fmt.Sprintf(`Service "%s" is not exist in "%s" directory`, f.serviceName, f.outputFlag))
 	}
-	return
+	return nil
 }
 
 func (f *flagParameter) validateModuleName(moduleName string) (err error) {
@@ -92,6 +92,11 @@ func (f *flagParameter) validateModuleName(moduleName string) (err error) {
 	return
 }
 
+func (f *flagParameter) getFullModuleChildDir(paths ...string) string {
+	paths = append([]string{f.moduleName}, paths...)
+	return strings.TrimPrefix(f.outputFlag+f.serviceName+"/internal/modules/"+strings.Join(paths, "/"), "/")
+}
+
 type configHeader struct {
 	Version       string
 	Header        string
@@ -99,6 +104,7 @@ type configHeader struct {
 	ServiceName   string
 	PackagePrefix string
 	ProtoSource   string
+	OutputDir     string `json:"-"`
 }
 
 type config struct {
@@ -112,6 +118,13 @@ type serviceConfig struct {
 	configHeader
 	config
 	Modules []moduleConfig
+}
+
+func (s *serviceConfig) checkWorkerActive() {
+	s.IsWorkerActive = s.KafkaHandler ||
+		s.SchedulerHandler ||
+		s.RedisSubsHandler ||
+		s.TaskQueueHandler
 }
 
 type moduleConfig struct {
@@ -130,6 +143,7 @@ type FileStructure struct {
 	Source       string
 	FileName     string
 	Skip         bool
-	SkipFunc     func() bool
+	SkipFunc     func() bool `json:"-"`
+	SkipIfExist  bool
 	Childs       []FileStructure
 }

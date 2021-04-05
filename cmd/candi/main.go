@@ -54,8 +54,7 @@ func main() {
 		if flagParam.isMonorepo {
 			flagParam.parseMonorepoFlag()
 		}
-		headerConfig, srvConfig, modConfigs, baseConfig := parseInput(&flagParam)
-		projectGenerator(flagParam, initService, headerConfig, srvConfig, modConfigs, baseConfig)
+		projectGenerator(flagParam, initService, parseInput(&flagParam))
 
 	case flagParam.addModule:
 		flagParam.scopeFlag = "2"
@@ -65,8 +64,7 @@ func main() {
 				return
 			}
 		}
-		headerConfig, srvConfig, modConfigs, baseConfig := parseInput(&flagParam)
-		projectGenerator(flagParam, addModule, headerConfig, srvConfig, modConfigs, baseConfig)
+		projectGenerator(flagParam, addModule, parseInput(&flagParam))
 
 	case flagParam.addHandler:
 		flagParam.scopeFlag = "3"
@@ -76,14 +74,15 @@ func main() {
 				return
 			}
 		}
+		projectGenerator(flagParam, addModule, parseInput(&flagParam))
 
 	default:
 	selectScope:
 		if flagParam.scopeFlag == "" {
 			fmt.Printf("\033[1mWhat do you want?\n" +
 				"1) Init service\n" +
-				"2) Add module(s)\n" +
-				"3) Add handler(s)\n" +
+				"2) Add module(s) in service\n" +
+				"3) Add delivery handler(s) in module\n" +
 				"4) Init monorepo codebase\n" +
 				"5) Run multiple service in monorepo\033[0m\n>> ")
 			cmdInput, _ := reader.ReadString('\n')
@@ -121,6 +120,5 @@ func selectScope(flagParam flagParameter, scope string) {
 	if flagParam.isMonorepo {
 		flagParam.parseMonorepoFlag()
 	}
-	headerConfig, srvConfig, modConfigs, baseConfig := parseInput(&flagParam)
-	projectGenerator(flagParam, scope, headerConfig, srvConfig, modConfigs, baseConfig)
+	projectGenerator(flagParam, scope, parseInput(&flagParam))
 }
