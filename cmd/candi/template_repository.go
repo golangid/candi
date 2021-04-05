@@ -406,7 +406,7 @@ func (r *{{clean .ModuleName}}RepoSQL) Delete(ctx context.Context, id string) (e
 	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Save")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
-	return r.readDB.Delete(&shareddomain.{{clean (upper .ModuleName)}}{ID: id}).Error
+	return{{if .SQLUseGORM}} r.readDB.Delete(&shareddomain.{{clean (upper .ModuleName)}}{ID: id}).Error{{end}}
 }
 `
 )
