@@ -17,8 +17,7 @@ func main() {
 	var flagParam flagParameter
 	flag.BoolVar(&flagParam.version, "version", false, "print version")
 	flag.StringVar(&flagParam.scopeFlag, "scope", "", "[project generator] set scope \n1 for init service, \n2 for add module(s), \n"+
-		"3 for init monorepo codebase, \n4 for init service in monorepo, \n5 for add module(s) service in monorepo, \n"+
-		"6 for run multiple service in monorepo")
+		"3 for add delivery handler(s) in module, \n4 for init monorepo codebase, \n5 for run multiple service in monorepo")
 	flag.BoolVar(&flagParam.initService, "init", false, "[project generator] init service")
 	flag.BoolVar(&flagParam.addModule, "add-module", false, "[project generator] add module in service")
 	flag.BoolVar(&flagParam.addHandler, "add-handler", false, "[project generator] add handler in delivery module in service")
