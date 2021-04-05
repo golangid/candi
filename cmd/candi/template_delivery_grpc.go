@@ -125,7 +125,24 @@ func (h *GRPCHandler) Save{{clean (upper .ModuleName)}}(ctx context.Context, req
 	return &proto.Response{
 		Message: "Success",
 	}, nil
-}	
+}
+
+// Delete{{clean (upper .ModuleName)}} rpc method
+func (h *GRPCHandler) Delete{{clean (upper .ModuleName)}}(ctx context.Context, req *proto.{{clean (upper .ModuleName)}}Model) (resp *proto.Response, err error) {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGRPC:Delete{{clean (upper .ModuleName)}}")
+	defer trace.Finish()
+	ctx = trace.Context()
+
+	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
+
+	if err := h.uc.Delete{{clean (upper .ModuleName)}}(ctx, req.ID); err != nil {
+		return nil, err
+	}
+
+	return &proto.Response{
+		Message: "Success",
+	}, nil
+}
 `
 
 	defaultGRPCProto = `syntax="proto3";
@@ -136,6 +153,7 @@ service {{clean (upper .ModuleName)}}Handler {
 	rpc GetAll{{clean (upper .ModuleName)}}(GetAll{{clean (upper .ModuleName)}}Request) returns (GetAll{{clean (upper .ModuleName)}}Response);
 	rpc GetDetail{{clean (upper .ModuleName)}}(GetDetail{{clean (upper .ModuleName)}}Request) returns ({{clean (upper .ModuleName)}}Model);
 	rpc Save{{clean (upper .ModuleName)}}({{clean (upper .ModuleName)}}Model) returns (Response);
+	rpc Delete{{clean (upper .ModuleName)}}({{clean (upper .ModuleName)}}Model) returns (Response);
 }
 
 message Meta {

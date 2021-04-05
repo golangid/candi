@@ -97,6 +97,7 @@ type {{clean (upper .ModuleName)}}Usecase interface {
 	GetAll{{clean (upper .ModuleName)}}(ctx context.Context, filter candishared.Filter) (data []shareddomain.{{clean (upper .ModuleName)}}, meta candishared.Meta, err error)
 	GetDetail{{clean (upper .ModuleName)}}(ctx context.Context, id string) (data shareddomain.{{clean (upper .ModuleName)}}, err error)
 	Save{{clean (upper .ModuleName)}}(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error)
+	Delete{{clean (upper .ModuleName)}}(ctx context.Context, id string) (err error)
 }
 `
 	templateUsecaseImpl = `// {{.Header}}
@@ -161,6 +162,14 @@ func (uc *{{clean .ModuleName}}UsecaseImpl) Save{{clean (upper .ModuleName)}}(ct
 	ctx = trace.Context()
 
 	return{{if or .SQLDeps .MongoDeps}} uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo.Save(ctx, data){{end}}
+}
+
+func (uc *{{clean .ModuleName}}UsecaseImpl) Delete{{clean (upper .ModuleName)}}(ctx context.Context, id string) (err error) {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}Usecase:Save{{clean (upper .ModuleName)}}")
+	defer trace.Finish()
+	ctx = trace.Context()
+
+	return{{if or .SQLDeps .MongoDeps}} uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo.Delete(ctx, id){{end}}
 }
 `
 )

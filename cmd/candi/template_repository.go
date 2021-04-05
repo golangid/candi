@@ -207,6 +207,7 @@ type {{clean (upper .ModuleName)}}Repository interface {
 	Count(ctx context.Context, filter *candishared.Filter) int
 	Find(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) error
 	Save(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) error
+	Delete(ctx context.Context, id string) (err error)
 }
 `
 
@@ -319,6 +320,14 @@ func (r *{{clean .ModuleName}}RepoMongo) Save(ctx context.Context, data *sharedd
 
 	return
 }
+
+func (r *{{clean .ModuleName}}RepoMongo) Delete(ctx context.Context, id string) (err error) {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Save")
+	defer func() { trace.SetError(err); trace.Finish() }()
+
+	_, err = r.writeDB.Collection(r.collection).DeleteOne(ctx, bson.M{"_id": id})
+	return
+}
 `
 
 	templateRepositorySQLImpl = `// {{.Header}}
@@ -391,6 +400,13 @@ func (r *{{clean .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddom
 		data.CreatedAt = time.Now()
 	}
 	return{{if .SQLUseGORM}} r.readDB.Save(data).Error{{end}}
+}
+
+func (r *{{clean .ModuleName}}RepoSQL) Delete(ctx context.Context, id string) (err error) {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Save")
+	defer func() { trace.SetError(err); trace.Finish() }()
+
+	return r.readDB.Delete(&shareddomain.{{clean (upper .ModuleName)}}{ID: id}).Error
 }
 `
 )

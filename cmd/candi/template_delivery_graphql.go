@@ -30,7 +30,8 @@ func NewGraphQLHandler(mw interfaces.Middleware, uc usecase.{{clean (upper .Modu
 func (h *GraphQLHandler) RegisterMiddleware(mwGroup *types.MiddlewareGroup) {
 	mwGroup.Add("{{clean (upper .ModuleName)}}QueryResolver.get_all_{{clean .ModuleName}}", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("resource.public"))
 	mwGroup.Add("{{clean (upper .ModuleName)}}QueryResolver.get_detail_{{clean .ModuleName}}", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("resource.public"))
-	mwGroup.Add("{{clean (upper .ModuleName)}}MutationResolver.save_{{clean .ModuleName}}", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("{{clean .ModuleName}}.save_{{clean .ModuleName}}"))
+	mwGroup.Add("{{clean (upper .ModuleName)}}MutationResolver.save_{{clean .ModuleName}}", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("resource.public"))
+	mwGroup.Add("{{clean (upper .ModuleName)}}MutationResolver.delete_{{clean .ModuleName}}", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("resource.public"))
 }
 
 // Query method
@@ -127,7 +128,21 @@ func (m *mutationResolver) Save{{clean (upper .ModuleName)}}(ctx context.Context
 		return ok, err
 	}
 	return "Success", nil
-}	
+}
+
+// Delete{{clean (upper .ModuleName)}} resolver
+func (m *mutationResolver) Delete{{clean (upper .ModuleName)}}(ctx context.Context, input struct{ ID string }) (ok string, err error) {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:Delete{{clean (upper .ModuleName)}}")
+	defer trace.Finish()
+	ctx = trace.Context()
+
+	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
+
+	if err := m.root.uc.Delete{{clean (upper .ModuleName)}}(ctx, input.ID); err != nil {
+		return ok, err
+	}
+	return "Success", nil
+}
 `
 	deliveryGraphqlSubscriptionTemplate = `// {{.Header}}
 
@@ -235,6 +250,7 @@ type {{clean (upper .ModuleName)}}QueryResolver {
 
 type {{clean (upper .ModuleName)}}MutationResolver {
 	save_{{clean .ModuleName}}(data: {{clean (upper .ModuleName)}}InputResolver!): String!
+	delete_{{clean .ModuleName}}(id: String!): String!
 }
 
 type {{clean (upper .ModuleName)}}SubscriptionResolver {

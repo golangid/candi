@@ -40,8 +40,9 @@ func (h *RestHandler) Mount(root *echo.Group) {
 
 	{{clean .ModuleName}} := v1Root.Group("/{{clean .ModuleName}}", echo.WrapMiddleware(h.mw.HTTPBearerAuth))
 	{{clean .ModuleName}}.GET("", h.getAll{{clean (upper .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
-	{{clean .ModuleName}}.GET("/:id", h.getDetail{{clean (upper .ModuleName)}}ByID, echo.WrapMiddleware(h.mw.HTTPPermissionACL("{{clean .ModuleName}}.getDetail{{clean (upper .ModuleName)}}")))
-	{{clean .ModuleName}}.POST("", h.save{{clean (upper .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("{{clean .ModuleName}}.save{{clean (upper .ModuleName)}}")))
+	{{clean .ModuleName}}.GET("/:id", h.getDetail{{clean (upper .ModuleName)}}ByID, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
+	{{clean .ModuleName}}.POST("", h.save{{clean (upper .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
+	{{clean .ModuleName}}.DELETE("/:id", h.delete{{clean (upper .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
 }
 
 func (h *RestHandler) getAll{{clean (upper .ModuleName)}}(c echo.Context) error {
@@ -78,7 +79,7 @@ func (h *RestHandler) getDetail{{clean (upper .ModuleName)}}ByID(c echo.Context)
 }
 
 func (h *RestHandler) save{{clean (upper .ModuleName)}}(c echo.Context) error {
-	trace := tracer.StartTrace(c.Request().Context(), "AppsDeliveryREST:Save{{clean (upper .ModuleName)}}")
+	trace := tracer.StartTrace(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:Save{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
 	var payload shareddomain.{{clean (upper .ModuleName)}}
@@ -88,6 +89,17 @@ func (h *RestHandler) save{{clean (upper .ModuleName)}}(c echo.Context) error {
 
 	err := h.uc.Save{{clean (upper .ModuleName)}}(trace.Context(), &payload)
 	if err != nil {
+		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
+	}
+
+	return wrapper.NewHTTPResponse(http.StatusOK, "Success").JSON(c.Response())
+}
+
+func (h *RestHandler) delete{{clean (upper .ModuleName)}}(c echo.Context) error {
+	trace := tracer.StartTrace(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:Delete{{clean (upper .ModuleName)}}")
+	defer trace.Finish()
+
+	if err := h.uc.Delete{{clean (upper .ModuleName)}}(trace.Context(), c.Param("id")); err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
 
