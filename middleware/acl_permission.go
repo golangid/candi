@@ -9,12 +9,18 @@ import (
 	"google.golang.org/grpc/codes"
 	"pkg.agungdp.dev/candi/candishared"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
+	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/tracer"
 	"pkg.agungdp.dev/candi/wrapper"
 )
 
 func (m *Middleware) checkACLPermissionFromContext(ctx context.Context, permissionCode string) (*candishared.TokenClaim, error) {
 	tokenClaim := candishared.ParseTokenClaimFromContext(ctx)
+	if env.BaseEnv().NoAuth {
+		tokenClaim.Role = "GUEST"
+		return tokenClaim, nil
+	}
+
 	role, err := m.ACLPermissionChecker.CheckPermission(ctx, tokenClaim.Subject, permissionCode)
 	if err != nil {
 		return tokenClaim, err
