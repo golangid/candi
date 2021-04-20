@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 )
 
 /*
-Postgres Worker
+Postgres Event Listener Worker
 Listen event from data change from selected table in postgres
 */
 
@@ -41,6 +42,7 @@ type (
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	worker := new(postgresWorker)
 	shutdown, semaphore = make(chan struct{}, 1), make(chan struct{}, env.BaseEnv().MaxGoroutines)
+	startWorkerCh, releaseWorkerCh = make(chan struct{}), make(chan struct{})
 
 	worker.handlers = make(map[string]types.WorkerHandlerFunc)
 	db, listener := getListener()
@@ -64,11 +66,30 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 		fmt.Printf("\x1b[34;1m⇨ Postgres Event Listener running with %d table\x1b[0m\n\n", len(worker.handlers))
 	}
 
+	if env.BaseEnv().UseConsul {
+		consul, err := candiutils.NewConsul(&candiutils.ConsulConfig{
+			ConsulAgentHost:   env.BaseEnv().ConsulAgentHost,
+			ConsulKey:         fmt.Sprintf("%s_postgres_event_listener", service.Name()),
+			LockRetryInterval: 1 * time.Second,
+		})
+		if err != nil {
+			panic(err)
+		}
+		worker.consul = consul
+	}
+
 	worker.listener = listener
 	return worker
 }
 
 func (p *postgresWorker) Serve() {
+	p.createConsulSession()
+
+START:
+	<-startWorkerCh
+	p.listener.Listen(eventsConst)
+	totalRunJobs := 0
+
 	for {
 		select {
 		case e := <-p.listener.Notify:
@@ -103,8 +124,24 @@ func (p *postgresWorker) Serve() {
 				}
 			}(e)
 
+			// rebalance worker if run in multiple instance and using consul
+			if p.consul != nil {
+				totalRunJobs++
+				// if already running n jobs, release lock so that run in another instance
+				if totalRunJobs == env.BaseEnv().ConsulMaxJobRebalance {
+					p.listener.Unlisten(eventsConst)
+					// recreate session
+					p.createConsulSession()
+					<-releaseWorkerCh
+					goto START
+				}
+			}
+
 		case <-time.After(2 * time.Minute):
 			p.listener.Ping()
+
+		case <-shutdown:
+			return
 		}
 	}
 }
@@ -131,4 +168,17 @@ func (p *postgresWorker) Shutdown(ctx context.Context) {
 	}
 
 	p.wg.Wait()
+}
+
+func (p *postgresWorker) createConsulSession() {
+	if p.consul == nil {
+		go func() { startWorkerCh <- struct{}{} }()
+		return
+	}
+	p.consul.DestroySession()
+	hostname, _ := os.Hostname()
+	value := map[string]string{
+		"hostname": hostname,
+	}
+	go p.consul.RetryLockAcquire(value, startWorkerCh, releaseWorkerCh)
 }

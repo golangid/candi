@@ -6,6 +6,7 @@ import (
 )
 
 const (
+	eventsConst              = "events"
 	notifyEventFunctionQuery = `CREATE OR REPLACE FUNCTION notify_event() RETURNS TRIGGER AS $$
 
     DECLARE 

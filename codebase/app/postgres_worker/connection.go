@@ -19,14 +19,10 @@ func getListener() (*sql.DB, *pq.Listener) {
 	}
 
 	if err := db.Ping(); err != nil {
-		panic(fmt.Errorf(`[POSTGRES-LISTENER] ERROR: %v, connection: %s`, err, candihelper.MaskingPasswordURL(env.BaseEnv().DbSQLWriteDSN)))
+		panic(fmt.Errorf(`[POSTGRES-LISTENER] ERROR: %v, ping: %s`, err, candihelper.MaskingPasswordURL(env.BaseEnv().DbSQLWriteDSN)))
 	}
 
 	listener := pq.NewListener(env.BaseEnv().DbSQLWriteDSN, 10*time.Second, time.Minute, eventCallback)
-	if err := listener.Listen("events"); err != nil {
-		panic(fmt.Errorf(`[POSTGRES-LISTENER] ERROR: %v. Cannot listen to events`, err))
-	}
-
 	return db, listener
 }
 
