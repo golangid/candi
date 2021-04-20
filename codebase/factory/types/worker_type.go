@@ -16,6 +16,8 @@ const (
 	Scheduler = "scheduler"
 	// TaskQueue worker
 	TaskQueue = "task_queue"
+	// PostgresListener worker
+	PostgresListener = "postgres_listener"
 )
 
 // WorkerHandlerFunc types

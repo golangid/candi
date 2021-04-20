@@ -35,6 +35,8 @@ type Env struct {
 	UseRedisSubscriber bool
 	// UseTaskQueueWorker env
 	UseTaskQueueWorker bool
+	// UsePostgresListenerWorker env
+	UsePostgresListenerWorker bool
 
 	// GraphQLSchemaDir env
 	GraphQLSchemaDir string
@@ -260,6 +262,12 @@ func parseAppConfig() {
 	} else {
 		env.UseTaskQueueWorker, _ = strconv.ParseBool(useTaskQueue)
 	}
+	usePostgresListener, ok := os.LookupEnv("USE_POSTGRES_LISTENER_WORKER")
+	if !ok {
+		flag.BoolVar(&env.UsePostgresListenerWorker, "USE_POSTGRES_LISTENER_WORKER", false, "USE TASK QUEUE WORKER")
+	} else {
+		env.UsePostgresListenerWorker, _ = strconv.ParseBool(usePostgresListener)
+	}
 
 	flag.Usage = func() {
 		fmt.Println("	-USE_REST :=> Activate REST Server")
@@ -269,6 +277,7 @@ func parseAppConfig() {
 		fmt.Println("	-USE_CRON_SCHEDULER :=> Activate Cron Scheduler Worker")
 		fmt.Println("	-USE_REDIS_SUBSCRIBER :=> Activate Redis Subscriber Worker")
 		fmt.Println("	-USE_TASK_QUEUE_WORKER :=> Activate Task Queue Worker")
+		fmt.Println("	-USE_POSTGRES_LISTENER_WORKER :=> Activate Postgres Event Worker")
 	}
 	flag.Parse()
 }

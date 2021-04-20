@@ -15,6 +15,7 @@ import (
 	graphqlserver "pkg.agungdp.dev/candi/codebase/app/graphql_server"
 	grpcserver "pkg.agungdp.dev/candi/codebase/app/grpc_server"
 	kafkaworker "pkg.agungdp.dev/candi/codebase/app/kafka_worker"
+	postgresworker "pkg.agungdp.dev/candi/codebase/app/postgres_worker"
 	redisworker "pkg.agungdp.dev/candi/codebase/app/redis_worker"
 	restserver "pkg.agungdp.dev/candi/codebase/app/rest_server"
 	taskqueueworker "pkg.agungdp.dev/candi/codebase/app/task_queue_worker"
@@ -37,17 +38,17 @@ func New(service factory.ServiceFactory) *App {
 	if env.BaseEnv().UseKafkaConsumer {
 		appInstance.servers = append(appInstance.servers, kafkaworker.NewWorker(service))
 	}
-
 	if env.BaseEnv().UseCronScheduler {
 		appInstance.servers = append(appInstance.servers, cronworker.NewWorker(service))
 	}
-
 	if env.BaseEnv().UseTaskQueueWorker {
 		appInstance.servers = append(appInstance.servers, taskqueueworker.NewWorker(service))
 	}
-
 	if env.BaseEnv().UseRedisSubscriber {
 		appInstance.servers = append(appInstance.servers, redisworker.NewWorker(service))
+	}
+	if env.BaseEnv().UsePostgresListenerWorker {
+		appInstance.servers = append(appInstance.servers, postgresworker.NewWorker(service))
 	}
 
 	useSharedListener := (env.BaseEnv().UseREST || env.BaseEnv().UseGraphQL) && (env.BaseEnv().UseGRPC && env.BaseEnv().GRPCPort == 0)
