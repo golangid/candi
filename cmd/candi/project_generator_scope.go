@@ -129,6 +129,12 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 				FromTemplate: true, DataSource: mod, Source: deliveryTaskQueueTemplate, FileName: "taskqueue_handler.go",
 			})
 			replaceEnv["USE_TASK_QUEUE_WORKER=false"] = "USE_TASK_QUEUE_WORKER=true"
+		case postgresListenerHandler:
+			mod.PostgresListenerHandler = true
+			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
+				FromTemplate: true, DataSource: mod, Source: deliveryPostgresListenerTemplate, FileName: "postgres_listener_handler.go",
+			})
+			replaceEnv["USE_POSTGRES_LISTENER_WORKER=false"] = "USE_POSTGRES_LISTENER_WORKER=true"
 		}
 	}
 	apiStructure := FileStructure{

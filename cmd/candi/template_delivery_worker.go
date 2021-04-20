@@ -195,4 +195,48 @@ func (h *TaskQueueHandler) taskTwo(ctx context.Context, message []byte) error {
 	}
 }
 `
+
+	deliveryPostgresListenerTemplate = `// {{.Header}}
+
+package workerhandler
+
+import (
+	"context"
+	"fmt"
+
+	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
+
+	"{{.LibraryName}}/codebase/factory/types"
+	"{{.LibraryName}}/codebase/interfaces"
+	"{{.LibraryName}}/tracer"
+)
+
+// PostgresListenerHandler struct
+type PostgresListenerHandler struct {
+	uc        usecase.{{clean (upper .ModuleName)}}Usecase
+	validator interfaces.Validator
+}
+
+// NewPostgresListenerHandler constructor
+func NewPostgresListenerHandler(uc usecase.{{clean (upper .ModuleName)}}Usecase, validator interfaces.Validator) *PostgresListenerHandler {
+	return &PostgresListenerHandler{
+		uc:        uc,
+		validator: validator,
+	}
+}
+
+// MountHandlers mount handler group
+func (h *PostgresListenerHandler) MountHandlers(group *types.WorkerHandlerGroup) {
+	group.Add("{{.ModuleName}}", h.handleDataChangeOn{{clean (upper .ModuleName)}}) // listen data change on table "{{.ModuleName}}"
+}
+
+func (h *PostgresListenerHandler) handleDataChangeOn{{clean (upper .ModuleName)}}(ctx context.Context, message []byte) error {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryPostgresListener:HandleDataChange{{clean (upper .ModuleName)}}")
+	defer trace.Finish()
+	ctx = trace.Context()
+
+	fmt.Printf("data change on table {{.ModuleName}} detected: %s\n", message)
+	return nil
+}
+`
 )

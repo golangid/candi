@@ -15,6 +15,7 @@ USE_KAFKA_CONSUMER={{.KafkaHandler}}
 USE_CRON_SCHEDULER={{.SchedulerHandler}}
 USE_REDIS_SUBSCRIBER={{.RedisSubsHandler}}
 USE_TASK_QUEUE_WORKER={{.TaskQueueHandler}}
+USE_POSTGRES_LISTENER_WORKER={{.PostgresListenerHandler}}
 
 HTTP_PORT=8000
 GRPC_PORT=8002 # uncomment this env if separate port listener http & grpc server, comment this env if use shared listener from http & grpc in same port (use HTTP_PORT)

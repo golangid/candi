@@ -20,17 +20,18 @@ const (
 	runServiceMonorepo       = "runServiceMonorepo"
 	addHandler               = "addHandler"
 
-	restHandler      = "restHandler"
-	grpcHandler      = "grpcHandler"
-	graphqlHandler   = "graphqlHandler"
-	kafkaHandler     = "kafkaHandler"
-	schedulerHandler = "schedulerHandler"
-	redissubsHandler = "redissubsHandler"
-	taskqueueHandler = "taskqueueHandler"
-	kafkaDeps        = "kafkaDeps"
-	redisDeps        = "redisDeps"
-	sqldbDeps        = "sqldbDeps"
-	mongodbDeps      = "mongodbDeps"
+	restHandler             = "restHandler"
+	grpcHandler             = "grpcHandler"
+	graphqlHandler          = "graphqlHandler"
+	kafkaHandler            = "kafkaHandler"
+	schedulerHandler        = "schedulerHandler"
+	redissubsHandler        = "redissubsHandler"
+	taskqueueHandler        = "taskqueueHandler"
+	postgresListenerHandler = "postgresListenerHandler"
+	kafkaDeps               = "kafkaDeps"
+	redisDeps               = "redisDeps"
+	sqldbDeps               = "sqldbDeps"
+	mongodbDeps             = "mongodbDeps"
 )
 
 var (
@@ -41,7 +42,7 @@ var (
 		"1": restHandler, "2": grpcHandler, "3": graphqlHandler,
 	}
 	workerHandlersMap = map[string]string{
-		"1": kafkaHandler, "2": schedulerHandler, "3": redissubsHandler, "4": taskqueueHandler,
+		"1": kafkaHandler, "2": schedulerHandler, "3": redissubsHandler, "4": taskqueueHandler, "5": postgresListenerHandler,
 	}
 	dependencyMap = map[string]string{
 		"1": redisDeps, "2": sqldbDeps, "3": mongodbDeps,
@@ -108,10 +109,10 @@ type configHeader struct {
 }
 
 type config struct {
-	RestHandler, GRPCHandler, GraphQLHandler                                           bool
-	KafkaHandler, SchedulerHandler, RedisSubsHandler, TaskQueueHandler, IsWorkerActive bool
-	RedisDeps, SQLDeps, MongoDeps, SQLUseGORM                                          bool
-	SQLDriver                                                                          string
+	RestHandler, GRPCHandler, GraphQLHandler                                                                    bool
+	KafkaHandler, SchedulerHandler, RedisSubsHandler, TaskQueueHandler, PostgresListenerHandler, IsWorkerActive bool
+	RedisDeps, SQLDeps, MongoDeps, SQLUseGORM                                                                   bool
+	SQLDriver                                                                                                   string
 }
 
 type serviceConfig struct {
@@ -124,7 +125,18 @@ func (s *serviceConfig) checkWorkerActive() {
 	s.IsWorkerActive = s.KafkaHandler ||
 		s.SchedulerHandler ||
 		s.RedisSubsHandler ||
+		s.PostgresListenerHandler ||
 		s.TaskQueueHandler
+}
+func (s *serviceConfig) disableAllHandler() {
+	s.RestHandler = false
+	s.GRPCHandler = false
+	s.GraphQLHandler = false
+	s.KafkaHandler = false
+	s.SchedulerHandler = false
+	s.RedisSubsHandler = false
+	s.TaskQueueHandler = false
+	s.PostgresListenerHandler = false
 }
 
 type moduleConfig struct {

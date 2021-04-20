@@ -21,9 +21,10 @@ require (
 	github.com/joho/godotenv v1.3.0
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/gommon v0.3.0 // indirect
-	github.com/lib/pq v1.10.0 // indirect
+	github.com/lib/pq v1.10.0
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/soheilhy/cmux v0.1.4
+	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.7.0
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
 	github.com/uber/jaeger-lib v2.4.0+incompatible // indirect

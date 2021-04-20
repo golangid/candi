@@ -92,6 +92,8 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 							{FromTemplate: true, DataSource: mod, Source: deliveryRedisTemplate, FileName: "redis_handler.go", SkipFunc: func() bool { return !srvConfig.RedisSubsHandler }},
 							{FromTemplate: true, DataSource: mod, Source: deliveryCronTemplate, FileName: "cron_handler.go", SkipFunc: func() bool { return !srvConfig.SchedulerHandler }},
 							{FromTemplate: true, DataSource: mod, Source: deliveryTaskQueueTemplate, FileName: "taskqueue_handler.go", SkipFunc: func() bool { return !srvConfig.TaskQueueHandler }},
+							{FromTemplate: true, DataSource: mod, Source: deliveryPostgresListenerTemplate, FileName: "postgres_listener_handler.go",
+								SkipFunc: func() bool { return !srvConfig.PostgresListenerHandler }},
 						}},
 				},
 			},
