@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"reflect"
+	"time"
 
 	"pkg.agungdp.dev/candi/candihelper"
 	"pkg.agungdp.dev/candi/candishared"
@@ -41,6 +42,17 @@ func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.Ap
 	httpHandler := NewHandler(service)
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(resp http.ResponseWriter, req *http.Request) {
+		payload := map[string]string{
+			"message":   fmt.Sprintf("Service %s up and running", service.Name()),
+			"timestamp": time.Now().Format(time.RFC3339Nano),
+		}
+		if env.BaseEnv().BuildNumber != "" {
+			payload["buildNumber"] = env.BaseEnv().BuildNumber
+		}
+		resp.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(resp).Encode(payload)
+	})
 	mux.HandleFunc(rootGraphQLPath, httpHandler.ServeGraphQL())
 	mux.HandleFunc(rootGraphQLPlayground, httpHandler.ServePlayground)
 	mux.HandleFunc(rootGraphQLVoyager, httpHandler.ServeVoyager)

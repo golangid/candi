@@ -30,15 +30,14 @@ var (
 
 type (
 	postgresWorker struct {
-		consul    *candiutils.Consul
-		isHaveJob bool
-		listener  *pq.Listener
-		handlers  map[string]types.WorkerHandlerFunc
-		wg        sync.WaitGroup
+		consul   *candiutils.Consul
+		listener *pq.Listener
+		handlers map[string]types.WorkerHandlerFunc
+		wg       sync.WaitGroup
 	}
 )
 
-// NewWorker create new redis subscriber
+// NewWorker create new postgres event listener
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	worker := new(postgresWorker)
 	shutdown, semaphore = make(chan struct{}, 1), make(chan struct{}, env.BaseEnv().MaxGoroutines)
@@ -119,7 +118,7 @@ START:
 				trace.SetTag("table_name", eventPayload.Table)
 				trace.SetTag("action", eventPayload.Action)
 				trace.Log("payload", event.Extra)
-				if err := p.handlers[eventPayload.Table](trace.Context(), []byte(event.Extra)); err != nil {
+				if err := p.handlers[eventPayload.Table](ctx, []byte(event.Extra)); err != nil {
 					trace.SetError(err)
 				}
 			}(e)
@@ -157,7 +156,7 @@ func (p *postgresWorker) Shutdown(ctx context.Context) {
 		log.Println("\x1b[33;1mStopping Postgres Event Listener:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
 	}()
 
-	if !p.isHaveJob {
+	if len(p.handlers) == 0 {
 		return
 	}
 
@@ -167,6 +166,8 @@ func (p *postgresWorker) Shutdown(ctx context.Context) {
 		fmt.Printf("\x1b[34;1mPostgres Event Listener:\x1b[0m waiting %d job until done...\n", runningJob)
 	}
 
+	p.listener.Unlisten(eventsConst)
+	p.listener.Close()
 	p.wg.Wait()
 }
 

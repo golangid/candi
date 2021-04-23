@@ -194,6 +194,12 @@ func ToUTC(t time.Time) time.Time {
 		t.Nanosecond(), time.UTC)
 }
 
+// TimeRemoveNanosecond ...
+func TimeRemoveNanosecond(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(),
+		0, t.Location())
+}
+
 // ToBytes convert all types to bytes
 func ToBytes(i interface{}) (b []byte) {
 	switch t := i.(type) {

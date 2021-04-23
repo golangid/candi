@@ -44,10 +44,14 @@ func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.Ap
 	server.serverEngine.Use(echoMidd.CORS())
 
 	server.serverEngine.GET("/", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]string{
+		resp := map[string]string{
 			"message":   fmt.Sprintf("Service %s up and running", service.Name()),
 			"timestamp": time.Now().Format(time.RFC3339Nano),
-		})
+		}
+		if env.BaseEnv().BuildNumber != "" {
+			resp["buildNumber"] = env.BaseEnv().BuildNumber
+		}
+		return c.JSON(http.StatusOK, resp)
 	})
 
 	restRootPath := server.serverEngine.Group("", echoRestTracerMiddleware)
