@@ -97,10 +97,11 @@ If include GRPC handler, run `$ make proto` for generate rpc files from proto (m
 
 
 ## Service handlers example:
-* [**Example Cron worker in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/cron_worker)
+* [**Example Cron worker in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/cron_worker) (Static Scheduler)
 * [**Example Kafka consumer in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/kafka_worker)
-* [**Example Redis subscriber in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/redis_worker)
+* [**Example Redis subscriber in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/redis_worker) (Dynamic Scheduler)
 * [**Example Task queue worker in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/task_queue_worker)
+* [**Example Postgres event listener in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/postgres_worker)
 
 
 ## Todo
