@@ -7,6 +7,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"pkg.agungdp.dev/candi/candihelper"
+	"pkg.agungdp.dev/candi/candishared"
 	"pkg.agungdp.dev/candi/logger"
 	"pkg.agungdp.dev/candi/tracer"
 )
@@ -31,7 +32,7 @@ func NewKafkaPublisher(client sarama.Client) *KafkaPublisher {
 }
 
 // PublishMessage method
-func (p *KafkaPublisher) PublishMessage(ctx context.Context, topic, key string, data interface{}) (err error) {
+func (p *KafkaPublisher) PublishMessage(ctx context.Context, args *candishared.PublisherArgument) (err error) {
 	trace := tracer.StartTrace(ctx, "kafka:publish_message")
 	defer func() {
 		if r := recover(); r != nil {
@@ -41,16 +42,15 @@ func (p *KafkaPublisher) PublishMessage(ctx context.Context, topic, key string, 
 		trace.Finish()
 	}()
 
-	payload := candihelper.ToBytes(data)
+	payload := candihelper.ToBytes(args.Data)
 
-	// set tracer tag
-	trace.SetTag("topic", topic)
-	trace.SetTag("key", key)
-	tracer.Log(trace.Context(), "message", payload)
+	trace.SetTag("topic", args.Topic)
+	trace.SetTag("key", args.Key)
+	trace.Log("message", payload)
 
 	msg := &sarama.ProducerMessage{
-		Topic:     topic,
-		Key:       sarama.ByteEncoder([]byte(key)),
+		Topic:     args.Topic,
+		Key:       sarama.ByteEncoder([]byte(args.Key)),
 		Value:     sarama.ByteEncoder(payload),
 		Timestamp: time.Now(),
 	}

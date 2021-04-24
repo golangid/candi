@@ -28,7 +28,7 @@ const (
 	redissubsHandler        = "redissubsHandler"
 	taskqueueHandler        = "taskqueueHandler"
 	postgresListenerHandler = "postgresListenerHandler"
-	kafkaDeps               = "kafkaDeps"
+	rabbitmqHandler         = "rabbitmqHandler"
 	redisDeps               = "redisDeps"
 	sqldbDeps               = "sqldbDeps"
 	mongodbDeps             = "mongodbDeps"
@@ -42,7 +42,7 @@ var (
 		"1": restHandler, "2": grpcHandler, "3": graphqlHandler,
 	}
 	workerHandlersMap = map[string]string{
-		"1": kafkaHandler, "2": schedulerHandler, "3": redissubsHandler, "4": taskqueueHandler, "5": postgresListenerHandler,
+		"1": kafkaHandler, "2": schedulerHandler, "3": redissubsHandler, "4": taskqueueHandler, "5": postgresListenerHandler, "6": rabbitmqHandler,
 	}
 	dependencyMap = map[string]string{
 		"1": redisDeps, "2": sqldbDeps, "3": mongodbDeps,
@@ -50,6 +50,7 @@ var (
 	sqlDrivers = map[string]string{
 		"1": "postgres", "2": "mysql",
 	}
+	optionYesNo = map[string]bool{"y": true, "n": false}
 
 	tpl    *template.Template
 	logger *log.Logger
@@ -109,10 +110,11 @@ type configHeader struct {
 }
 
 type config struct {
-	RestHandler, GRPCHandler, GraphQLHandler                                                                    bool
-	KafkaHandler, SchedulerHandler, RedisSubsHandler, TaskQueueHandler, PostgresListenerHandler, IsWorkerActive bool
-	RedisDeps, SQLDeps, MongoDeps, SQLUseGORM                                                                   bool
-	SQLDriver                                                                                                   string
+	RestHandler, GRPCHandler, GraphQLHandler                           bool
+	KafkaHandler, SchedulerHandler, RedisSubsHandler, TaskQueueHandler bool
+	PostgresListenerHandler, RabbitMQHandler, IsWorkerActive           bool
+	RedisDeps, SQLDeps, MongoDeps, SQLUseGORM                          bool
+	SQLDriver                                                          string
 }
 
 type serviceConfig struct {

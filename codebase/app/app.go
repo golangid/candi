@@ -16,6 +16,7 @@ import (
 	grpcserver "pkg.agungdp.dev/candi/codebase/app/grpc_server"
 	kafkaworker "pkg.agungdp.dev/candi/codebase/app/kafka_worker"
 	postgresworker "pkg.agungdp.dev/candi/codebase/app/postgres_worker"
+	rabbitmqworker "pkg.agungdp.dev/candi/codebase/app/rabbitmq_worker"
 	redisworker "pkg.agungdp.dev/candi/codebase/app/redis_worker"
 	restserver "pkg.agungdp.dev/candi/codebase/app/rest_server"
 	taskqueueworker "pkg.agungdp.dev/candi/codebase/app/task_queue_worker"
@@ -49,6 +50,9 @@ func New(service factory.ServiceFactory) *App {
 	}
 	if env.BaseEnv().UsePostgresListenerWorker {
 		appInstance.servers = append(appInstance.servers, postgresworker.NewWorker(service))
+	}
+	if env.BaseEnv().UseRabbitMQWorker {
+		appInstance.servers = append(appInstance.servers, rabbitmqworker.NewWorker(service))
 	}
 
 	useSharedListener := (env.BaseEnv().UseREST || env.BaseEnv().UseGraphQL) && (env.BaseEnv().UseGRPC && env.BaseEnv().GRPCPort == 0)

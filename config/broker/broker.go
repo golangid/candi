@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/Shopify/sarama"
+	"github.com/streadway/amqp"
 	"pkg.agungdp.dev/candi/candihelper"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
 	"pkg.agungdp.dev/candi/codebase/interfaces"
@@ -12,19 +13,30 @@ import (
 )
 
 type brokerInstance struct {
-	kafka *kafkaBroker
+	kafka    *kafkaBroker
+	rabbitmq *rabbitmqBroker
 }
 
-// InitBrokers init registered broker
-// for kafka pass types.Kafka in param, init kafka broker configuration from env KAFKA_BROKERS, KAFKA_CLIENT_ID, KAFKA_CLIENT_VERSION
+/*
+InitBrokers init registered broker
+
+* for kafka, pass types.Kafka in param, init kafka broker configuration from env
+KAFKA_BROKERS, KAFKA_CLIENT_ID, KAFKA_CLIENT_VERSION
+
+* for rabbitmq, pass types.RabbitMQ in param, init rabbitmq broker configuration from env
+RABBITMQ_BROKER, RABBITMQ_CONSUMER_GROUP, RABBITMQ_EXCHANGE_NAME
+*/
 func InitBrokers(brokerTypes ...types.Worker) interfaces.Broker {
 	var brokerInst = brokerInstance{
-		kafka: &kafkaBroker{},
+		kafka:    &kafkaBroker{},
+		rabbitmq: &rabbitmqBroker{},
 	}
 	for _, brokerType := range brokerTypes {
 		switch brokerType {
 		case types.Kafka:
 			brokerInst.kafka = initKafkaBroker()
+		case types.RabbitMQ:
+			brokerInst.rabbitmq = initRabbitMQBroker()
 		}
 	}
 	return &brokerInst
@@ -34,10 +46,16 @@ func (b *brokerInstance) GetKafkaClient() sarama.Client {
 	return b.kafka.client
 }
 
+func (b *brokerInstance) GetRabbitMQConn() *amqp.Connection {
+	return b.rabbitmq.conn
+}
+
 func (b *brokerInstance) Publisher(brokerType types.Worker) interfaces.Publisher {
 	switch brokerType {
 	case types.Kafka:
 		return b.kafka.pub
+	case types.RabbitMQ:
+		return b.rabbitmq.pub
 	}
 	return nil
 }
@@ -53,6 +71,11 @@ func (b *brokerInstance) Health() map[string]error {
 		mErr[string(types.Kafka)] = err
 	}
 
+	if b.rabbitmq.conn != nil {
+		var err error
+		mErr[string(types.RabbitMQ)] = err
+	}
+
 	return mErr
 }
 
@@ -65,6 +88,16 @@ func (b *brokerInstance) Disconnect(ctx context.Context) error {
 			defer deferFunc()
 			if err := b.kafka.client.Close(); err != nil {
 				mErr.Append(string(types.Kafka), err)
+			}
+		}()
+	}
+
+	if b.rabbitmq.conn != nil {
+		func() {
+			deferFunc := logger.LogWithDefer("rabbitmq: disconnect...")
+			defer deferFunc()
+			if err := b.rabbitmq.conn.Close(); err != nil {
+				mErr.Append(string(types.RabbitMQ), err)
 			}
 		}()
 	}

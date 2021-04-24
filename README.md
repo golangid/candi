@@ -5,7 +5,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/agungdwiprasetyo/candi)](https://goreportcard.com/report/github.com/agungdwiprasetyo/candi)
 [![codecov](https://codecov.io/gh/agungdwiprasetyo/candi/branch/master/graph/badge.svg)](https://codecov.io/gh/agungdwiprasetyo/candi)
 
-## Made with
+## Build with :heart: and
 <p align="center">
   <img src="https://storage.googleapis.com/agungdp/static/logo/golang.png" width="80" alt="golang logo" />
   <img src="https://storage.googleapis.com/agungdp/static/logo/docker.png" width="80" hspace="10" alt="docker logo" />
@@ -95,14 +95,21 @@ $ make run
 ```
 If include GRPC handler, run `$ make proto` for generate rpc files from proto (must install `protoc` compiler min version `libprotoc 3.14.0`)
 
+## Server handlers example:
+* [**Example REST API in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/rest_server)
+* [**Example gRPC in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/grpc_server)
+* [**Example GraphQL in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/graphql_server)
 
-## Service handlers example:
+## Worker handlers example:
 * [**Example Cron worker in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/cron_worker) (Static Scheduler)
-* [**Example Kafka consumer in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/kafka_worker)
+* [**Example Kafka consumer in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/kafka_worker) (Event Driven Handler)
 * [**Example Redis subscriber in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/redis_worker) (Dynamic Scheduler)
 * [**Example Task queue worker in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/task_queue_worker)
 * [**Example Postgres event listener in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/postgres_worker)
+* [**Example RabbitMQ consumer in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/rabbitmq_worker) (Event Driven Handler and Dynamic Scheduler)
 
+
+## Example microservices project using this library: [Backend Microservices](https://github.com/agungdwiprasetyo/backend-microservices)
 
 ## Todo
 - [x] ~~Add task queue worker like celery and add UI for manage task queue worker~~ => https://github.com/agungdwiprasetyo/task-queue-worker-dashboard

@@ -97,11 +97,13 @@ stageInputModules:
 		srvConfig = savedConfig
 
 	stageChooseCustomConfig:
-		currentConfig := fmt.Sprintf("\n* REST: %t\n* GRPC: %t\n* GraphQL: %t\n* Kafka: %t\n* Scheduler: %t\n* RedisSubs: %t\n* TaskQueue: %t\n* PostgresListener: %t",
+		format := "\n* REST: %t\n* GRPC: %t\n* GraphQL: %t\n* Kafka: %t\n* Scheduler: %t\n" +
+			"* RedisSubs: %t\n* TaskQueue: %t\n* PostgresListener: %t\n* RabbitMQ: %t"
+		currentConfig := fmt.Sprintf(format,
 			savedConfig.RestHandler, savedConfig.GRPCHandler, savedConfig.GraphQLHandler, savedConfig.KafkaHandler, savedConfig.SchedulerHandler,
-			savedConfig.RedisSubsHandler, savedConfig.TaskQueueHandler, savedConfig.PostgresListenerHandler)
+			savedConfig.RedisSubsHandler, savedConfig.TaskQueueHandler, savedConfig.PostgresListenerHandler, savedConfig.RabbitMQHandler)
 		customConfig := readInput(fmt.Sprintf("Use custom server/worker handler (y/n)? \ncurrent handler config is: %s", currentConfig))
-		yes, ok := map[string]bool{"y": true, "n": false}[customConfig]
+		yes, ok := optionYesNo[customConfig]
 		if !ok {
 			fmt.Printf(redFormat, "Invalid option, try again")
 			goto stageChooseCustomConfig
@@ -171,6 +173,9 @@ stageSelectWorkerHandlers:
 		if b, ok := workerHandlers[postgresListenerHandler]; ok {
 			srvConfig.PostgresListenerHandler = b
 		}
+		if b, ok := workerHandlers[rabbitmqHandler]; ok {
+			srvConfig.PostgresListenerHandler = b
+		}
 		srvConfig.checkWorkerActive()
 
 		srvConfig.OutputDir = flagParam.outputFlag
@@ -214,8 +219,7 @@ stageSelectDependencies:
 
 	stageUseGORMLabel:
 		cmdInput = readInput("Use GORM? (y/n)")
-		gormOpts := map[string]bool{"y": true, "n": false}
-		if srvConfig.SQLUseGORM, ok = gormOpts[cmdInput]; !ok {
+		if srvConfig.SQLUseGORM, ok = optionYesNo[cmdInput]; !ok {
 			fmt.Printf(redFormat, "Invalid option, try again")
 			goto stageUseGORMLabel
 		}
@@ -249,6 +253,7 @@ stageSelectDependencies:
 	srvConfig.RedisSubsHandler = workerHandlers[redissubsHandler]
 	srvConfig.TaskQueueHandler = workerHandlers[taskqueueHandler]
 	srvConfig.PostgresListenerHandler = workerHandlers[postgresListenerHandler]
+	srvConfig.RabbitMQHandler = workerHandlers[rabbitmqHandler]
 	srvConfig.RedisDeps = dependencies[redisDeps]
 	srvConfig.SQLDeps, srvConfig.MongoDeps = dependencies[sqldbDeps], dependencies[mongodbDeps]
 	srvConfig.checkWorkerActive()
@@ -446,6 +451,11 @@ func filterWorkerHandler(cfg serviceConfig, flagParam *flagParameter) (wording s
 		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "postgres_listener_handler.go")) != nil) {
 		options = append(options, fmt.Sprintf("%d) Postgres Event Listener Worker", len(options)+1))
 		handlers[strconv.Itoa(len(options))] = postgresListenerHandler
+	}
+	if !cfg.RabbitMQHandler || (flagParam.addHandler &&
+		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "rabbitmq_handler.go")) != nil) {
+		options = append(options, fmt.Sprintf("%d) RabbitMQ Consumer", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = rabbitmqHandler
 	}
 
 	wording = strings.Join(options, "\n")

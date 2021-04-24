@@ -135,6 +135,12 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 				FromTemplate: true, DataSource: mod, Source: deliveryPostgresListenerTemplate, FileName: "postgres_listener_handler.go",
 			})
 			replaceEnv["USE_POSTGRES_LISTENER_WORKER=false"] = "USE_POSTGRES_LISTENER_WORKER=true"
+		case rabbitmqHandler:
+			mod.RabbitMQHandler = true
+			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
+				FromTemplate: true, DataSource: mod, Source: deliveryRabbitMQTemplate, FileName: "rabbitmq_handler.go",
+			})
+			replaceEnv["USE_RABBITMQ_CONSUMER=false"] = "USE_RABBITMQ_CONSUMER=true"
 		}
 	}
 	apiStructure := FileStructure{

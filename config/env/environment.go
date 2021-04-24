@@ -37,6 +37,8 @@ type Env struct {
 	UseTaskQueueWorker bool
 	// UsePostgresListenerWorker env
 	UsePostgresListenerWorker bool
+	// UseRabbitMQWorker env
+	UseRabbitMQWorker bool
 
 	// GraphQLSchemaDir env
 	GraphQLSchemaDir string
@@ -75,6 +77,11 @@ type Env struct {
 		ClientVersion string
 		ClientID      string
 		ConsumerGroup string
+	}
+	RabbitMQ struct {
+		Broker        string
+		ConsumerGroup string
+		ExchangeName  string
 	}
 
 	// MaxGoroutines env for goroutine semaphore
@@ -264,9 +271,15 @@ func parseAppConfig() {
 	}
 	usePostgresListener, ok := os.LookupEnv("USE_POSTGRES_LISTENER_WORKER")
 	if !ok {
-		flag.BoolVar(&env.UsePostgresListenerWorker, "USE_POSTGRES_LISTENER_WORKER", false, "USE TASK QUEUE WORKER")
+		flag.BoolVar(&env.UsePostgresListenerWorker, "USE_POSTGRES_LISTENER_WORKER", false, "USE POSTGRES LISTENER WORKER")
 	} else {
 		env.UsePostgresListenerWorker, _ = strconv.ParseBool(usePostgresListener)
+	}
+	useRabbitMQWorker, ok := os.LookupEnv("USE_RABBITMQ_CONSUMER")
+	if !ok {
+		flag.BoolVar(&env.UsePostgresListenerWorker, "USE_RABBITMQ_CONSUMER", false, "USE RABBIT MQ CONSUMER")
+	} else {
+		env.UseRabbitMQWorker, _ = strconv.ParseBool(useRabbitMQWorker)
 	}
 
 	flag.Usage = func() {
@@ -278,6 +291,7 @@ func parseAppConfig() {
 		fmt.Println("	-USE_REDIS_SUBSCRIBER :=> Activate Redis Subscriber Worker")
 		fmt.Println("	-USE_TASK_QUEUE_WORKER :=> Activate Task Queue Worker")
 		fmt.Println("	-USE_POSTGRES_LISTENER_WORKER :=> Activate Postgres Event Worker")
+		fmt.Println("	-USE_RABBITMQ_CONSUMER :=> Activate Rabbit MQ Consumer")
 	}
 	flag.Parse()
 }
@@ -298,6 +312,9 @@ func parseBrokerEnv() {
 			panic("kafka consumer is active, missing KAFKA_CONSUMER_GROUP environment")
 		}
 	}
+	env.RabbitMQ.Broker = os.Getenv("RABBITMQ_BROKER")
+	env.RabbitMQ.ConsumerGroup = os.Getenv("RABBITMQ_CONSUMER_GROUP")
+	env.RabbitMQ.ExchangeName = os.Getenv("RABBITMQ_EXCHANGE_NAME")
 }
 
 func parseDatabaseEnv() {

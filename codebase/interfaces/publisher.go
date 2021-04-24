@@ -1,8 +1,12 @@
 package interfaces
 
-import "context"
+import (
+	"context"
+
+	"pkg.agungdp.dev/candi/candishared"
+)
 
 // Publisher abstract interface
 type Publisher interface {
-	PublishMessage(ctx context.Context, topic, key string, message interface{}) (err error)
+	PublishMessage(ctx context.Context, args *candishared.PublisherArgument) (err error)
 }

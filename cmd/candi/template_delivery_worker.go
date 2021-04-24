@@ -239,4 +239,48 @@ func (h *PostgresListenerHandler) handleDataChangeOn{{clean (upper .ModuleName)}
 	return nil
 }
 `
+
+	deliveryRabbitMQTemplate = `// {{.Header}}
+
+package workerhandler
+
+import (
+	"context"
+	"fmt"
+
+	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
+
+	"{{.LibraryName}}/codebase/factory/types"
+	"{{.LibraryName}}/codebase/interfaces"
+	"{{.LibraryName}}/tracer"
+)
+
+// RabbitMQHandler struct
+type RabbitMQHandler struct {
+	uc        usecase.{{clean (upper .ModuleName)}}Usecase
+	validator interfaces.Validator
+}
+
+// NewRabbitMQHandler constructor
+func NewRabbitMQHandler(uc usecase.{{clean (upper .ModuleName)}}Usecase, validator interfaces.Validator) *RabbitMQHandler {
+	return &RabbitMQHandler{
+		uc:        uc,
+		validator: validator,
+	}
+}
+
+// MountHandlers mount handler group
+func (h *RabbitMQHandler) MountHandlers(group *types.WorkerHandlerGroup) {
+	group.Add("{{.ModuleName}}", h.handleQueue{{clean (upper .ModuleName)}}) // consume queue "{{.ModuleName}}"
+}
+
+func (h *RabbitMQHandler) handleQueue{{clean (upper .ModuleName)}}(ctx context.Context, message []byte) error {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryRabbitMQ:HandleQueue{{clean (upper .ModuleName)}}")
+	defer trace.Finish()
+	ctx = trace.Context()
+
+	fmt.Printf("message consumed by module {{.ModuleName}}. message: %s\n", message)
+	return nil
+}
+`
 )

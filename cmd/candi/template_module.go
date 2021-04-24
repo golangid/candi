@@ -44,6 +44,7 @@ func NewModule(deps dependency.Dependency) *Module {
 		{{if not .RedisSubsHandler}}// {{end}}types.RedisSubscriber: workerhandler.NewRedisHandler(usecaseUOW.{{clean (upper .ModuleName)}}(), deps.GetValidator()),
 		{{if not .TaskQueueHandler}}// {{end}}types.TaskQueue:       workerhandler.NewTaskQueueHandler(usecaseUOW.{{clean (upper .ModuleName)}}(), deps.GetValidator()),
 		{{if not .PostgresListenerHandler}}// {{end}}types.PostgresListener: workerhandler.NewPostgresListenerHandler(usecaseUOW.{{clean (upper .ModuleName)}}(), deps.GetValidator()),
+		{{if not .RabbitMQHandler}}// {{end}}types.RabbitMQ: workerhandler.NewRabbitMQHandler(usecaseUOW.{{clean (upper .ModuleName)}}(), deps.GetValidator()),
 	}
 
 	return &mod

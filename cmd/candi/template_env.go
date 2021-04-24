@@ -5,20 +5,22 @@ ENVIRONMENT=development #development,staging,production
 DEBUG_MODE=true
 NO_AUTH=true
 
-# Service Handlers
+# Application Service Handlers
 ## Server
 USE_REST={{.RestHandler}}
 USE_GRPC={{.GRPCHandler}}
 USE_GRAPHQL={{.GraphQLHandler}}
 ## Worker
-USE_KAFKA_CONSUMER={{.KafkaHandler}}
-USE_CRON_SCHEDULER={{.SchedulerHandler}}
-USE_REDIS_SUBSCRIBER={{.RedisSubsHandler}}
+USE_KAFKA_CONSUMER={{.KafkaHandler}} # event driven handler
+USE_CRON_SCHEDULER={{.SchedulerHandler}} # static scheduler
+USE_REDIS_SUBSCRIBER={{.RedisSubsHandler}} # dynamic scheduler
 USE_TASK_QUEUE_WORKER={{.TaskQueueHandler}}
 USE_POSTGRES_LISTENER_WORKER={{.PostgresListenerHandler}}
+USE_RABBITMQ_CONSUMER={{.RabbitMQHandler}} # event driven handler and dynamic scheduler
 
 HTTP_PORT=8000
-GRPC_PORT=8002 # uncomment this env if separate port listener http & grpc server, comment this env if use shared listener from http & grpc in same port (use HTTP_PORT)
+# add GRPC_PORT env if separate port listener http & grpc server, remove GRPC_PORT env if use shared listener from http & grpc in same port (use HTTP_PORT)
+GRPC_PORT=8002
 
 TASK_QUEUE_DASHBOARD_PORT=8080
 TASK_QUEUE_DASHBOARD_MAX_CLIENT=5
@@ -41,16 +43,20 @@ SQL_DB_WRITE_DSN={{ if .SQLDeps }}{{.SQLDriver}}{{ else }}sql{{ end }}://user:pa
 REDIS_READ_DSN=redis://:pass@localhost:6379/0
 REDIS_WRITE_DSN=redis://:pass@localhost:6379/0
 
-KAFKA_BROKERS=localhost:9092
+KAFKA_BROKERS=localhost:9092 # if multiple broker, separate by comma with no space
 KAFKA_CLIENT_VERSION=2.0.0
 KAFKA_CLIENT_ID={{.ServiceName}}
 KAFKA_CONSUMER_GROUP={{.ServiceName}}
+
+RABBITMQ_BROKER=amqp://guest:guest@localhost:5672/test
+RABBITMQ_CONSUMER_GROUP={{.ServiceName}}
+RABBITMQ_EXCHANGE_NAME=delayed
 
 JAEGER_TRACING_HOST=127.0.0.1:5775
 GRAPHQL_SCHEMA_DIR="api/graphql"
 JSON_SCHEMA_DIR="api/jsonschema"
 
-MAX_GOROUTINES=50
+MAX_GOROUTINES=10
 
 # Additional env
 `
