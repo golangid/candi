@@ -88,6 +88,10 @@ $ candi
 ```
 ![](https://storage.googleapis.com/agungdp/static/candi/candi.gif)
 
+### The project is generated with this architecture diagram:
+![](https://storage.googleapis.com/agungdp/static/candi/arch.jpg?11)
+
+
 ## Build and run service
 ```
 $ cd {{service_name}}
