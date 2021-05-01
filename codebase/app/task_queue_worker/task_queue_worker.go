@@ -132,6 +132,10 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 	t.wg.Wait()
 }
 
+func (t *taskQueueWorker) Name() string {
+	return string(types.TaskQueue)
+}
+
 func (t *taskQueueWorker) execJob(workerIndex int) {
 	taskIndex, ok := workerIndexTask[workerIndex]
 	if !ok {

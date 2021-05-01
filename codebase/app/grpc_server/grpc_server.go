@@ -104,3 +104,7 @@ func (s *grpcServer) Shutdown(ctx context.Context) {
 	s.serverEngine.GracefulStop()
 	s.listener.Close()
 }
+
+func (s *grpcServer) Name() string {
+	return string(types.GRPC)
+}

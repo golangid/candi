@@ -6,4 +6,5 @@ import "context"
 type AppServerFactory interface {
 	Serve()
 	Shutdown(ctx context.Context)
+	Name() string
 }

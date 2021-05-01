@@ -110,3 +110,7 @@ func (h *kafkaWorker) Shutdown(ctx context.Context) {
 	h.cancelFunc()
 	h.engine.Close()
 }
+
+func (h *kafkaWorker) Name() string {
+	return string(types.Kafka)
+}

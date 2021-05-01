@@ -170,6 +170,10 @@ func (c *cronWorker) Shutdown(ctx context.Context) {
 	c.wg.Wait()
 }
 
+func (c *cronWorker) Name() string {
+	return string(types.Scheduler)
+}
+
 func (c *cronWorker) createConsulSession() {
 	if c.consul == nil {
 		go func() { startWorkerCh <- struct{}{} }()

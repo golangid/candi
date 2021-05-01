@@ -171,6 +171,10 @@ func (p *postgresWorker) Shutdown(ctx context.Context) {
 	p.wg.Wait()
 }
 
+func (p *postgresWorker) Name() string {
+	return string(types.PostgresListener)
+}
+
 func (p *postgresWorker) createConsulSession() {
 	if p.consul == nil {
 		go func() { startWorkerCh <- struct{}{} }()

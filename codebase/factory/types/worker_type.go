@@ -2,24 +2,6 @@ package types
 
 import "context"
 
-// Worker is the type returned by a classifier worker (kafka, redis subscriber, rabbitmq, scheduler, task queue)
-type Worker string
-
-const (
-	// Kafka worker
-	Kafka Worker = "kafka"
-	// RedisSubscriber worker
-	RedisSubscriber = "redis_subscriber"
-	// RabbitMQ worker
-	RabbitMQ = "rabbit_mq"
-	// Scheduler worker
-	Scheduler = "scheduler"
-	// TaskQueue worker
-	TaskQueue = "task_queue"
-	// PostgresListener worker
-	PostgresListener = "postgres_listener"
-)
-
 // WorkerHandlerFunc types
 type WorkerHandlerFunc func(ctx context.Context, message []byte) error
 

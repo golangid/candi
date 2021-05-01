@@ -131,3 +131,7 @@ func (r *rabbitmqWorker) Shutdown(ctx context.Context) {
 	r.wg.Wait()
 	r.conn.Close()
 }
+
+func (r *rabbitmqWorker) Name() string {
+	return string(types.RabbitMQ)
+}

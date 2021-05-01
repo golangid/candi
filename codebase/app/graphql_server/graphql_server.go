@@ -100,6 +100,10 @@ func (s *graphqlServer) Shutdown(ctx context.Context) {
 	}
 }
 
+func (s *graphqlServer) Name() string {
+	return string(types.GraphQL)
+}
+
 // Handler interface
 type Handler interface {
 	ServeGraphQL() http.HandlerFunc

@@ -167,6 +167,10 @@ func (r *redisWorker) Shutdown(ctx context.Context) {
 	r.wg.Wait()
 }
 
+func (r *redisWorker) Name() string {
+	return string(types.RedisSubscriber)
+}
+
 func (r *redisWorker) createConsulSession() {
 	if r.consul == nil {
 		go func() { startWorkerCh <- struct{}{} }()

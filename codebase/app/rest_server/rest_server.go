@@ -16,6 +16,7 @@ import (
 
 	graphqlserver "pkg.agungdp.dev/candi/codebase/app/graphql_server"
 	"pkg.agungdp.dev/candi/codebase/factory"
+	"pkg.agungdp.dev/candi/codebase/factory/types"
 	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
 	"pkg.agungdp.dev/candi/wrapper"
@@ -118,4 +119,8 @@ func (h *restServer) Shutdown(ctx context.Context) {
 	if h.listener != nil {
 		h.listener.Close()
 	}
+}
+
+func (h *restServer) Name() string {
+	return string(types.REST)
 }
