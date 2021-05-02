@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/soheilhy/cmux"
 	"pkg.agungdp.dev/candi/codebase/interfaces"
 	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
@@ -19,7 +21,9 @@ const timeout time.Duration = 10 * time.Second
 
 // Config app
 type Config struct {
-	closers []interfaces.Closer
+	ServiceName    string
+	SharedListener cmux.CMux
+	closers        []interfaces.Closer
 }
 
 // Init app config
@@ -33,14 +37,33 @@ func Init(serviceName string) *Config {
 		BuildNumberTag:  env.BaseEnv().BuildNumber,
 		MaxGoroutineTag: env.BaseEnv().MaxGoroutines,
 	})
-	return &Config{}
+
+	cfg := &Config{
+		ServiceName: serviceName,
+	}
+
+	// setup shared listener with cmux
+	if env.BaseEnv().UseSharedListener {
+		listener, err := net.Listen("tcp", fmt.Sprintf(":%d", env.BaseEnv().HTTPPort))
+		if err != nil {
+			panic(err)
+		}
+		cfg.SharedListener = cmux.New(listener)
+		cfg.SharedListener.SetReadTimeout(30 * time.Second)
+	}
+	return cfg
 }
 
 // LoadFunc load selected dependency with context timeout
 func (c *Config) LoadFunc(depsFunc func(context.Context) []interfaces.Closer) {
 	// set timeout for init configuration
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+	defer func() {
+		cancel()
+		fmt.Println()
+	}()
+
+	log.Printf("Starting \x1b[32;1m%s\x1b[0m service\n\n", c.ServiceName)
 
 	result := make(chan error)
 	go func() {
@@ -53,6 +76,10 @@ func (c *Config) LoadFunc(depsFunc func(context.Context) []interfaces.Closer) {
 
 		c.closers = depsFunc(ctx)
 	}()
+
+	if c.SharedListener != nil {
+		go func() { c.SharedListener.Serve() }()
+	}
 
 	// with timeout to init configuration
 	select {

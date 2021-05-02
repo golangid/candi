@@ -43,18 +43,28 @@ import (
 	"gorm.io/gorm"{{end}}` + `
 )
 
-// RepoSQL uow
-type RepoSQL struct {
-	readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB` + "{{if not .SQLUseGORM}}\n	tx              *sql.Tx{{end}}" + `
+type (
+	// RepoSQL abstraction
+	RepoSQL interface {
+		WithTransaction(ctx context.Context, txFunc func(ctx context.Context, repo RepoSQL) error) (err error)
+		Free()
+	{{- range $module := .Modules}}
+		{{clean (upper $module.ModuleName)}}Repo() {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository
+	{{- end }}
+	}
 
-	// register all repository from modules
-{{- range $module := .Modules}}
-	{{clean (upper $module.ModuleName)}}Repo {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository
-{{- end }}
-}
+	repoSQLImpl struct {
+		readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB` + "{{if not .SQLUseGORM}}\n		tx    *sql.Tx{{end}}" + `
+	
+		// register all repository from modules
+	{{- range $module := .Modules}}
+		{{clean $module.ModuleName}}Repo {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository
+	{{- end }}
+	}
+)
 
 var (
-	globalRepoSQL = new(RepoSQL)
+	globalRepoSQL RepoSQL
 )
 
 // setSharedRepoSQL set the global singleton "RepoSQL" implementation
@@ -78,38 +88,36 @@ func setSharedRepoSQL(readDB, writeDB *sql.DB) {
 }
 
 // GetSharedRepoSQL returns the global singleton "RepoSQL" implementation
-func GetSharedRepoSQL() *RepoSQL {
+func GetSharedRepoSQL() RepoSQL {
 	return globalRepoSQL
 }
 
 // NewRepositorySQL constructor
-func NewRepositorySQL(readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB{{if not .SQLUseGORM}}, tx *sql.Tx{{end}}) *RepoSQL {
+func NewRepositorySQL(readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB{{if not .SQLUseGORM}}, tx *sql.Tx{{end}}) RepoSQL {
 
-	return &RepoSQL{
+	return &repoSQLImpl{
 		readDB: readDB, writeDB: writeDB,{{if not .SQLUseGORM}} tx: tx,{{end}}
 
 {{- range $module := .Modules}}
-		{{if not .SQLDeps}}// {{end}}{{clean (upper $module.ModuleName)}}Repo: ` +
+		{{if not .SQLDeps}}// {{end}}{{clean $module.ModuleName}}Repo: ` +
 		"{{clean $module.ModuleName}}repo.New{{clean (upper $module.ModuleName)}}RepoSQL(readDB, writeDB{{if not .SQLUseGORM}}, tx{{end}})," + `
 {{- end }}
 	}
 }
 
 // WithTransaction run transaction for each repository with context, include handle canceled or timeout context
-func (r *RepoSQL) WithTransaction(ctx context.Context, txFunc func(ctx context.Context, repo *RepoSQL) error) (err error) {
-	trace := tracer.StartTrace(ctx, "RepoSQL-Transaction")
+func (r *repoSQLImpl) WithTransaction(ctx context.Context, txFunc func(ctx context.Context, repo RepoSQL) error) (err error) {
+	trace := tracer.StartTrace(ctx, "RepoSQL:Transaction")
 	defer trace.Finish()
 	ctx = trace.Context()
 
-	tx{{if not .SQLUseGORM}}, err{{end}} := r.writeDB.Begin()` + "\n{{if .SQLUseGORM}}	err = tx.Error{{end}}" + `
+	tx{{if not .SQLUseGORM}}, err{{end}} := r.writeDB.Begin()` + "{{if .SQLUseGORM}}\n	err = tx.Error{{end}}" + `
 	if err != nil {
 		return err
 	}
 
 	// reinit new repository in different memory address with tx value
 	manager := NewRepositorySQL(r.readDB, {{if not .SQLUseGORM}}r.writeDB, {{end}}tx)
-	defer manager.free()
-
 	defer func() {
 		if err != nil {
 			tx.Rollback()
@@ -117,6 +125,7 @@ func (r *RepoSQL) WithTransaction(ctx context.Context, txFunc func(ctx context.C
 		} else {
 			tx.Commit()
 		}
+		manager.Free()
 	}()
 
 	errChan := make(chan error)
@@ -141,12 +150,18 @@ func (r *RepoSQL) WithTransaction(ctx context.Context, txFunc func(ctx context.C
 	}
 }
 
-func (r *RepoSQL) free() {
+func (r *repoSQLImpl) Free() {
 	// make nil all repository
 {{- range $module := .Modules}}
-	r.{{clean (upper $module.ModuleName)}}Repo = nil
+	r.{{clean $module.ModuleName}}Repo = nil
 {{- end }}
-}	
+}
+
+{{- range $module := .Modules}}
+func (r *repoSQLImpl) {{clean (upper $module.ModuleName)}}Repo() {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository {
+	return r.{{clean $module.ModuleName}}Repo
+}
+{{- end }}
 `
 
 	templateRepositoryUOWMongo = `// {{.Header}} DO NOT EDIT.
@@ -161,33 +176,47 @@ import (
 {{- end }}
 )
 
-// RepoMongo uow
-type RepoMongo struct {
-	readDB, writeDB *mongo.Database
+type (
+	// RepoMongo abstraction
+	RepoMongo interface {
+	{{- range $module := .Modules}}
+		{{clean (upper $module.ModuleName)}}Repo() {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository
+	{{- end }}
+	}
 
-	// register all repository from modules
-{{- range $module := .Modules}}
-	{{clean (upper $module.ModuleName)}}Repo {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository
-{{- end }}
-}
+	repoMongoImpl struct {
+		readDB, writeDB *mongo.Database
 
-var globalRepoMongo = new(RepoMongo)
+		// register all repository from modules
+	{{- range $module := .Modules}}
+		{{clean $module.ModuleName}}Repo {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository
+	{{- end }}
+	}
+)
+
+var globalRepoMongo RepoMongo
 
 // setSharedRepoMongo set the global singleton "RepoMongo" implementation
 func setSharedRepoMongo(readDB, writeDB *mongo.Database) {
-	globalRepoMongo = &RepoMongo{
+	globalRepoMongo = &repoMongoImpl{
 		readDB: readDB, writeDB: writeDB,
 
 {{- range $module := .Modules}}
-		{{if not .MongoDeps}}// {{end}}{{clean (upper $module.ModuleName)}}Repo: {{clean $module.ModuleName}}repo.New{{clean (upper $module.ModuleName)}}RepoMongo(readDB, writeDB),
+		{{if not .MongoDeps}}// {{end}}{{clean $module.ModuleName}}Repo: {{clean $module.ModuleName}}repo.New{{clean (upper $module.ModuleName)}}RepoMongo(readDB, writeDB),
 {{- end }}
 	}
 }
 
 // GetSharedRepoMongo returns the global singleton "RepoMongo" implementation
-func GetSharedRepoMongo() *RepoMongo {
+func GetSharedRepoMongo() RepoMongo {
 	return globalRepoMongo
 }
+
+{{- range $module := .Modules}}
+func (r *repoMongoImpl) {{clean (upper $module.ModuleName)}}Repo() {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository {
+	return r.{{clean $module.ModuleName}}Repo
+}
+{{- end }}
 `
 
 	templateRepositoryAbstraction = `// {{.Header}}

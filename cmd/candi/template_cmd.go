@@ -30,8 +30,7 @@ func main() {
 	cfg := config.Init(serviceName)
 	defer cfg.Exit()
 
-	srv := service.NewService(serviceName, cfg)
-	app.New(srv).Run()
+	app.New(service.NewService(cfg)).Run()
 }
 `
 

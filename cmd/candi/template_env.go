@@ -18,8 +18,9 @@ USE_TASK_QUEUE_WORKER={{.TaskQueueHandler}}
 USE_POSTGRES_LISTENER_WORKER={{.PostgresListenerHandler}}
 USE_RABBITMQ_CONSUMER={{.RabbitMQHandler}} # event driven handler and dynamic scheduler
 
+# use shared listener setup shared port to http & grpc listener (if true, use HTTP_PORT value)
+USE_SHARED_LISTENER=false
 HTTP_PORT=8000
-# add GRPC_PORT env if separate port listener http & grpc server, remove GRPC_PORT env if use shared listener from http & grpc in same port (use HTTP_PORT)
 GRPC_PORT=8002
 
 TASK_QUEUE_DASHBOARD_PORT=8080

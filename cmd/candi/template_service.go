@@ -1,11 +1,12 @@
 package main
 
-const serviceMainTemplate = `// {{.Header}} DO NOT EDIT.
+const serviceMainTemplate = `// {{.Header}}
 
 package {{clean $.ServiceName}}
 
 import (
 	"{{.LibraryName}}/codebase/factory"
+	"{{.LibraryName}}/codebase/factory/appfactory"
 	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/config"
@@ -18,13 +19,15 @@ import (
 
 // Service model
 type Service struct {
-	deps    dependency.Dependency
-	modules []factory.ModuleFactory
-	name    types.Service
+	cfg          *config.Config
+	deps         dependency.Dependency
+	applications []factory.AppServerFactory
+	modules      []factory.ModuleFactory
+	name         types.Service
 }
 
 // NewService in this service
-func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
+func NewService(cfg *config.Config) factory.ServiceFactory {
 	deps := configs.LoadConfigs(cfg)
 
 	modules := []factory.ModuleFactory{
@@ -33,16 +36,36 @@ func NewService(serviceName string, cfg *config.Config) factory.ServiceFactory {
 	{{- end }}
 	}
 
-	return &Service{
+	s := &Service{
+		cfg:     cfg,
 		deps:    deps,
 		modules: modules,
-		name:    types.Service(serviceName),
+		name:    types.Service(cfg.ServiceName),
 	}
+
+	s.applications = appfactory.NewAppFromEnvironmentConfig(s)
+
+	// Add custom application runner, must implement ` + "`" + `factory.AppServerFactory` + "`" + ` methods
+	s.applications = append(s.applications, []factory.AppServerFactory{
+		// customApplication
+	}...)
+
+	return s
+}
+
+// GetConfig method
+func (s *Service) GetConfig() *config.Config {
+	return s.cfg
 }
 
 // GetDependency method
 func (s *Service) GetDependency() dependency.Dependency {
 	return s.deps
+}
+
+// GetApplications method
+func (s *Service) GetApplications() []factory.AppServerFactory {
+	return s.applications
 }
 
 // GetModules method

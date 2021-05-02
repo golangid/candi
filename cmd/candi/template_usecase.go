@@ -37,12 +37,19 @@ var once sync.Once
 // SetSharedUsecase set singleton usecase unit of work instance
 func SetSharedUsecase(deps dependency.Dependency) {
 	once.Do(func() {
-		usecaseInst = &usecaseUow{
-		{{- range $module := .Modules}}
-			{{clean (upper $module.ModuleName)}}Usecase: {{clean $module.ModuleName}}usecase.New{{clean (upper $module.ModuleName)}}Usecase(deps),
-		{{- end }}
+		usecaseInst = new(usecaseUow)
+		var setSharedUsecaseFuncs []func(common.Usecase)
+		var setSharedUsecaseFunc func(common.Usecase)
+
+	{{- range $module := .Modules}}
+		usecaseInst.{{clean (upper $module.ModuleName)}}Usecase, setSharedUsecaseFunc = {{clean $module.ModuleName}}usecase.New{{clean (upper $module.ModuleName)}}Usecase(deps)
+		setSharedUsecaseFuncs = append(setSharedUsecaseFuncs, setSharedUsecaseFunc)
+	{{- end }}
+
+		sharedUsecase := common.SetCommonUsecase(usecaseInst)
+		for _, setFunc := range setSharedUsecaseFuncs {
+			setFunc(sharedUsecase)
 		}
-		common.SetCommonUsecase(usecaseInst)
 	})
 }
 
@@ -70,8 +77,9 @@ type Usecase interface {
 }
 
 // SetCommonUsecase constructor
-func SetCommonUsecase(uc Usecase) {
+func SetCommonUsecase(uc Usecase) Usecase {
 	commonUC = uc
+	return commonUC
 }
 
 // GetCommonUsecase get common usecase
@@ -109,6 +117,7 @@ import (
 
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 	{{ if not (or .SQLDeps .MongoDeps) }}// {{end}}"{{.PackagePrefix}}/pkg/shared/repository"
+	"{{$.PackagePrefix}}/pkg/shared/usecase/common"
 
 	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/codebase/factory/dependency"
@@ -117,17 +126,21 @@ import (
 )
 
 type {{clean .ModuleName}}UsecaseImpl struct {
-	cache interfaces.Cache
-	{{if .SQLDeps}}repoSQL   *repository.RepoSQL{{end}}
-	{{if .MongoDeps}}repoMongo *repository.RepoMongo{{end}}
+	sharedUsecase common.Usecase
+	cache         interfaces.Cache
+	{{if .SQLDeps}}repoSQL   repository.RepoSQL{{end}}
+	{{if .MongoDeps}}repoMongo repository.RepoMongo{{end}}
 }
 
 // New{{clean (upper .ModuleName)}}Usecase usecase impl constructor
-func New{{clean (upper .ModuleName)}}Usecase(deps dependency.Dependency) {{clean (upper .ModuleName)}}Usecase {
-	return &{{clean .ModuleName}}UsecaseImpl{
+func New{{clean (upper .ModuleName)}}Usecase(deps dependency.Dependency) ({{clean (upper .ModuleName)}}Usecase, func(sharedUsecase common.Usecase)) {
+	uc := &{{clean .ModuleName}}UsecaseImpl{
 		{{if .RedisDeps}}cache: deps.GetRedisPool().Cache(),{{end}}
 		{{if .SQLDeps}}repoSQL:   repository.GetSharedRepoSQL(),{{end}}
 		{{if .MongoDeps}}repoMongo: repository.GetSharedRepoMongo(),{{end}}
+	}
+	return uc, func(sharedUsecase common.Usecase) {
+		uc.sharedUsecase = sharedUsecase
 	}
 }
 
@@ -136,11 +149,11 @@ func (uc *{{clean .ModuleName}}UsecaseImpl) GetAll{{clean (upper .ModuleName)}}(
 	defer trace.Finish()
 	ctx = trace.Context()
 
-	{{if or .SQLDeps .MongoDeps}}data, err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo.FetchAll(ctx, &filter)
+	{{if or .SQLDeps .MongoDeps}}data, err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().FetchAll(ctx, &filter)
 	if err != nil {
 		return data, meta, err
 	}
-	count := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo.Count(ctx, &filter)
+	count := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Count(ctx, &filter)
 	meta = candishared.NewMeta(filter.Page, filter.Limit, count){{end}}
 
 	return
@@ -152,7 +165,7 @@ func (uc *{{clean .ModuleName}}UsecaseImpl) GetDetail{{clean (upper .ModuleName)
 	ctx = trace.Context()
 
 	{{if or .SQLDeps .MongoDeps}}data.ID = id
-	err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo.Find(ctx, &data){{end}}
+	err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Find(ctx, &data){{end}}
 	return
 }
 
@@ -161,7 +174,7 @@ func (uc *{{clean .ModuleName}}UsecaseImpl) Save{{clean (upper .ModuleName)}}(ct
 	defer trace.Finish()
 	ctx = trace.Context()
 
-	return{{if or .SQLDeps .MongoDeps}} uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo.Save(ctx, data){{end}}
+	return{{if or .SQLDeps .MongoDeps}} uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Save(ctx, data){{end}}
 }
 
 func (uc *{{clean .ModuleName}}UsecaseImpl) Delete{{clean (upper .ModuleName)}}(ctx context.Context, id string) (err error) {
@@ -169,7 +182,7 @@ func (uc *{{clean .ModuleName}}UsecaseImpl) Delete{{clean (upper .ModuleName)}}(
 	defer trace.Finish()
 	ctx = trace.Context()
 
-	return{{if or .SQLDeps .MongoDeps}} uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo.Delete(ctx, id){{end}}
+	return{{if or .SQLDeps .MongoDeps}} uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Delete(ctx, id){{end}}
 }
 `
 )

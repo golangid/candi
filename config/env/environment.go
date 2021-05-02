@@ -20,6 +20,7 @@ type Env struct {
 
 	useSQL, useMongo, useRedis, useRSAKey bool
 	NoAuth                                bool
+	UseSharedListener                     bool
 
 	// UseREST env
 	UseREST bool
@@ -179,6 +180,10 @@ func Load(serviceName string) {
 	if env.NoAuth {
 		fmt.Println("\x1b[33;1mWARNING: env NO_AUTH is true (basic & bearer auth middleware is inactive)\x1b[0m")
 	}
+	env.UseSharedListener, _ = strconv.ParseBool(os.Getenv("USE_SHARED_LISTENER"))
+	if env.UseSharedListener && env.HTTPPort <= 0 {
+		panic("missing or invalid value for HTTP_PORT environment")
+	}
 
 	env.BasicAuthUsername, ok = os.LookupEnv("BASIC_AUTH_USERNAME")
 	if !ok {
@@ -277,7 +282,7 @@ func parseAppConfig() {
 	}
 	useRabbitMQWorker, ok := os.LookupEnv("USE_RABBITMQ_CONSUMER")
 	if !ok {
-		flag.BoolVar(&env.UsePostgresListenerWorker, "USE_RABBITMQ_CONSUMER", false, "USE RABBIT MQ CONSUMER")
+		flag.BoolVar(&env.UseRabbitMQWorker, "USE_RABBITMQ_CONSUMER", false, "USE RABBIT MQ CONSUMER")
 	} else {
 		env.UseRabbitMQWorker, _ = strconv.ParseBool(useRabbitMQWorker)
 	}
