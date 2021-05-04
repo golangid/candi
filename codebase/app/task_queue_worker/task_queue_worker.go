@@ -202,7 +202,7 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 		job.Error = err.Error()
 		trace.SetError(err)
 		switch e := err.(type) {
-		case *ErrorRetrier:
+		case *candishared.TaskQueueErrorRetrier:
 			job.Status = string(statusQueueing)
 			if job.Retries >= job.MaxRetry {
 				fmt.Printf("\x1b[31;1mTaskQueueWorker: GIVE UP: %s\x1b[0m\n", job.TaskName)
