@@ -30,7 +30,8 @@ func NewGraphQLHandler(mw interfaces.Middleware, uc usecase.{{clean (upper .Modu
 func (h *GraphQLHandler) RegisterMiddleware(mwGroup *types.MiddlewareGroup) {
 	mwGroup.Add("{{clean (upper .ModuleName)}}QueryResolver.get_all_{{clean .ModuleName}}", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("resource.public"))
 	mwGroup.Add("{{clean (upper .ModuleName)}}QueryResolver.get_detail_{{clean .ModuleName}}", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("resource.public"))
-	mwGroup.Add("{{clean (upper .ModuleName)}}MutationResolver.save_{{clean .ModuleName}}", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("resource.public"))
+	mwGroup.Add("{{clean (upper .ModuleName)}}MutationResolver.create_{{clean .ModuleName}}", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("resource.public"))
+	mwGroup.Add("{{clean (upper .ModuleName)}}MutationResolver.update_{{clean .ModuleName}}", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("resource.public"))
 	mwGroup.Add("{{clean (upper .ModuleName)}}MutationResolver.delete_{{clean .ModuleName}}", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("resource.public"))
 }
 
@@ -116,15 +117,32 @@ type mutationResolver struct {
 	root *GraphQLHandler
 }
 
-// Save{{clean (upper .ModuleName)}} resolver
-func (m *mutationResolver) Save{{clean (upper .ModuleName)}}(ctx context.Context, input struct{ Data shareddomain.{{clean (upper .ModuleName)}} }) (ok string, err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:Save{{clean (upper .ModuleName)}}")
+// Create{{clean (upper .ModuleName)}} resolver
+func (m *mutationResolver) Create{{clean (upper .ModuleName)}}(ctx context.Context, input struct{ Data shareddomain.{{clean (upper .ModuleName)}} }) (ok string, err error) {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:Create{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 	ctx = trace.Context()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
-	if err := m.root.uc.Save{{clean (upper .ModuleName)}}(ctx, &input.Data); err != nil {
+	if err := m.root.uc.Create{{clean (upper .ModuleName)}}(ctx, &input.Data); err != nil {
+		return ok, err
+	}
+	return "Success", nil
+}
+
+// Update{{clean (upper .ModuleName)}} resolver
+func (m *mutationResolver) Update{{clean (upper .ModuleName)}}(ctx context.Context, input struct {
+	ID   string
+	Data shareddomain.{{clean (upper .ModuleName)}}
+}) (ok string, err error) {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:Update{{clean (upper .ModuleName)}}")
+	defer trace.Finish()
+	ctx = trace.Context()
+
+	// tokenClaim := golibshared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
+
+	if err := m.root.uc.Update{{clean (upper .ModuleName)}}(ctx, input.ID, &input.Data); err != nil {
 		return ok, err
 	}
 	return "Success", nil
@@ -249,7 +267,8 @@ type {{clean (upper .ModuleName)}}QueryResolver {
 }
 
 type {{clean (upper .ModuleName)}}MutationResolver {
-	save_{{clean .ModuleName}}(data: {{clean (upper .ModuleName)}}InputResolver!): String!
+	create_{{clean .ModuleName}}(data: {{clean (upper .ModuleName)}}InputResolver!): String!
+	update_{{clean .ModuleName}}(id: String!, data: {{clean (upper .ModuleName)}}InputResolver!): String!
 	delete_{{clean .ModuleName}}(id: String!): String!
 }
 

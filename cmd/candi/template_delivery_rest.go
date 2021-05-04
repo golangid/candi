@@ -41,7 +41,8 @@ func (h *RestHandler) Mount(root *echo.Group) {
 	{{clean .ModuleName}} := v1Root.Group("/{{clean .ModuleName}}", echo.WrapMiddleware(h.mw.HTTPBearerAuth))
 	{{clean .ModuleName}}.GET("", h.getAll{{clean (upper .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
 	{{clean .ModuleName}}.GET("/:id", h.getDetail{{clean (upper .ModuleName)}}ByID, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
-	{{clean .ModuleName}}.POST("", h.save{{clean (upper .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
+	{{clean .ModuleName}}.POST("", h.create{{clean (upper .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
+	{{clean .ModuleName}}.PUT("/:id", h.update{{clean (upper .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
 	{{clean .ModuleName}}.DELETE("/:id", h.delete{{clean (upper .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
 }
 
@@ -78,8 +79,8 @@ func (h *RestHandler) getDetail{{clean (upper .ModuleName)}}ByID(c echo.Context)
 	return wrapper.NewHTTPResponse(http.StatusOK, "Success", data).JSON(c.Response())
 }
 
-func (h *RestHandler) save{{clean (upper .ModuleName)}}(c echo.Context) error {
-	trace := tracer.StartTrace(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:Save{{clean (upper .ModuleName)}}")
+func (h *RestHandler) create{{clean (upper .ModuleName)}}(c echo.Context) error {
+	trace := tracer.StartTrace(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:Create{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
 	var payload shareddomain.{{clean (upper .ModuleName)}}
@@ -87,7 +88,24 @@ func (h *RestHandler) save{{clean (upper .ModuleName)}}(c echo.Context) error {
 		return wrapper.NewHTTPResponse(http.StatusOK, err.Error()).JSON(c.Response())
 	}
 
-	err := h.uc.Save{{clean (upper .ModuleName)}}(trace.Context(), &payload)
+	err := h.uc.Create{{clean (upper .ModuleName)}}(trace.Context(), &payload)
+	if err != nil {
+		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
+	}
+
+	return wrapper.NewHTTPResponse(http.StatusOK, "Success").JSON(c.Response())
+}
+
+func (h *RestHandler) update{{clean (upper .ModuleName)}}(c echo.Context) error {
+	trace := tracer.StartTrace(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:Update{{clean (upper .ModuleName)}}")
+	defer trace.Finish()
+
+	var payload shareddomain.{{clean (upper .ModuleName)}}
+	if err := c.Bind(&payload); err != nil {
+		return wrapper.NewHTTPResponse(http.StatusOK, err.Error()).JSON(c.Response())
+	}
+
+	err := h.uc.Update{{clean (upper .ModuleName)}}(trace.Context(), c.Param("id"), &payload)
 	if err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}

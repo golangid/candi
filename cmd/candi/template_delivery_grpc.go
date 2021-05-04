@@ -43,7 +43,9 @@ func (h *GRPCHandler) Register(server *grpc.Server, mwGroup *types.MiddlewareGro
 	// register middleware for method
 	mwGroup.AddProto(proto.File_{{cleanPathModule .ModuleName}}_{{cleanPathModule .ModuleName}}_proto, h.GetAll{{clean (upper .ModuleName)}}, h.mw.GRPCBearerAuth)
 	mwGroup.AddProto(proto.File_{{cleanPathModule .ModuleName}}_{{cleanPathModule .ModuleName}}_proto, h.GetDetail{{clean (upper .ModuleName)}}, h.mw.GRPCBearerAuth)
-	mwGroup.AddProto(proto.File_{{cleanPathModule .ModuleName}}_{{cleanPathModule .ModuleName}}_proto, h.Save{{clean (upper .ModuleName)}}, h.mw.GRPCBearerAuth)
+	mwGroup.AddProto(proto.File_{{cleanPathModule .ModuleName}}_{{cleanPathModule .ModuleName}}_proto, h.Create{{clean (upper .ModuleName)}}, h.mw.GRPCBearerAuth)
+	mwGroup.AddProto(proto.File_{{cleanPathModule .ModuleName}}_{{cleanPathModule .ModuleName}}_proto, h.Update{{clean (upper .ModuleName)}}, h.mw.GRPCBearerAuth)
+	mwGroup.AddProto(proto.File_{{cleanPathModule .ModuleName}}_{{cleanPathModule .ModuleName}}_proto, h.Delete{{clean (upper .ModuleName)}}, h.mw.GRPCBearerAuth)
 }
 
 // GetAll{{clean (upper .ModuleName)}} rpc method
@@ -96,9 +98,9 @@ func (h *GRPCHandler) GetDetail{{clean (upper .ModuleName)}}(ctx context.Context
 	}, nil
 }
 
-// Save{{clean (upper .ModuleName)}} rpc method
-func (h *GRPCHandler) Save{{clean (upper .ModuleName)}}(ctx context.Context, req *proto.{{clean (upper .ModuleName)}}Model) (resp *proto.Response, err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGRPC:Save{{clean (upper .ModuleName)}}")
+// Create{{clean (upper .ModuleName)}} rpc method
+func (h *GRPCHandler) Create{{clean (upper .ModuleName)}}(ctx context.Context, req *proto.{{clean (upper .ModuleName)}}Model) (resp *proto.Response, err error) {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGRPC:Create{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 	ctx = trace.Context()
 
@@ -118,7 +120,27 @@ func (h *GRPCHandler) Save{{clean (upper .ModuleName)}}(ctx context.Context, req
 		return nil, mErr
 	}
 
-	if err := h.uc.Save{{clean (upper .ModuleName)}}(ctx, &payload); err != nil {
+	if err := h.uc.Create{{clean (upper .ModuleName)}}(ctx, &payload); err != nil {
+		return nil, err
+	}
+
+	return &proto.Response{
+		Message: "Success",
+	}, nil
+}
+
+// Update{{clean (upper .ModuleName)}} rpc method
+func (h *GRPCHandler) Update{{clean (upper .ModuleName)}}(ctx context.Context, req *proto.{{clean (upper .ModuleName)}}Model) (resp *proto.Response, err error) {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGRPC:Update{{clean (upper .ModuleName)}}")
+	defer trace.Finish()
+	ctx = trace.Context()
+
+	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
+
+	var payload shareddomain.{{clean (upper .ModuleName)}}
+	payload.ID = req.ID
+
+	if err := h.uc.Update{{clean (upper .ModuleName)}}(ctx, req.ID, &payload); err != nil {
 		return nil, err
 	}
 
@@ -152,7 +174,8 @@ option go_package = "{{.PackagePrefix}}/api/proto/{{.ModuleName}}";
 service {{clean (upper .ModuleName)}}Handler {
 	rpc GetAll{{clean (upper .ModuleName)}}(GetAll{{clean (upper .ModuleName)}}Request) returns (GetAll{{clean (upper .ModuleName)}}Response);
 	rpc GetDetail{{clean (upper .ModuleName)}}(GetDetail{{clean (upper .ModuleName)}}Request) returns ({{clean (upper .ModuleName)}}Model);
-	rpc Save{{clean (upper .ModuleName)}}({{clean (upper .ModuleName)}}Model) returns (Response);
+	rpc Create{{clean (upper .ModuleName)}}({{clean (upper .ModuleName)}}Model) returns (Response);
+	rpc Update{{clean (upper .ModuleName)}}({{clean (upper .ModuleName)}}Model) returns (Response);
 	rpc Delete{{clean (upper .ModuleName)}}({{clean (upper .ModuleName)}}Model) returns (Response);
 }
 

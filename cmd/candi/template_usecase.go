@@ -104,7 +104,8 @@ import (
 type {{clean (upper .ModuleName)}}Usecase interface {
 	GetAll{{clean (upper .ModuleName)}}(ctx context.Context, filter candishared.Filter) (data []shareddomain.{{clean (upper .ModuleName)}}, meta candishared.Meta, err error)
 	GetDetail{{clean (upper .ModuleName)}}(ctx context.Context, id string) (data shareddomain.{{clean (upper .ModuleName)}}, err error)
-	Save{{clean (upper .ModuleName)}}(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error)
+	Create{{clean (upper .ModuleName)}}(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error)
+	Update{{clean (upper .ModuleName)}}(ctx context.Context, id string, data *shareddomain.{{clean (upper .ModuleName)}}) (err error)
 	Delete{{clean (upper .ModuleName)}}(ctx context.Context, id string) (err error)
 }
 `
@@ -119,6 +120,7 @@ import (
 	{{ if not (or .SQLDeps .MongoDeps) }}// {{end}}"{{.PackagePrefix}}/pkg/shared/repository"
 	"{{$.PackagePrefix}}/pkg/shared/usecase/common"
 
+	"github.com/google/uuid"
 	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/interfaces"
@@ -169,16 +171,31 @@ func (uc *{{clean .ModuleName}}UsecaseImpl) GetDetail{{clean (upper .ModuleName)
 	return
 }
 
-func (uc *{{clean .ModuleName}}UsecaseImpl) Save{{clean (upper .ModuleName)}}(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}Usecase:Save{{clean (upper .ModuleName)}}")
+func (uc *{{clean .ModuleName}}UsecaseImpl) Create{{clean (upper .ModuleName)}}(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}Usecase:Create{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 	ctx = trace.Context()
 
+	data.ID = uuid.NewString()
 	return{{if or .SQLDeps .MongoDeps}} uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Save(ctx, data){{end}}
 }
 
+func (uc *{{clean .ModuleName}}UsecaseImpl) Update{{clean (upper .ModuleName)}}(ctx context.Context, id string, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}Usecase:Update{{clean (upper .ModuleName)}}")
+	defer trace.Finish()
+	ctx = trace.Context()
+
+	{{if or .SQLDeps .MongoDeps}}existing := &shareddomain.{{clean (upper .ModuleName)}}{ID: id}
+	if err := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Find(ctx, existing); err != nil {
+		return err
+	}
+	data.ID = existing.ID{{end}}
+	data.CreatedAt = existing.CreatedAt
+	return {{if or .SQLDeps .MongoDeps}} uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Save(ctx, data){{end}}
+}
+
 func (uc *{{clean .ModuleName}}UsecaseImpl) Delete{{clean (upper .ModuleName)}}(ctx context.Context, id string) (err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}Usecase:Save{{clean (upper .ModuleName)}}")
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}Usecase:Delete{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 	ctx = trace.Context()
 

@@ -147,7 +147,7 @@ import (
 
 	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 
-	taskqueueworker "{{.LibraryName}}/codebase/app/task_queue_worker"
+	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
 	"{{.LibraryName}}/tracer"
@@ -178,7 +178,7 @@ func (h *TaskQueueHandler) taskOne(ctx context.Context, message []byte) error {
 	defer trace.Finish()
 	ctx = trace.Context()
 
-	return &taskqueueworker.ErrorRetrier{
+	return &candishared.TaskQueueErrorRetrier{
 		Delay:   10 * time.Second,
 		Message: "Error one",
 	}
@@ -189,7 +189,7 @@ func (h *TaskQueueHandler) taskTwo(ctx context.Context, message []byte) error {
 	defer trace.Finish()
 	ctx = trace.Context()
 
-	return &taskqueueworker.ErrorRetrier{
+	return &candishared.TaskQueueErrorRetrier{
 		Delay:   3 * time.Second,
 		Message: "Error two",
 	}
@@ -227,7 +227,7 @@ func NewPostgresListenerHandler(uc usecase.{{clean (upper .ModuleName)}}Usecase,
 
 // MountHandlers mount handler group
 func (h *PostgresListenerHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	group.Add("{{.ModuleName}}", h.handleDataChangeOn{{clean (upper .ModuleName)}}) // listen data change on table "{{.ModuleName}}"
+	group.Add("{{.ModuleName}}s", h.handleDataChangeOn{{clean (upper .ModuleName)}}) // listen data change on table "{{.ModuleName}}s"
 }
 
 func (h *PostgresListenerHandler) handleDataChangeOn{{clean (upper .ModuleName)}}(ctx context.Context, message []byte) error {
@@ -235,7 +235,7 @@ func (h *PostgresListenerHandler) handleDataChangeOn{{clean (upper .ModuleName)}
 	defer trace.Finish()
 	ctx = trace.Context()
 
-	fmt.Printf("data change on table {{.ModuleName}} detected: %s\n", message)
+	fmt.Printf("data change on table {{.ModuleName}}s detected: %s\n", message)
 	return nil
 }
 `
