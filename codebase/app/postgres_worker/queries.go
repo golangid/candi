@@ -55,7 +55,7 @@ func execCreateFunctionEventQuery(db *sql.DB) {
 		defer stmt.Close()
 
 		if _, err = stmt.Exec(); err != nil {
-			panic(err)
+			panic(fmt.Errorf("failed when create event function: %s", err))
 		}
 	}
 }
@@ -75,7 +75,7 @@ func execTriggerQuery(db *sql.DB, tableName string) {
 		defer stmt.Close()
 
 		if _, err = stmt.Exec(); err != nil {
-			panic(err)
+			panic(fmt.Errorf("failed when create trigger for table %s: %s", tableName, err))
 		}
 	}
 }

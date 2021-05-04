@@ -96,10 +96,7 @@ START:
 			semaphore <- struct{}{}
 			p.wg.Add(1)
 			go func(event *pq.Notification) {
-				defer func() {
-					p.wg.Done()
-					<-semaphore
-				}()
+				defer func() { p.wg.Done(); <-semaphore }()
 
 				trace := tracer.StartTrace(context.Background(), "PostgresEventListener")
 				ctx := trace.Context()
