@@ -2,7 +2,7 @@ package main
 
 const (
 	dockerfileTemplate = `# Stage 1
-FROM golang:1.14.9-alpine3.12 AS dependency_builder
+FROM golang:1.16.2-alpine3.13 AS dependency_builder
 
 WORKDIR /go/src
 ENV GO111MODULE=on
@@ -76,7 +76,7 @@ clear:
 
 	gomodTemplate = `module {{.ServiceName}}
 
-go 1.15
+go 1.16
 
 require pkg.agungdp.dev/candi {{.Version}}
 `
@@ -179,7 +179,7 @@ coverage.txt
 		"```\n"
 
 	dockerfileMonorepoTemplate = `# Stage 1
-FROM golang:1.15.7-alpine3.13 AS dependency_builder
+FROM golang:1.16.2-alpine3.13 AS dependency_builder
 
 WORKDIR /go/src
 ENV GO111MODULE=on

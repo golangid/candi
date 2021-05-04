@@ -108,8 +108,8 @@ github.com/golang/protobuf v1.4.2/go.mod h1:oDoupMAO8OvCJWAcko0GGGIgR6R6ocIYbsSw
 github.com/golang/snappy v0.0.1/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
 github.com/golang/snappy v0.0.2 h1:aeE13tS0IiQgFjYdoL8qN3K1N2bXXtI6Vi51/y7BpMw=
 github.com/golang/snappy v0.0.2/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
-github.com/golangid/graphql-go v0.0.6 h1:7jX2upFq6hV9DmnQaXjVS9pN96Qw7tyDIHa3PEVnn80=
-github.com/golangid/graphql-go v0.0.6/go.mod h1:FaEQ9PwKpunEBXoMJQt1yXzKSu7cYTmE1XX6H+CwzwE=
+github.com/golangid/graphql-go v0.0.7 h1:cgjvKd24fI/twCv/mgtBpyA7jg9SfAQLlu6bQPox2Q4=
+github.com/golangid/graphql-go v0.0.7/go.mod h1:FaEQ9PwKpunEBXoMJQt1yXzKSu7cYTmE1XX6H+CwzwE=
 github.com/gomodule/redigo v1.8.4 h1:Z5JUg94HMTR1XpwBaSH4vq3+PNSIykBLxMdglbw10gg=
 github.com/gomodule/redigo v1.8.4/go.mod h1:P9dn9mFrCBvWhGE1wpxx6fgq7BAeLBk+UUUzlpkBYO0=
 github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c h1:964Od4U6p2jUkFxvCydnIczKteheJEzHRToSGK3Bnlw=

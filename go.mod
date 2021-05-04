@@ -12,7 +12,7 @@ require (
 	github.com/go-playground/validator/v10 v10.4.1
 	github.com/gojektech/heimdall/v6 v6.1.0
 	github.com/gojektech/valkyrie v0.0.0-20190210220504-8f62c1e7ba45 // indirect
-	github.com/golangid/graphql-go v0.0.6
+	github.com/golangid/graphql-go v0.0.7
 	github.com/gomodule/redigo v1.8.4
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/websocket v1.4.2
