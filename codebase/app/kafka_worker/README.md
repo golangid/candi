@@ -25,7 +25,7 @@ func NewKafkaHandler() *KafkaHandler {
 // MountHandlers return group map topic to handler func
 func (h *KafkaHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 
-	group.Add("push-notif", h.handlePushNotif)
+	group.Add("push-notif", h.handlePushNotif) // handling consume topic "push-notif"
 }
 
 func (h *KafkaHandler) handlePushNotif(ctx context.Context, message []byte) error {

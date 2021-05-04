@@ -74,3 +74,22 @@ func NewModules(deps dependency.Dependency) *Module {
 
 // ...another method
 ```
+
+## Add job in each usecase module
+
+```go
+package usecase
+
+import (
+	"context"
+	"time"
+
+	"pkg.agungdp.dev/candi/candihelper"
+)
+
+func (uc *usecaseImpl) someUsecase(ctx context.Context) {
+	// scheduled exec to "scheduled-push-notif" handler after 5 minutes from now
+	key := candihelper.BuildRedisPubSubKeyTopic("scheduled-push-notif", map[string]string{"message": "hello"})
+	uc.cache.Set(ctx, key, "ok", 5*time.Minute)
+}
+```
