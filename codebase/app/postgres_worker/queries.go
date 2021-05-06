@@ -16,12 +16,15 @@ const (
     BEGIN
     
         -- Convert the old or new row to JSON, based on the kind of action.
-        -- Action = DELETE?             -> OLD row
-        -- Action = INSERT or UPDATE?   -> NEW row
         IF (TG_OP = 'DELETE') THEN
-            data = row_to_json(OLD);
+			data = json_build_object(
+				'old', row_to_json(OLD)
+			);
         ELSE
-            data = row_to_json(NEW);
+			data = json_build_object(
+				'old', row_to_json(OLD),
+				'new', row_to_json(NEW)
+			);
         END IF;
         
         -- Construct the notification as a JSON string.
