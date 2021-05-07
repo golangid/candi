@@ -144,7 +144,8 @@ func (d *deps) GetExtended(key string) interface{} {
 	return d.extended[key]
 }
 func (d *deps) AddExtended(key string, value interface{}) {
-	if d.extended != nil {
-		d.extended[key] = value
+	if d.extended == nil {
+		d.extended = make(map[string]interface{})
 	}
+	d.extended[key] = value
 }
