@@ -1,5 +1,9 @@
 .PHONY : test
 
+# mocks all interfaces
+mocks:
+	@mockery --all --keeptree
+
 # unit test & calculate code coverage
 test:
 	@if [ -f coverage.txt ]; then rm coverage.txt; fi;
