@@ -92,7 +92,7 @@ func (b *brokerInstance) Health() map[string]error {
 func (b *brokerInstance) Disconnect(ctx context.Context) error {
 
 	mErr := candihelper.NewMultiError()
-	if b.kafka.client != nil {
+	if b.kafka != nil {
 		func() {
 			deferFunc := logger.LogWithDefer("kafka: disconnect...")
 			defer deferFunc()
@@ -102,7 +102,7 @@ func (b *brokerInstance) Disconnect(ctx context.Context) error {
 		}()
 	}
 
-	if b.rabbitmq.conn != nil {
+	if b.rabbitmq != nil {
 		func() {
 			deferFunc := logger.LogWithDefer("rabbitmq: disconnect...")
 			defer deferFunc()
