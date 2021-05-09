@@ -40,6 +40,8 @@ type deps struct {
 	extended  map[string]interface{}
 }
 
+var stdDeps = new(deps)
+
 // SetMiddleware option func
 func SetMiddleware(mw interfaces.Middleware) Option {
 	return func(d *deps) {
@@ -98,13 +100,11 @@ func SetExtended(ext map[string]interface{}) Option {
 
 // InitDependency constructor
 func InitDependency(opts ...Option) Dependency {
-	opt := new(deps)
-
 	for _, o := range opts {
-		o(opt)
+		o(stdDeps)
 	}
 
-	return opt
+	return stdDeps
 }
 
 func (d *deps) GetMiddleware() interfaces.Middleware {
@@ -148,4 +148,52 @@ func (d *deps) AddExtended(key string, value interface{}) {
 		d.extended = make(map[string]interface{})
 	}
 	d.extended[key] = value
+}
+
+// GetMiddleware free function for get middleware
+func GetMiddleware() interfaces.Middleware {
+	return stdDeps.mw
+}
+
+// GetBroker free function for get broker
+func GetBroker() interfaces.Broker {
+	return stdDeps.broker
+}
+
+// GetSQLDatabase free function for get sql database
+func GetSQLDatabase() interfaces.SQLDatabase {
+	return stdDeps.sqlDB
+}
+
+// GetMongoDatabase free function for get mongo database
+func GetMongoDatabase() interfaces.MongoDatabase {
+	return stdDeps.mongoDB
+}
+
+// GetRedisPool free function for get redis pool
+func GetRedisPool() interfaces.RedisPool {
+	return stdDeps.redisPool
+}
+
+// GetKey free function for get key (RSA)
+func GetKey() interfaces.RSAKey {
+	return stdDeps.key
+}
+
+// GetValidator free function for get validator
+func GetValidator() interfaces.Validator {
+	return stdDeps.validator
+}
+
+// GetExtended free function for get extended
+func GetExtended(key string) interface{} {
+	return stdDeps.extended[key]
+}
+
+// AddExtended free function for add extended
+func AddExtended(key string, value interface{}) {
+	if stdDeps.extended == nil {
+		stdDeps.extended = make(map[string]interface{})
+	}
+	stdDeps.extended[key] = value
 }
