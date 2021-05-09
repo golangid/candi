@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"strings"
 )
@@ -44,7 +45,8 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 		TargetDir: "delivery/", IsDir: true, SkipIfExist: true,
 	}
 
-	replaceEnv, replaceConfigs := make(map[string]string), make(map[string]string)
+	replaceEnv, replaceConfigs, replaceMainModule := make(map[string]string), make(map[string]string), make(map[string]string)
+	deliveryPackageDir := fmt.Sprintf(`"%s/internal/modules/%s/delivery`, mod.PackagePrefix, mod.ModuleName)
 	for handler := range serverHandlers {
 		switch handler {
 		case restHandler:
@@ -55,6 +57,8 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 				},
 			})
 			replaceEnv["USE_REST=false"] = "USE_REST=true"
+			replaceMainModule["// mod.restHandler"] = "mod.restHandler"
+			replaceMainModule["// "+deliveryPackageDir+"/resthandler"] = deliveryPackageDir + "/resthandler"
 		case grpcHandler:
 			apiProtoStructure.Childs = append(apiProtoStructure.Childs, FileStructure{
 				TargetDir: mod.ModuleName + "/", IsDir: true,
@@ -68,6 +72,8 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 				},
 			})
 			replaceEnv["USE_GRPC=false"] = "USE_GRPC=true"
+			replaceMainModule["// mod.grpcHandler"] = "mod.grpcHandler"
+			replaceMainModule["// "+deliveryPackageDir+"/grpchandler"] = deliveryPackageDir + "/grpchandler"
 		case graphqlHandler:
 			apiGraphQLStructure.Childs = append(apiGraphQLStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: defaultGraphqlSchema, FileName: mod.ModuleName + ".graphql",
@@ -83,6 +89,8 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 				},
 			})
 			replaceEnv["USE_GRAPHQL=false"] = "USE_GRAPHQL=true"
+			replaceMainModule["// mod.graphqlHandler"] = "mod.graphqlHandler"
+			replaceMainModule["// "+deliveryPackageDir+"/graphqlhandler"] = deliveryPackageDir + "/graphqlhandler"
 		}
 	}
 
@@ -112,30 +120,39 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 			})
 			replaceEnv["USE_KAFKA_CONSUMER=false"] = "USE_KAFKA_CONSUMER=true"
 			replaceConfigs["// broker.SetKafka(broker.NewKafkaBroker())"] = "	broker.SetKafka(broker.NewKafkaBroker())"
+			replaceMainModule["// types.Kafka"] = "types.Kafka"
+			replaceMainModule["// "+deliveryPackageDir+"/workerhandler"] = deliveryPackageDir + "/workerhandler"
 		case schedulerHandler:
 			mod.SchedulerHandler = true
 			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: deliveryCronTemplate, FileName: "cron_handler.go",
 			})
 			replaceEnv["USE_CRON_SCHEDULER=false"] = "USE_CRON_SCHEDULER=true"
+			replaceMainModule["// types.Scheduler"] = "types.Scheduler"
+			replaceMainModule["// "+deliveryPackageDir+"/workerhandler"] = deliveryPackageDir + "/workerhandler"
 		case redissubsHandler:
 			mod.RedisSubsHandler = true
 			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: deliveryRedisTemplate, FileName: "redis_handler.go",
 			})
 			replaceEnv["USE_REDIS_SUBSCRIBER=false"] = "USE_REDIS_SUBSCRIBER=true"
+			replaceMainModule["// types.RedisSubscriber"] = "types.RedisSubscriber"
 		case taskqueueHandler:
 			mod.TaskQueueHandler = true
 			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: deliveryTaskQueueTemplate, FileName: "taskqueue_handler.go",
 			})
 			replaceEnv["USE_TASK_QUEUE_WORKER=false"] = "USE_TASK_QUEUE_WORKER=true"
+			replaceMainModule["// types.TaskQueue"] = "types.TaskQueue"
+			replaceMainModule["// "+deliveryPackageDir+"/workerhandler"] = deliveryPackageDir + "/workerhandler"
 		case postgresListenerHandler:
 			mod.PostgresListenerHandler = true
 			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: deliveryPostgresListenerTemplate, FileName: "postgres_listener_handler.go",
 			})
 			replaceEnv["USE_POSTGRES_LISTENER_WORKER=false"] = "USE_POSTGRES_LISTENER_WORKER=true"
+			replaceMainModule["// types.PostgresListener"] = "types.PostgresListener"
+			replaceMainModule["// "+deliveryPackageDir+"/workerhandler"] = deliveryPackageDir + "/workerhandler"
 		case rabbitmqHandler:
 			mod.RabbitMQHandler = true
 			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
@@ -143,6 +160,8 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 			})
 			replaceEnv["USE_RABBITMQ_CONSUMER=false"] = "USE_RABBITMQ_CONSUMER=true"
 			replaceConfigs["// broker.SetRabbitMQ(broker.NewRabbitMQBroker())"] = "	broker.SetRabbitMQ(broker.NewRabbitMQBroker())"
+			replaceMainModule["// types.RabbitMQ"] = "types.RabbitMQ"
+			replaceMainModule["// "+deliveryPackageDir+"/workerhandler"] = deliveryPackageDir + "/workerhandler"
 		}
 	}
 	apiStructure := FileStructure{
@@ -155,7 +174,6 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 		TargetDir: mod.ModuleName + "/", IsDir: true, Skip: true,
 		Childs: []FileStructure{
 			deliveryStructure,
-			{FromTemplate: true, DataSource: mod, Source: moduleMainTemplate, FileName: "module.go"},
 		},
 	}
 	internalServiceStructure := FileStructure{
@@ -184,5 +202,8 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 	}
 	for old, new := range replaceConfigs {
 		readFileAndApply(root.TargetDir+"configs/configs.go", old, new)
+	}
+	for old, new := range replaceMainModule {
+		readFileAndApply(root.TargetDir+"internal/modules/"+mod.ModuleName+"/module.go", old, new)
 	}
 }

@@ -465,7 +465,7 @@ func filterWorkerHandler(cfg serviceConfig, flagParam *flagParameter) (wording s
 func readFileAndApply(filepath string, oldContent, newContent string) {
 	b, err := os.ReadFile(filepath)
 	if err != nil {
-		return
+		log.Fatal(err)
 	}
 	os.WriteFile(filepath, bytes.Replace(b, []byte(oldContent), []byte(newContent), -1), 0644)
 }
