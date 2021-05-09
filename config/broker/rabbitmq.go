@@ -8,12 +8,14 @@ import (
 	"pkg.agungdp.dev/candi/publisher"
 )
 
-type rabbitmqBroker struct {
+// RabbitMQBroker broker
+type RabbitMQBroker struct {
 	conn *amqp.Connection
 	pub  interfaces.Publisher
 }
 
-func initRabbitMQBroker() *rabbitmqBroker {
+// NewRabbitMQBroker constructor, connection from RABBITMQ_BROKER environment
+func NewRabbitMQBroker() *RabbitMQBroker {
 	deferFunc := logger.LogWithDefer("Load RabbitMQ broker configuration... ")
 	defer deferFunc()
 
@@ -21,7 +23,7 @@ func initRabbitMQBroker() *rabbitmqBroker {
 	if err != nil {
 		panic("RabbitMQ: cannot connect to server broker: " + err.Error())
 	}
-	return &rabbitmqBroker{
+	return &RabbitMQBroker{
 		conn: conn,
 		pub:  publisher.NewRabbitMQPublisher(conn),
 	}

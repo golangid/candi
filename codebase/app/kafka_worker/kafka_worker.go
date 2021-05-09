@@ -25,12 +25,12 @@ type kafkaWorker struct {
 // NewWorker create new kafka consumer
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	// init kafka consumer
-	if service.GetDependency().GetBroker().GetKafkaClient() == nil {
+	if service.GetDependency().GetBroker().GetConfiguration(types.Kafka) == nil {
 		log.Panic("Missing kafka configuration")
 	}
 	consumerEngine, err := sarama.NewConsumerGroupFromClient(
 		env.BaseEnv().Kafka.ConsumerGroup,
-		service.GetDependency().GetBroker().GetKafkaClient(),
+		service.GetDependency().GetBroker().GetConfiguration(types.Kafka).(sarama.Client),
 	)
 	if err != nil {
 		log.Panicf("Error creating kafka consumer group client: %v", err)

@@ -10,41 +10,71 @@ import (
 	"pkg.agungdp.dev/candi/publisher"
 )
 
-type kafkaBroker struct {
+// KafkaOptionFunc func type
+type KafkaOptionFunc func(*KafkaBroker)
+
+// KafkaSetConfig set custom sarama configuration
+func KafkaSetConfig(cfg *sarama.Config) KafkaOptionFunc {
+	return func(kb *KafkaBroker) {
+		kb.config = cfg
+	}
+}
+
+// KafkaSetPublisher set custom publisher
+func KafkaSetPublisher(pub interfaces.Publisher) KafkaOptionFunc {
+	return func(kb *KafkaBroker) {
+		kb.pub = pub
+	}
+}
+
+// KafkaBroker configuration
+type KafkaBroker struct {
+	config *sarama.Config
 	client sarama.Client
 	pub    interfaces.Publisher
 }
 
-func initKafkaBroker() *kafkaBroker {
+// NewKafkaBroker constructor with option, empty option param for default configuration
+func NewKafkaBroker(opts ...KafkaOptionFunc) *KafkaBroker {
 	deferFunc := logger.LogWithDefer("Load Kafka broker configuration... ")
 	defer deferFunc()
+
+	kb := new(KafkaBroker)
+	for _, opt := range opts {
+		opt(kb)
+	}
 
 	version := env.BaseEnv().Kafka.ClientVersion
 	if version == "" {
 		version = "2.0.0"
 	}
 
-	kafkaConfig := sarama.NewConfig()
-	kafkaConfig.Version, _ = sarama.ParseKafkaVersion(version)
+	if kb.config == nil {
+		// set default configuration
+		kb.config = sarama.NewConfig()
+		kb.config.Version, _ = sarama.ParseKafkaVersion(version)
 
-	// Producer config
-	kafkaConfig.ClientID = env.BaseEnv().Kafka.ClientID
-	kafkaConfig.Producer.Retry.Max = 15
-	kafkaConfig.Producer.Retry.Backoff = 50 * time.Millisecond
-	kafkaConfig.Producer.RequiredAcks = sarama.WaitForAll
-	kafkaConfig.Producer.Return.Successes = true
+		// Producer config
+		kb.config.ClientID = env.BaseEnv().Kafka.ClientID
+		kb.config.Producer.Retry.Max = 15
+		kb.config.Producer.Retry.Backoff = 50 * time.Millisecond
+		kb.config.Producer.RequiredAcks = sarama.WaitForAll
+		kb.config.Producer.Return.Successes = true
 
-	// Consumer config
-	kafkaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
-	kafkaConfig.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
+		// Consumer config
+		kb.config.Consumer.Offsets.Initial = sarama.OffsetOldest
+		kb.config.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
+	}
 
-	saramaClient, err := sarama.NewClient(env.BaseEnv().Kafka.Brokers, kafkaConfig)
+	saramaClient, err := sarama.NewClient(env.BaseEnv().Kafka.Brokers, kb.config)
 	if err != nil {
 		panic(err)
 	}
+	kb.client = saramaClient
 
-	return &kafkaBroker{
-		client: saramaClient,
-		pub:    publisher.NewKafkaPublisher(saramaClient),
+	if kb.pub == nil {
+		kb.pub = publisher.NewKafkaPublisher(saramaClient)
 	}
+
+	return kb
 }

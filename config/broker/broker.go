@@ -4,50 +4,60 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Shopify/sarama"
-	"github.com/streadway/amqp"
 	"pkg.agungdp.dev/candi/candihelper"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
 	"pkg.agungdp.dev/candi/codebase/interfaces"
 	"pkg.agungdp.dev/candi/logger"
 )
 
+// OptionFunc type
+type OptionFunc func(*brokerInstance)
+
+// SetKafka set kafka broker
+func SetKafka(bk *KafkaBroker) OptionFunc {
+	return func(bi *brokerInstance) {
+		bi.kafka = bk
+	}
+}
+
+// SetRabbitMQ set kafka broker
+func SetRabbitMQ(bk *RabbitMQBroker) OptionFunc {
+	return func(bi *brokerInstance) {
+		bi.rabbitmq = bk
+	}
+}
+
 type brokerInstance struct {
-	kafka    *kafkaBroker
-	rabbitmq *rabbitmqBroker
+	kafka    *KafkaBroker
+	rabbitmq *RabbitMQBroker
 }
 
 /*
 InitBrokers init registered broker
 
-* for kafka, pass types.Kafka in param, init kafka broker configuration from env
+* for kafka, pass NewKafkaBroker(...opts) in param, init kafka broker configuration from env
 KAFKA_BROKERS, KAFKA_CLIENT_ID, KAFKA_CLIENT_VERSION
 
-* for rabbitmq, pass types.RabbitMQ in param, init rabbitmq broker configuration from env
+* for rabbitmq, pass NewRabbitMQBroker() in param, init rabbitmq broker configuration from env
 RABBITMQ_BROKER, RABBITMQ_CONSUMER_GROUP, RABBITMQ_EXCHANGE_NAME
 */
-func InitBrokers(brokerTypes ...types.Worker) interfaces.Broker {
-	var brokerInst = brokerInstance{
-		kafka:    &kafkaBroker{},
-		rabbitmq: &rabbitmqBroker{},
+func InitBrokers(opts ...OptionFunc) interfaces.Broker {
+	brokerInst := new(brokerInstance)
+	for _, opt := range opts {
+		opt(brokerInst)
 	}
-	for _, brokerType := range brokerTypes {
-		switch brokerType {
-		case types.Kafka:
-			brokerInst.kafka = initKafkaBroker()
-		case types.RabbitMQ:
-			brokerInst.rabbitmq = initRabbitMQBroker()
-		}
-	}
-	return &brokerInst
+
+	return brokerInst
 }
 
-func (b *brokerInstance) GetKafkaClient() sarama.Client {
-	return b.kafka.client
-}
-
-func (b *brokerInstance) GetRabbitMQConn() *amqp.Connection {
-	return b.rabbitmq.conn
+func (b *brokerInstance) GetConfiguration(brokerType types.Worker) interface{} {
+	switch brokerType {
+	case types.Kafka:
+		return b.kafka.client
+	case types.RabbitMQ:
+		return b.rabbitmq.conn
+	}
+	return nil
 }
 
 func (b *brokerInstance) Publisher(brokerType types.Worker) interfaces.Publisher {

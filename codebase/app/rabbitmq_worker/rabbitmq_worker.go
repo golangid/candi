@@ -26,12 +26,12 @@ type rabbitmqWorker struct {
 
 // NewWorker create new rabbitmq consumer
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
-	if service.GetDependency().GetBroker().GetRabbitMQConn() == nil {
+	if service.GetDependency().GetBroker().GetConfiguration(types.RabbitMQ) == nil {
 		panic("Missing RabbitMQ configuration")
 	}
 
 	worker := new(rabbitmqWorker)
-	worker.conn = service.GetDependency().GetBroker().GetRabbitMQConn()
+	worker.conn = service.GetDependency().GetBroker().GetConfiguration(types.RabbitMQ).(*amqp.Connection)
 
 	worker.shutdown, worker.semaphore = make(chan struct{}), make(chan struct{}, env.BaseEnv().MaxGoroutines)
 	// add shutdown channel to first index

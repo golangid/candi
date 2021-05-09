@@ -13,7 +13,6 @@ import (
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
 	"{{.LibraryName}}/codebase/factory/dependency"
-	{{ if not .KafkaHandler }}// {{ end }}"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
 	"{{.LibraryName}}/config"
 	"{{.LibraryName}}/config/broker"
@@ -32,8 +31,8 @@ func LoadConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 
 	baseCfg.LoadFunc(func(ctx context.Context) []interfaces.Closer {
 		brokerDeps := broker.InitBrokers(
-			{{if not .KafkaHandler}} // {{ end }}types.Kafka,
-			{{if not .RabbitMQHandler}} // {{ end }}types.RabbitMQ,
+			{{if not .KafkaHandler}} // {{ end }}broker.SetKafka(broker.NewKafkaBroker()),
+			{{if not .RabbitMQHandler}} // {{ end }}broker.SetRabbitMQ(broker.NewRabbitMQBroker()),
 		)
 		{{if not .RedisDeps}}// {{end}}redisDeps := database.InitRedis()
 		{{if not .SQLDeps}}// {{end}}sqlDeps := database.InitSQLDatabase()
