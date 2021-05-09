@@ -8,12 +8,12 @@ import (
 	"net/http"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/labstack/echo"
 	echoMidd "github.com/labstack/echo/middleware"
 	"github.com/soheilhy/cmux"
 
+	"pkg.agungdp.dev/candi/candishared"
 	graphqlserver "pkg.agungdp.dev/candi/codebase/app/graphql_server"
 	"pkg.agungdp.dev/candi/codebase/factory"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
@@ -44,16 +44,10 @@ func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.Ap
 	server.serverEngine.HTTPErrorHandler = wrapper.CustomHTTPErrorHandler
 	server.serverEngine.Use(echoMidd.CORS())
 
-	server.serverEngine.GET("/", func(c echo.Context) error {
-		resp := map[string]string{
-			"message":   fmt.Sprintf("Service %s up and running", service.Name()),
-			"timestamp": time.Now().Format(time.RFC3339Nano),
-		}
-		if env.BaseEnv().BuildNumber != "" {
-			resp["buildNumber"] = env.BaseEnv().BuildNumber
-		}
-		return c.JSON(http.StatusOK, resp)
-	})
+	server.serverEngine.GET("/", echo.WrapHandler(http.HandlerFunc(candishared.HTTPRoot(string(service.Name())))))
+	server.serverEngine.GET("/memstats",
+		echo.WrapHandler(http.HandlerFunc(candishared.HTTPMemstatsHandler)),
+		echo.WrapMiddleware(service.GetDependency().GetMiddleware().HTTPBasicAuth))
 
 	restRootPath := server.serverEngine.Group("", echoRestTracerMiddleware)
 	if env.BaseEnv().DebugMode {
