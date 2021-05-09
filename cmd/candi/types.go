@@ -128,7 +128,8 @@ func (s *serviceConfig) checkWorkerActive() {
 		s.SchedulerHandler ||
 		s.RedisSubsHandler ||
 		s.PostgresListenerHandler ||
-		s.TaskQueueHandler
+		s.TaskQueueHandler ||
+		s.RabbitMQHandler
 }
 func (s *serviceConfig) disableAllHandler() {
 	s.RestHandler = false

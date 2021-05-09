@@ -174,7 +174,7 @@ stageSelectWorkerHandlers:
 			srvConfig.PostgresListenerHandler = b
 		}
 		if b, ok := workerHandlers[rabbitmqHandler]; ok {
-			srvConfig.PostgresListenerHandler = b
+			srvConfig.RabbitMQHandler = b
 		}
 		srvConfig.checkWorkerActive()
 

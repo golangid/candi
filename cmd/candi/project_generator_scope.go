@@ -101,6 +101,8 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 	mod.SchedulerHandler = isDirExist(strings.TrimPrefix(flagParam.outputFlag+flagParam.serviceName+"/internal/modules/"+mod.ModuleName+"/delivery/workerhandler/cron_handler.go", "/"))
 	mod.RedisSubsHandler = isDirExist(strings.TrimPrefix(flagParam.outputFlag+flagParam.serviceName+"/internal/modules/"+mod.ModuleName+"/delivery/workerhandler/redis_handler.go", "/"))
 	mod.TaskQueueHandler = isDirExist(strings.TrimPrefix(flagParam.outputFlag+flagParam.serviceName+"/internal/modules/"+mod.ModuleName+"/delivery/workerhandler/taskqueue_handler.go", "/"))
+	mod.PostgresListenerHandler = isDirExist(strings.TrimPrefix(flagParam.outputFlag+flagParam.serviceName+"/internal/modules/"+mod.ModuleName+"/delivery/workerhandler/postgres_listener_handler.go", "/"))
+	mod.RabbitMQHandler = isDirExist(strings.TrimPrefix(flagParam.outputFlag+flagParam.serviceName+"/internal/modules/"+mod.ModuleName+"/delivery/workerhandler/rabbitmq_handler.go", "/"))
 	for handler := range workerHandler {
 		switch handler {
 		case kafkaHandler:
@@ -109,8 +111,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 				FromTemplate: true, DataSource: mod, Source: deliveryKafkaTemplate, FileName: "kafka_handler.go",
 			})
 			replaceEnv["USE_KAFKA_CONSUMER=false"] = "USE_KAFKA_CONSUMER=true"
-			replaceConfigs["// \""+mod.LibraryName+"/codebase/factory/types\""] = "\"" + mod.LibraryName + "/codebase/factory/types\""
-			replaceConfigs["// types.Kafka"] = "types.Kafka"
+			replaceConfigs["// broker.SetKafka(broker.NewKafkaBroker())"] = "	broker.SetKafka(broker.NewKafkaBroker())"
 		case schedulerHandler:
 			mod.SchedulerHandler = true
 			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
@@ -141,6 +142,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 				FromTemplate: true, DataSource: mod, Source: deliveryRabbitMQTemplate, FileName: "rabbitmq_handler.go",
 			})
 			replaceEnv["USE_RABBITMQ_CONSUMER=false"] = "USE_RABBITMQ_CONSUMER=true"
+			replaceConfigs["// broker.SetRabbitMQ(broker.NewRabbitMQBroker())"] = "	broker.SetRabbitMQ(broker.NewRabbitMQBroker())"
 		}
 	}
 	apiStructure := FileStructure{
