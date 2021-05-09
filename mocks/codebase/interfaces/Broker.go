@@ -5,13 +5,8 @@ package mocks
 import (
 	context "context"
 
-	amqp "github.com/streadway/amqp"
-
-	interfaces "pkg.agungdp.dev/candi/codebase/interfaces"
-
 	mock "github.com/stretchr/testify/mock"
-
-	sarama "github.com/Shopify/sarama"
+	interfaces "pkg.agungdp.dev/candi/codebase/interfaces"
 
 	types "pkg.agungdp.dev/candi/codebase/factory/types"
 )
@@ -35,32 +30,16 @@ func (_m *Broker) Disconnect(ctx context.Context) error {
 	return r0
 }
 
-// GetKafkaClient provides a mock function with given fields:
-func (_m *Broker) GetKafkaClient() sarama.Client {
-	ret := _m.Called()
+// GetConfiguration provides a mock function with given fields: _a0
+func (_m *Broker) GetConfiguration(_a0 types.Worker) interface{} {
+	ret := _m.Called(_a0)
 
-	var r0 sarama.Client
-	if rf, ok := ret.Get(0).(func() sarama.Client); ok {
-		r0 = rf()
+	var r0 interface{}
+	if rf, ok := ret.Get(0).(func(types.Worker) interface{}); ok {
+		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(sarama.Client)
-		}
-	}
-
-	return r0
-}
-
-// GetRabbitMQConn provides a mock function with given fields:
-func (_m *Broker) GetRabbitMQConn() *amqp.Connection {
-	ret := _m.Called()
-
-	var r0 *amqp.Connection
-	if rf, ok := ret.Get(0).(func() *amqp.Connection); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*amqp.Connection)
+			r0 = ret.Get(0).(interface{})
 		}
 	}
 
