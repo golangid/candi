@@ -185,11 +185,11 @@ func (uc *{{clean .ModuleName}}UsecaseImpl) Update{{clean (upper .ModuleName)}}(
 	defer trace.Finish()
 	ctx = trace.Context()
 
-	{{if or .SQLDeps .MongoDeps}}existing := &shareddomain.{{clean (upper .ModuleName)}}{ID: id}
-	if err := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Find(ctx, existing); err != nil {
+	existing := &shareddomain.{{clean (upper .ModuleName)}}{ID: id}
+	{{if or .SQLDeps .MongoDeps}}if err := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Find(ctx, existing); err != nil {
 		return err
-	}
-	data.ID = existing.ID{{end}}
+	}{{end}}
+	data.ID = existing.ID
 	data.CreatedAt = existing.CreatedAt
 	return {{if or .SQLDeps .MongoDeps}} uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Save(ctx, data){{end}}
 }
