@@ -1,4 +1,4 @@
-.PHONY : test
+.PHONY : mocks test
 
 # mocks all interfaces
 mocks:
