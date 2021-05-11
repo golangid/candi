@@ -40,13 +40,14 @@ func WorkerErrorHandler(ctx context.Context, workerType types.Worker, workerName
 	logger.LogYellow(string(workerType) + " - " + workerName + " - " + string(message) + " - handling error: " + string(err.Error()))
 }
 
-// TaskQueueErrorRetrier task queue worker for retry error
-type TaskQueueErrorRetrier struct {
+// ErrorRetrier task queue worker for retry error with retry count and delay between retry
+type ErrorRetrier struct {
 	Delay   time.Duration
+	Retry   int
 	Message string
 }
 
 // Error implement error
-func (e *TaskQueueErrorRetrier) Error() string {
+func (e *ErrorRetrier) Error() string {
 	return e.Message
 }

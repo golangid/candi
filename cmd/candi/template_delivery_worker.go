@@ -143,6 +143,7 @@ package workerhandler
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
@@ -178,7 +179,9 @@ func (h *TaskQueueHandler) taskOne(ctx context.Context, message []byte) error {
 	defer trace.Finish()
 	ctx = trace.Context()
 
-	return &candishared.TaskQueueErrorRetrier{
+	retried := candishared.GetValueFromContext(ctx, candishared.ContextKeyTaskQueueRetry).(int)
+	fmt.Printf("executing task '{{.ModuleName}}-task-one' has been %d retry\n", retried)
+	return &candishared.ErrorRetrier{
 		Delay:   10 * time.Second,
 		Message: "Error one",
 	}
@@ -189,7 +192,9 @@ func (h *TaskQueueHandler) taskTwo(ctx context.Context, message []byte) error {
 	defer trace.Finish()
 	ctx = trace.Context()
 
-	return &candishared.TaskQueueErrorRetrier{
+	retried := candishared.GetValueFromContext(ctx, candishared.ContextKeyTaskQueueRetry).(int)
+	fmt.Printf("executing task '{{.ModuleName}}-task-two' has been %d retry\n", retried)
+	return &candishared.ErrorRetrier{
 		Delay:   3 * time.Second,
 		Message: "Error two",
 	}
