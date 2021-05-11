@@ -9,37 +9,31 @@ const (
 	eventsConst              = "events"
 	notifyEventFunctionQuery = `CREATE OR REPLACE FUNCTION notify_event() RETURNS TRIGGER AS $$
 
-    DECLARE 
-        data json;
-        notification json;
-    
-    BEGIN
-    
-        -- Convert the old or new row to JSON, based on the kind of action.
-        IF (TG_OP = 'DELETE') THEN
-			data = json_build_object(
-				'old', row_to_json(OLD)
-			);
-        ELSE
-			data = json_build_object(
-				'old', row_to_json(OLD),
-				'new', row_to_json(NEW)
-			);
-        END IF;
-        
-        -- Construct the notification as a JSON string.
-        notification = json_build_object(
-                          'table', TG_TABLE_NAME,
-                          'action', TG_OP,
-                          'data', data);
-        
-        -- Execute pg_notify(channel, notification)
-        PERFORM pg_notify('events', notification::text);
-        
-        -- Result is ignored since this is an AFTER trigger
-        RETURN NULL; 
-    END;
-    
+	DECLARE 
+		data json;
+		notification json;
+		
+	BEGIN
+		
+		-- Convert the old or new row to JSON, based on the kind of action.
+		data = json_build_object(
+			'old', row_to_json(OLD),
+			'new', row_to_json(NEW)
+		);
+
+		-- Construct the notification as a JSON string.
+		notification = json_build_object(
+						'table', TG_TABLE_NAME,
+						'action', TG_OP,
+						'data', data);
+		
+		-- Execute pg_notify(channel, notification)
+		PERFORM pg_notify('events', notification::text);
+		
+		-- Result is ignored since this is an AFTER trigger
+		RETURN NULL; 
+	END;
+
 $$ LANGUAGE plpgsql;`
 )
 
