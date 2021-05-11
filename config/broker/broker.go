@@ -35,10 +35,10 @@ type brokerInstance struct {
 /*
 InitBrokers init registered broker
 
-* for kafka, pass NewKafkaBroker(...opts) in param, init kafka broker configuration from env
+* for kafka, pass NewKafkaBroker(...KafkaOptionFunc) in param, init kafka broker configuration from env
 KAFKA_BROKERS, KAFKA_CLIENT_ID, KAFKA_CLIENT_VERSION
 
-* for rabbitmq, pass NewRabbitMQBroker() in param, init rabbitmq broker configuration from env
+* for rabbitmq, pass NewRabbitMQBroker(...RabbitMQOptionFunc) in param, init rabbitmq broker configuration from env
 RABBITMQ_BROKER, RABBITMQ_CONSUMER_GROUP, RABBITMQ_EXCHANGE_NAME
 */
 func InitBrokers(opts ...OptionFunc) interfaces.Broker {
@@ -55,7 +55,7 @@ func (b *brokerInstance) GetConfiguration(brokerType types.Worker) interface{} {
 	case types.Kafka:
 		return b.kafka.client
 	case types.RabbitMQ:
-		return b.rabbitmq.conn
+		return b.rabbitmq.ch
 	}
 	return nil
 }

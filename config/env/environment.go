@@ -83,6 +83,7 @@ type Env struct {
 		Broker        string
 		ConsumerGroup string
 		ExchangeName  string
+		AutoACK       bool
 	}
 
 	// MaxGoroutines env for goroutine semaphore
@@ -320,6 +321,11 @@ func parseBrokerEnv() {
 	env.RabbitMQ.Broker = os.Getenv("RABBITMQ_BROKER")
 	env.RabbitMQ.ConsumerGroup = os.Getenv("RABBITMQ_CONSUMER_GROUP")
 	env.RabbitMQ.ExchangeName = os.Getenv("RABBITMQ_EXCHANGE_NAME")
+	if autoACK, err := strconv.ParseBool(os.Getenv("RABBITMQ_AUTO_ACK")); err != nil {
+		env.RabbitMQ.AutoACK = true
+	} else {
+		env.RabbitMQ.AutoACK = autoACK
+	}
 }
 
 func parseDatabaseEnv() {

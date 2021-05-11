@@ -17,7 +17,7 @@ import (
 )
 
 type rabbitmqWorker struct {
-	conn                *amqp.Connection
+	ch                  *amqp.Channel
 	shutdown, semaphore chan struct{}
 	wg                  sync.WaitGroup
 	channels            []reflect.SelectCase
@@ -31,7 +31,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	}
 
 	worker := new(rabbitmqWorker)
-	worker.conn = service.GetDependency().GetBroker().GetConfiguration(types.RabbitMQ).(*amqp.Connection)
+	worker.ch = service.GetDependency().GetBroker().GetConfiguration(types.RabbitMQ).(*amqp.Channel)
 
 	worker.shutdown, worker.semaphore = make(chan struct{}), make(chan struct{}, env.BaseEnv().MaxGoroutines)
 	// add shutdown channel to first index
@@ -40,15 +40,13 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	})
 	worker.handlers = make(map[string]types.WorkerHandlerFunc)
 
-	channel, queueConfigFunc := getConfiguration(worker.conn)
-
 	for _, m := range service.GetModules() {
 		if h := m.WorkerHandler(types.RabbitMQ); h != nil {
 			var handlerGroup types.WorkerHandlerGroup
 			h.MountHandlers(&handlerGroup)
 			for _, handler := range handlerGroup.Handlers {
 				logger.LogYellow(fmt.Sprintf(`[RABBITMQ-CONSUMER] (queue): %-15s  --> (module): "%s"`, `"`+handler.Pattern+`"`, m.Name()))
-				queueChan, err := queueConfigFunc(channel, handler.Pattern)
+				queueChan, err := setupQueueConfig(worker.ch, handler.Pattern)
 				if err != nil {
 					panic(err)
 				}
@@ -95,12 +93,19 @@ func (r *rabbitmqWorker) Serve() {
 					<-r.semaphore
 				}()
 
+				var err error
 				trace := tracer.StartTrace(context.Background(), "RabbitMQConsumer")
 				ctx := trace.Context()
 				defer func() {
 					if r := recover(); r != nil {
-						tracer.SetError(ctx, fmt.Errorf("panic: %v", r))
+						err = fmt.Errorf("panic: %v", r)
 					}
+
+					if err == nil && !env.BaseEnv().RabbitMQ.AutoACK {
+						message.Ack(false)
+					}
+
+					trace.SetError(err)
 					logger.LogGreen("rabbitmq_consumer > trace_url: " + tracer.GetTraceURL(ctx))
 					trace.Finish()
 				}()
@@ -110,9 +115,7 @@ func (r *rabbitmqWorker) Serve() {
 				trace.SetTag("routing_key", message.RoutingKey)
 				trace.Log("header", message.Headers)
 				trace.Log("body", message.Body)
-				if err := r.handlers[message.RoutingKey](ctx, message.Body); err != nil {
-					trace.SetError(err)
-				}
+				err = r.handlers[message.RoutingKey](ctx, message.Body)
 			}(msg)
 		}
 	}
@@ -129,7 +132,7 @@ func (r *rabbitmqWorker) Shutdown(ctx context.Context) {
 	}
 
 	r.wg.Wait()
-	r.conn.Close()
+	r.ch.Close()
 }
 
 func (r *rabbitmqWorker) Name() string {
