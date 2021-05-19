@@ -115,6 +115,11 @@ If include GRPC handler, run `$ make proto` for generate rpc files from proto (m
 
 ## Example microservices project using this library: [Backend Microservices](https://github.com/agungdwiprasetyo/backend-microservices)
 
+## Features
+- Tracing
+  - Using Jaeger for trace distributed system in microservices.
+![](https://storage.googleapis.com/agungdp/static/candi/jaeger_tracing.png)
+
 ## Todo
 - [x] ~~Add task queue worker like celery and add UI for manage task queue worker~~ => https://github.com/agungdwiprasetyo/task-queue-worker-dashboard
 - [ ] Add Documentation
