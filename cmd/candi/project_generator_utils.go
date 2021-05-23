@@ -312,6 +312,9 @@ func formatTemplate() template.FuncMap {
 		"upper": func(str string) string {
 			return strings.Title(str)
 		},
+		"lower": func(str string) string {
+			return strings.ToLower(str)
+		},
 		"isActive": func(str string) string {
 			ok, _ := strconv.ParseBool(str)
 			if ok {

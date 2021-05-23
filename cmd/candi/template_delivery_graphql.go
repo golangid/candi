@@ -166,18 +166,40 @@ func (m *mutationResolver) Delete{{clean (upper .ModuleName)}}(ctx context.Conte
 
 package graphqlhandler
 
-import "context"
+import (
+	"context"
+	"time"
+
+	shareddomain "{{.PackagePrefix}}/pkg/shared/domain"
+
+	"github.com/google/uuid"
+	"{{.LibraryName}}/logger"
+)
 
 type subscriptionResolver struct {
 	root *GraphQLHandler
 }
 
-// Hello resolver
-func (s *subscriptionResolver) Hello(ctx context.Context) <-chan string {
-	output := make(chan string)
+// ListenData resolver, broadcast event to client
+func (s *subscriptionResolver) ListenData(ctx context.Context) <-chan shareddomain.{{clean (upper .ModuleName)}} {
+	output := make(chan shareddomain.{{clean (upper .ModuleName)}})
 
 	go func() {
-		output <- "Hello from {{clean (upper .ModuleName)}}"
+		// example send event to client every 5 seconds
+		tick := time.NewTicker(5 * time.Second)
+		for {
+			select {
+			case <-tick.C:
+				output <- shareddomain.User{
+					ID:         uuid.NewString(),
+					CreatedAt:  time.Now(),
+					ModifiedAt: time.Now(),
+				}
+			case <-ctx.Done():
+				logger.LogI("done")
+				return
+			}
+		}
 	}()
 
 	return output
@@ -273,7 +295,7 @@ type {{clean (upper .ModuleName)}}MutationResolver {
 }
 
 type {{clean (upper .ModuleName)}}SubscriptionResolver {
-	hello(): String!
+	listen_data(): {{clean (upper .ModuleName)}}Resolver!
 }
 
 type {{clean (upper .ModuleName)}}ListResolver {
@@ -283,6 +305,8 @@ type {{clean (upper .ModuleName)}}ListResolver {
 
 type {{clean (upper .ModuleName)}}Resolver {
 	id: String!
+	created_at: String!
+	modified_at: String!
 }
 
 input {{clean (upper .ModuleName)}}InputResolver {

@@ -175,7 +175,7 @@ func (h *TaskQueueHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 }
 
 func (h *TaskQueueHandler) taskOne(ctx context.Context, message []byte) error {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryTaskQueue:Hello")
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryTaskQueue:TaskOne")
 	defer trace.Finish()
 	ctx = trace.Context()
 
@@ -188,7 +188,7 @@ func (h *TaskQueueHandler) taskOne(ctx context.Context, message []byte) error {
 }
 
 func (h *TaskQueueHandler) taskTwo(ctx context.Context, message []byte) error {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryTaskQueue:Hello")
+	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryTaskQueue:TaskTwo")
 	defer trace.Finish()
 	ctx = trace.Context()
 
