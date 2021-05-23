@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"reflect"
+	"runtime"
 
 	"pkg.agungdp.dev/candi/candihelper"
 	"pkg.agungdp.dev/candi/candishared"
@@ -18,6 +19,7 @@ import (
 	"pkg.agungdp.dev/candi/codebase/factory/types"
 	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
+	"pkg.agungdp.dev/candi/tracer"
 
 	graphql "github.com/golangid/graphql-go"
 	"github.com/soheilhy/cmux"
@@ -212,6 +214,12 @@ func (s *handlerImpl) ServeVoyager(resp http.ResponseWriter, req *http.Request) 
 type panicLogger struct{}
 
 // LogPanic is used to log recovered panic values that occur during query execution
+// https://github.com/graph-gophers/graphql-go/blob/master/log/log.go#L19 + custom add log to trace
 func (l *panicLogger) LogPanic(ctx context.Context, value interface{}) {
-	logger.LogEf("%v", value)
+	const size = 64 << 10
+	buf := make([]byte, size)
+	buf = buf[:runtime.Stack(buf, false)]
+
+	tracer.Log(ctx, "gql_panic", value)
+	tracer.Log(ctx, "gql_panic_trace", buf)
 }
