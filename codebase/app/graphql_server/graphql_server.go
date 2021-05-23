@@ -136,7 +136,7 @@ func NewHandler(service factory.ServiceFactory) Handler {
 	schemaOpts := []graphql.SchemaOpt{
 		graphql.UseStringDescriptions(),
 		graphql.UseFieldResolvers(),
-		graphql.Tracer(newGraphQLTracer(middlewareResolvers)),
+		graphql.Tracer(newGraphQLMiddleware(middlewareResolvers)),
 		graphql.Logger(&panicLogger{}),
 	}
 	if env.BaseEnv().IsProduction {

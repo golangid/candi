@@ -1,5 +1,9 @@
 package graphqlserver
 
+/*
+	GraphQL Middleware, intercept graphql request for middleware and tracing
+*/
+
 import (
 	"context"
 	"fmt"
@@ -27,20 +31,20 @@ var gqlTypeNotShowLog = map[string]bool{
 	"Query": true, "Mutation": true, "Subscription": true, "__Type": true, "__Schema": true,
 }
 
-// graphQLTracer struct
-type graphQLTracer struct {
+// graphqlMiddleware struct
+type graphqlMiddleware struct {
 	middleware types.MiddlewareGroup
 }
 
-// newGraphQLTracer constructor
-func newGraphQLTracer(middleware types.MiddlewareGroup) *graphQLTracer {
-	return &graphQLTracer{
+// newGraphQLMiddleware constructor
+func newGraphQLMiddleware(middleware types.MiddlewareGroup) *graphqlMiddleware {
+	return &graphqlMiddleware{
 		middleware: middleware,
 	}
 }
 
-// TraceQuery method
-func (t *graphQLTracer) TraceQuery(ctx context.Context, queryString string, operationName string, variables map[string]interface{}, varTypes map[string]*introspection.Type) (context.Context, trace.TraceQueryFinishFunc) {
+// TraceQuery method, intercept incoming query and add tracing
+func (t *graphqlMiddleware) TraceQuery(ctx context.Context, queryString string, operationName string, variables map[string]interface{}, varTypes map[string]*introspection.Type) (context.Context, trace.TraceQueryFinishFunc) {
 
 	globalTracer := opentracing.GlobalTracer()
 	traceName := strings.TrimSuffix(fmt.Sprintf("GraphQL-Root:%s", operationName), ":")
@@ -60,8 +64,8 @@ func (t *graphQLTracer) TraceQuery(ctx context.Context, queryString string, oper
 	}
 	span.SetTag("graphql.query", queryString)
 	span.SetTag("graphql.operationName", operationName)
-	if len(variables) != 0 {
-		span.SetTag("graphql.variables", variables)
+	if len(variables) > 0 {
+		span.SetTag("graphql.variables", string(candihelper.ToBytes(variables)))
 	}
 
 	return ctx, func(data []byte, errs []*gqlerrors.QueryError) {
@@ -76,8 +80,8 @@ func (t *graphQLTracer) TraceQuery(ctx context.Context, queryString string, oper
 	}
 }
 
-// TraceField method
-func (t *graphQLTracer) TraceField(ctx context.Context, label, typeName, fieldName string, trivial bool, args map[string]interface{}) (context.Context, trace.TraceFieldFinishFunc) {
+// TraceField method, intercept field per query and check middleware
+func (t *graphqlMiddleware) TraceField(ctx context.Context, label, typeName, fieldName string, trivial bool, args map[string]interface{}) (context.Context, trace.TraceFieldFinishFunc) {
 	start := time.Now()
 	if middFunc, ok := t.middleware[fmt.Sprintf("%s.%s", typeName, fieldName)]; ok {
 		for _, mw := range middFunc {
