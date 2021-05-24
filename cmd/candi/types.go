@@ -110,6 +110,7 @@ type configHeader struct {
 }
 
 type config struct {
+	IsMonorepo                                                         bool
 	RestHandler, GRPCHandler, GraphQLHandler                           bool
 	KafkaHandler, SchedulerHandler, RedisSubsHandler, TaskQueueHandler bool
 	PostgresListenerHandler, RabbitMQHandler, IsWorkerActive           bool
@@ -140,6 +141,7 @@ func (s *serviceConfig) disableAllHandler() {
 	s.RedisSubsHandler = false
 	s.TaskQueueHandler = false
 	s.PostgresListenerHandler = false
+	s.RabbitMQHandler = false
 }
 
 type moduleConfig struct {

@@ -190,7 +190,7 @@ func (s *subscriptionResolver) ListenData(ctx context.Context) <-chan shareddoma
 		for {
 			select {
 			case <-tick.C:
-				output <- shareddomain.User{
+				output <- shareddomain.{{clean (upper .ModuleName)}}{
 					ID:         uuid.NewString(),
 					CreatedAt:  time.Now(),
 					ModifiedAt: time.Now(),

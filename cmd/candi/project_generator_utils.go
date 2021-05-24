@@ -245,6 +245,7 @@ stageSelectDependencies:
 		srvConfig.ProtoSource = srvConfig.PackagePrefix + "/api/proto"
 	}
 
+	srvConfig.IsMonorepo = flagParam.isMonorepo
 	srvConfig.RestHandler = serviceHandlers[restHandler]
 	srvConfig.GRPCHandler = serviceHandlers[grpcHandler]
 	srvConfig.GraphQLHandler = serviceHandlers[graphqlHandler]

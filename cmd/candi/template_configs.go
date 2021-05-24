@@ -8,7 +8,7 @@ package configs
 import (
 	"context"
 
-	"{{.PackagePrefix}}/pkg/shared"
+	` + "{{ if .IsMonorepo }}\"monorepo/sdk\"\n{{end}}" + `"{{.PackagePrefix}}/pkg/shared"
 	"{{.PackagePrefix}}/pkg/shared/repository"
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
@@ -37,7 +37,7 @@ func LoadConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 		{{if not .RedisDeps}}// {{end}}redisDeps := database.InitRedis()
 		{{if not .SQLDeps}}// {{end}}sqlDeps := database.InitSQLDatabase()
 		{{if not .MongoDeps}}// {{end}}mongoDeps := database.InitMongoDB(ctx)
-
+` + "{{ if .IsMonorepo }}\n		sdk.SetGlobalSDK(\n			// init service client sdk\n		)\n{{end}}" + `
 		// inject all service dependencies
 		// See all option in dependency package
 		deps = dependency.InitDependency(
