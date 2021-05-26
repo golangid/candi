@@ -17,8 +17,6 @@ import (
 	"pkg.agungdp.dev/candi/tracer"
 )
 
-const timeout time.Duration = 10 * time.Second
-
 // Config app
 type Config struct {
 	ServiceName    string
@@ -57,7 +55,7 @@ func Init(serviceName string) *Config {
 // LoadFunc load selected dependency with context timeout
 func (c *Config) LoadFunc(depsFunc func(context.Context) []interfaces.Closer) {
 	// set timeout for init configuration
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), env.BaseEnv().LoadConfigTimeout)
 	defer func() {
 		cancel()
 		fmt.Println()
@@ -96,7 +94,7 @@ func (c *Config) LoadFunc(depsFunc func(context.Context) []interfaces.Closer) {
 // Exit close all connection
 func (c *Config) Exit() {
 	// set timeout for close all configuration
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), env.BaseEnv().LoadConfigTimeout)
 	defer cancel()
 	fmt.Println()
 

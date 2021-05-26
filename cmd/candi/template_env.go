@@ -4,6 +4,7 @@ const envTemplate = `# Basic env configuration
 ENVIRONMENT=development #development,staging,production
 DEBUG_MODE=true
 NO_AUTH=true
+LOAD_CONFIG_TIMEOUT=20s
 
 # Application Service Handlers
 ## Server
@@ -55,8 +56,7 @@ RABBITMQ_EXCHANGE_NAME=delayed
 RABBITMQ_AUTO_ACK=true
 
 JAEGER_TRACING_HOST=127.0.0.1:5775
-GRAPHQL_SCHEMA_DIR="api/graphql"
-JSON_SCHEMA_DIR="api/jsonschema"
+JAEGER_TRACING_DASHBOARD=http://127.0.0.1:16686
 
 MAX_GOROUTINES=10
 

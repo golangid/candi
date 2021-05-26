@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 	"pkg.agungdp.dev/candi/candihelper"
@@ -16,7 +17,8 @@ type Env struct {
 	RootApp, ServiceName string
 	BuildNumber          string
 	// Env on application
-	Environment string
+	Environment       string
+	LoadConfigTimeout time.Duration
 
 	useSQL, useMongo, useRedis, useRSAKey bool
 	NoAuth                                bool
@@ -40,11 +42,6 @@ type Env struct {
 	UsePostgresListenerWorker bool
 	// UseRabbitMQWorker env
 	UseRabbitMQWorker bool
-
-	// GraphQLSchemaDir env
-	GraphQLSchemaDir string
-	// JSONSchemaDir env
-	JSONSchemaDir string
 
 	IsProduction, DebugMode bool
 
@@ -70,7 +67,8 @@ type Env struct {
 	BasicAuthPassword string
 
 	// JaegerTracingHost env
-	JaegerTracingHost string
+	JaegerTracingHost      string
+	JaegerTracingDashboard string
 
 	// Broker environment
 	Kafka struct {
@@ -121,6 +119,10 @@ func Load(serviceName string) {
 	// ------------------------------------
 	parseAppConfig()
 	env.BuildNumber = os.Getenv("BUILD_NUMBER")
+
+	if env.LoadConfigTimeout, err = time.ParseDuration(os.Getenv("LOAD_CONFIG_TIMEOUT")); err != nil {
+		env.LoadConfigTimeout = 10 * time.Second // default value
+	}
 
 	// ------------------------------------
 	if env.UseREST || env.UseGraphQL {
@@ -199,25 +201,14 @@ func Load(serviceName string) {
 	if !ok {
 		panic("missing JAEGER_TRACING_HOST environment")
 	}
+	env.JaegerTracingDashboard = os.Getenv("JAEGER_TRACING_DASHBOARD")
 
 	// kafka environment
 	parseBrokerEnv()
 
-	env.GraphQLSchemaDir, ok = os.LookupEnv("GRAPHQL_SCHEMA_DIR")
-	if env.UseGraphQL && !ok {
-		panic("GRAPHQL is active, missing GRAPHQL_SCHEMA_DIR environment")
-	}
-	env.GraphQLSchemaDir = os.Getenv(candihelper.WORKDIR) + env.GraphQLSchemaDir
-
-	env.JSONSchemaDir, ok = os.LookupEnv("JSON_SCHEMA_DIR")
-	if !ok {
-		panic("missing JSON_SCHEMA_DIR environment")
-	}
-	env.JSONSchemaDir = os.Getenv(candihelper.WORKDIR) + env.JSONSchemaDir
-
 	maxGoroutines, err := strconv.Atoi(os.Getenv("MAX_GOROUTINES"))
 	if err != nil || maxGoroutines <= 0 {
-		maxGoroutines = 4096
+		maxGoroutines = 10
 	}
 	env.MaxGoroutines = maxGoroutines
 

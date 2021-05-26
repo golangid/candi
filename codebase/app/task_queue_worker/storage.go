@@ -103,7 +103,7 @@ func (s *storage) findAllJob(filter Filter) (meta Meta, jobs []Job) {
 			job.NextRetryAt = time.Now().Add(delay).Format(time.RFC3339)
 		}
 		if job.TraceID != "" && tracerHost != "" {
-			job.TraceID = fmt.Sprintf("http://%s:16686/trace/%s", tracerHost, job.TraceID)
+			job.TraceID = fmt.Sprintf("%s/trace/%s", tracerHost, job.TraceID)
 		}
 		jobs = append(jobs, job)
 	}

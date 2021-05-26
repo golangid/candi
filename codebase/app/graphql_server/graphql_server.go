@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"reflect"
 	"runtime"
 
@@ -131,7 +132,7 @@ func NewHandler(service factory.ServiceFactory) Handler {
 	root.rootQuery = constructStruct(queryResolverFields, queryResolverValues)
 	root.rootMutation = constructStruct(mutationResolverFields, mutationResolverValues)
 	root.rootSubscription = constructStruct(subscriptionResolverFields, subscriptionResolverValues)
-	gqlSchema := candihelper.LoadAllFile(env.BaseEnv().GraphQLSchemaDir, ".graphql")
+	gqlSchema := candihelper.LoadAllFile(os.Getenv(candihelper.WORKDIR)+"api/graphql", ".graphql")
 
 	schemaOpts := []graphql.SchemaOpt{
 		graphql.UseStringDescriptions(),

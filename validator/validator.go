@@ -1,6 +1,10 @@
 package validator
 
-import "pkg.agungdp.dev/candi/config/env"
+import (
+	"os"
+
+	"pkg.agungdp.dev/candi/candihelper"
+)
 
 // Validator instance
 type Validator struct {
@@ -12,7 +16,7 @@ type Validator struct {
 // jsonschema source file load from JSON_SCHEMA_DIR environment
 func NewValidator() *Validator {
 	return &Validator{
-		JSONSchemaValidator: NewJSONSchemaValidator(env.BaseEnv().JSONSchemaDir),
+		JSONSchemaValidator: NewJSONSchemaValidator(os.Getenv(candihelper.WORKDIR) + "api/jsonschema"),
 		StructValidator:     NewStructValidator(),
 	}
 }
