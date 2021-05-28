@@ -82,6 +82,8 @@ func NewModules(deps dependency.Dependency) *Module {
 
 ## Add task in each usecase module
 
+* From internal service (same runtime)
+
 ```go
 package usecase
 
@@ -102,5 +104,18 @@ func someUsecase() {
 	if err := taskqueueworker.AddJob("task-two", 5, `{"params": "test-two"}`); err != nil {
 		log.Println(err)
 	}
+}
+```
+
+* Or via GraphQL API
+
+`POST {{task-queue-worker-host}}/graphql`
+```
+mutation addJob {
+  add_job(
+    task_name: "task-one"
+    max_retry: 5
+    args: "{\"params\": \"test-one\"}"
+  )
 }
 ```
