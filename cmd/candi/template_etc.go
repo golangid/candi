@@ -237,13 +237,13 @@ prepare: check
 	@if [ ! -f services/$(service)/.env ]; then cp services/$(service)/.env.sample services/$(service)/.env; fi;
 
 init:
-	@candi -scope=4
+	@candi -scope=1
 
 add-module: check
-	@candi -scope=5 -servicename=$(service)
+	@candi -scope=2 -servicename=$(service)
 
 proto: check
-	@if [ ! -d "sdk/$(service)" ]; then echo "creating new proto files..." &&  mkdir sdk/$(service) && mkdir sdk/$(service)/proto; fi
+	@if [ ! -d "sdk/$(service)/proto" ]; then echo "creating new proto files..." && mkdir sdk/$(service)/proto; fi
 	$(foreach proto_file, $(shell find services/$(service)/api/proto -name '*.proto'),\
 	protoc --proto_path=services/$(service)/api/proto --go_out=plugins=grpc:sdk/$(service)/proto \
 	--go_opt=paths=source_relative $(proto_file);)
@@ -260,8 +260,12 @@ run: build
 docker: check
 	docker build --build-arg SERVICE_NAME=$(service) -t $(service):latest .
 
-run-container:
+run-container: check
 	docker run --name=$(service) --network="host" -d $(service)
+
+clear-docker: check
+	docker rm -f $(service)
+	docker rmi -f $(service)
 
 # mocks all interfaces in sdk for unit test
 mocks:
