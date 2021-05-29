@@ -63,7 +63,6 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	fmt.Printf("\x1b[34;1m⇨ Kafka consumer running with %d topics. Brokers: "+strings.Join(env.BaseEnv().Kafka.Brokers, ", ")+"\x1b[0m\n\n",
 		len(consumerHandler.topics))
 
-	consumerHandler.semaphore = make(chan struct{}, env.BaseEnv().MaxGoroutines)
 	consumerHandler.ready = make(chan struct{})
 	return &kafkaWorker{
 		engine:          consumerEngine,
