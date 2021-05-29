@@ -106,6 +106,12 @@ func StartTrace(ctx context.Context, operationName string) interfaces.Tracer {
 	}
 }
 
+// StartTraceWithContext starting trace child span from parent span, returning tracer and context
+func StartTraceWithContext(ctx context.Context, operationName string) (interfaces.Tracer, context.Context) {
+	t := StartTrace(ctx, operationName)
+	return t, t.Context()
+}
+
 // Context get active context
 func (t *tracerImpl) Context() context.Context {
 	return t.ctx
