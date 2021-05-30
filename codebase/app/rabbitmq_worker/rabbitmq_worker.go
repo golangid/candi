@@ -17,11 +17,12 @@ import (
 )
 
 type rabbitmqWorker struct {
-	ch                  *amqp.Channel
-	shutdown, semaphore chan struct{}
-	wg                  sync.WaitGroup
-	channels            []reflect.SelectCase
-	handlers            map[string]types.WorkerHandlerFunc
+	ch        *amqp.Channel
+	shutdown  chan struct{}
+	semaphore []chan struct{}
+	wg        sync.WaitGroup
+	channels  []reflect.SelectCase
+	handlers  map[string]types.WorkerHandlerFunc
 }
 
 // NewWorker create new rabbitmq consumer
@@ -33,7 +34,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	worker := new(rabbitmqWorker)
 	worker.ch = service.GetDependency().GetBroker().GetConfiguration(types.RabbitMQ).(*amqp.Channel)
 
-	worker.shutdown, worker.semaphore = make(chan struct{}), make(chan struct{}, env.BaseEnv().MaxGoroutines)
+	worker.shutdown = make(chan struct{})
 	// add shutdown channel to first index
 	worker.channels = append(worker.channels, reflect.SelectCase{
 		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(worker.shutdown),
@@ -55,6 +56,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 					Dir: reflect.SelectRecv, Chan: reflect.ValueOf(queueChan),
 				})
 				worker.handlers[handler.Pattern] = handler.HandlerFunc
+				worker.semaphore = append(worker.semaphore, make(chan struct{}, 1))
 			}
 		}
 	}
@@ -84,49 +86,20 @@ func (r *rabbitmqWorker) Serve() {
 
 		// exec handler
 		if msg, ok := value.Interface().(amqp.Delivery); ok {
-			r.semaphore <- struct{}{}
-			r.wg.Add(1)
-			go func(message amqp.Delivery) {
-				defer func() {
-					recover()
-					r.wg.Done()
-					<-r.semaphore
-				}()
-
-				var err error
-				trace := tracer.StartTrace(context.Background(), "RabbitMQConsumer")
-				ctx := trace.Context()
-				defer func() {
-					if r := recover(); r != nil {
-						err = fmt.Errorf("panic: %v", r)
-					}
-
-					if err == nil && !env.BaseEnv().RabbitMQ.AutoACK {
-						message.Ack(false)
-					}
-
-					trace.SetError(err)
-					logger.LogGreen("rabbitmq_consumer > trace_url: " + tracer.GetTraceURL(ctx))
-					trace.Finish()
-				}()
-
-				trace.SetTag("broker", candihelper.MaskingPasswordURL(env.BaseEnv().RabbitMQ.Broker))
-				trace.SetTag("exchange", message.Exchange)
-				trace.SetTag("routing_key", message.RoutingKey)
-				trace.Log("header", message.Headers)
-				trace.Log("body", message.Body)
-				err = r.handlers[message.RoutingKey](ctx, message.Body)
-			}(msg)
+			go r.processMessage(r.semaphore[chosen-1], msg)
 		}
 	}
 }
 
 func (r *rabbitmqWorker) Shutdown(ctx context.Context) {
 	log.Println("\x1b[33;1mStopping RabbitMQ Worker...\x1b[0m")
-	defer func() { log.Println("\x1b[33;1mStopping RabbitMQ Worker:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
+	defer func() { recover(); log.Println("\x1b[33;1mStopping RabbitMQ Worker:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
 
 	r.shutdown <- struct{}{}
-	runningJob := len(r.semaphore)
+	var runningJob int
+	for _, sem := range r.semaphore {
+		runningJob += len(sem)
+	}
 	if runningJob != 0 {
 		fmt.Printf("\x1b[34;1mRabbitMQ Worker:\x1b[0m waiting %d job until done...\x1b[0m\n", runningJob)
 	}
@@ -137,4 +110,39 @@ func (r *rabbitmqWorker) Shutdown(ctx context.Context) {
 
 func (r *rabbitmqWorker) Name() string {
 	return string(types.RabbitMQ)
+}
+
+func (r *rabbitmqWorker) processMessage(semaphore chan struct{}, msg amqp.Delivery) {
+	semaphore <- struct{}{}
+	r.wg.Add(1)
+	go func(message amqp.Delivery) {
+		defer func() {
+			recover()
+			r.wg.Done()
+			<-semaphore
+		}()
+
+		var err error
+		trace, ctx := tracer.StartTraceWithContext(context.Background(), "RabbitMQConsumer")
+		defer func() {
+			if r := recover(); r != nil {
+				err = fmt.Errorf("panic: %v", r)
+			}
+
+			if err == nil && !env.BaseEnv().RabbitMQ.AutoACK {
+				message.Ack(false)
+			}
+
+			trace.SetError(err)
+			logger.LogGreen("rabbitmq_consumer > trace_url: " + tracer.GetTraceURL(ctx))
+			trace.Finish()
+		}()
+
+		trace.SetTag("broker", candihelper.MaskingPasswordURL(env.BaseEnv().RabbitMQ.Broker))
+		trace.SetTag("exchange", message.Exchange)
+		trace.SetTag("routing_key", message.RoutingKey)
+		trace.Log("header", message.Headers)
+		trace.Log("body", message.Body)
+		err = r.handlers[message.RoutingKey](ctx, message.Body)
+	}(msg)
 }
