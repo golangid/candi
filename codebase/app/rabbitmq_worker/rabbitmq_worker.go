@@ -17,6 +17,9 @@ import (
 )
 
 type rabbitmqWorker struct {
+	ctx           context.Context
+	ctxCancelFunc func()
+
 	ch        *amqp.Channel
 	shutdown  chan struct{}
 	semaphore []chan struct{}
@@ -32,6 +35,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	}
 
 	worker := new(rabbitmqWorker)
+	worker.ctx, worker.ctxCancelFunc = context.WithCancel(context.Background())
 	worker.ch = service.GetDependency().GetBroker().GetConfiguration(types.RabbitMQ).(*amqp.Channel)
 
 	worker.shutdown = make(chan struct{})
@@ -95,6 +99,7 @@ func (r *rabbitmqWorker) Shutdown(ctx context.Context) {
 	log.Println("\x1b[33;1mStopping RabbitMQ Worker...\x1b[0m")
 	defer func() { recover(); log.Println("\x1b[33;1mStopping RabbitMQ Worker:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
 
+	r.ctxCancelFunc()
 	r.shutdown <- struct{}{}
 	var runningJob int
 	for _, sem := range r.semaphore {
@@ -122,8 +127,13 @@ func (r *rabbitmqWorker) processMessage(semaphore chan struct{}, msg amqp.Delive
 			<-semaphore
 		}()
 
+		if r.ctx.Err() != nil {
+			logger.LogRed("rabbitmq_consumer > ctx root err: " + r.ctx.Err().Error())
+			return
+		}
+
 		var err error
-		trace, ctx := tracer.StartTraceWithContext(context.Background(), "RabbitMQConsumer")
+		trace, ctx := tracer.StartTraceWithContext(r.ctx, "RabbitMQConsumer")
 		defer func() {
 			if r := recover(); r != nil {
 				err = fmt.Errorf("panic: %v", r)

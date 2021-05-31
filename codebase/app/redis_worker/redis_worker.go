@@ -27,6 +27,9 @@ var (
 
 type (
 	redisWorker struct {
+		ctx           context.Context
+		ctxCancelFunc func()
+
 		pubSubConn func() (subFn func() *redis.PubSubConn)
 		isHaveJob  bool
 		service    factory.ServiceFactory
@@ -99,6 +102,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 		}
 		workerInstance.consul = consul
 	}
+	workerInstance.ctx, workerInstance.ctxCancelFunc = context.WithCancel(context.Background())
 
 	return workerInstance
 }
@@ -154,6 +158,7 @@ func (r *redisWorker) Shutdown(ctx context.Context) {
 		log.Println("\x1b[33;1mStopping Redis Subscriber:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
 	}()
 
+	r.ctxCancelFunc()
 	if !r.isHaveJob {
 		return
 	}
@@ -215,6 +220,10 @@ func (r *redisWorker) runListener(stop <-chan struct{}, count chan<- int, psc *r
 							count <- totalRunJobs
 						}()
 
+						if r.ctx.Err() != nil {
+							logger.LogRed("redis_subscriber > ctx root err: " + r.ctx.Err().Error())
+							return
+						}
 						r.processMessage(handlerName, message)
 					}(handlerName, []byte(messageData))
 
@@ -231,22 +240,21 @@ func (r *redisWorker) runListener(stop <-chan struct{}, count chan<- int, psc *r
 }
 
 func (r *redisWorker) processMessage(handlerName string, message []byte) {
-	trace := tracer.StartTrace(context.Background(), "RedisSubscriber")
-	defer trace.Finish()
-	ctx, tags := trace.Context(), trace.Tags()
+	trace, ctx := tracer.StartTraceWithContext(r.ctx, "RedisSubscriber")
 	defer func() {
 		if r := recover(); r != nil {
 			tracer.SetError(ctx, fmt.Errorf("%v", r))
 		}
 		logger.LogGreen("redis_subscriber > trace_url: " + tracer.GetTraceURL(ctx))
+		trace.Finish()
 	}()
 
 	if env.BaseEnv().DebugMode {
 		log.Printf("\x1b[35;3mRedis Key Expired Subscriber: executing event key '%s'\x1b[0m", handlerName)
 	}
 
-	tags["handler_name"] = handlerName
-	tags["message"] = string(message)
+	trace.SetTag("handler_name", handlerName)
+	trace.SetTag("message", string(message))
 
 	handler := r.handlers[handlerName]
 	if err := handler.handlerFunc(ctx, message); err != nil {

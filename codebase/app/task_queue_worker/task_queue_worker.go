@@ -17,6 +17,9 @@ import (
 )
 
 type taskQueueWorker struct {
+	ctx           context.Context
+	ctxCancelFunc func()
+
 	service factory.ServiceFactory
 	wg      sync.WaitGroup
 }
@@ -73,9 +76,11 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	fmt.Printf("\x1b[34;1m⇨ Task queue worker running with %d task. Open [::]:%d for dashboard\x1b[0m\n\n",
 		len(registeredTask), env.BaseEnv().TaskQueueDashboardPort)
 
-	return &taskQueueWorker{
+	workerInstance := &taskQueueWorker{
 		service: service,
 	}
+	workerInstance.ctx, workerInstance.ctxCancelFunc = context.WithCancel(context.Background())
+	return workerInstance
 }
 
 func (t *taskQueueWorker) Serve() {
@@ -110,6 +115,10 @@ func (t *taskQueueWorker) Serve() {
 				<-semaphore
 			}()
 
+			if t.ctx.Err() != nil {
+				logger.LogRed("task_queue_worker > ctx root err: " + t.ctx.Err().Error())
+				return
+			}
 			t.execJob(chosen)
 		}(chosen)
 	}
@@ -119,6 +128,7 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 	log.Println("\x1b[33;1mStopping Task Queue Worker...\x1b[0m")
 	defer func() { log.Println("\x1b[33;1mStopping Task Queue Worker:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
 
+	t.ctxCancelFunc()
 	if len(registeredTask) == 0 {
 		return
 	}
@@ -160,9 +170,8 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 		return
 	}
 
-	trace := tracer.StartTrace(context.Background(), "TaskQueueWorker")
+	trace, ctx := tracer.StartTraceWithContext(t.ctx, "TaskQueueWorker")
 	defer trace.Finish()
-	ctx := trace.Context()
 
 	defer func() {
 		if r := recover(); r != nil {

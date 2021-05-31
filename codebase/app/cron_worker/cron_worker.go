@@ -21,6 +21,9 @@ import (
 )
 
 type cronWorker struct {
+	ctx           context.Context
+	ctxCancelFunc func()
+
 	service factory.ServiceFactory
 	consul  *candiutils.Consul
 	wg      sync.WaitGroup
@@ -79,6 +82,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 		c.consul = consul
 	}
 
+	c.ctx, c.ctxCancelFunc = context.WithCancel(context.Background())
 	return c
 }
 
@@ -126,6 +130,10 @@ START:
 					<-semaphore
 				}()
 
+				if c.ctx.Err() != nil {
+					logger.LogRed("cron_scheduler > ctx root err: " + c.ctx.Err().Error())
+					return
+				}
 				c.processJob(j)
 			}(job)
 
@@ -157,6 +165,7 @@ func (c *cronWorker) Shutdown(ctx context.Context) {
 		log.Println("\x1b[33;1mStopping Cron Job Scheduler:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
 	}()
 
+	c.ctxCancelFunc()
 	if len(activeJobs) == 0 {
 		return
 	}
@@ -189,9 +198,8 @@ func (c *cronWorker) createConsulSession() {
 }
 
 func (c *cronWorker) processJob(job *Job) {
-	trace := tracer.StartTrace(context.Background(), "CronScheduler")
+	trace, ctx := tracer.StartTraceWithContext(c.ctx, "CronScheduler")
 	defer trace.Finish()
-	ctx := trace.Context()
 
 	defer func() {
 		if r := recover(); r != nil {

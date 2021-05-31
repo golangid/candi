@@ -30,6 +30,9 @@ var (
 
 type (
 	postgresWorker struct {
+		ctx           context.Context
+		ctxCancelFunc func()
+
 		consul   *candiutils.Consul
 		listener *pq.Listener
 		handlers map[string]types.WorkerHandlerFunc
@@ -78,6 +81,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	}
 
 	worker.listener = listener
+	worker.ctx, worker.ctxCancelFunc = context.WithCancel(context.Background())
 	return worker
 }
 
@@ -98,8 +102,12 @@ START:
 			go func(event *pq.Notification) {
 				defer func() { p.wg.Done(); <-semaphore }()
 
-				trace := tracer.StartTrace(context.Background(), "PostgresEventListener")
-				ctx := trace.Context()
+				if p.ctx.Err() != nil {
+					logger.LogRed("postgres_listener > ctx root err: " + p.ctx.Err().Error())
+					return
+				}
+
+				trace, ctx := tracer.StartTraceWithContext(p.ctx, "PostgresEventListener")
 				defer func() {
 					if r := recover(); r != nil {
 						tracer.SetError(ctx, fmt.Errorf("panic: %v", r))
@@ -153,6 +161,7 @@ func (p *postgresWorker) Shutdown(ctx context.Context) {
 		log.Println("\x1b[33;1mStopping Postgres Event Listener:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
 	}()
 
+	p.ctxCancelFunc()
 	if len(p.handlers) == 0 {
 		return
 	}
