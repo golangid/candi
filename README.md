@@ -120,6 +120,8 @@ If include GRPC handler, run `$ make proto` for generate rpc files from proto (m
   - Using Jaeger for trace distributed system in microservices.
 ![](https://storage.googleapis.com/agungdp/static/candi/jaeger_tracing.png)
 
+- Graceful Shutdown for all servers and workers
+
 ## Todo
 - [x] ~~Add task queue worker like celery and add UI for manage task queue worker~~ => https://github.com/agungdwiprasetyo/task-queue-worker-dashboard
 - [ ] Add Documentation
