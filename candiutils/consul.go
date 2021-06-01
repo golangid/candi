@@ -9,6 +9,10 @@ import (
 	"pkg.agungdp.dev/candi/logger"
 )
 
+/*
+https://github.com/sameervitian/dlock with customization
+*/
+
 // Consul configured for lock acquisition
 type Consul struct {
 	Client            *api.Client
