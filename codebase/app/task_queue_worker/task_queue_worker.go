@@ -209,19 +209,19 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 	ctx = context.WithValue(ctx, candishared.ContextKeyTaskQueueRetry, job.Retries)
 	if err := registeredTask[job.TaskName].handlerFunc(ctx, []byte(job.Arguments)); err != nil {
 		job.Error = err.Error()
+		job.Status = string(statusFailure)
 		trace.SetError(err)
 		switch e := err.(type) {
 		case *candishared.ErrorRetrier:
-			job.Status = string(statusQueueing)
 			if job.Retries >= job.MaxRetry {
-				fmt.Printf("\x1b[31;1mTaskQueueWorker: GIVE UP: %s\x1b[0m\n", job.TaskName)
-				job.Status = string(statusFailure)
+				logger.LogRed("TaskQueueWorker: GIVE UP: " + job.TaskName)
 				for _, errHandler := range registeredTask[job.TaskName].errorHandlers {
 					errHandler(ctx, types.TaskQueue, job.TaskName, []byte(job.Arguments), err)
 				}
 				return
 			}
 
+			job.Status = string(statusQueueing)
 			delay := e.Delay
 			if nextJob != nil && nextJob.Retries == 0 {
 				nextJobDelay, _ := time.ParseDuration(nextJob.Interval)
