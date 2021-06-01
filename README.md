@@ -1,4 +1,4 @@
-# Candi, a framework for `Membangun Candi` project in Golang
+# Candi, a framework and library for `Membangun Candi` project in Golang
 
 <a href="https://codeclimate.com/github/agungdwiprasetyo/candi/maintainability"><img src="https://api.codeclimate.com/v1/badges/38c8703e672eb53bea87/maintainability" /></a>
 [![Build Status](https://github.com/agungdwiprasetyo/candi/workflows/build/badge.svg)](https://github.com/agungdwiprasetyo/candi/actions)
@@ -100,9 +100,9 @@ $ make run
 If include GRPC handler, run `$ make proto` for generate rpc files from proto (must install `protoc` compiler min version `libprotoc 3.14.0`)
 
 ## Server handlers example:
-* [**Example REST API in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/rest_server)
-* [**Example gRPC in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/grpc_server)
-* [**Example GraphQL in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/graphql_server)
+* [**Example REST API in delivery layer**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/services/user-service/internal/modules/auth/delivery/resthandler)
+* [**Example gRPC in delivery layer**](https://github.com/agungdwiprasetyo/backend-microservices/blob/master/services/storage-service/internal/modules/storage/delivery/grpchandler/grpchandler.go)
+* [**Example GraphQL in delivery layer**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/services/user-service/internal/modules/auth/delivery/graphqlhandler)
 
 ## Worker handlers example:
 * [**Example Cron worker in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/cron_worker) (Static Scheduler)
