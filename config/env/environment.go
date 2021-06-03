@@ -160,7 +160,7 @@ func Load(serviceName string) {
 		}
 	}
 
-	env.UseConsul, _ = strconv.ParseBool(os.Getenv("USE_CONSUL"))
+	env.UseConsul = parseBool("USE_CONSUL")
 	if env.UseConsul {
 		env.ConsulAgentHost, ok = os.LookupEnv("CONSUL_AGENT_HOST")
 		if !ok {
@@ -174,16 +174,16 @@ func Load(serviceName string) {
 
 	// ------------------------------------
 	env.Environment = os.Getenv("ENVIRONMENT")
-	env.IsProduction = strings.ToLower(env.Environment) == "production"
+	env.IsProduction = parseBool("IS_PRODUCTION") || strings.ToLower(env.Environment) == "production"
 	env.DebugMode, err = strconv.ParseBool(os.Getenv("DEBUG_MODE"))
 	if err != nil {
 		env.DebugMode = true
 	}
-	env.NoAuth, _ = strconv.ParseBool(os.Getenv("NO_AUTH"))
+	env.NoAuth = parseBool("NO_AUTH")
 	if env.NoAuth {
 		fmt.Println("\x1b[33;1mWARNING: env NO_AUTH is true (basic & bearer auth middleware is inactive)\x1b[0m")
 	}
-	env.UseSharedListener, _ = strconv.ParseBool(os.Getenv("USE_SHARED_LISTENER"))
+	env.UseSharedListener = parseBool("USE_SHARED_LISTENER")
 	if env.UseSharedListener && env.HTTPPort <= 0 {
 		panic("missing or invalid value for HTTP_PORT environment")
 	}
@@ -329,4 +329,9 @@ func parseDatabaseEnv() {
 
 	env.DbRedisReadDSN = os.Getenv("REDIS_READ_DSN")
 	env.DbRedisWriteDSN = os.Getenv("REDIS_WRITE_DSN")
+}
+
+func parseBool(envName string) bool {
+	b, _ := strconv.ParseBool(os.Getenv(envName))
+	return b
 }
