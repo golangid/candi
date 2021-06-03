@@ -13,6 +13,7 @@ import (
 	echoMidd "github.com/labstack/echo/middleware"
 	"github.com/soheilhy/cmux"
 
+	"pkg.agungdp.dev/candi/candihelper"
 	"pkg.agungdp.dev/candi/candishared"
 	graphqlserver "pkg.agungdp.dev/candi/codebase/app/graphql_server"
 	"pkg.agungdp.dev/candi/codebase/factory"
@@ -64,7 +65,7 @@ func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.Ap
 		return httpRoutes[i].Path < httpRoutes[j].Path
 	})
 	for _, route := range httpRoutes {
-		if route.Path != "/" && !strings.Contains(route.Name, "(*Group)") {
+		if !candihelper.StringInSlice(route.Path, []string{"/", "/memstats"}) && !strings.Contains(route.Name, "(*Group)") {
 			logger.LogGreen(fmt.Sprintf("[REST-ROUTE] %-6s %-30s --> %s", route.Method, route.Path, route.Name))
 		}
 	}
