@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"text/template"
@@ -85,11 +86,13 @@ stageInputModules:
 		srvConfig.Modules = append(srvConfig.Modules, moduleConfig{
 			ModuleName: strings.TrimSpace(moduleName), Skip: false,
 		})
+		flagParam.modules = append(flagParam.modules, strings.TrimSpace(moduleName))
 	}
 	if len(srvConfig.Modules) == 0 {
 		fmt.Printf(redFormat, "Modules cannot empty")
 		goto stageInputModules
 	}
+	sort.Strings(flagParam.modules)
 
 	if scope == addModule {
 		savedConfig := loadSavedConfig(flagParam)
@@ -299,13 +302,10 @@ func loadTemplate(source string, sourceData interface{}) []byte {
 }
 
 func formatTemplate() template.FuncMap {
-	replaceChar := []string{"*", "", "/", "", ":", ""}
-	replacer := strings.NewReplacer(append(replaceChar, "-", "")...)
-	modulePathReplacer := strings.NewReplacer(replaceChar...)
 	return template.FuncMap{
 
 		"clean": func(v string) string {
-			return replacer.Replace(v)
+			return cleanSpecialChar.Replace(v)
 		},
 		"cleanPathModule": func(v string) string {
 			return modulePathReplacer.Replace(v)

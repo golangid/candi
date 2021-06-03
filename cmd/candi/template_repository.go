@@ -33,9 +33,7 @@ import (
 	"database/sql"
 	"fmt"
 
-{{- range $module := .Modules}}
-	{{clean $module.ModuleName}}repo "{{$.PackagePrefix}}/internal/modules/{{cleanPathModule $module.ModuleName}}/repository"
-{{- end }}
+	// @candi:repositoryImport
 
 	"{{.LibraryName}}/tracer"` +
 		`{{if .SQLUseGORM}}
@@ -48,18 +46,15 @@ type (
 	RepoSQL interface {
 		WithTransaction(ctx context.Context, txFunc func(ctx context.Context, repo RepoSQL) error) (err error)
 		Free()
-	{{- range $module := .Modules}}
-		{{clean (upper $module.ModuleName)}}Repo() {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository
-	{{- end }}
+
+		// @candi:repositoryMethod
 	}
 
 	repoSQLImpl struct {
 		readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB` + "{{if not .SQLUseGORM}}\n		tx    *sql.Tx{{end}}" + `
 	
 		// register all repository from modules
-	{{- range $module := .Modules}}
-		{{clean $module.ModuleName}}Repo {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository
-	{{- end }}
+		// @candi:repositoryField
 	}
 )
 
@@ -71,7 +66,7 @@ var (
 func setSharedRepoSQL(readDB, writeDB *sql.DB) {
 	{{if .SQLUseGORM}}gormRead, err := gorm.Open({{.SQLDriver}}.New({{.SQLDriver}}.Config{
 		Conn: readDB,
-	}), &gorm.Config{SkipDefaultTransaction: true})
+	}), &gorm.Config{})
 
 	if err != nil {
 		panic(err)
@@ -79,7 +74,7 @@ func setSharedRepoSQL(readDB, writeDB *sql.DB) {
 
 	gormWrite, err := gorm.Open({{.SQLDriver}}.New({{.SQLDriver}}.Config{
 		Conn: writeDB,
-	}), &gorm.Config{})
+	}), &gorm.Config{SkipDefaultTransaction: true})
 
 	if err != nil {
 		panic(err)
@@ -98,10 +93,7 @@ func NewRepositorySQL(readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.
 	return &repoSQLImpl{
 		readDB: readDB, writeDB: writeDB,{{if not .SQLUseGORM}} tx: tx,{{end}}
 
-{{- range $module := .Modules}}
-		{{if not .SQLDeps}}// {{end}}{{clean $module.ModuleName}}Repo: ` +
-		"{{clean $module.ModuleName}}repo.New{{clean (upper $module.ModuleName)}}RepoSQL(readDB, writeDB{{if not .SQLUseGORM}}, tx{{end}})," + `
-{{- end }}
+		// @candi:repositoryConstructor
 	}
 }
 
@@ -152,16 +144,10 @@ func (r *repoSQLImpl) WithTransaction(ctx context.Context, txFunc func(ctx conte
 
 func (r *repoSQLImpl) Free() {
 	// make nil all repository
-{{- range $module := .Modules}}
-	r.{{clean $module.ModuleName}}Repo = nil
-{{- end }}
+	// @candi:repositoryDestructor
 }
 
-{{- range $module := .Modules}}
-func (r *repoSQLImpl) {{clean (upper $module.ModuleName)}}Repo() {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository {
-	return r.{{clean $module.ModuleName}}Repo
-}
-{{- end }}
+// @candi:repositoryImplementation
 `
 
 	templateRepositoryUOWMongo = `// {{.Header}} DO NOT EDIT.
@@ -171,26 +157,20 @@ package repository
 import (
 	"go.mongodb.org/mongo-driver/mongo"
 
-{{- range $module := .Modules}}
-	{{clean $module.ModuleName}}repo "{{$.PackagePrefix}}/internal/modules/{{cleanPathModule $module.ModuleName}}/repository"
-{{- end }}
+	// @candi:repositoryImport
 )
 
 type (
 	// RepoMongo abstraction
 	RepoMongo interface {
-	{{- range $module := .Modules}}
-		{{clean (upper $module.ModuleName)}}Repo() {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository
-	{{- end }}
+		// @candi:repositoryMethod
 	}
 
 	repoMongoImpl struct {
 		readDB, writeDB *mongo.Database
 
 		// register all repository from modules
-	{{- range $module := .Modules}}
-		{{clean $module.ModuleName}}Repo {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository
-	{{- end }}
+		// @candi:repositoryField
 	}
 )
 
@@ -201,9 +181,7 @@ func setSharedRepoMongo(readDB, writeDB *mongo.Database) {
 	globalRepoMongo = &repoMongoImpl{
 		readDB: readDB, writeDB: writeDB,
 
-{{- range $module := .Modules}}
-		{{if not .MongoDeps}}// {{end}}{{clean $module.ModuleName}}Repo: {{clean $module.ModuleName}}repo.New{{clean (upper $module.ModuleName)}}RepoMongo(readDB, writeDB),
-{{- end }}
+		// @candi:repositoryConstructor
 	}
 }
 
@@ -212,11 +190,7 @@ func GetSharedRepoMongo() RepoMongo {
 	return globalRepoMongo
 }
 
-{{- range $module := .Modules}}
-func (r *repoMongoImpl) {{clean (upper $module.ModuleName)}}Repo() {{clean $module.ModuleName}}repo.{{clean (upper $module.ModuleName)}}Repository {
-	return r.{{clean $module.ModuleName}}Repo
-}
-{{- end }}
+// @candi:repositoryImplementation
 `
 
 	templateRepositoryAbstraction = `// {{.Header}}
@@ -428,14 +402,14 @@ func (r *{{clean .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddom
 	if data.CreatedAt.IsZero() {
 		data.CreatedAt = time.Now()
 	}
-	return{{if .SQLUseGORM}} r.readDB.Save(data).Error{{end}}
+	return{{if .SQLUseGORM}} r.writeDB.Save(data).Error{{end}}
 }
 
 func (r *{{clean .ModuleName}}RepoSQL) Delete(ctx context.Context, id string) (err error) {
 	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Save")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
-	return{{if .SQLUseGORM}} r.readDB.Delete(&shareddomain.{{clean (upper .ModuleName)}}{ID: id}).Error{{end}}
+	return{{if .SQLUseGORM}} r.writeDB.Delete(&shareddomain.{{clean (upper .ModuleName)}}{ID: id}).Error{{end}}
 }
 `
 )

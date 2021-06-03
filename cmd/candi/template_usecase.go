@@ -8,9 +8,7 @@ package usecase
 import (
 	"sync"
 
-{{- range $module := .Modules}}
-	{{clean $module.ModuleName}}usecase "{{$.PackagePrefix}}/internal/modules/{{cleanPathModule $module.ModuleName}}/usecase"
-{{- end }}
+	// @candi:usecaseImport
 	"{{$.PackagePrefix}}/pkg/shared/usecase/common"
 
 	"{{.LibraryName}}/codebase/factory/dependency"
@@ -19,15 +17,11 @@ import (
 type (
 	// Usecase unit of work for all usecase in modules
 	Usecase interface {
-	{{- range $module := .Modules}}
-		{{clean (upper $module.ModuleName)}}() {{clean $module.ModuleName}}usecase.{{clean (upper $module.ModuleName)}}Usecase
-	{{- end }}
+		// @candi:usecaseMethod
 	}
 
 	usecaseUow struct {
-	{{- range $module := .Modules}}
-		{{clean $module.ModuleName}}usecase.{{clean (upper $module.ModuleName)}}Usecase
-	{{- end }}
+		// @candi:usecaseField
 	}
 )
 
@@ -41,10 +35,7 @@ func SetSharedUsecase(deps dependency.Dependency) {
 		var setSharedUsecaseFuncs []func(common.Usecase)
 		var setSharedUsecaseFunc func(common.Usecase)
 
-	{{- range $module := .Modules}}
-		usecaseInst.{{clean (upper $module.ModuleName)}}Usecase, setSharedUsecaseFunc = {{clean $module.ModuleName}}usecase.New{{clean (upper $module.ModuleName)}}Usecase(deps)
-		setSharedUsecaseFuncs = append(setSharedUsecaseFuncs, setSharedUsecaseFunc)
-	{{- end }}
+		// @candi:usecaseCommon
 
 		sharedUsecase := common.SetCommonUsecase(usecaseInst)
 		for _, setFunc := range setSharedUsecaseFuncs {
@@ -58,11 +49,7 @@ func GetSharedUsecase() Usecase {
 	return usecaseInst
 }
 
-{{- range $module := .Modules}}
-func (uc *usecaseUow) {{clean (upper $module.ModuleName)}}() {{clean $module.ModuleName}}usecase.{{clean (upper $module.ModuleName)}}Usecase {
-	return uc.{{clean (upper $module.ModuleName)}}Usecase
-}
-{{- end }}
+// @candi:usecaseImplementation
 `
 
 	templateUsecaseCommon = `// {{.Header}}

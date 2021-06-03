@@ -4,6 +4,7 @@ const envTemplate = `# Basic env configuration
 ENVIRONMENT=development #development,staging,production
 DEBUG_MODE=true
 NO_AUTH=true
+IS_PRODUCTION=false
 LOAD_CONFIG_TIMEOUT=20s
 
 # Application Service Handlers

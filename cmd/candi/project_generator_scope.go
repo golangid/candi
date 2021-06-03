@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -205,5 +207,133 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 	}
 	for old, new := range replaceMainModule {
 		readFileAndApply(root.TargetDir+"internal/modules/"+mod.ModuleName+"/module.go", old, new)
+	}
+}
+
+func generateServiceSDK(srvConfig serviceConfig) {
+	b, err := os.ReadFile("sdk/sdk.go")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	b = bytes.Replace(b, []byte("@candi:serviceImport"), []byte(fmt.Sprintf("@candi:serviceImport\n	\"monorepo/sdk/%s\"", srvConfig.ServiceName)), -1)
+	b = bytes.Replace(b, []byte("@candi:construct"), loadTemplate("@candi:construct\n\n"+`// Set{{upper (clean $.ServiceName)}} option func
+func Set{{upper (clean $.ServiceName)}}({{lower (clean $.ServiceName)}} {{lower (clean $.ServiceName)}}.{{upper (clean $.ServiceName)}}) Option {
+	return func(s *sdkInstance) {
+		s.{{lower (clean $.ServiceName)}} = {{lower (clean $.ServiceName)}}
+	}
+}`, srvConfig), -1)
+	b = bytes.Replace(b, []byte("@candi:serviceMethod"), loadTemplate("@candi:serviceMethod\n	"+`{{upper (clean $.ServiceName)}}() {{lower (clean $.ServiceName)}}.{{upper (clean $.ServiceName)}}`, srvConfig), -1)
+	b = bytes.Replace(b, []byte("@candi:serviceField"), loadTemplate("@candi:serviceField\n	{{lower (clean $.ServiceName)}}	{{lower (clean $.ServiceName)}}.{{upper (clean $.ServiceName)}}", srvConfig), -1)
+	b = bytes.Replace(b, []byte("@candi:instanceMethod"), loadTemplate("@candi:instanceMethod\n"+`func (s *sdkInstance) {{upper (clean $.ServiceName)}}() {{lower (clean $.ServiceName)}}.{{upper (clean $.ServiceName)}} {
+	return s.{{lower (clean $.ServiceName)}}
+}`, srvConfig), -1)
+	os.WriteFile("sdk/sdk.go", b, 0644)
+
+	var fileStructure FileStructure
+	fileStructure.Skip = true
+	fileStructure.TargetDir = "sdk/"
+	fileStructure.Childs = []FileStructure{
+		{TargetDir: srvConfig.ServiceName + "/", IsDir: true, Childs: []FileStructure{
+			{FromTemplate: true, DataSource: srvConfig, Source: templateSDKServiceAbstraction, FileName: srvConfig.ServiceName + ".go"},
+			{FromTemplate: true, DataSource: srvConfig, Source: templateSDKServiceGRPC, FileName: srvConfig.ServiceName + "_grpc.go"},
+			{FromTemplate: true, DataSource: srvConfig, Source: templateSDKServiceREST, FileName: srvConfig.ServiceName + "_rest.go"},
+		}},
+	}
+	execGenerator(fileStructure)
+}
+
+func updateGraphQLRoot(flagParam flagParameter, cfg serviceConfig) {
+	path := "api/graphql/_schema.graphql"
+	if flagParam.serviceName != "" {
+		path = flagParam.outputFlag + flagParam.serviceName + "/" + path
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, moduleName := range flagParam.modules {
+		cleanMod, cleanUpperMod := cleanSpecialChar.Replace(moduleName), cleanSpecialChar.Replace(strings.Title(moduleName))
+		b = bytes.Replace(b, []byte("@candi:queryRoot"), []byte(fmt.Sprintf("@candi:queryRoot\n	%s: %sQueryResolver", cleanMod, cleanUpperMod)), -1)
+		b = bytes.Replace(b, []byte("@candi:mutationRoot"), []byte(fmt.Sprintf("@candi:mutationRoot\n	%s: %sMutationResolver", cleanMod, cleanUpperMod)), -1)
+		b = bytes.Replace(b, []byte("@candi:subscriptionRoot"), []byte(fmt.Sprintf("@candi:subscriptionRoot\n	%s: %sSubscriptionResolver", cleanMod, cleanUpperMod)), -1)
+	}
+	os.WriteFile(path, b, 0644)
+}
+
+func updateSharedUsecase(flagParam flagParameter, cfg serviceConfig) {
+	path := "pkg/shared/usecase/usecase.go"
+	if flagParam.serviceName != "" {
+		path = flagParam.outputFlag + flagParam.serviceName + "/" + path
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, moduleName := range flagParam.modules {
+		cleanMod, cleanPathMod := cleanSpecialChar.Replace(moduleName), modulePathReplacer.Replace(moduleName)
+		cleanUpperMod := cleanSpecialChar.Replace(strings.Title(moduleName))
+		b = bytes.Replace(b, []byte("@candi:usecaseImport"),
+			[]byte(fmt.Sprintf("@candi:usecaseImport\n	%susecase \"%s/internal/modules/%s/usecase\"", cleanMod, cfg.PackagePrefix, cleanPathMod)), -1)
+		b = bytes.Replace(b, []byte("@candi:usecaseMethod"),
+			[]byte(fmt.Sprintf("@candi:usecaseMethod\n		%s() %susecase.%sUsecase", cleanUpperMod, cleanMod, cleanUpperMod)), -1)
+		b = bytes.Replace(b, []byte("@candi:usecaseField"),
+			[]byte(fmt.Sprintf("@candi:usecaseField\n		%susecase.%sUsecase", cleanMod, cleanUpperMod)), -1)
+		b = bytes.Replace(b, []byte("@candi:usecaseCommon"),
+			[]byte(fmt.Sprintf("@candi:usecaseCommon\n		usecaseInst.%sUsecase, setSharedUsecaseFunc = %susecase.New%sUsecase(deps)\n"+
+				"		setSharedUsecaseFuncs = append(setSharedUsecaseFuncs, setSharedUsecaseFunc)", cleanUpperMod, cleanMod, cleanUpperMod)), -1)
+		b = bytes.Replace(b, []byte("@candi:usecaseImplementation"),
+			[]byte(fmt.Sprintf("@candi:usecaseImplementation\n"+`func (uc *usecaseUow) %s() %susecase.%sUsecase {
+	return uc.%sUsecase
+}
+`, cleanUpperMod, cleanMod, cleanUpperMod, cleanUpperMod)), -1)
+	}
+
+	os.WriteFile(path, b, 0644)
+}
+
+func updateSharedRepository(flagParam flagParameter, cfg serviceConfig) {
+	for repoType, repo := range map[string]string{"SQL": "repository_sql.go", "Mongo": "repository_mongo.go"} {
+		path := "pkg/shared/repository/" + repo
+		if flagParam.serviceName != "" {
+			path = flagParam.outputFlag + flagParam.serviceName + "/" + path
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+
+		for _, moduleName := range flagParam.modules {
+			cleanMod, cleanPathMod := cleanSpecialChar.Replace(moduleName), modulePathReplacer.Replace(moduleName)
+			cleanUpperMod := cleanSpecialChar.Replace(strings.Title(moduleName))
+			b = bytes.Replace(b, []byte("@candi:repositoryImport"),
+				[]byte(fmt.Sprintf("@candi:repositoryImport\n	%srepo \"%s/internal/modules/%s/repository\"", cleanMod, cfg.PackagePrefix, cleanPathMod)), -1)
+			b = bytes.Replace(b, []byte("@candi:repositoryMethod"),
+				[]byte(fmt.Sprintf("@candi:repositoryMethod\n		%sRepo() %srepo.%sRepository", cleanUpperMod, cleanMod, cleanUpperMod)), -1)
+			b = bytes.Replace(b, []byte("@candi:repositoryField"),
+				[]byte(fmt.Sprintf("@candi:repositoryField\n		%sRepo %srepo.%sRepository", cleanMod, cleanMod, cleanUpperMod)), -1)
+
+			if repoType == "SQL" && cfg.SQLDeps {
+				includeTx := ")"
+				if !cfg.SQLUseGORM {
+					includeTx = ", tx)"
+				}
+				b = bytes.Replace(b, []byte("@candi:repositoryConstructor"),
+					[]byte(fmt.Sprintf("@candi:repositoryConstructor\n		%sRepo: %srepo.New%sRepoSQL(readDB, writeDB%s,", cleanMod, cleanMod, cleanUpperMod, includeTx)), -1)
+				b = bytes.Replace(b, []byte("@candi:repositoryDestructor"),
+					[]byte(fmt.Sprintf("@candi:repositoryDestructor\n	r.%sRepo = nil", cleanMod)), -1)
+			} else if repoType == "Mongo" && cfg.MongoDeps {
+				b = bytes.Replace(b, []byte("@candi:repositoryConstructor"),
+					[]byte(fmt.Sprintf("@candi:repositoryConstructor\n		%sRepo: %srepo.New%sRepoMongo(readDB, writeDB),", cleanMod, cleanMod, cleanUpperMod)), -1)
+			}
+			b = bytes.Replace(b, []byte("@candi:repositoryImplementation"),
+				[]byte(fmt.Sprintf("@candi:repositoryImplementation\n"+`func (r *repo%sImpl) %sRepo() %srepo.%sRepository {
+	return r.%sRepo
+}
+`, repoType, cleanUpperMod, cleanMod, cleanUpperMod, cleanMod)), -1)
+		}
+
+		os.WriteFile(path, b, 0644)
 	}
 }

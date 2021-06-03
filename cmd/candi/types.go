@@ -55,6 +55,10 @@ var (
 	tpl    *template.Template
 	logger *log.Logger
 	reader *bufio.Reader
+
+	specialChar        = []string{"*", "", "/", "", ":", ""}
+	cleanSpecialChar   = strings.NewReplacer(append(specialChar, "-", "")...)
+	modulePathReplacer = strings.NewReplacer(specialChar...)
 )
 
 type flagParameter struct {
@@ -63,6 +67,7 @@ type flagParameter struct {
 	run, all                                                                      bool
 	initService, addModule, addHandler, initMonorepo, version, isMonorepo         bool
 	serviceName, moduleName, monorepoProjectName                                  string
+	modules                                                                       []string
 }
 
 func (f *flagParameter) parseMonorepoFlag() error {

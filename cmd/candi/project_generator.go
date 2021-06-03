@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -163,23 +162,6 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 		FromTemplate: true, DataSource: srvConfig, Source: serviceMainTemplate, FileName: "service.go",
 	})
 
-	apiGraphQLStructure.Childs = append(apiGraphQLStructure.Childs, []FileStructure{
-		{FromTemplate: true, DataSource: srvConfig, Source: defaultGraphqlRootSchema, FileName: "_schema.graphql",
-			SkipFunc: func() bool { return !srvConfig.GraphQLHandler }},
-		{FromTemplate: true, DataSource: srvConfig, Source: templateGraphqlCommon, FileName: "_common.graphql",
-			SkipFunc: func() bool { return !srvConfig.GraphQLHandler }},
-	}...)
-	apiStructure.Childs = []FileStructure{
-		apiGraphQLStructure,
-		{
-			TargetDir: "jsonschema/", IsDir: true,
-			Childs: []FileStructure{
-				{Source: jsonSchemaTemplate, FromTemplate: true, FileName: "schema.json"},
-			},
-		},
-		apiProtoStructure,
-	}
-
 	configJSON, _ := json.Marshal(srvConfig)
 
 	var baseDirectoryFile FileStructure
@@ -188,6 +170,22 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 	baseDirectoryFile.IsDir = true
 	switch scope {
 	case initService:
+		apiGraphQLStructure.Childs = append(apiGraphQLStructure.Childs, []FileStructure{
+			{FromTemplate: true, DataSource: srvConfig, Source: defaultGraphqlRootSchema, FileName: "_schema.graphql",
+				SkipFunc: func() bool { return !srvConfig.GraphQLHandler }},
+			{FromTemplate: true, DataSource: srvConfig, Source: templateGraphqlCommon, FileName: "_common.graphql",
+				SkipFunc: func() bool { return !srvConfig.GraphQLHandler }},
+		}...)
+		apiStructure.Childs = []FileStructure{
+			apiGraphQLStructure,
+			{
+				TargetDir: "jsonschema/", IsDir: true,
+				Childs: []FileStructure{
+					{Source: jsonSchemaTemplate, FromTemplate: true, FileName: "schema.json"},
+				},
+			},
+			apiProtoStructure,
+		}
 		internalServiceStructure.Childs = append(internalServiceStructure.Childs, moduleStructure)
 		pkgServiceStructure.Childs = append(pkgServiceStructure.Childs, []FileStructure{
 			{TargetDir: "helper/", IsDir: true, Childs: []FileStructure{
@@ -246,10 +244,6 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 		pkgServiceStructure.Childs = []FileStructure{
 			{TargetDir: "shared/", IsDir: true, Skip: true, Childs: []FileStructure{
 				{TargetDir: "domain/", IsDir: true, Skip: true, Childs: sharedDomainFiles},
-				{TargetDir: "repository/", IsDir: true, Skip: true, Childs: parseSharedRepository(srvConfig)},
-				{TargetDir: "usecase/", IsDir: true, Skip: true, Childs: []FileStructure{
-					{FromTemplate: true, DataSource: srvConfig, Source: templateUsecaseUOW, FileName: "usecase.go"},
-				}},
 			}},
 		}
 		cmdStructure.Childs = []FileStructure{
@@ -281,6 +275,9 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 	}
 
 	execGenerator(baseDirectoryFile)
+	updateGraphQLRoot(flagParam, srvConfig)
+	updateSharedUsecase(flagParam, srvConfig)
+	updateSharedRepository(flagParam, srvConfig)
 }
 
 func monorepoGenerator(flagParam flagParameter) {
@@ -307,39 +304,6 @@ func monorepoGenerator(flagParam flagParameter) {
 	}
 
 	execGenerator(baseDirectoryFile)
-}
-
-func generateServiceSDK(srvConfig serviceConfig) {
-	b, err := os.ReadFile("sdk/sdk.go")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	b = bytes.Replace(b, []byte("@candi:serviceImport"), []byte(fmt.Sprintf("@candi:serviceImport\n	\"monorepo/sdk/%s\"", srvConfig.ServiceName)), -1)
-	b = bytes.Replace(b, []byte("@candi:construct"), loadTemplate("@candi:construct\n\n"+`// Set{{upper (clean $.ServiceName)}} option func
-func Set{{upper (clean $.ServiceName)}}({{lower (clean $.ServiceName)}} {{lower (clean $.ServiceName)}}.{{upper (clean $.ServiceName)}}) Option {
-	return func(s *sdkInstance) {
-		s.{{lower (clean $.ServiceName)}} = {{lower (clean $.ServiceName)}}
-	}
-}`, srvConfig), -1)
-	b = bytes.Replace(b, []byte("@candi:serviceMethod"), loadTemplate("@candi:serviceMethod\n	"+`{{upper (clean $.ServiceName)}}() {{lower (clean $.ServiceName)}}.{{upper (clean $.ServiceName)}}`, srvConfig), -1)
-	b = bytes.Replace(b, []byte("@candi:serviceField"), loadTemplate("@candi:serviceField\n	{{lower (clean $.ServiceName)}}	{{lower (clean $.ServiceName)}}.{{upper (clean $.ServiceName)}}", srvConfig), -1)
-	b = bytes.Replace(b, []byte("@candi:instanceMethod"), loadTemplate("@candi:instanceMethod\n"+`func (s *sdkInstance) {{upper (clean $.ServiceName)}}() {{lower (clean $.ServiceName)}}.{{upper (clean $.ServiceName)}} {
-	return s.{{lower (clean $.ServiceName)}}
-}`, srvConfig), -1)
-	os.WriteFile("sdk/sdk.go", b, 0644)
-
-	var fileStructure FileStructure
-	fileStructure.Skip = true
-	fileStructure.TargetDir = "sdk/"
-	fileStructure.Childs = []FileStructure{
-		{TargetDir: srvConfig.ServiceName + "/", IsDir: true, Childs: []FileStructure{
-			{FromTemplate: true, DataSource: srvConfig, Source: templateSDKServiceAbstraction, FileName: srvConfig.ServiceName + ".go"},
-			{FromTemplate: true, DataSource: srvConfig, Source: templateSDKServiceGRPC, FileName: srvConfig.ServiceName + "_grpc.go"},
-			{FromTemplate: true, DataSource: srvConfig, Source: templateSDKServiceREST, FileName: srvConfig.ServiceName + "_rest.go"},
-		}},
-	}
-	execGenerator(fileStructure)
 }
 
 func execGenerator(fl FileStructure) {

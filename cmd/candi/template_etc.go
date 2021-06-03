@@ -2,7 +2,7 @@ package main
 
 const (
 	dockerfileTemplate = `# Stage 1
-FROM golang:1.16.2-alpine3.13 AS dependency_builder
+FROM golang:1.16.4-alpine3.13 AS dependency_builder
 
 WORKDIR /go/src
 ENV GO111MODULE=on
@@ -21,7 +21,7 @@ FROM dependency_builder AS service_builder
 WORKDIR /usr/app
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags '-w -s' -a -o bin
+RUN CGO_ENABLED=0 GOOS=linux go build -o bin
 
 # Stage 3
 FROM alpine:latest  
@@ -32,8 +32,6 @@ WORKDIR /root/
 ENV BUILD_NUMBER=$BUILD_NUMBER
 
 RUN mkdir -p /root/api
-RUN mkdir -p /root/cmd/{{.ServiceName}}
-RUN mkdir -p /root/config/key
 COPY --from=service_builder /usr/app/bin bin
 COPY --from=service_builder /usr/app/.env .env
 COPY --from=service_builder /usr/app/api /root/api
@@ -179,7 +177,7 @@ coverage.txt
 		"```\n"
 
 	dockerfileMonorepoTemplate = `# Stage 1
-FROM golang:1.16.2-alpine3.13 AS dependency_builder
+FROM golang:1.16.4-alpine3.13 AS dependency_builder
 
 WORKDIR /go/src
 ENV GO111MODULE=on
@@ -202,7 +200,7 @@ COPY sdk sdk
 COPY services/$SERVICE_NAME services/$SERVICE_NAME
 COPY go.mod .
 COPY go.sum .
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags '-w -s' -a -o bin services/$SERVICE_NAME/*.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o bin services/$SERVICE_NAME/*.go
 
 # Stage 3
 FROM alpine:latest  
@@ -216,11 +214,9 @@ ENV BUILD_NUMBER=$BUILD_NUMBER
 
 RUN mkdir -p /root/services/$SERVICE_NAME
 RUN mkdir -p /root/services/$SERVICE_NAME/api
-RUN mkdir -p /root/services/$SERVICE_NAME/api/configs
 COPY --from=service_builder /usr/app/bin bin
 COPY --from=service_builder /usr/app/services/$SERVICE_NAME/.env /root/services/$SERVICE_NAME/.env
 COPY --from=service_builder /usr/app/services/$SERVICE_NAME/api /root/services/$SERVICE_NAME/api
-COPY --from=service_builder /usr/app/services/$SERVICE_NAME/configs /root/services/$SERVICE_NAME/configs
 
 ENTRYPOINT ["./bin"]
 `
@@ -237,7 +233,7 @@ prepare: check
 	@if [ ! -f services/$(service)/.env ]; then cp services/$(service)/.env.sample services/$(service)/.env; fi;
 
 init:
-	@candi -scope=1
+	@candi --init
 
 add-module: check
 	@candi -scope=2 -servicename=$(service)

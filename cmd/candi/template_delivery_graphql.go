@@ -262,21 +262,15 @@ schema {
 }
 
 type Query {
-{{- range $module := .Modules}}
-	{{clean $module.ModuleName}}: {{clean (upper $module.ModuleName)}}QueryResolver
-{{- end }}
+	# @candi:queryRoot
 }
 
 type Mutation {
-{{- range $module := .Modules}}
-	{{clean $module.ModuleName}}: {{clean (upper $module.ModuleName)}}MutationResolver
-{{- end }}
+	# @candi:mutationRoot
 }
 
 type Subscription {
-{{- range $module := .Modules}}
-	{{clean $module.ModuleName}}: {{clean (upper $module.ModuleName)}}SubscriptionResolver
-{{- end }}
+	# @candi:subscriptionRoot
 }
 `
 
