@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log"
 	"net/url"
+	"strings"
 
 	"pkg.agungdp.dev/candi/codebase/interfaces"
 	"pkg.agungdp.dev/candi/config/env"
@@ -44,13 +45,20 @@ func InitSQLDatabase() interfaces.SQLDatabase {
 	defer deferFunc()
 
 	inst := new(sqlInstance)
+	var sqlDriver string
+	var err error
+	delimiter := "://"
 
 	if env.BaseEnv().DbSQLReadDSN != "" {
-		u, err := url.Parse(env.BaseEnv().DbSQLReadDSN)
-		if err != nil {
-			log.Panicf("SQL Read URL: %v", err)
+		dsn := env.BaseEnv().DbSQLReadDSN
+		if u, err := url.Parse(dsn); err != nil {
+			idx := strings.Index(dsn, delimiter)
+			sqlDriver = dsn[0:idx]
+			dsn = dsn[idx+len(delimiter):]
+		} else {
+			sqlDriver = u.Scheme
 		}
-		inst.read, err = sql.Open(u.Scheme, env.BaseEnv().DbSQLReadDSN)
+		inst.read, err = sql.Open(sqlDriver, dsn)
 		if err != nil {
 			log.Panicf("SQL Read: %v", err)
 		}
@@ -61,11 +69,15 @@ func InitSQLDatabase() interfaces.SQLDatabase {
 	}
 
 	if env.BaseEnv().DbSQLWriteDSN != "" {
-		u, err := url.Parse(env.BaseEnv().DbSQLWriteDSN)
-		if err != nil {
-			log.Panicf("SQL Write URL: %v", err)
+		dsn := env.BaseEnv().DbSQLReadDSN
+		if u, err := url.Parse(dsn); err != nil {
+			idx := strings.Index(dsn, delimiter)
+			sqlDriver = env.BaseEnv().DbSQLReadDSN[0:idx]
+			dsn = dsn[idx+len(delimiter):]
+		} else {
+			sqlDriver = u.Scheme
 		}
-		inst.write, err = sql.Open(u.Scheme, env.BaseEnv().DbSQLWriteDSN)
+		inst.write, err = sql.Open(sqlDriver, dsn)
 		if err != nil {
 			log.Panicf("SQL Write: %v", err)
 		}
