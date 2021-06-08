@@ -47,7 +47,7 @@ proto:
 	--go_opt=paths=source_relative $(proto_file);)
 
 migration:
-	@go run cmd/migration/migration.go -dbconn "$(dbconn)"
+	@go run cmd/migration/migration.go
 
 build:
 	go build -o bin
@@ -103,7 +103,7 @@ coverage.txt
 		"```\n\n" +
 		"If using SQL database, run this command for migration:\n" +
 		"```\n" +
-		"$ make migration dbconn=\"(YOUR DATABASE URL CONNECTION)\"\n" +
+		"$ make migration\n" +
 		"```\n\n" +
 		"And then, build and run this service:\n" +
 		"```\n" +
@@ -140,7 +140,7 @@ coverage.txt
 		"```\n\n" +
 		"If using SQL database, run this command for migration:\n" +
 		"```\n" +
-		"$ make migration service={{service_name}} dbconn=\"{{YOUR DATABASE URL CONNECTION}}\"\n" +
+		"$ make migration service={{service_name}}\n" +
 		"```\n\n" +
 		"## Run all services\n" +
 		"```\n" +
@@ -245,7 +245,7 @@ proto: check
 	--go_opt=paths=source_relative $(proto_file);)
 
 migration: check
-	@go run services/$(service)/cmd/migration/migration.go -dbconn "$(dbconn)"
+	@go run services/$(service)/cmd/migration/migration.go
 
 build: check
 	@go build -o services/$(service)/bin services/$(service)/*.go

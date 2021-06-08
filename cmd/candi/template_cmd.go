@@ -55,18 +55,9 @@ import (
 )
 
 func main() {
-	var databaseConnection string
-	flag.StringVar(&databaseConnection, "dbconn", "", "Database connection target")
-	flag.Parse()
-
-	if databaseConnection == "" {
-		flag.Usage()
-		os.Exit(1)
-	}
-
-	env.SetEnv(env.Env{DbSQLWriteDSN: databaseConnection})
+	env.Load("{{.ServiceName}}")
 	sqlDeps := database.InitSQLDatabase()
-	gormWrite, err := gorm.Open(postgres.New(postgres.Config{
+	gormWrite, err := gorm.Open({{ .SQLDriver }}.New({{ .SQLDriver }}.Config{
 		Conn: sqlDeps.WriteDB(),
 	}), &gorm.Config{})
 	if err != nil {
@@ -75,7 +66,7 @@ func main() {
 	gormWrite.AutoMigrate({{- range $module := .Modules}}
 		&shareddomain.{{clean (upper $module.ModuleName)}}{},{{- end}}
 	)
-	log.Printf("\x1b[32;1mMigration to \"%s\" suceess\x1b[0m\n", candihelper.MaskingPasswordURL(databaseConnection))
+	log.Printf("\x1b[32;1mMigration to \"%s\" suceess\x1b[0m\n", candihelper.MaskingPasswordURL(env.BaseEnv().DbSQLWriteDSN))
 }
 `
 )
