@@ -99,9 +99,8 @@ func NewRepositorySQL(readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.
 
 // WithTransaction run transaction for each repository with context, include handle canceled or timeout context
 func (r *repoSQLImpl) WithTransaction(ctx context.Context, txFunc func(ctx context.Context, repo RepoSQL) error) (err error) {
-	trace := tracer.StartTrace(ctx, "RepoSQL:Transaction")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "RepoSQL:Transaction")
 	defer trace.Finish()
-	ctx = trace.Context()
 
 	tx{{if not .SQLUseGORM}}, err{{end}} := r.writeDB.Begin()` + "{{if .SQLUseGORM}}\n	err = tx.Error{{end}}" + `
 	if err != nil {
@@ -247,9 +246,8 @@ func New{{clean (upper .ModuleName)}}RepoMongo(readDB, writeDB *mongo.Database) 
 }
 
 func (r *{{clean .ModuleName}}RepoMongo) FetchAll(ctx context.Context, filter *candishared.Filter) (data []shareddomain.{{clean (upper .ModuleName)}}, err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoMongo:FetchAll")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoMongo:FetchAll")
 	defer func() { trace.SetError(err); trace.Finish() }()
-	ctx = trace.Context()
 
 	where := bson.M{}
 	trace.SetTag("query", where)
@@ -274,9 +272,8 @@ func (r *{{clean .ModuleName}}RepoMongo) FetchAll(ctx context.Context, filter *c
 }
 
 func (r *{{clean .ModuleName}}RepoMongo) Find(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Find")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Find")
 	defer func() { trace.SetError(err); trace.Finish() }()
-	ctx = trace.Context()
 
 	bsonWhere := make(bson.M)
 	if data.ID != "" {
@@ -288,7 +285,7 @@ func (r *{{clean .ModuleName}}RepoMongo) Find(ctx context.Context, data *sharedd
 }
 
 func (r *{{clean .ModuleName}}RepoMongo) Count(ctx context.Context, filter *candishared.Filter) int {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Count")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Count")
 	defer trace.Finish()
 
 	where := bson.M{}
@@ -298,9 +295,8 @@ func (r *{{clean .ModuleName}}RepoMongo) Count(ctx context.Context, filter *cand
 }
 
 func (r *{{clean .ModuleName}}RepoMongo) Save(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Save")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Save")
 	defer func() { trace.SetError(err); trace.Finish() }()
-	ctx = trace.Context()
 	tracer.Log(ctx, "data", data)
 
 	data.ModifiedAt = time.Now()
@@ -325,7 +321,7 @@ func (r *{{clean .ModuleName}}RepoMongo) Save(ctx context.Context, data *sharedd
 }
 
 func (r *{{clean .ModuleName}}RepoMongo) Delete(ctx context.Context, id string) (err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Save")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Save")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
 	_, err = r.writeDB.Collection(r.collection).DeleteOne(ctx, bson.M{"_id": id})
@@ -362,7 +358,7 @@ func New{{clean (upper .ModuleName)}}RepoSQL(readDB, writeDB *{{if .SQLUseGORM}}
 }
 
 func (r *{{clean .ModuleName}}RepoSQL) FetchAll(ctx context.Context, filter *candishared.Filter) (data []shareddomain.{{clean (upper .ModuleName)}}, err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoSQL:FetchAll")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:FetchAll")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
 	if filter.OrderBy == "" {
@@ -377,7 +373,7 @@ func (r *{{clean .ModuleName}}RepoSQL) FetchAll(ctx context.Context, filter *can
 }
 
 func (r *{{clean .ModuleName}}RepoSQL) Count(ctx context.Context, filter *candishared.Filter) (count int) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Count")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Count")
 	defer trace.Finish()
 
 	var total int64{{if .SQLUseGORM}}
@@ -387,14 +383,14 @@ func (r *{{clean .ModuleName}}RepoSQL) Count(ctx context.Context, filter *candis
 }
 
 func (r *{{clean .ModuleName}}RepoSQL) Find(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Find")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Find")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
 	return{{if .SQLUseGORM}} r.readDB.First(data).Error{{end}}
 }
 
 func (r *{{clean .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Save")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Save")
 	defer func() { trace.SetError(err); trace.Finish() }()
 	tracer.Log(ctx, "data", data)
 
@@ -406,7 +402,7 @@ func (r *{{clean .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddom
 }
 
 func (r *{{clean .ModuleName}}RepoSQL) Delete(ctx context.Context, id string) (err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Save")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Save")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
 	return{{if .SQLUseGORM}} r.writeDB.Delete(&shareddomain.{{clean (upper .ModuleName)}}{ID: id}).Error{{end}}

@@ -47,9 +47,8 @@ func (h *RestHandler) Mount(root *echo.Group) {
 }
 
 func (h *RestHandler) getAll{{clean (upper .ModuleName)}}(c echo.Context) error {
-	trace := tracer.StartTrace(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:GetAll{{clean (upper .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:GetAll{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
-	ctx := trace.Context()
 
 	tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using HTTPBearerAuth in middleware for this handler
 
@@ -68,10 +67,10 @@ func (h *RestHandler) getAll{{clean (upper .ModuleName)}}(c echo.Context) error 
 }
 
 func (h *RestHandler) getDetail{{clean (upper .ModuleName)}}ByID(c echo.Context) error {
-	trace := tracer.StartTrace(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:GetDetail{{clean (upper .ModuleName)}}ByID")
+	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:GetDetail{{clean (upper .ModuleName)}}ByID")
 	defer trace.Finish()
 
-	data, err := h.uc.GetDetail{{clean (upper .ModuleName)}}(trace.Context(), c.Param("id"))
+	data, err := h.uc.GetDetail{{clean (upper .ModuleName)}}(ctx, c.Param("id"))
 	if err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
@@ -80,7 +79,7 @@ func (h *RestHandler) getDetail{{clean (upper .ModuleName)}}ByID(c echo.Context)
 }
 
 func (h *RestHandler) create{{clean (upper .ModuleName)}}(c echo.Context) error {
-	trace := tracer.StartTrace(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:Create{{clean (upper .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:Create{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
 	var payload shareddomain.{{clean (upper .ModuleName)}}
@@ -88,7 +87,7 @@ func (h *RestHandler) create{{clean (upper .ModuleName)}}(c echo.Context) error 
 		return wrapper.NewHTTPResponse(http.StatusOK, err.Error()).JSON(c.Response())
 	}
 
-	err := h.uc.Create{{clean (upper .ModuleName)}}(trace.Context(), &payload)
+	err := h.uc.Create{{clean (upper .ModuleName)}}(ctx, &payload)
 	if err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
@@ -97,7 +96,7 @@ func (h *RestHandler) create{{clean (upper .ModuleName)}}(c echo.Context) error 
 }
 
 func (h *RestHandler) update{{clean (upper .ModuleName)}}(c echo.Context) error {
-	trace := tracer.StartTrace(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:Update{{clean (upper .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:Update{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
 	var payload shareddomain.{{clean (upper .ModuleName)}}
@@ -105,7 +104,7 @@ func (h *RestHandler) update{{clean (upper .ModuleName)}}(c echo.Context) error 
 		return wrapper.NewHTTPResponse(http.StatusOK, err.Error()).JSON(c.Response())
 	}
 
-	err := h.uc.Update{{clean (upper .ModuleName)}}(trace.Context(), c.Param("id"), &payload)
+	err := h.uc.Update{{clean (upper .ModuleName)}}(ctx, c.Param("id"), &payload)
 	if err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
@@ -114,10 +113,10 @@ func (h *RestHandler) update{{clean (upper .ModuleName)}}(c echo.Context) error 
 }
 
 func (h *RestHandler) delete{{clean (upper .ModuleName)}}(c echo.Context) error {
-	trace := tracer.StartTrace(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:Delete{{clean (upper .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:Delete{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
-	if err := h.uc.Delete{{clean (upper .ModuleName)}}(trace.Context(), c.Param("id")); err != nil {
+	if err := h.uc.Delete{{clean (upper .ModuleName)}}(ctx, c.Param("id")); err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
 

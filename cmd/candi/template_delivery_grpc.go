@@ -50,9 +50,8 @@ func (h *GRPCHandler) Register(server *grpc.Server, mwGroup *types.MiddlewareGro
 
 // GetAll{{clean (upper .ModuleName)}} rpc method
 func (h *GRPCHandler) GetAll{{clean (upper .ModuleName)}}(ctx context.Context, req *proto.GetAll{{clean (upper .ModuleName)}}Request) (*proto.GetAll{{clean (upper .ModuleName)}}Response, error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGRPC:GetAll{{clean (upper .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryGRPC:GetAll{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
-	ctx = trace.Context()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
 
@@ -82,9 +81,8 @@ func (h *GRPCHandler) GetAll{{clean (upper .ModuleName)}}(ctx context.Context, r
 
 // GetDetail{{clean (upper .ModuleName)}} rpc method
 func (h *GRPCHandler) GetDetail{{clean (upper .ModuleName)}}(ctx context.Context, req *proto.GetDetail{{clean (upper .ModuleName)}}Request) (*proto.{{clean (upper .ModuleName)}}Model, error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGRPC:GetDetail{{clean (upper .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryGRPC:GetDetail{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
-	ctx = trace.Context()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
 
@@ -100,9 +98,8 @@ func (h *GRPCHandler) GetDetail{{clean (upper .ModuleName)}}(ctx context.Context
 
 // Create{{clean (upper .ModuleName)}} rpc method
 func (h *GRPCHandler) Create{{clean (upper .ModuleName)}}(ctx context.Context, req *proto.{{clean (upper .ModuleName)}}Model) (resp *proto.Response, err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGRPC:Create{{clean (upper .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryGRPC:Create{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
-	ctx = trace.Context()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
 
@@ -131,9 +128,8 @@ func (h *GRPCHandler) Create{{clean (upper .ModuleName)}}(ctx context.Context, r
 
 // Update{{clean (upper .ModuleName)}} rpc method
 func (h *GRPCHandler) Update{{clean (upper .ModuleName)}}(ctx context.Context, req *proto.{{clean (upper .ModuleName)}}Model) (resp *proto.Response, err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGRPC:Update{{clean (upper .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryGRPC:Update{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
-	ctx = trace.Context()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
 
@@ -151,9 +147,8 @@ func (h *GRPCHandler) Update{{clean (upper .ModuleName)}}(ctx context.Context, r
 
 // Delete{{clean (upper .ModuleName)}} rpc method
 func (h *GRPCHandler) Delete{{clean (upper .ModuleName)}}(ctx context.Context, req *proto.{{clean (upper .ModuleName)}}Model) (resp *proto.Response, err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGRPC:Delete{{clean (upper .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryGRPC:Delete{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
-	ctx = trace.Context()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
 

@@ -69,9 +69,8 @@ type queryResolver struct {
 
 // GetAll{{clean (upper .ModuleName)}} resolver
 func (q *queryResolver) GetAll{{clean (upper .ModuleName)}}(ctx context.Context, input struct{ Filter *CommonFilter }) (results {{clean (upper .ModuleName)}}ListResolver, err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:GetAll{{clean (upper .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:GetAll{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
-	ctx = trace.Context()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
@@ -91,9 +90,8 @@ func (q *queryResolver) GetAll{{clean (upper .ModuleName)}}(ctx context.Context,
 
 // GetDetail{{clean (upper .ModuleName)}} resolver
 func (q *queryResolver) GetDetail{{clean (upper .ModuleName)}}(ctx context.Context, input struct{ ID string }) (data shareddomain.{{clean (upper .ModuleName)}}, err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:GetDetail{{clean (upper .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:GetDetail{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
-	ctx = trace.Context()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
@@ -119,9 +117,8 @@ type mutationResolver struct {
 
 // Create{{clean (upper .ModuleName)}} resolver
 func (m *mutationResolver) Create{{clean (upper .ModuleName)}}(ctx context.Context, input struct{ Data shareddomain.{{clean (upper .ModuleName)}} }) (ok string, err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:Create{{clean (upper .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:Create{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
-	ctx = trace.Context()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
@@ -136,9 +133,8 @@ func (m *mutationResolver) Update{{clean (upper .ModuleName)}}(ctx context.Conte
 	ID   string
 	Data shareddomain.{{clean (upper .ModuleName)}}
 }) (ok string, err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:Update{{clean (upper .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:Update{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
-	ctx = trace.Context()
 
 	// tokenClaim := golibshared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
@@ -150,9 +146,8 @@ func (m *mutationResolver) Update{{clean (upper .ModuleName)}}(ctx context.Conte
 
 // Delete{{clean (upper .ModuleName)}} resolver
 func (m *mutationResolver) Delete{{clean (upper .ModuleName)}}(ctx context.Context, input struct{ ID string }) (ok string, err error) {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:Delete{{clean (upper .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:Delete{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
-	ctx = trace.Context()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 

@@ -38,9 +38,8 @@ func (h *KafkaHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 
 // ProcessMessage from kafka consumer
 func (h *KafkaHandler) handle{{clean (upper .ModuleName)}}(ctx context.Context, message []byte) error {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryKafka:Hello")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryKafka:Hello")
 	defer trace.Finish()
-	ctx = trace.Context()
 
 	key := candishared.GetValueFromContext(ctx, candishared.ContextKeyWorkerKey).([]byte)
 	fmt.Printf("message consumed by module {{.ModuleName}}. key: %s, message: %s\n", key, message)
@@ -84,9 +83,8 @@ func (h *CronHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 }
 
 func (h *CronHandler) handle{{clean (upper .ModuleName)}}(ctx context.Context, message []byte) error {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryCron:Hello")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryCron:Hello")
 	defer trace.Finish()
-	ctx = trace.Context()
 
 	fmt.Println("cron: execute in module {{.ModuleName}}, message:", string(message))
 	return nil
@@ -128,9 +126,8 @@ func (h *RedisHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 }
 
 func (h *RedisHandler) handle{{clean (upper .ModuleName)}}(ctx context.Context, message []byte) error {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryRedis:Hello")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryRedis:Hello")
 	defer trace.Finish()
-	ctx = trace.Context()
 
 	fmt.Println("redis subs: execute sample")
 	return nil
@@ -175,9 +172,8 @@ func (h *TaskQueueHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 }
 
 func (h *TaskQueueHandler) taskOne(ctx context.Context, message []byte) error {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryTaskQueue:TaskOne")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryTaskQueue:TaskOne")
 	defer trace.Finish()
-	ctx = trace.Context()
 
 	retried := candishared.GetValueFromContext(ctx, candishared.ContextKeyTaskQueueRetry).(int)
 	fmt.Printf("executing task '{{.ModuleName}}-task-one' has been %d retry\n", retried)
@@ -188,9 +184,8 @@ func (h *TaskQueueHandler) taskOne(ctx context.Context, message []byte) error {
 }
 
 func (h *TaskQueueHandler) taskTwo(ctx context.Context, message []byte) error {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryTaskQueue:TaskTwo")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryTaskQueue:TaskTwo")
 	defer trace.Finish()
-	ctx = trace.Context()
 
 	retried := candishared.GetValueFromContext(ctx, candishared.ContextKeyTaskQueueRetry).(int)
 	fmt.Printf("executing task '{{.ModuleName}}-task-two' has been %d retry\n", retried)
@@ -236,9 +231,8 @@ func (h *PostgresListenerHandler) MountHandlers(group *types.WorkerHandlerGroup)
 }
 
 func (h *PostgresListenerHandler) handleDataChangeOn{{clean (upper .ModuleName)}}(ctx context.Context, message []byte) error {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryPostgresListener:HandleDataChange{{clean (upper .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryPostgresListener:HandleDataChange{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
-	ctx = trace.Context()
 
 	fmt.Printf("data change on table {{.ModuleName}}s detected: %s\n", message)
 	return nil
@@ -280,9 +274,8 @@ func (h *RabbitMQHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 }
 
 func (h *RabbitMQHandler) handleQueue{{clean (upper .ModuleName)}}(ctx context.Context, message []byte) error {
-	trace := tracer.StartTrace(ctx, "{{clean (upper .ModuleName)}}DeliveryRabbitMQ:HandleQueue{{clean (upper .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryRabbitMQ:HandleQueue{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
-	ctx = trace.Context()
 
 	fmt.Printf("message consumed by module {{.ModuleName}}. message: %s\n", message)
 	return nil
