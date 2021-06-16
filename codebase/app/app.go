@@ -14,26 +14,26 @@ import (
 
 // App service
 type App struct {
-	applications []factory.AppServerFactory
+	service factory.ServiceFactory
 }
 
 // New service app
 func New(service factory.ServiceFactory) *App {
 
 	return &App{
-		applications: service.GetApplications(),
+		service: service,
 	}
 }
 
 // Run start app
 func (a *App) Run() {
 
-	if len(a.applications) == 0 {
+	if len(a.service.GetApplications()) == 0 {
 		panic("No server/worker running")
 	}
 
 	errServe := make(chan error)
-	for _, app := range a.applications {
+	for _, app := range a.service.GetApplications() {
 		go func(srv factory.AppServerFactory) {
 			defer func() {
 				if r := recover(); r != nil {
@@ -46,6 +46,8 @@ func (a *App) Run() {
 
 	quitSignal := make(chan os.Signal, 1)
 	signal.Notify(quitSignal, os.Interrupt, syscall.SIGTERM)
+
+	log.Printf("Application \x1b[32;1m%s\x1b[0m ready to run\n\n", a.service.Name())
 
 	select {
 	case e := <-errServe:
@@ -65,7 +67,7 @@ func (a *App) shutdown(forceShutdown chan os.Signal) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		for _, server := range a.applications {
+		for _, server := range a.service.GetApplications() {
 			server.Shutdown(ctx)
 		}
 		done <- struct{}{}
@@ -79,6 +81,5 @@ func (a *App) shutdown(forceShutdown chan os.Signal) {
 		cancel()
 	case <-ctx.Done():
 		log.Println("\x1b[31;1mContext timeout\x1b[0m")
-		return
 	}
 }

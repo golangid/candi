@@ -61,7 +61,7 @@ func (c *Config) LoadFunc(depsFunc func(context.Context) []interfaces.Closer) {
 		fmt.Println()
 	}()
 
-	log.Printf("Starting \x1b[32;1m%s\x1b[0m service\n\n", c.ServiceName)
+	log.Printf("Starting application \x1b[32;1m%s\x1b[0m\n\n", c.ServiceName)
 
 	result := make(chan error)
 	go func() {
