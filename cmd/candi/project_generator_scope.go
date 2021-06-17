@@ -250,7 +250,7 @@ func updateGraphQLRoot(flagParam flagParameter, cfg serviceConfig) {
 	}
 	b, err := os.ReadFile(path)
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
 	for _, moduleName := range flagParam.modules {
 		cleanMod, cleanUpperMod := cleanSpecialChar.Replace(moduleName), cleanSpecialChar.Replace(strings.Title(moduleName))
