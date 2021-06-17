@@ -16,6 +16,11 @@ import (
 	"pkg.agungdp.dev/candi/tracer"
 )
 
+type handlerType struct {
+	handlerFunc   types.WorkerHandlerFunc
+	errorHandlers []types.WorkerErrorHandler
+}
+
 type rabbitmqWorker struct {
 	ctx           context.Context
 	ctxCancelFunc func()
@@ -25,7 +30,7 @@ type rabbitmqWorker struct {
 	semaphore []chan struct{}
 	wg        sync.WaitGroup
 	channels  []reflect.SelectCase
-	handlers  map[string]types.WorkerHandlerFunc
+	handlers  map[string]handlerType
 }
 
 // NewWorker create new rabbitmq consumer
@@ -43,7 +48,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	worker.channels = append(worker.channels, reflect.SelectCase{
 		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(worker.shutdown),
 	})
-	worker.handlers = make(map[string]types.WorkerHandlerFunc)
+	worker.handlers = make(map[string]handlerType)
 
 	for _, m := range service.GetModules() {
 		if h := m.WorkerHandler(types.RabbitMQ); h != nil {
@@ -59,7 +64,9 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 				worker.channels = append(worker.channels, reflect.SelectCase{
 					Dir: reflect.SelectRecv, Chan: reflect.ValueOf(queueChan),
 				})
-				worker.handlers[handler.Pattern] = handler.HandlerFunc
+				worker.handlers[handler.Pattern] = handlerType{
+					handlerFunc: handler.HandlerFunc, errorHandlers: handler.ErrorHandler,
+				}
 				worker.semaphore = append(worker.semaphore, make(chan struct{}, 1))
 			}
 		}
@@ -90,7 +97,13 @@ func (r *rabbitmqWorker) Serve() {
 
 		// exec handler
 		if msg, ok := value.Interface().(amqp.Delivery); ok {
-			go r.processMessage(r.semaphore[chosen-1], msg)
+			r.semaphore[chosen-1] <- struct{}{}
+			r.wg.Add(1)
+			go func(message amqp.Delivery, idx int) {
+				r.processMessage(message)
+				r.wg.Done()
+				<-r.semaphore[idx-1]
+			}(msg, chosen)
 		}
 	}
 }
@@ -117,42 +130,39 @@ func (r *rabbitmqWorker) Name() string {
 	return string(types.RabbitMQ)
 }
 
-func (r *rabbitmqWorker) processMessage(semaphore chan struct{}, msg amqp.Delivery) {
-	semaphore <- struct{}{}
-	r.wg.Add(1)
-	go func(message amqp.Delivery) {
-		defer func() {
-			recover()
-			r.wg.Done()
-			<-semaphore
-		}()
+func (r *rabbitmqWorker) processMessage(message amqp.Delivery) {
+	if r.ctx.Err() != nil {
+		logger.LogRed("rabbitmq_consumer > ctx root err: " + r.ctx.Err().Error())
+		return
+	}
 
-		if r.ctx.Err() != nil {
-			logger.LogRed("rabbitmq_consumer > ctx root err: " + r.ctx.Err().Error())
-			return
+	var err error
+	trace, ctx := tracer.StartTraceWithContext(r.ctx, "RabbitMQConsumer")
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic: %v", r)
 		}
 
-		var err error
-		trace, ctx := tracer.StartTraceWithContext(r.ctx, "RabbitMQConsumer")
-		defer func() {
-			if r := recover(); r != nil {
-				err = fmt.Errorf("panic: %v", r)
-			}
+		if err == nil && !env.BaseEnv().RabbitMQ.AutoACK {
+			message.Ack(false)
+		}
 
-			if err == nil && !env.BaseEnv().RabbitMQ.AutoACK {
-				message.Ack(false)
-			}
+		trace.SetError(err)
+		logger.LogGreen("rabbitmq_consumer > trace_url: " + tracer.GetTraceURL(ctx))
+		trace.Finish()
+	}()
 
-			trace.SetError(err)
-			logger.LogGreen("rabbitmq_consumer > trace_url: " + tracer.GetTraceURL(ctx))
-			trace.Finish()
-		}()
+	trace.SetTag("broker", candihelper.MaskingPasswordURL(env.BaseEnv().RabbitMQ.Broker))
+	trace.SetTag("exchange", message.Exchange)
+	trace.SetTag("routing_key", message.RoutingKey)
+	trace.Log("header", message.Headers)
+	trace.Log("body", message.Body)
 
-		trace.SetTag("broker", candihelper.MaskingPasswordURL(env.BaseEnv().RabbitMQ.Broker))
-		trace.SetTag("exchange", message.Exchange)
-		trace.SetTag("routing_key", message.RoutingKey)
-		trace.Log("header", message.Headers)
-		trace.Log("body", message.Body)
-		err = r.handlers[message.RoutingKey](ctx, message.Body)
-	}(msg)
+	selectedHandler := r.handlers[message.RoutingKey]
+	err = selectedHandler.handlerFunc(ctx, message.Body)
+	if err != nil {
+		for _, errHandler := range selectedHandler.errorHandlers {
+			errHandler(ctx, types.RabbitMQ, message.RoutingKey, message.Body, err)
+		}
+	}
 }
