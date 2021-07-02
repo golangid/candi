@@ -14,21 +14,27 @@ import (
 
 // KafkaPublisher kafka
 type KafkaPublisher struct {
-	producer sarama.SyncProducer
+	producerSync  sarama.SyncProducer
+	producerAsync sarama.AsyncProducer
 }
 
 // NewKafkaPublisher constructor
-func NewKafkaPublisher(client sarama.Client) *KafkaPublisher {
+func NewKafkaPublisher(client sarama.Client, async bool) *KafkaPublisher {
+	var err error
 
-	producer, err := sarama.NewSyncProducerFromClient(client)
+	kafkaPublisher := &KafkaPublisher{}
+	if async {
+		kafkaPublisher.producerAsync, err = sarama.NewAsyncProducerFromClient(client)
+	} else {
+		kafkaPublisher.producerSync, err = sarama.NewSyncProducerFromClient(client)
+	}
+
 	if err != nil {
 		logger.LogYellow(fmt.Sprintf("(Kafka publisher: warning, %v. Should be panicked when using kafka publisher.) ", err))
 		return nil
 	}
 
-	return &KafkaPublisher{
-		producer: producer,
-	}
+	return kafkaPublisher
 }
 
 // PublishMessage method
@@ -54,6 +60,11 @@ func (p *KafkaPublisher) PublishMessage(ctx context.Context, args *candishared.P
 		Value:     sarama.ByteEncoder(payload),
 		Timestamp: time.Now(),
 	}
-	_, _, err = p.producer.SendMessage(msg)
+
+	if p.producerSync != nil {
+		_, _, err = p.producerSync.SendMessage(msg)
+	} else {
+		p.producerAsync.Input() <- msg
+	}
 	return
 }

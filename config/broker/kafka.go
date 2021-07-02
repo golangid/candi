@@ -73,7 +73,7 @@ func NewKafkaBroker(opts ...KafkaOptionFunc) *KafkaBroker {
 	kb.client = saramaClient
 
 	if kb.pub == nil {
-		kb.pub = publisher.NewKafkaPublisher(saramaClient)
+		kb.pub = publisher.NewKafkaPublisher(saramaClient, false) // default publisher is sync
 	}
 
 	return kb
