@@ -25,12 +25,13 @@ type rabbitmqWorker struct {
 	ctx           context.Context
 	ctxCancelFunc func()
 
-	ch        *amqp.Channel
-	shutdown  chan struct{}
-	semaphore []chan struct{}
-	wg        sync.WaitGroup
-	channels  []reflect.SelectCase
-	handlers  map[string]handlerType
+	ch         *amqp.Channel
+	shutdown   chan struct{}
+	isShutdown bool
+	semaphore  []chan struct{}
+	wg         sync.WaitGroup
+	channels   []reflect.SelectCase
+	handlers   map[string]handlerType
 }
 
 // NewWorker create new rabbitmq consumer
@@ -44,10 +45,6 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	worker.ch = service.GetDependency().GetBroker().GetConfiguration(types.RabbitMQ).(*amqp.Channel)
 
 	worker.shutdown = make(chan struct{})
-	// add shutdown channel to first index
-	worker.channels = append(worker.channels, reflect.SelectCase{
-		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(worker.shutdown),
-	})
 	worker.handlers = make(map[string]handlerType)
 
 	for _, m := range service.GetModules() {
@@ -75,7 +72,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	if len(worker.channels) == 1 {
 		log.Println("rabbitmq consumer: no queue provided")
 	} else {
-		fmt.Printf("\x1b[34;1m⇨ RabbitMQ consumer running with %d queue. Broker: %s\x1b[0m\n\n", len(worker.channels)-1,
+		fmt.Printf("\x1b[34;1m⇨ RabbitMQ consumer running with %d queue. Broker: %s\x1b[0m\n\n", len(worker.channels),
 			candihelper.MaskingPasswordURL(env.BaseEnv().RabbitMQ.Broker))
 	}
 
@@ -85,24 +82,30 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 func (r *rabbitmqWorker) Serve() {
 
 	for {
+		select {
+		case <-r.shutdown:
+			return
+
+		default:
+		}
+
 		chosen, value, ok := reflect.Select(r.channels)
 		if !ok {
 			continue
 		}
 
-		// if shutdown channel captured, break loop (no more jobs will run)
-		if chosen == 0 {
-			return
-		}
-
 		// exec handler
 		if msg, ok := value.Interface().(amqp.Delivery); ok {
-			r.semaphore[chosen-1] <- struct{}{}
+			r.semaphore[chosen] <- struct{}{}
+			if r.isShutdown {
+				return
+			}
+
 			r.wg.Add(1)
 			go func(message amqp.Delivery, idx int) {
 				r.processMessage(message)
 				r.wg.Done()
-				<-r.semaphore[idx-1]
+				<-r.semaphore[idx]
 			}(msg, chosen)
 		}
 	}
@@ -110,7 +113,7 @@ func (r *rabbitmqWorker) Serve() {
 
 func (r *rabbitmqWorker) Shutdown(ctx context.Context) {
 	log.Println("\x1b[33;1mStopping RabbitMQ Worker...\x1b[0m")
-	defer func() { recover(); log.Println("\x1b[33;1mStopping RabbitMQ Worker:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
+	defer func() { log.Println("\x1b[33;1mStopping RabbitMQ Worker:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
 
 	r.shutdown <- struct{}{}
 	var runningJob int
