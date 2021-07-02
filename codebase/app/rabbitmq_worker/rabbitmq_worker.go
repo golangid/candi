@@ -44,7 +44,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	worker.ctx, worker.ctxCancelFunc = context.WithCancel(context.Background())
 	worker.ch = service.GetDependency().GetBroker().GetConfiguration(types.RabbitMQ).(*amqp.Channel)
 
-	worker.shutdown = make(chan struct{})
+	worker.shutdown = make(chan struct{}, 1)
 	worker.handlers = make(map[string]handlerType)
 
 	for _, m := range service.GetModules() {
