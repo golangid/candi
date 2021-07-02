@@ -6,7 +6,7 @@ import (
 	"pkg.agungdp.dev/candi/codebase/factory/types"
 )
 
-// RESTHandler delivery factory for REST handler
+// RESTHandler delivery factory for REST handler (default using echo rest framework)
 type RESTHandler interface {
 	Mount(group *echo.Group)
 }
@@ -27,4 +27,9 @@ type GraphQLHandler interface {
 // WorkerHandler delivery factory for all worker handler
 type WorkerHandler interface {
 	MountHandlers(group *types.WorkerHandlerGroup)
+}
+
+// ServerHandler delivery factory for all additional server handler (rest framework, p2p, and many more)
+type ServerHandler interface {
+	MountHandlers(group interface{}) // why interface? cause every server is different type for grouping route handler
 }

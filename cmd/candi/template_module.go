@@ -27,6 +27,7 @@ type Module struct {
 	graphqlHandler interfaces.GraphQLHandler
 
 	workerHandlers map[types.Worker]interfaces.WorkerHandler
+	serverHandlers map[types.Server]interfaces.ServerHandler
 }
 
 // NewModule module constructor
@@ -45,6 +46,10 @@ func NewModule(deps dependency.Dependency) *Module {
 		{{if not .TaskQueueHandler}}// {{end}}types.TaskQueue:       workerhandler.NewTaskQueueHandler(usecaseUOW.{{clean (upper .ModuleName)}}(), deps.GetValidator()),
 		{{if not .PostgresListenerHandler}}// {{end}}types.PostgresListener: workerhandler.NewPostgresListenerHandler(usecaseUOW.{{clean (upper .ModuleName)}}(), deps.GetValidator()),
 		{{if not .RabbitMQHandler}}// {{end}}types.RabbitMQ: workerhandler.NewRabbitMQHandler(usecaseUOW.{{clean (upper .ModuleName)}}(), deps.GetValidator()),
+	}
+
+	mod.serverHandlers = map[types.Server]interfaces.ServerHandler{
+		// 
 	}
 
 	return &mod
@@ -68,6 +73,11 @@ func (m *Module) GraphQLHandler() interfaces.GraphQLHandler {
 // WorkerHandler method
 func (m *Module) WorkerHandler(workerType types.Worker) interfaces.WorkerHandler {
 	return m.workerHandlers[workerType]
+}
+
+// ServerHandler additional server type (another rest framework, p2p, and many more)
+func (m *Module) ServerHandler(serverType types.Server) interfaces.ServerHandler {
+	return m.serverHandlers[serverType]
 }
 
 // Name get module name
