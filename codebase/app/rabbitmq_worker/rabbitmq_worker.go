@@ -112,7 +112,6 @@ func (r *rabbitmqWorker) Shutdown(ctx context.Context) {
 	log.Println("\x1b[33;1mStopping RabbitMQ Worker...\x1b[0m")
 	defer func() { recover(); log.Println("\x1b[33;1mStopping RabbitMQ Worker:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
 
-	r.ctxCancelFunc()
 	r.shutdown <- struct{}{}
 	var runningJob int
 	for _, sem := range r.semaphore {
@@ -124,6 +123,7 @@ func (r *rabbitmqWorker) Shutdown(ctx context.Context) {
 
 	r.wg.Wait()
 	r.ch.Close()
+	r.ctxCancelFunc()
 }
 
 func (r *rabbitmqWorker) Name() string {

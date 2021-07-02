@@ -161,7 +161,6 @@ func (p *postgresWorker) Shutdown(ctx context.Context) {
 		log.Println("\x1b[33;1mStopping Postgres Event Listener:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
 	}()
 
-	p.ctxCancelFunc()
 	if len(p.handlers) == 0 {
 		return
 	}
@@ -175,6 +174,7 @@ func (p *postgresWorker) Shutdown(ctx context.Context) {
 	p.listener.Unlisten(eventsConst)
 	p.listener.Close()
 	p.wg.Wait()
+	p.ctxCancelFunc()
 }
 
 func (p *postgresWorker) Name() string {

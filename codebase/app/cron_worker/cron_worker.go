@@ -165,7 +165,6 @@ func (c *cronWorker) Shutdown(ctx context.Context) {
 		log.Println("\x1b[33;1mStopping Cron Job Scheduler:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
 	}()
 
-	c.ctxCancelFunc()
 	if len(activeJobs) == 0 {
 		return
 	}
@@ -177,6 +176,7 @@ func (c *cronWorker) Shutdown(ctx context.Context) {
 	}
 
 	c.wg.Wait()
+	c.ctxCancelFunc()
 }
 
 func (c *cronWorker) Name() string {

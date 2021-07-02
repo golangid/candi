@@ -128,7 +128,6 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 	log.Println("\x1b[33;1mStopping Task Queue Worker...\x1b[0m")
 	defer func() { log.Println("\x1b[33;1mStopping Task Queue Worker:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
 
-	t.ctxCancelFunc()
 	if len(registeredTask) == 0 {
 		return
 	}
@@ -140,6 +139,7 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 	}
 
 	t.wg.Wait()
+	t.ctxCancelFunc()
 }
 
 func (t *taskQueueWorker) Name() string {

@@ -158,7 +158,6 @@ func (r *redisWorker) Shutdown(ctx context.Context) {
 		log.Println("\x1b[33;1mStopping Redis Subscriber:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
 	}()
 
-	r.ctxCancelFunc()
 	if !r.isHaveJob {
 		return
 	}
@@ -170,6 +169,7 @@ func (r *redisWorker) Shutdown(ctx context.Context) {
 	}
 
 	r.wg.Wait()
+	r.ctxCancelFunc()
 }
 
 func (r *redisWorker) Name() string {
