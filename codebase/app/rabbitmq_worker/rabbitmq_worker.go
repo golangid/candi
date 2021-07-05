@@ -69,7 +69,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 		}
 	}
 
-	if len(worker.channels) == 1 {
+	if len(worker.channels) == 0 {
 		log.Println("rabbitmq consumer: no queue provided")
 	} else {
 		fmt.Printf("\x1b[34;1m⇨ RabbitMQ consumer running with %d queue. Broker: %s\x1b[0m\n\n", len(worker.channels),
