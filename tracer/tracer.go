@@ -20,14 +20,10 @@ import (
 	config "github.com/uber/jaeger-client-go/config"
 	"google.golang.org/grpc/metadata"
 	"pkg.agungdp.dev/candi"
-	"pkg.agungdp.dev/candi/candihelper"
 	"pkg.agungdp.dev/candi/candishared"
 	"pkg.agungdp.dev/candi/codebase/interfaces"
 	"pkg.agungdp.dev/candi/config/env"
 )
-
-// MaxPacketSize max packet size of UDP
-const MaxPacketSize = int(65000 * candihelper.Byte)
 
 // Param for init jaeger opentracing
 type Param struct {
@@ -257,8 +253,8 @@ func toString(v interface{}) (s string) {
 		s = string(b)
 	}
 
-	if len(s) >= MaxPacketSize {
-		s = fmt.Sprintf("<<Overflow, cannot show data. Size is: %d, max: %d>>", len(s), MaxPacketSize)
+	if len(s) >= int(env.BaseEnv().JaegerMaxPacketSize) {
+		return fmt.Sprintf("<<Overflow, cannot show data. Size is = %d bytes, JAEGER_MAX_PACKET_SIZE = %d bytes>>", len(s), env.BaseEnv().JaegerMaxPacketSize)
 	}
 	return
 }

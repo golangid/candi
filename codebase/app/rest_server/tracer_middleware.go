@@ -12,6 +12,7 @@ import (
 	"github.com/labstack/echo"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
+	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
 	"pkg.agungdp.dev/candi/tracer"
 	"pkg.agungdp.dev/candi/wrapper"
@@ -35,10 +36,10 @@ func echoRestTracerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		body, _ := ioutil.ReadAll(req.Body)
-		if len(body) < tracer.MaxPacketSize { // limit request body size to 65000 bytes (if higher tracer cannot show root span)
+		if len(body) < env.BaseEnv().JaegerMaxPacketSize { // limit request body size to 65000 bytes (if higher tracer cannot show root span)
 			span.LogKV("request.body", string(body))
 		} else {
-			span.SetTag("request.body.size", len(body))
+			span.LogKV("request.body.size", len(body))
 		}
 		req.Body = ioutil.NopCloser(bytes.NewBuffer(body)) // reuse body
 
@@ -63,10 +64,10 @@ func echoRestTracerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			ext.Error.Set(span, true)
 		}
 
-		if resBody.Len() < tracer.MaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
+		if resBody.Len() < env.BaseEnv().JaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
 			span.LogKV("response.body", resBody.String())
 		} else {
-			span.SetTag("response.body.size", resBody.Len())
+			span.LogKV("response.body.size", resBody.Len())
 		}
 		return err
 	}

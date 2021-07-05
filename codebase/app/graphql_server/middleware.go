@@ -71,10 +71,10 @@ func (t *graphqlMiddleware) TraceQuery(ctx context.Context, queryString string, 
 	return ctx, func(data []byte, errs []*gqlerrors.QueryError) {
 		defer span.Finish()
 
-		if len(data) < tracer.MaxPacketSize { // limit request body size to 65000 bytes (if higher tracer cannot show root span)
+		if len(data) < env.BaseEnv().JaegerMaxPacketSize { // limit request body size to 65000 bytes (if higher tracer cannot show root span)
 			span.LogKV("data", string(data))
 		} else {
-			span.SetTag("data.size", len(data))
+			span.LogKV("data.size", len(data))
 		}
 		if len(errs) > 0 {
 			span.LogKV("errors", string(candihelper.ToBytes(errs)))

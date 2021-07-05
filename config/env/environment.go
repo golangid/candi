@@ -69,6 +69,7 @@ type Env struct {
 	// JaegerTracingHost env
 	JaegerTracingHost      string
 	JaegerTracingDashboard string
+	JaegerMaxPacketSize    int
 
 	// Broker environment
 	Kafka struct {
@@ -202,6 +203,11 @@ func Load(serviceName string) {
 		panic("missing JAEGER_TRACING_HOST environment")
 	}
 	env.JaegerTracingDashboard = os.Getenv("JAEGER_TRACING_DASHBOARD")
+	jaegerMaxpacketSize, err := strconv.Atoi(os.Getenv("JAEGER_MAX_PACKET_SIZE"))
+	if err != nil || jaegerMaxpacketSize < 0 {
+		jaegerMaxpacketSize = 65000 // default max packet size of UDP
+	}
+	env.JaegerMaxPacketSize = int(jaegerMaxpacketSize) * int(candihelper.Byte)
 
 	// kafka environment
 	parseBrokerEnv()

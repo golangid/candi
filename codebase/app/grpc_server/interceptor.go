@@ -64,11 +64,15 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 	defer func() {
 		if r := recover(); r != nil {
 			err = grpc.Errorf(codes.Aborted, "%v", r)
-			tracer.SetError(ctx, err)
 		}
+		tracer.SetError(ctx, err)
 		logInterceptor(start, err, info.FullMethod, "GRPC")
 		logger.LogGreen("grpc > trace_url: " + tracer.GetTraceURL(ctx))
-		span.LogKV("response.body", string(candihelper.ToBytes(resp)))
+		if respBody := candihelper.ToBytes(resp); len(respBody) < env.BaseEnv().JaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
+			span.LogKV("response.body", string(respBody))
+		} else {
+			span.LogKV("response.body.size", len(respBody))
+		}
 		span.Finish()
 	}()
 
@@ -76,12 +80,13 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 		span.SetTag("metadata", string(candihelper.ToBytes(meta)))
 	}
 
-	span.LogKV("request.body", string(candihelper.ToBytes(req)))
+	if reqBody := candihelper.ToBytes(req); len(reqBody) < env.BaseEnv().JaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
+		span.LogKV("request.body", string(reqBody))
+	} else {
+		span.LogKV("request.body.size", len(reqBody))
+	}
 
 	resp, err = handler(ctx, req)
-	if err != nil {
-		tracer.SetError(ctx, err)
-	}
 	return
 }
 
