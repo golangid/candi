@@ -209,7 +209,9 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 	for old, new := range replaceMainModule {
 		readFileAndApply(root.TargetDir+"internal/modules/"+mod.ModuleName+"/module.go", old, new)
 	}
-	updateGraphQLRoot(*flagParam, gqlCfg)
+	if serverHandlers[graphqlHandler] {
+		updateGraphQLRoot(*flagParam, gqlCfg)
+	}
 }
 
 func generateServiceSDK(srvConfig serviceConfig) {
