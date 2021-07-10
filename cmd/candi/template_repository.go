@@ -276,7 +276,7 @@ func (r *{{clean .ModuleName}}RepoMongo) Find(ctx context.Context, data *sharedd
 	defer func() { trace.SetError(err); trace.Finish() }()
 
 	bsonWhere := make(bson.M)
-	if data.ID != "" {
+	if {{if and .MongoDeps (not .SQLDeps)}}!data.ID.IsZero(){{else}}data.ID != ""{{end}} {
 		bsonWhere["_id"] = data.ID
 	}
 	trace.SetTag("query", bsonWhere)
@@ -300,8 +300,8 @@ func (r *{{clean .ModuleName}}RepoMongo) Save(ctx context.Context, data *sharedd
 	tracer.Log(ctx, "data", data)
 
 	data.ModifiedAt = time.Now()
-	if data.ID == "" {
-		data.ID = primitive.NewObjectID().Hex()
+	if data.ID{{if and .MongoDeps (not .SQLDeps)}}.IsZero(){{else}} == ""{{end}} {
+		data.ID = primitive.NewObjectID(){{if or .SQLDeps (not .MongoDeps)}}.Hex(){{end}}
 		data.CreatedAt = time.Now()
 		_, err = r.writeDB.Collection(r.collection).InsertOne(ctx, data)
 	} else {
@@ -324,7 +324,8 @@ func (r *{{clean .ModuleName}}RepoMongo) Delete(ctx context.Context, id string) 
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Save")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
-	_, err = r.writeDB.Collection(r.collection).DeleteOne(ctx, bson.M{"_id": id})
+	{{if and .MongoDeps (not .SQLDeps)}}objectID, _ := primitive.ObjectIDFromHex(id){{else}}objectID := id{{end}}
+	_, err = r.writeDB.Collection(r.collection).DeleteOne(ctx, bson.M{"_id": objectID})
 	return
 }
 `
@@ -334,13 +335,16 @@ func (r *{{clean .ModuleName}}RepoMongo) Delete(ctx context.Context, id string) 
 package repository
 
 import (
-	"context"` + `{{if not .SQLUseGORM}}
-	"database/sql"{{end}}` + `
-	"time"
+	"context"` + `
+	{{if not .SQLUseGORM}}"database/sql"
+	"fmt"{{end}}` + `{{if .SQLDeps}}
+	"time"{{end}}` + `{{if .SQLDeps}}
+	"github.com/google/uuid"
+	{{end}}` + `
 
-	"{{.LibraryName}}/candishared"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 
+	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/tracer"` +
 		`{{if .SQLUseGORM}}
 	"gorm.io/gorm"{{end}}` + `
@@ -368,17 +372,33 @@ func (r *{{clean .ModuleName}}RepoSQL) FetchAll(ctx context.Context, filter *can
 	{{if .SQLUseGORM}}err = r.readDB.
 		Order(filter.OrderBy + " " + filter.Sort).
 		Limit(filter.Limit).Offset(filter.Offset).
-		Find(&data).Error{{end}}
-	return
+		Find(&data).Error
+	{{else}}query := fmt.Sprintf("SELECT id, field, created_at, modified_at FROM {{clean .ModuleName}}s ORDER BY %s %s LIMIT %d OFFSET %d",
+		filter.OrderBy, filter.Sort, filter.Limit, filter.Offset)
+	trace.Log("query", query)
+	rows, err := r.readDB.Query(query)
+	if err != nil {
+		return data, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var res shareddomain.{{clean (upper .ModuleName)}}
+		if err := rows.Scan(&res.ID, &res.Field, &res.CreatedAt, &res.ModifiedAt); err != nil {
+			return nil, err
+		}
+		data = append(data, res)
+	}
+	{{end}}return
 }
 
 func (r *{{clean .ModuleName}}RepoSQL) Count(ctx context.Context, filter *candishared.Filter) (count int) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Count")
 	defer trace.Finish()
 
-	var total int64{{if .SQLUseGORM}}
-	r.readDB.Model(&shareddomain.{{clean (upper .ModuleName)}}{}).Count(&total){{end}}
+	{{if .SQLUseGORM}}var total int64
+	r.readDB.Model(&shareddomain.{{clean (upper .ModuleName)}}{}).Count(&total)
 	count = int(total)
+	{{else}}r.readDB.QueryRow("SELECT COUNT(*) FROM {{clean .ModuleName}}s").Scan(&count){{end}}
 	return
 }
 
@@ -394,11 +414,15 @@ func (r *{{clean .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddom
 	defer func() { trace.SetError(err); trace.Finish() }()
 	tracer.Log(ctx, "data", data)
 
-	data.ModifiedAt = time.Now()
+	{{if .SQLDeps}}data.ModifiedAt = time.Now()
 	if data.CreatedAt.IsZero() {
 		data.CreatedAt = time.Now()
 	}
-	return{{if .SQLUseGORM}} r.writeDB.Save(data).Error{{end}}
+	if data.ID == "" {
+		data.ID = uuid.NewString()
+	}
+	{{if .SQLUseGORM}}err = r.writeDB.Save(data).Error{{end}}
+	{{end}}return
 }
 
 func (r *{{clean .ModuleName}}RepoSQL) Delete(ctx context.Context, id string) (err error) {

@@ -165,9 +165,10 @@ import (
 	"context"
 	"time"
 
-	shareddomain "{{.PackagePrefix}}/pkg/shared/domain"
+	shareddomain "{{.PackagePrefix}}/pkg/shared/domain"` + `
+	
+	{{if and .MongoDeps (not .SQLDeps)}}"go.mongodb.org/mongo-driver/bson/primitive"{{else}}"github.com/google/uuid"{{end}}` + `
 
-	"github.com/google/uuid"
 	"{{.LibraryName}}/logger"
 )
 
@@ -185,11 +186,12 @@ func (s *subscriptionResolver) ListenData(ctx context.Context) <-chan shareddoma
 		for {
 			select {
 			case <-tick.C:
-				output <- shareddomain.{{clean (upper .ModuleName)}}{
-					ID:         uuid.NewString(),
+				data := shareddomain.{{clean (upper .ModuleName)}}{
 					CreatedAt:  time.Now(),
 					ModifiedAt: time.Now(),
 				}
+				data.ID = {{if and .MongoDeps (not .SQLDeps)}}primitive.NewObjectID(){{else}}uuid.NewString(){{end}}
+				output <- data
 			case <-ctx.Done():
 				logger.LogI("done")
 				return
@@ -294,12 +296,13 @@ type {{clean (upper .ModuleName)}}ListResolver {
 
 type {{clean (upper .ModuleName)}}Resolver {
 	id: String!
+	field: String!
 	created_at: String!
 	modified_at: String!
 }
 
 input {{clean (upper .ModuleName)}}InputResolver {
-	id: String!
+	field: String!
 }
 `
 

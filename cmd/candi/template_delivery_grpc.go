@@ -13,7 +13,9 @@ import (
 	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 
-	"google.golang.org/grpc"
+	"google.golang.org/grpc"` + `
+	
+	{{if and .MongoDeps (not .SQLDeps)}}"go.mongodb.org/mongo-driver/bson/primitive"{{end}}` + `
 
 	"{{.LibraryName}}/candihelper"
 	"{{.LibraryName}}/candishared"
@@ -71,9 +73,11 @@ func (h *GRPCHandler) GetAll{{clean (upper .ModuleName)}}(ctx context.Context, r
 	}
 
 	for _, d := range data {
-		resp.Data = append(resp.Data, &proto.{{clean (upper .ModuleName)}}Model{
-			ID: d.ID, CreatedAt: d.CreatedAt.Format(time.RFC3339), ModifiedAt: d.ModifiedAt.Format(time.RFC3339),
-		})
+		data := &proto.{{clean (upper .ModuleName)}}Model{
+			CreatedAt: d.CreatedAt.Format(time.RFC3339), ModifiedAt: d.ModifiedAt.Format(time.RFC3339),
+		}
+		data.ID = d.ID{{if and .MongoDeps (not .SQLDeps)}}.Hex(){{end}}
+		resp.Data = append(resp.Data, data)
 	}
 
 	return resp, nil
@@ -91,9 +95,11 @@ func (h *GRPCHandler) GetDetail{{clean (upper .ModuleName)}}(ctx context.Context
 		return nil, err
 	}
 
-	return &proto.{{clean (upper .ModuleName)}}Model{
-		ID: data.ID, CreatedAt: data.CreatedAt.Format(time.RFC3339), ModifiedAt: data.ModifiedAt.Format(time.RFC3339),
-	}, nil
+	resp := &proto.{{clean (upper .ModuleName)}}Model{
+		CreatedAt: data.CreatedAt.Format(time.RFC3339), ModifiedAt: data.ModifiedAt.Format(time.RFC3339),
+	}
+	resp.ID = data.ID{{if and .MongoDeps (not .SQLDeps)}}.Hex(){{end}}
+	return resp, nil
 }
 
 // Create{{clean (upper .ModuleName)}} rpc method
@@ -106,13 +112,13 @@ func (h *GRPCHandler) Create{{clean (upper .ModuleName)}}(ctx context.Context, r
 	mErr := candihelper.NewMultiError()
 
 	var payload shareddomain.{{clean (upper .ModuleName)}}
-	payload.ID = req.ID
+	{{if and .MongoDeps (not .SQLDeps)}}payload.ID, err = primitive.ObjectIDFromHex(req.ID)
+	mErr.Append("id", err){{else}}payload.ID = req.ID{{end}}
 
 	payload.CreatedAt, err = time.Parse(time.RFC3339, req.CreatedAt)
 	mErr.Append("createdAt", err)
 	payload.ModifiedAt, err = time.Parse(time.RFC3339, req.ModifiedAt)
 	mErr.Append("modifiedAt", err)
-
 	if mErr.HasError() {
 		return nil, mErr
 	}
@@ -134,7 +140,9 @@ func (h *GRPCHandler) Update{{clean (upper .ModuleName)}}(ctx context.Context, r
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
 
 	var payload shareddomain.{{clean (upper .ModuleName)}}
-	payload.ID = req.ID
+	{{if and .MongoDeps (not .SQLDeps)}}if payload.ID, err = primitive.ObjectIDFromHex(req.ID); err != nil {
+		return nil, err
+	}{{else}}payload.ID = req.ID{{end}}
 
 	if err := h.uc.Update{{clean (upper .ModuleName)}}(ctx, req.ID, &payload); err != nil {
 		return nil, err
@@ -201,8 +209,9 @@ message GetDetail{{clean (upper .ModuleName)}}Request {
 
 message {{clean (upper .ModuleName)}}Model {
 	string ID=1;
-	string CreatedAt=2;
-	string ModifiedAt=3;
+	string Field=2;
+	string CreatedAt=3;
+	string ModifiedAt=4;
 }
 
 message Response {

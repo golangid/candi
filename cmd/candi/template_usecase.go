@@ -107,11 +107,12 @@ import (
 	{{ if not (or .SQLDeps .MongoDeps) }}// {{end}}"{{.PackagePrefix}}/pkg/shared/repository"
 	"{{$.PackagePrefix}}/pkg/shared/usecase/common"
 
-	"github.com/google/uuid"
 	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/interfaces"
-	"{{.LibraryName}}/tracer"
+	"{{.LibraryName}}/tracer"` +
+		`{{if and .MongoDeps (not .SQLDeps)}}
+	"go.mongodb.org/mongo-driver/bson/primitive"{{end}}` + `
 )
 
 type {{clean .ModuleName}}UsecaseImpl struct {
@@ -151,7 +152,7 @@ func (uc *{{clean .ModuleName}}UsecaseImpl) GetDetail{{clean (upper .ModuleName)
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}Usecase:GetDetail{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
-	{{if or .SQLDeps .MongoDeps}}data.ID = id
+	{{if or .SQLDeps .MongoDeps}}{{if and .MongoDeps (not .SQLDeps)}}data.ID, _ = primitive.ObjectIDFromHex(id){{else}}data.ID = id{{end}}
 	err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Find(ctx, &data){{end}}
 	return
 }
@@ -160,7 +161,6 @@ func (uc *{{clean .ModuleName}}UsecaseImpl) Create{{clean (upper .ModuleName)}}(
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}Usecase:Create{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
-	data.ID = uuid.NewString()
 	return{{if or .SQLDeps .MongoDeps}} uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Save(ctx, data){{end}}
 }
 
@@ -168,8 +168,9 @@ func (uc *{{clean .ModuleName}}UsecaseImpl) Update{{clean (upper .ModuleName)}}(
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}Usecase:Update{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
-	existing := &shareddomain.{{clean (upper .ModuleName)}}{ID: id}
-	{{if or .SQLDeps .MongoDeps}}if err := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Find(ctx, existing); err != nil {
+	var existing shareddomain.{{clean (upper .ModuleName)}}
+	{{if and .MongoDeps (not .SQLDeps)}}existing.ID, _ = primitive.ObjectIDFromHex(id){{else}}existing.ID = id{{end}}
+	{{if or .SQLDeps .MongoDeps}}if err := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Find(ctx, &existing); err != nil {
 		return err
 	}{{end}}
 	data.ID = existing.ID

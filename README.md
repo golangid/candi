@@ -112,7 +112,7 @@ If include GRPC handler, run `$ make proto` for generate rpc files from proto (m
 * [**Example Postgres event listener in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/postgres_worker)
 * [**Example RabbitMQ consumer in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/rabbitmq_worker) (Event Driven Handler and Dynamic Scheduler)
 
-## Plugin [Candi Plugin](https://github.com/agungdwiprasetyo/candi-plugin)
+## Plugin: [Candi Plugin](https://github.com/agungdwiprasetyo/candi-plugin)
 
 ## Example microservices project using this library: [Backend Microservices](https://github.com/agungdwiprasetyo/backend-microservices)
 

@@ -39,9 +39,7 @@ func main() {
 package main
 
 import (
-	"flag"
 	"log"
-	"os"
 
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 
