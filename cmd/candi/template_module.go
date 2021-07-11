@@ -32,20 +32,18 @@ type Module struct {
 
 // NewModule module constructor
 func NewModule(deps dependency.Dependency) *Module {
-	usecaseUOW := usecase.GetSharedUsecase()
-
 	var mod Module
-	{{if not .RestHandler}}// {{end}}mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware(), usecaseUOW.{{clean (upper .ModuleName)}}(), deps.GetValidator())
-	{{if not .GRPCHandler}}// {{end}}mod.grpcHandler = grpchandler.NewGRPCHandler(deps.GetMiddleware(), usecaseUOW.{{clean (upper .ModuleName)}}(), deps.GetValidator())
-	{{if not .GraphQLHandler}}// {{end}}mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware(), usecaseUOW.{{clean (upper .ModuleName)}}(), deps.GetValidator())
+	{{if not .RestHandler}}// {{end}}mod.restHandler = resthandler.NewRestHandler(deps.GetMiddleware(), usecase.GetSharedUsecase(), deps.GetValidator())
+	{{if not .GRPCHandler}}// {{end}}mod.grpcHandler = grpchandler.NewGRPCHandler(deps.GetMiddleware(), usecase.GetSharedUsecase(), deps.GetValidator())
+	{{if not .GraphQLHandler}}// {{end}}mod.graphqlHandler = graphqlhandler.NewGraphQLHandler(deps.GetMiddleware(), usecase.GetSharedUsecase(), deps.GetValidator())
 
 	mod.workerHandlers = map[types.Worker]interfaces.WorkerHandler{
-		{{if not .KafkaHandler}}// {{end}}types.Kafka:           workerhandler.NewKafkaHandler(usecaseUOW.{{clean (upper .ModuleName)}}(), deps.GetValidator()),
-		{{if not .SchedulerHandler}}// {{end}}types.Scheduler:       workerhandler.NewCronHandler(usecaseUOW.{{clean (upper .ModuleName)}}(), deps.GetValidator()),
-		{{if not .RedisSubsHandler}}// {{end}}types.RedisSubscriber: workerhandler.NewRedisHandler(usecaseUOW.{{clean (upper .ModuleName)}}(), deps.GetValidator()),
-		{{if not .TaskQueueHandler}}// {{end}}types.TaskQueue:       workerhandler.NewTaskQueueHandler(usecaseUOW.{{clean (upper .ModuleName)}}(), deps.GetValidator()),
-		{{if not .PostgresListenerHandler}}// {{end}}types.PostgresListener: workerhandler.NewPostgresListenerHandler(usecaseUOW.{{clean (upper .ModuleName)}}(), deps.GetValidator()),
-		{{if not .RabbitMQHandler}}// {{end}}types.RabbitMQ: workerhandler.NewRabbitMQHandler(usecaseUOW.{{clean (upper .ModuleName)}}(), deps.GetValidator()),
+		{{if not .KafkaHandler}}// {{end}}types.Kafka:           workerhandler.NewKafkaHandler(usecase.GetSharedUsecase(), deps.GetValidator()),
+		{{if not .SchedulerHandler}}// {{end}}types.Scheduler:       workerhandler.NewCronHandler(usecase.GetSharedUsecase(), deps.GetValidator()),
+		{{if not .RedisSubsHandler}}// {{end}}types.RedisSubscriber: workerhandler.NewRedisHandler(usecase.GetSharedUsecase(), deps.GetValidator()),
+		{{if not .TaskQueueHandler}}// {{end}}types.TaskQueue:       workerhandler.NewTaskQueueHandler(usecase.GetSharedUsecase(), deps.GetValidator()),
+		{{if not .PostgresListenerHandler}}// {{end}}types.PostgresListener: workerhandler.NewPostgresListenerHandler(usecase.GetSharedUsecase(), deps.GetValidator()),
+		{{if not .RabbitMQHandler}}// {{end}}types.RabbitMQ: workerhandler.NewRabbitMQHandler(usecase.GetSharedUsecase(), deps.GetValidator()),
 	}
 
 	mod.serverHandlers = map[types.Server]interfaces.ServerHandler{

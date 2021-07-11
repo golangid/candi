@@ -6,7 +6,7 @@ const (
 package graphqlhandler
 
 import (
-	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
+	"{{.PackagePrefix}}/pkg/shared/usecase"
 	
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
@@ -15,12 +15,12 @@ import (
 // GraphQLHandler model
 type GraphQLHandler struct {
 	mw        interfaces.Middleware
-	uc        usecase.{{clean (upper .ModuleName)}}Usecase
+	uc        usecase.Usecase
 	validator interfaces.Validator
 }
 
 // NewGraphQLHandler delivery
-func NewGraphQLHandler(mw interfaces.Middleware, uc usecase.{{clean (upper .ModuleName)}}Usecase, validator interfaces.Validator) *GraphQLHandler {
+func NewGraphQLHandler(mw interfaces.Middleware, uc usecase.Usecase, validator interfaces.Validator) *GraphQLHandler {
 	return &GraphQLHandler{
 		mw: mw, uc: uc, validator: validator,
 	}
@@ -78,7 +78,7 @@ func (q *queryResolver) GetAll{{clean (upper .ModuleName)}}(ctx context.Context,
 		input.Filter = new(CommonFilter)
 	}
 	filter := input.Filter.toSharedFilter()
-	data, meta, err := q.root.uc.GetAll{{clean (upper .ModuleName)}}(ctx, filter)
+	data, meta, err := q.root.uc.{{clean (upper .ModuleName)}}().GetAll{{clean (upper .ModuleName)}}(ctx, filter)
 	if err != nil {
 		return results, err
 	}
@@ -95,7 +95,7 @@ func (q *queryResolver) GetDetail{{clean (upper .ModuleName)}}(ctx context.Conte
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
-	return q.root.uc.GetDetail{{clean (upper .ModuleName)}}(ctx, input.ID)
+	return q.root.uc.{{clean (upper .ModuleName)}}().GetDetail{{clean (upper .ModuleName)}}(ctx, input.ID)
 }
 
 `
@@ -122,7 +122,7 @@ func (m *mutationResolver) Create{{clean (upper .ModuleName)}}(ctx context.Conte
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
-	if err := m.root.uc.Create{{clean (upper .ModuleName)}}(ctx, &input.Data); err != nil {
+	if err := m.root.uc.{{clean (upper .ModuleName)}}().Create{{clean (upper .ModuleName)}}(ctx, &input.Data); err != nil {
 		return ok, err
 	}
 	return "Success", nil
@@ -138,7 +138,7 @@ func (m *mutationResolver) Update{{clean (upper .ModuleName)}}(ctx context.Conte
 
 	// tokenClaim := golibshared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
-	if err := m.root.uc.Update{{clean (upper .ModuleName)}}(ctx, input.ID, &input.Data); err != nil {
+	if err := m.root.uc.{{clean (upper .ModuleName)}}().Update{{clean (upper .ModuleName)}}(ctx, input.ID, &input.Data); err != nil {
 		return ok, err
 	}
 	return "Success", nil
@@ -151,7 +151,7 @@ func (m *mutationResolver) Delete{{clean (upper .ModuleName)}}(ctx context.Conte
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
-	if err := m.root.uc.Delete{{clean (upper .ModuleName)}}(ctx, input.ID); err != nil {
+	if err := m.root.uc.{{clean (upper .ModuleName)}}().Delete{{clean (upper .ModuleName)}}(ctx, input.ID); err != nil {
 		return ok, err
 	}
 	return "Success", nil

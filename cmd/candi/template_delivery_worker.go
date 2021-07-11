@@ -9,7 +9,7 @@ import (
 	"context"
 	"fmt"
 
-	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
+	"{{.PackagePrefix}}/pkg/shared/usecase"
 
 	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/codebase/factory/types"
@@ -19,12 +19,12 @@ import (
 
 // KafkaHandler struct
 type KafkaHandler struct {
-	uc        usecase.{{clean (upper .ModuleName)}}Usecase
+	uc        usecase.Usecase
 	validator interfaces.Validator
 }
 
 // NewKafkaHandler constructor
-func NewKafkaHandler(uc usecase.{{clean (upper .ModuleName)}}Usecase, validator interfaces.Validator) *KafkaHandler {
+func NewKafkaHandler(uc usecase.Usecase, validator interfaces.Validator) *KafkaHandler {
 	return &KafkaHandler{
 		uc:        uc,
 		validator: validator,
@@ -55,7 +55,7 @@ import (
 	"context"
 	"fmt"
 
-	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
+	"{{.PackagePrefix}}/pkg/shared/usecase"
 
 	"{{.LibraryName}}/candihelper"
 	"{{.LibraryName}}/codebase/factory/types"
@@ -65,12 +65,12 @@ import (
 
 // CronHandler struct
 type CronHandler struct {
-	uc        usecase.{{clean (upper .ModuleName)}}Usecase
+	uc        usecase.Usecase
 	validator interfaces.Validator
 }
 
 // NewCronHandler constructor
-func NewCronHandler(uc usecase.{{clean (upper .ModuleName)}}Usecase, validator interfaces.Validator) *CronHandler {
+func NewCronHandler(uc usecase.Usecase, validator interfaces.Validator) *CronHandler {
 	return &CronHandler{
 		uc:        uc,
 		validator: validator,
@@ -99,7 +99,7 @@ import (
 	"context"
 	"fmt"
 
-	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
+	"{{.PackagePrefix}}/pkg/shared/usecase"
 
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
@@ -108,12 +108,12 @@ import (
 
 // RedisHandler struct
 type RedisHandler struct {
-	uc        usecase.{{clean (upper .ModuleName)}}Usecase
+	uc        usecase.Usecase
 	validator interfaces.Validator
 }
 
 // NewRedisHandler constructor
-func NewRedisHandler(uc usecase.{{clean (upper .ModuleName)}}Usecase, validator interfaces.Validator) *RedisHandler {
+func NewRedisHandler(uc usecase.Usecase, validator interfaces.Validator) *RedisHandler {
 	return &RedisHandler{
 		uc:        uc,
 		validator: validator,
@@ -143,7 +143,7 @@ import (
 	"fmt"
 	"time"
 
-	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
+	"{{.PackagePrefix}}/pkg/shared/usecase"
 
 	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/codebase/factory/types"
@@ -153,12 +153,12 @@ import (
 
 // TaskQueueHandler struct
 type TaskQueueHandler struct {
-	uc        usecase.{{clean (upper .ModuleName)}}Usecase
+	uc        usecase.Usecase
 	validator interfaces.Validator
 }
 
 // NewTaskQueueHandler constructor
-func NewTaskQueueHandler(uc usecase.{{clean (upper .ModuleName)}}Usecase, validator interfaces.Validator) *TaskQueueHandler {
+func NewTaskQueueHandler(uc usecase.Usecase, validator interfaces.Validator) *TaskQueueHandler {
 	return &TaskQueueHandler{
 		uc:        uc,
 		validator: validator,
@@ -204,7 +204,7 @@ import (
 	"context"
 	"fmt"
 
-	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
+	"{{.PackagePrefix}}/pkg/shared/usecase"
 
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
@@ -213,12 +213,12 @@ import (
 
 // PostgresListenerHandler struct
 type PostgresListenerHandler struct {
-	uc        usecase.{{clean (upper .ModuleName)}}Usecase
+	uc        usecase.Usecase
 	validator interfaces.Validator
 }
 
 // NewPostgresListenerHandler constructor
-func NewPostgresListenerHandler(uc usecase.{{clean (upper .ModuleName)}}Usecase, validator interfaces.Validator) *PostgresListenerHandler {
+func NewPostgresListenerHandler(uc usecase.Usecase, validator interfaces.Validator) *PostgresListenerHandler {
 	return &PostgresListenerHandler{
 		uc:        uc,
 		validator: validator,
@@ -247,7 +247,7 @@ import (
 	"context"
 	"fmt"
 
-	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
+	"{{.PackagePrefix}}/pkg/shared/usecase"
 
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
@@ -256,12 +256,12 @@ import (
 
 // RabbitMQHandler struct
 type RabbitMQHandler struct {
-	uc        usecase.{{clean (upper .ModuleName)}}Usecase
+	uc        usecase.Usecase
 	validator interfaces.Validator
 }
 
 // NewRabbitMQHandler constructor
-func NewRabbitMQHandler(uc usecase.{{clean (upper .ModuleName)}}Usecase, validator interfaces.Validator) *RabbitMQHandler {
+func NewRabbitMQHandler(uc usecase.Usecase, validator interfaces.Validator) *RabbitMQHandler {
 	return &RabbitMQHandler{
 		uc:        uc,
 		validator: validator,

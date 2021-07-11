@@ -10,8 +10,8 @@ import (
 	"time"
 
 	proto "{{.ProtoSource}}/{{.ModuleName}}"
-	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
+	"{{.PackagePrefix}}/pkg/shared/usecase"
 
 	"google.golang.org/grpc"` + `
 	
@@ -27,12 +27,12 @@ import (
 // GRPCHandler rpc handler
 type GRPCHandler struct {
 	mw        interfaces.Middleware
-	uc        usecase.{{clean (upper .ModuleName)}}Usecase
+	uc        usecase.Usecase
 	validator interfaces.Validator
 }
 
 // NewGRPCHandler func
-func NewGRPCHandler(mw interfaces.Middleware, uc usecase.{{clean (upper .ModuleName)}}Usecase, validator interfaces.Validator) *GRPCHandler {
+func NewGRPCHandler(mw interfaces.Middleware, uc usecase.Usecase, validator interfaces.Validator) *GRPCHandler {
 	return &GRPCHandler{
 		mw: mw, uc: uc, validator: validator,
 	}
@@ -61,7 +61,7 @@ func (h *GRPCHandler) GetAll{{clean (upper .ModuleName)}}(ctx context.Context, r
 		Limit: int(req.Limit), Page: int(req.Page), Search: req.Search, OrderBy: req.OrderBy, Sort: req.Sort, ShowAll: req.ShowAll,
 	}
 
-	data, meta, err := h.uc.GetAll{{clean (upper .ModuleName)}}(ctx, filter)
+	data, meta, err := h.uc.{{clean (upper .ModuleName)}}().GetAll{{clean (upper .ModuleName)}}(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (h *GRPCHandler) GetDetail{{clean (upper .ModuleName)}}(ctx context.Context
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
 
-	data, err := h.uc.GetDetail{{clean (upper .ModuleName)}}(ctx, req.ID)
+	data, err := h.uc.{{clean (upper .ModuleName)}}().GetDetail{{clean (upper .ModuleName)}}(ctx, req.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func (h *GRPCHandler) Create{{clean (upper .ModuleName)}}(ctx context.Context, r
 		return nil, mErr
 	}
 
-	if err := h.uc.Create{{clean (upper .ModuleName)}}(ctx, &payload); err != nil {
+	if err := h.uc.{{clean (upper .ModuleName)}}().Create{{clean (upper .ModuleName)}}(ctx, &payload); err != nil {
 		return nil, err
 	}
 
@@ -144,7 +144,7 @@ func (h *GRPCHandler) Update{{clean (upper .ModuleName)}}(ctx context.Context, r
 		return nil, err
 	}{{else}}payload.ID = req.ID{{end}}
 
-	if err := h.uc.Update{{clean (upper .ModuleName)}}(ctx, req.ID, &payload); err != nil {
+	if err := h.uc.{{clean (upper .ModuleName)}}().Update{{clean (upper .ModuleName)}}(ctx, req.ID, &payload); err != nil {
 		return nil, err
 	}
 
@@ -160,7 +160,7 @@ func (h *GRPCHandler) Delete{{clean (upper .ModuleName)}}(ctx context.Context, r
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
 
-	if err := h.uc.Delete{{clean (upper .ModuleName)}}(ctx, req.ID); err != nil {
+	if err := h.uc.{{clean (upper .ModuleName)}}().Delete{{clean (upper .ModuleName)}}(ctx, req.ID); err != nil {
 		return nil, err
 	}
 

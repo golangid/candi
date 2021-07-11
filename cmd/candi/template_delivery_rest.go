@@ -9,8 +9,8 @@ import (
 
 	"github.com/labstack/echo"
 
-	"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/usecase"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
+	"{{.PackagePrefix}}/pkg/shared/usecase"
 
 	"{{.LibraryName}}/candihelper"
 	"{{.LibraryName}}/candishared"
@@ -22,12 +22,12 @@ import (
 // RestHandler handler
 type RestHandler struct {
 	mw        interfaces.Middleware
-	uc        usecase.{{clean (upper .ModuleName)}}Usecase
+	uc        usecase.Usecase
 	validator interfaces.Validator
 }
 
 // NewRestHandler create new rest handler
-func NewRestHandler(mw interfaces.Middleware, uc usecase.{{clean (upper .ModuleName)}}Usecase, validator interfaces.Validator) *RestHandler {
+func NewRestHandler(mw interfaces.Middleware, uc usecase.Usecase, validator interfaces.Validator) *RestHandler {
 	return &RestHandler{
 		mw: mw, uc: uc, validator: validator,
 	}
@@ -57,7 +57,7 @@ func (h *RestHandler) getAll{{clean (upper .ModuleName)}}(c echo.Context) error 
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
 
-	data, meta, err := h.uc.GetAll{{clean (upper .ModuleName)}}(ctx, filter)
+	data, meta, err := h.uc.{{clean (upper .ModuleName)}}().GetAll{{clean (upper .ModuleName)}}(ctx, filter)
 	if err != nil {
 		return wrapper.NewHTTPResponse(http.StatusOK, err.Error()).JSON(c.Response())
 	}
@@ -70,7 +70,7 @@ func (h *RestHandler) getDetail{{clean (upper .ModuleName)}}ByID(c echo.Context)
 	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:GetDetail{{clean (upper .ModuleName)}}ByID")
 	defer trace.Finish()
 
-	data, err := h.uc.GetDetail{{clean (upper .ModuleName)}}(ctx, c.Param("id"))
+	data, err := h.uc.{{clean (upper .ModuleName)}}().GetDetail{{clean (upper .ModuleName)}}(ctx, c.Param("id"))
 	if err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
@@ -87,7 +87,7 @@ func (h *RestHandler) create{{clean (upper .ModuleName)}}(c echo.Context) error 
 		return wrapper.NewHTTPResponse(http.StatusOK, err.Error()).JSON(c.Response())
 	}
 
-	err := h.uc.Create{{clean (upper .ModuleName)}}(ctx, &payload)
+	err := h.uc.{{clean (upper .ModuleName)}}().Create{{clean (upper .ModuleName)}}(ctx, &payload)
 	if err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
@@ -104,7 +104,7 @@ func (h *RestHandler) update{{clean (upper .ModuleName)}}(c echo.Context) error 
 		return wrapper.NewHTTPResponse(http.StatusOK, err.Error()).JSON(c.Response())
 	}
 
-	err := h.uc.Update{{clean (upper .ModuleName)}}(ctx, c.Param("id"), &payload)
+	err := h.uc.{{clean (upper .ModuleName)}}().Update{{clean (upper .ModuleName)}}(ctx, c.Param("id"), &payload)
 	if err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
@@ -116,7 +116,7 @@ func (h *RestHandler) delete{{clean (upper .ModuleName)}}(c echo.Context) error 
 	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:Delete{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
-	if err := h.uc.Delete{{clean (upper .ModuleName)}}(ctx, c.Param("id")); err != nil {
+	if err := h.uc.{{clean (upper .ModuleName)}}().Delete{{clean (upper .ModuleName)}}(ctx, c.Param("id")); err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
 
