@@ -40,7 +40,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 	}
 	apiGraphQLStructure := FileStructure{
 		TargetDir: "graphql/", IsDir: true, SkipIfExist: true, Childs: []FileStructure{
-			{FromTemplate: true, DataSource: gqlCfg, Source: defaultGraphqlRootSchema, FileName: "_schema.graphql"},
+			{FromTemplate: true, DataSource: gqlCfg, Source: defaultGraphqlRootSchema, FileName: "_schema.graphql", SkipIfExist: true},
 			{FromTemplate: true, DataSource: gqlCfg, SkipIfExist: true, Source: templateGraphqlCommon, FileName: "_common.graphql"},
 		},
 	}

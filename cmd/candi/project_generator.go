@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -47,6 +46,11 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 	}
 	apiGraphQLStructure := FileStructure{
 		TargetDir: "graphql/", IsDir: true, SkipFunc: func() bool { return !srvConfig.GraphQLHandler },
+	}
+
+	apiGraphQLSchemaStructure := FileStructure{
+		FromTemplate: true, DataSource: srvConfig, Source: defaultGraphqlRootSchema, FileName: "_schema.graphql",
+		SkipFunc: func() bool { return !srvConfig.GraphQLHandler },
 	}
 
 	moduleStructure := FileStructure{
@@ -171,8 +175,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 	switch scope {
 	case initService:
 		apiGraphQLStructure.Childs = append(apiGraphQLStructure.Childs, []FileStructure{
-			{FromTemplate: true, DataSource: srvConfig, Source: defaultGraphqlRootSchema, FileName: "_schema.graphql",
-				SkipFunc: func() bool { return !srvConfig.GraphQLHandler }},
+			apiGraphQLSchemaStructure,
 			{FromTemplate: true, DataSource: srvConfig, Source: templateGraphqlCommon, FileName: "_common.graphql",
 				SkipFunc: func() bool { return !srvConfig.GraphQLHandler }},
 		}...)
@@ -275,7 +278,9 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 	}
 
 	execGenerator(baseDirectoryFile)
-	updateGraphQLRoot(flagParam, srvConfig)
+	if srvConfig.GraphQLHandler {
+		updateGraphQLRoot(flagParam, srvConfig)
+	}
 	updateSharedUsecase(flagParam, srvConfig)
 	updateSharedRepository(flagParam, srvConfig)
 }
@@ -343,11 +348,11 @@ func execGenerator(fl FileStructure) {
 		} else {
 			buff = []byte(fl.Source)
 		}
-		if _, err := os.Stat(fl.TargetDir + fl.FileName); os.IsExist(err) && fl.SkipIfExist {
+		if _, err := os.Stat(fl.TargetDir + fl.FileName); err == nil && fl.SkipIfExist {
 			goto execChild
 		}
 		fmt.Printf("creating %s...\n", fl.TargetDir+fl.FileName)
-		if err := ioutil.WriteFile(fl.TargetDir+fl.FileName, buff, 0644); err != nil {
+		if err := os.WriteFile(fl.TargetDir+fl.FileName, buff, 0644); err != nil {
 			log.Fatal(err)
 		}
 	}

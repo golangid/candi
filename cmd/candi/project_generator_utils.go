@@ -151,7 +151,7 @@ stageSelectWorkerHandlers:
 		goto stageSelectServerHandler
 	}
 
-	if scope == addHandler {
+	if scope == addModule || scope == addHandler {
 		if b, ok := serviceHandlers[restHandler]; ok {
 			srvConfig.RestHandler = b
 		}
@@ -182,7 +182,9 @@ stageSelectWorkerHandlers:
 		srvConfig.checkWorkerActive()
 
 		srvConfig.OutputDir = flagParam.outputFlag
-		scopeAddHandler(flagParam, srvConfig, serviceHandlers, workerHandlers)
+		if scope == addHandler {
+			scopeAddHandler(flagParam, srvConfig, serviceHandlers, workerHandlers)
+		}
 		return
 	}
 
