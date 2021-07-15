@@ -18,7 +18,10 @@ var notShowErrorListType = map[string]bool{
 	"condition_else": true, "condition_then": true,
 }
 
-var inMemStorage = map[string]*gojsonschema.Schema{}
+var (
+	inMemStorage = map[string]*gojsonschema.Schema{}
+	inMemJSON    = map[string]interface{}{}
+)
 
 // loadJSONSchemaLocalFiles all json schema from given path
 func loadJSONSchemaLocalFiles(path string) error {
@@ -50,6 +53,7 @@ func loadJSONSchemaLocalFiles(path string) error {
 			if err != nil {
 				return fmt.Errorf("%s: %v", fileName, err)
 			}
+			inMemJSON[id] = data
 		}
 		return nil
 	})
@@ -83,6 +87,7 @@ func (v *JSONSchemaValidator) ValidateDocument(schemaID string, documentSource i
 	if err != nil {
 		return err
 	}
+	jsonObj, _ := inMemJSON[schemaID]
 
 	document := gojsonschema.NewBytesLoader(candihelper.ToBytes(documentSource))
 	result, err := schema.Validate(document)
@@ -101,7 +106,12 @@ func (v *JSONSchemaValidator) ValidateDocument(schemaID string, documentSource i
 				field = fmt.Sprintf("%s.%s", field, desc.Details()["property"])
 				field = strings.TrimPrefix(field, "(root).")
 			}
-			multiError.Append(field, errors.New(desc.Description()))
+			msg, found := getMessage(jsonObj, field, "message")
+			if found {
+				multiError.Append(field, errors.New(msg))
+			} else {
+				multiError.Append(field, errors.New(desc.Description()))
+			}
 		}
 	}
 
@@ -110,4 +120,24 @@ func (v *JSONSchemaValidator) ValidateDocument(schemaID string, documentSource i
 	}
 
 	return nil
+}
+
+func getMessage(obj interface{}, key, messageKey string) (string, bool) {
+	switch t := obj.(type) {
+	case map[string]interface{}:
+		if v, ok := t[key]; ok {
+			if msg, ok := v.(map[string]interface{})[messageKey]; ok {
+				return fmt.Sprintf("%v", msg), ok
+			}
+			if msg, ok := getMessage(v, key, messageKey); ok {
+				return msg, ok
+			}
+		}
+		for _, v := range t {
+			if msg, ok := getMessage(v, key, messageKey); ok {
+				return msg, ok
+			}
+		}
+	}
+	return "", false
 }
