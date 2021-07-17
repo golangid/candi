@@ -104,6 +104,7 @@ func NewHTTPRequest(opts ...HTTPRequestOption) HTTPRequest {
 
 	hystrixClientOpt := []hystrix.Option{
 		hystrix.WithHTTPTimeout(httpReq.timeout),
+		hystrix.WithHystrixTimeout(httpReq.timeout),
 		hystrix.WithRetrier(retrier),
 		hystrix.WithRetryCount(httpReq.retries),
 		hystrix.WithCommandName(httpReq.breakerName),
@@ -130,14 +131,8 @@ func (request *httpRequestImpl) Do(ctx context.Context, method, url string, requ
 	}
 
 	// set tracer
-	trace := tracer.StartTrace(ctx, fmt.Sprintf("HTTP Request: %s %s%s", method, req.URL.Host, req.URL.Path))
-	defer func() {
-		if err != nil {
-			trace.SetError(err)
-		}
-		trace.Finish()
-	}()
-	ctx = trace.Context()
+	trace, ctx := tracer.StartTraceWithContext(ctx, fmt.Sprintf("HTTP Request: %s %s", method, req.URL.Host))
+	defer func() { trace.SetError(err); trace.Finish() }()
 
 	// iterate optional data of headers
 	for key, value := range headers {
@@ -149,9 +144,11 @@ func (request *httpRequestImpl) Do(ctx context.Context, method, url string, requ
 	trace.SetTag("http.request", dumpRequest)
 	trace.SetTag("http.method", req.Method)
 	trace.SetTag("http.url", req.URL.String())
+	trace.SetTag("http.url_path", req.URL.Path)
 	trace.SetTag("http.min_error_code", request.minHTTPErrorCodeThreshold)
 	trace.SetTag("http.retries", request.retries)
-	trace.SetTag("http.sleep_between_retry", request.sleepBetweenRetry)
+	trace.SetTag("http.sleep_between_retry", request.sleepBetweenRetry.String())
+	trace.SetTag("http.timeout", request.timeout.String())
 	trace.SetTag("http.breaker_name", request.breakerName)
 	if requestBody != nil {
 		tracer.Log(ctx, "request.body", requestBody)

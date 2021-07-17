@@ -23,7 +23,7 @@ func echoRestTracerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		req := c.Request()
 		globalTracer := opentracing.GlobalTracer()
-		operationName := fmt.Sprintf("%s %s%s", req.Method, req.Host, req.URL.Path)
+		operationName := fmt.Sprintf("%s %s", req.Method, req.Host)
 
 		var span opentracing.Span
 		var ctx context.Context
@@ -45,6 +45,7 @@ func echoRestTracerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		httpDump, _ := httputil.DumpRequest(req, false)
 		span.SetTag("http.request", string(httpDump))
+		span.SetTag("http.url_path", req.URL.Path)
 		ext.HTTPMethod.Set(span, req.Method)
 
 		defer func() {
