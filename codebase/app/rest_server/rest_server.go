@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/labstack/echo"
-	echoMidd "github.com/labstack/echo/middleware"
 	"github.com/soheilhy/cmux"
 
 	"pkg.agungdp.dev/candi/candihelper"
@@ -43,7 +42,7 @@ func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.Ap
 	}
 
 	server.serverEngine.HTTPErrorHandler = wrapper.CustomHTTPErrorHandler
-	server.serverEngine.Use(echoMidd.CORS())
+	server.serverEngine.Use(echoCORS())
 
 	server.serverEngine.GET("/", echo.WrapHandler(http.HandlerFunc(candishared.HTTPRoot(string(service.Name())))))
 	server.serverEngine.GET("/memstats",
@@ -52,7 +51,7 @@ func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.Ap
 
 	restRootPath := server.serverEngine.Group("", echoRestTracerMiddleware)
 	if env.BaseEnv().DebugMode {
-		restRootPath.Use(echoMidd.Logger())
+		restRootPath.Use(echoLogger())
 	}
 	for _, m := range service.GetModules() {
 		if h := m.RESTHandler(); h != nil {
