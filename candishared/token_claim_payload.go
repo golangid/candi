@@ -1,6 +1,6 @@
 package candishared
 
-import "github.com/dgrijalva/jwt-go"
+import "github.com/golang-jwt/jwt"
 
 // TokenClaim for token claim data
 type TokenClaim struct {
