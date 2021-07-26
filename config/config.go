@@ -13,8 +13,6 @@ import (
 	"github.com/soheilhy/cmux"
 	"pkg.agungdp.dev/candi/codebase/interfaces"
 	"pkg.agungdp.dev/candi/config/env"
-	"pkg.agungdp.dev/candi/logger"
-	"pkg.agungdp.dev/candi/tracer"
 )
 
 // Config app
@@ -27,15 +25,6 @@ type Config struct {
 // Init app config
 func Init(serviceName string) *Config {
 	env.Load(serviceName)
-	logger.InitZap()
-	tracer.InitOpenTracing(tracer.Param{
-		AgentHost:       env.BaseEnv().JaegerTracingHost,
-		ServiceName:     serviceName,
-		Level:           env.BaseEnv().Environment,
-		BuildNumberTag:  env.BaseEnv().BuildNumber,
-		MaxGoroutineTag: env.BaseEnv().MaxGoroutines,
-	})
-
 	cfg := &Config{
 		ServiceName: serviceName,
 	}

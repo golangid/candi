@@ -18,16 +18,21 @@ import (
 	"{{.LibraryName}}/config/broker"
 	{{ if not (or .SQLDeps .MongoDeps .RedisDeps) }}// {{ end }}"{{.LibraryName}}/config/database"
 	"{{.LibraryName}}/candihelper"
+	"{{.LibraryName}}/logger"
 	"{{.LibraryName}}/middleware"
+	"{{.LibraryName}}/tracer"
 	"{{.LibraryName}}/validator"
 )
 
 // LoadConfigs load selected dependency configuration in this service
 func LoadConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
+	logger.InitZap()
 
 	var sharedEnv shared.Environment
 	candihelper.MustParseEnv(&sharedEnv)
 	shared.SetEnv(sharedEnv)
+
+	tracer.InitOpenTracing(baseCfg.ServiceName)
 
 	baseCfg.LoadFunc(func(ctx context.Context) []interfaces.Closer {
 		brokerDeps := broker.InitBrokers(

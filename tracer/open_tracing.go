@@ -25,33 +25,35 @@ import (
 	"pkg.agungdp.dev/candi/config/env"
 )
 
-// Param for init jaeger opentracing
-type Param struct {
-	AgentHost       string
-	ServiceName     string
-	Level           string
-	BuildNumberTag  string
-	MaxGoroutineTag int
-}
+// InitOpenTracing init jaeger tracing
+func InitOpenTracing(serviceName string, opts ...OptionFunc) error {
+	option := Option{
+		AgentHost:       env.BaseEnv().JaegerTracingHost,
+		Level:           env.BaseEnv().Environment,
+		BuildNumberTag:  env.BaseEnv().BuildNumber,
+		MaxGoroutineTag: env.BaseEnv().MaxGoroutines,
+	}
 
-// InitOpenTracing with agent and service name in parameter
-func InitOpenTracing(param Param) error {
-	if param.Level != "" {
-		param.ServiceName = fmt.Sprintf("%s-%s", param.ServiceName, strings.ToLower(param.Level))
+	for _, opt := range opts {
+		opt(&option)
+	}
+
+	if option.Level != "" {
+		serviceName = fmt.Sprintf("%s-%s", serviceName, strings.ToLower(option.Level))
 	}
 	defaultTags := []opentracing.Tag{
 		{Key: "num_cpu", Value: runtime.NumCPU()},
 		{Key: "go_version", Value: runtime.Version()},
 		{Key: "candi_version", Value: candi.Version},
 	}
-	if param.MaxGoroutineTag != 0 {
+	if option.MaxGoroutineTag != 0 {
 		defaultTags = append(defaultTags, opentracing.Tag{
-			Key: "max_goroutines", Value: param.MaxGoroutineTag,
+			Key: "max_goroutines", Value: option.MaxGoroutineTag,
 		})
 	}
-	if param.BuildNumberTag != "" {
+	if option.BuildNumberTag != "" {
 		defaultTags = append(defaultTags, opentracing.Tag{
-			Key: "build_number", Value: param.BuildNumberTag,
+			Key: "build_number", Value: option.BuildNumberTag,
 		})
 	}
 	cfg := &config.Configuration{
@@ -62,9 +64,9 @@ func InitOpenTracing(param Param) error {
 		Reporter: &config.ReporterConfig{
 			LogSpans:            true,
 			BufferFlushInterval: 1 * time.Second,
-			LocalAgentHostPort:  param.AgentHost,
+			LocalAgentHostPort:  option.AgentHost,
 		},
-		ServiceName: param.ServiceName,
+		ServiceName: serviceName,
 		Tags:        defaultTags,
 	}
 	tracer, _, err := cfg.NewTracer(config.MaxTagValueLength(math.MaxInt32))
@@ -76,7 +78,7 @@ func InitOpenTracing(param Param) error {
 	return nil
 }
 
-type tracerImpl struct {
+type jaegerImpl struct {
 	ctx  context.Context
 	span opentracing.Span
 	tags map[string]interface{}
@@ -85,7 +87,7 @@ type tracerImpl struct {
 // StartTrace starting trace child span from parent span
 func StartTrace(ctx context.Context, operationName string) interfaces.Tracer {
 	if candishared.GetValueFromContext(ctx, skipTracer) != nil {
-		return &tracerImpl{ctx: ctx}
+		return &jaegerImpl{ctx: ctx}
 	}
 
 	span := opentracing.SpanFromContext(ctx)
@@ -96,7 +98,7 @@ func StartTrace(ctx context.Context, operationName string) interfaces.Tracer {
 		span = opentracing.GlobalTracer().StartSpan(operationName, opentracing.ChildOf(span.Context()))
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
-	return &tracerImpl{
+	return &jaegerImpl{
 		ctx:  ctx,
 		span: span,
 	}
@@ -109,18 +111,18 @@ func StartTraceWithContext(ctx context.Context, operationName string) (interface
 }
 
 // Context get active context
-func (t *tracerImpl) Context() context.Context {
+func (t *jaegerImpl) Context() context.Context {
 	return t.ctx
 }
 
 // Tags create tags in tracer span
-func (t *tracerImpl) Tags() map[string]interface{} {
+func (t *jaegerImpl) Tags() map[string]interface{} {
 	t.tags = make(map[string]interface{})
 	return t.tags
 }
 
 // SetTag set tags in tracer span
-func (t *tracerImpl) SetTag(key string, value interface{}) {
+func (t *jaegerImpl) SetTag(key string, value interface{}) {
 	if t.span == nil {
 		return
 	}
@@ -132,7 +134,7 @@ func (t *tracerImpl) SetTag(key string, value interface{}) {
 }
 
 // InjectHTTPHeader to continue tracer to http request host
-func (t *tracerImpl) InjectHTTPHeader(req *http.Request) {
+func (t *jaegerImpl) InjectHTTPHeader(req *http.Request) {
 	if t.span == nil {
 		return
 	}
@@ -145,7 +147,7 @@ func (t *tracerImpl) InjectHTTPHeader(req *http.Request) {
 }
 
 // InjectGRPCMetaData to continue tracer to grpc metadata context
-func (t *tracerImpl) InjectGRPCMetadata(md metadata.MD) {
+func (t *jaegerImpl) InjectGRPCMetadata(md metadata.MD) {
 	if t.span == nil {
 		return
 	}
@@ -159,17 +161,17 @@ func (t *tracerImpl) InjectGRPCMetadata(md metadata.MD) {
 }
 
 // SetError set error in span
-func (t *tracerImpl) SetError(err error) {
+func (t *jaegerImpl) SetError(err error) {
 	SetError(t.ctx, err)
 }
 
 // SetError log data
-func (t *tracerImpl) Log(key string, value interface{}) {
+func (t *jaegerImpl) Log(key string, value interface{}) {
 	Log(t.ctx, key, value)
 }
 
 // Finish trace with additional tags data, must in deferred function
-func (t *tracerImpl) Finish(additionalTags ...map[string]interface{}) {
+func (t *jaegerImpl) Finish(additionalTags ...map[string]interface{}) {
 	if t.span == nil {
 		return
 	}
