@@ -56,10 +56,10 @@ func createMongoIndex(db *mongo.Database) {
 }
 
 type storage struct {
-	mongoRead, mongoWrite *mongo.Database
+	db *mongo.Database
 }
 
-func (s *storage) findAllJob(filter Filter) (meta Meta, jobs []Job) {
+func (s *storage) findAllJob(filter Filter) (meta MetaJobList, jobs []Job) {
 	ctx := context.Background()
 
 	lim := int64(filter.Limit)
@@ -88,7 +88,7 @@ func (s *storage) findAllJob(filter Filter) (meta Meta, jobs []Job) {
 	query := bson.M{
 		"$and": pipeQuery,
 	}
-	cur, err := s.mongoRead.Collection(mongoColl).Find(ctx, query, findOptions)
+	cur, err := s.db.Collection(mongoColl).Find(ctx, query, findOptions)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -102,8 +102,8 @@ func (s *storage) findAllJob(filter Filter) (meta Meta, jobs []Job) {
 		if delay, err := time.ParseDuration(job.Interval); err == nil && job.Status == string(statusQueueing) {
 			job.NextRetryAt = time.Now().Add(delay).Format(time.RFC3339)
 		}
-		if job.TraceID != "" && tracerHost != "" {
-			job.TraceID = fmt.Sprintf("%s/trace/%s", tracerHost, job.TraceID)
+		if job.TraceID != "" && defaultOption.JaegerTracingDashboard != "" {
+			job.TraceID = fmt.Sprintf("%s/trace/%s", defaultOption.JaegerTracingDashboard, job.TraceID)
 		}
 		jobs = append(jobs, job)
 	}
@@ -141,14 +141,14 @@ func (s *storage) countTaskJob(filter Filter) int {
 		"$and": pipeQuery,
 	}
 
-	count, _ := s.mongoRead.Collection(mongoColl).CountDocuments(ctx, query)
+	count, _ := s.db.Collection(mongoColl).CountDocuments(ctx, query)
 	return int(count)
 }
 
 func (s *storage) countTaskJobDetail(taskName string, status jobStatusEnum) int {
 	ctx := context.Background()
 
-	count, _ := s.mongoRead.Collection(mongoColl).CountDocuments(ctx, bson.M{"task_name": taskName, "status": status})
+	count, _ := s.db.Collection(mongoColl).CountDocuments(ctx, bson.M{"task_name": taskName, "status": status})
 	return int(count)
 }
 
@@ -158,12 +158,12 @@ func (s *storage) saveJob(job Job) {
 
 	if job.ID == "" {
 		job.ID = primitive.NewObjectID().Hex()
-		_, err = s.mongoWrite.Collection(mongoColl).InsertOne(ctx, job)
+		_, err = s.db.Collection(mongoColl).InsertOne(ctx, job)
 	} else {
 		opt := options.UpdateOptions{
 			Upsert: candihelper.ToBoolPtr(true),
 		}
-		_, err = s.mongoWrite.Collection(mongoColl).UpdateOne(ctx,
+		_, err = s.db.Collection(mongoColl).UpdateOne(ctx,
 			bson.M{
 				"_id": job.ID,
 			},
@@ -185,7 +185,7 @@ func (s *storage) updateAllStatus(taskName string, status jobStatusEnum) {
 	if status == statusStopped {
 		filter["status"] = bson.M{"$nin": []jobStatusEnum{statusFailure, statusSuccess, statusRetrying}}
 	}
-	_, err := s.mongoWrite.Collection(mongoColl).UpdateMany(ctx,
+	_, err := s.db.Collection(mongoColl).UpdateMany(ctx,
 		filter,
 		bson.M{
 			"$set": bson.M{"status": string(status)},
@@ -199,7 +199,7 @@ func (s *storage) updateAllStatus(taskName string, status jobStatusEnum) {
 func (s *storage) findJobByID(id string) (job Job, err error) {
 	ctx := context.Background()
 
-	err = s.mongoWrite.Collection(mongoColl).FindOne(ctx, bson.M{"_id": id}).Decode(&job)
+	err = s.db.Collection(mongoColl).FindOne(ctx, bson.M{"_id": id}).Decode(&job)
 	return
 }
 
@@ -212,7 +212,7 @@ func (s *storage) cleanJob(taskName string) {
 			{"status": bson.M{"$nin": []jobStatusEnum{statusRetrying, statusQueueing}}},
 		},
 	}
-	s.mongoWrite.Collection(mongoColl).DeleteMany(ctx, query)
+	s.db.Collection(mongoColl).DeleteMany(ctx, query)
 }
 
 func (s *storage) findAllPendingJob() (jobs []Job) {
@@ -223,7 +223,7 @@ func (s *storage) findAllPendingJob() (jobs []Job) {
 			"$in": []jobStatusEnum{statusRetrying, statusQueueing},
 		},
 	}
-	cur, err := s.mongoRead.Collection(mongoColl).Find(ctx, query)
+	cur, err := s.db.Collection(mongoColl).Find(ctx, query)
 	if err != nil {
 		return
 	}

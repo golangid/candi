@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"pkg.agungdp.dev/candi/codebase/factory"
+	"go.mongodb.org/mongo-driver/mongo"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
 	"pkg.agungdp.dev/candi/config/env"
 )
@@ -19,6 +19,14 @@ type (
 		TaskListClientSubscribers []string
 		JobListClientSubscribers  []string
 	}
+	// MetaTaskResolver meta resolver
+	MetaTaskResolver struct {
+		Page           int
+		Limit          int
+		TotalRecords   int
+		TotalPages     int
+		IsCloseSession bool
+	}
 	// TaskResolver resolver
 	TaskResolver struct {
 		Name      string
@@ -27,21 +35,27 @@ type (
 			GiveUp, Retrying, Success, Queueing, Stopped int
 		}
 	}
+	// TaskListResolver resolver
+	TaskListResolver struct {
+		Meta MetaTaskResolver
+		Data []TaskResolver
+	}
 
-	// Meta resolver
-	Meta struct {
-		Page         int
-		Limit        int
-		TotalRecords int
-		TotalPages   int
-		Detail       struct {
+	// MetaJobList resolver
+	MetaJobList struct {
+		Page           int
+		Limit          int
+		TotalRecords   int
+		TotalPages     int
+		IsCloseSession bool
+		Detail         struct {
 			GiveUp, Retrying, Success, Queueing, Stopped int
 		}
 	}
 
 	// JobListResolver resolver
 	JobListResolver struct {
-		Meta Meta
+		Meta MetaJobList
 		Data []Job
 	}
 
@@ -87,34 +101,36 @@ var (
 	refreshWorkerNotif, shutdown, semaphore chan struct{}
 	mutex                                   sync.Mutex
 	tasks                                   []string
-	tracerHost                              string
 
-	clientTaskSubscribers    map[string]chan []TaskResolver
+	clientTaskSubscribers    map[string]chan TaskListResolver
 	clientJobTaskSubscribers map[string]clientJobTaskSubscriber
 
 	errClientLimitExceeded = errors.New("client limit exceeded, please try again later")
+
+	defaultOption option
 )
 
-func makeAllGlobalVars(service factory.ServiceFactory) {
-	if service.GetDependency().GetRedisPool() == nil {
-		panic("Task queue worker require redis for queue")
-	}
-	if service.GetDependency().GetMongoDatabase() == nil {
-		panic("Task queue worker require mongo for dashboard management")
-	}
+func makeAllGlobalVars(q QueueStorage, db *mongo.Database, opts ...OptionFunc) {
+	createMongoIndex(db)
 
-	createMongoIndex(service.GetDependency().GetMongoDatabase().WriteDB())
-	queue = NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
-	repo = &storage{mongoRead: service.GetDependency().GetMongoDatabase().ReadDB(), mongoWrite: service.GetDependency().GetMongoDatabase().WriteDB()}
-	refreshWorkerNotif, shutdown, semaphore = make(chan struct{}), make(chan struct{}, 1), make(chan struct{}, env.BaseEnv().MaxGoroutines)
+	queue = q
+	repo = &storage{db: db}
+
 	if env.BaseEnv().JaegerTracingDashboard != "" {
-		tracerHost = env.BaseEnv().JaegerTracingDashboard
+		defaultOption.JaegerTracingDashboard = env.BaseEnv().JaegerTracingDashboard
 	} else if urlTracerAgent, _ := url.Parse("//" + env.BaseEnv().JaegerTracingHost); urlTracerAgent != nil {
-		tracerHost = urlTracerAgent.Hostname()
+		defaultOption.JaegerTracingDashboard = urlTracerAgent.Hostname()
+	}
+	defaultOption.MaxClientSubscriber = env.BaseEnv().TaskQueueDashboardMaxClientSubscribers
+	defaultOption.AutoRemoveClientInterval = 30 * time.Minute
+
+	for _, opt := range opts {
+		opt(&defaultOption)
 	}
 
-	clientTaskSubscribers = make(map[string]chan []TaskResolver, env.BaseEnv().TaskQueueDashboardMaxClientSubscribers)
-	clientJobTaskSubscribers = make(map[string]clientJobTaskSubscriber, env.BaseEnv().TaskQueueDashboardMaxClientSubscribers)
+	refreshWorkerNotif, shutdown, semaphore = make(chan struct{}), make(chan struct{}, 1), make(chan struct{}, env.BaseEnv().MaxGoroutines)
+	clientTaskSubscribers = make(map[string]chan TaskListResolver, defaultOption.MaxClientSubscriber)
+	clientJobTaskSubscribers = make(map[string]clientJobTaskSubscriber, defaultOption.MaxClientSubscriber)
 
 	registeredTask = make(map[string]struct {
 		handlerFunc   types.WorkerHandlerFunc

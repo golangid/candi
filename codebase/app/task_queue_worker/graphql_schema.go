@@ -19,8 +19,8 @@ type Mutation {
 }
 
 type Subscription {
-	subscribe_all_task(): [TaskType!]!
-	listen_task(task_name: String!, page: Int!, limit: Int!, search: String, status: [String!]!): JobListType!
+	listen_task(): TaskListResolver!
+	listen_task_job_detail(task_name: String!, page: Int!, limit: Int!, search: String, status: [String!]!): JobListResolver!
 }
 
 type TaglineType {
@@ -34,16 +34,30 @@ type MetaType {
 	limit: Int!
 	total_pages: Int!
 	total_records: Int!
-	detail: TaskDetailType!
+	is_close_session: Boolean!
+	detail: TaskDetailResolver!
 }
 
-type TaskType {
+type MetaTaskResolver {
+	page: Int!
+	limit: Int!
+	total_pages: Int!
+	total_records: Int!
+	is_close_session: Boolean!
+}
+
+type TaskResolver {
 	name: String!
 	total_jobs: Int!
-	detail: TaskDetailType!
+	detail: TaskDetailResolver!
 }
 
-type TaskDetailType {
+type TaskListResolver {
+	meta: MetaTaskResolver!
+	data: [TaskResolver!]!
+}
+
+type TaskDetailResolver {
 	give_up: Int!
 	retrying: Int!
 	success: Int!
@@ -51,12 +65,12 @@ type TaskDetailType {
 	stopped: Int!
 }
 
-type JobListType {
+type JobListResolver {
 	meta: MetaType!
-	data: [JobType!]!
+	data: [JobResolver!]!
 }
 
-type JobType {
+type JobResolver {
 	id: String!
 	task_name: String!
 	arguments: String!

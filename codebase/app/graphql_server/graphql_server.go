@@ -140,7 +140,7 @@ func NewHandler(service factory.ServiceFactory) Handler {
 		graphql.Tracer(newGraphQLMiddleware(middlewareResolvers)),
 		graphql.Logger(&panicLogger{}),
 	}
-	if env.BaseEnv().IsProduction {
+	if env.BaseEnv().GraphQLDisableIntrospection {
 		// handling vulnerabilities exploit schema
 		schemaOpts = append(schemaOpts, graphql.DisableIntrospection())
 	}
@@ -196,7 +196,7 @@ func (s *handlerImpl) ServeGraphQL() http.HandlerFunc {
 }
 
 func (s *handlerImpl) ServePlayground(resp http.ResponseWriter, req *http.Request) {
-	if env.BaseEnv().IsProduction {
+	if env.BaseEnv().GraphQLDisableIntrospection {
 		http.Error(resp, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -204,7 +204,7 @@ func (s *handlerImpl) ServePlayground(resp http.ResponseWriter, req *http.Reques
 }
 
 func (s *handlerImpl) ServeVoyager(resp http.ResponseWriter, req *http.Request) {
-	if env.BaseEnv().IsProduction {
+	if env.BaseEnv().GraphQLDisableIntrospection {
 		http.Error(resp, "Forbidden", http.StatusForbidden)
 		return
 	}

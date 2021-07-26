@@ -1,11 +1,12 @@
 package taskqueueworker
 
 import (
-	"pkg.agungdp.dev/candi/config/env"
+	"pkg.agungdp.dev/candi/candihelper"
+	"pkg.agungdp.dev/candi/logger"
 )
 
-func registerNewTaskListSubscriber(clientID string, clientChannel chan []TaskResolver) error {
-	if len(clientTaskSubscribers) >= env.BaseEnv().TaskQueueDashboardMaxClientSubscribers {
+func registerNewTaskListSubscriber(clientID string, clientChannel chan TaskListResolver) error {
+	if len(clientTaskSubscribers) >= defaultOption.MaxClientSubscriber {
 		return errClientLimitExceeded
 	}
 
@@ -24,7 +25,7 @@ func removeTaskListSubscriber(clientID string) {
 }
 
 func registerNewJobListSubscriber(taskName, clientID string, filter Filter, clientChannel chan JobListResolver) error {
-	if len(clientJobTaskSubscribers) >= env.BaseEnv().TaskQueueDashboardMaxClientSubscribers {
+	if len(clientJobTaskSubscribers) >= defaultOption.MaxClientSubscriber {
 		return errClientLimitExceeded
 	}
 
@@ -54,7 +55,7 @@ func broadcastAllToSubscribers() {
 }
 
 func broadcastTaskList() {
-	var taskRes []TaskResolver
+	var taskRes TaskListResolver
 	for _, task := range tasks {
 		var tsk = TaskResolver{
 			Name: task,
@@ -65,20 +66,35 @@ func broadcastTaskList() {
 		tsk.Detail.Queueing = repo.countTaskJobDetail(task, statusQueueing)
 		tsk.Detail.Stopped = repo.countTaskJobDetail(task, statusStopped)
 		tsk.TotalJobs = tsk.Detail.GiveUp + tsk.Detail.Retrying + tsk.Detail.Success + tsk.Detail.Queueing + tsk.Detail.Stopped
-		taskRes = append(taskRes, tsk)
+		taskRes.Data = append(taskRes.Data, tsk)
 	}
 
 	for _, subscriber := range clientTaskSubscribers {
-		subscriber <- taskRes
+		candihelper.TryCatch{
+			Try: func() {
+				subscriber <- taskRes
+			},
+			Catch: func(e error) {
+				logger.LogE(e.Error())
+			},
+		}.Do()
 	}
 }
 
 func broadcastJobList() {
 	for _, subscriber := range clientJobTaskSubscribers {
 		meta, jobs := repo.findAllJob(subscriber.filter)
-		subscriber.c <- JobListResolver{
-			Meta: meta,
-			Data: jobs,
-		}
+
+		candihelper.TryCatch{
+			Try: func() {
+				subscriber.c <- JobListResolver{
+					Meta: meta,
+					Data: jobs,
+				}
+			},
+			Catch: func(e error) {
+				logger.LogE(e.Error())
+			},
+		}.Do()
 	}
 }

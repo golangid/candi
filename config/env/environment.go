@@ -45,6 +45,8 @@ type Env struct {
 
 	IsProduction, DebugMode bool
 
+	GraphQLDisableIntrospection bool
+
 	// HTTPPort config
 	HTTPPort uint16
 	// GRPCPort Config
@@ -188,6 +190,8 @@ func Load(serviceName string) {
 	if env.UseSharedListener && env.HTTPPort <= 0 {
 		panic("missing or invalid value for HTTP_PORT environment")
 	}
+
+	env.GraphQLDisableIntrospection = parseBool("GRAPHQL_DISABLE_INTROSPECTION")
 
 	env.BasicAuthUsername, ok = os.LookupEnv("BASIC_AUTH_USERNAME")
 	if !ok {

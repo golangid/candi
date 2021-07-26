@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"go.mongodb.org/mongo-driver/mongo"
 	"pkg.agungdp.dev/candi/candishared"
 	"pkg.agungdp.dev/candi/codebase/factory"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
@@ -24,9 +25,9 @@ type taskQueueWorker struct {
 	wg      sync.WaitGroup
 }
 
-// NewWorker create new cron worker
-func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
-	makeAllGlobalVars(service)
+// NewTaskQueueWorker create new task queue worker
+func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, db *mongo.Database, opts ...OptionFunc) factory.AppServerFactory {
+	makeAllGlobalVars(q, db, opts...)
 
 	for _, m := range service.GetModules() {
 		if h := m.WorkerHandler(types.TaskQueue); h != nil {
@@ -73,7 +74,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 		}
 	}()
 
-	fmt.Printf("\x1b[34;1m⇨ Task queue worker running with %d task. Open [::]:%d for dashboard\x1b[0m\n\n",
+	fmt.Printf("\x1b[34;1m⇨ Task Queue Worker running with %d task. Open [::]:%d for dashboard\x1b[0m\n\n",
 		len(registeredTask), env.BaseEnv().TaskQueueDashboardPort)
 
 	workerInstance := &taskQueueWorker{

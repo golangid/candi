@@ -50,7 +50,15 @@ func NewAppFromEnvironmentConfig(service factory.ServiceFactory) (apps []factory
 		apps = append(apps, cronworker.NewWorker(service))
 	}
 	if env.BaseEnv().UseTaskQueueWorker {
-		apps = append(apps, taskqueueworker.NewWorker(service))
+		if service.GetDependency().GetRedisPool() == nil {
+			panic("Task queue worker require redis for queue")
+		}
+		if service.GetDependency().GetMongoDatabase() == nil {
+			panic("Task queue worker require mongo for dashboard management")
+		}
+		queue := taskqueueworker.NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
+		db := service.GetDependency().GetMongoDatabase().WriteDB()
+		apps = append(apps, taskqueueworker.NewTaskQueueWorker(service, queue, db))
 	}
 	if env.BaseEnv().UseRedisSubscriber {
 		apps = append(apps, redisworker.NewWorker(service))

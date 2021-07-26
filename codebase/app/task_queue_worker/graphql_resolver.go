@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/agungdwiprasetyo/task-queue-worker-dashboard/external"
 	"github.com/golangid/graphql-go"
@@ -130,8 +131,8 @@ func (r *rootResolver) CleanJob(ctx context.Context, input struct {
 	return "Success clean all job in task " + input.TaskName, nil
 }
 
-func (r *rootResolver) SubscribeAllTask(ctx context.Context) (<-chan []TaskResolver, error) {
-	output := make(chan []TaskResolver)
+func (r *rootResolver) ListenTask(ctx context.Context) (<-chan TaskListResolver, error) {
+	output := make(chan TaskListResolver)
 
 	httpHeader := candishared.GetValueFromContext(ctx, candishared.ContextKeyHTTPHeader).(http.Header)
 	clientID := httpHeader.Get("Sec-WebSocket-Key")
@@ -140,7 +141,10 @@ func (r *rootResolver) SubscribeAllTask(ctx context.Context) (<-chan []TaskResol
 		return nil, err
 	}
 
+	autoRemoveClient := time.NewTicker(defaultOption.AutoRemoveClientInterval)
+
 	go func() {
+		defer func() { close(output); autoRemoveClient.Stop() }()
 
 		broadcastTaskList()
 
@@ -148,13 +152,23 @@ func (r *rootResolver) SubscribeAllTask(ctx context.Context) (<-chan []TaskResol
 		case <-ctx.Done():
 			removeTaskListSubscriber(clientID)
 			return
+
+		case <-autoRemoveClient.C:
+			output <- TaskListResolver{
+				Meta: MetaTaskResolver{
+					IsCloseSession: true,
+				},
+			}
+			removeTaskListSubscriber(clientID)
+			return
 		}
+
 	}()
 
 	return output, nil
 }
 
-func (r *rootResolver) ListenTask(ctx context.Context, input struct {
+func (r *rootResolver) ListenTaskJobDetail(ctx context.Context, input struct {
 	TaskName    string
 	Page, Limit int32
 	Search      *string
@@ -181,7 +195,10 @@ func (r *rootResolver) ListenTask(ctx context.Context, input struct {
 		return nil, err
 	}
 
+	autoRemoveClient := time.NewTicker(defaultOption.AutoRemoveClientInterval)
+
 	go func() {
+		defer func() { close(output); autoRemoveClient.Stop() }()
 
 		meta, jobs := repo.findAllJob(filter)
 		output <- JobListResolver{
@@ -192,6 +209,16 @@ func (r *rootResolver) ListenTask(ctx context.Context, input struct {
 		case <-ctx.Done():
 			removeJobListSubscriber(input.TaskName, clientID)
 			return
+
+		case <-autoRemoveClient.C:
+			output <- JobListResolver{
+				Meta: MetaJobList{
+					IsCloseSession: true,
+				},
+			}
+			removeJobListSubscriber(input.TaskName, clientID)
+			return
+
 		}
 	}()
 
