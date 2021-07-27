@@ -64,7 +64,7 @@ func NewAppFromEnvironmentConfig(service factory.ServiceFactory) (apps []factory
 		apps = append(apps, redisworker.NewWorker(service))
 	}
 	if env.BaseEnv().UsePostgresListenerWorker {
-		apps = append(apps, postgresworker.NewWorker(service))
+		apps = append(apps, postgresworker.NewWorker(service, env.BaseEnv().DbSQLWriteDSN))
 	}
 	if env.BaseEnv().UseRabbitMQWorker {
 		apps = append(apps, rabbitmqworker.NewWorker(service))

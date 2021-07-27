@@ -41,13 +41,13 @@ type (
 )
 
 // NewWorker create new postgres event listener
-func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
+func NewWorker(service factory.ServiceFactory, postgresDSN string) factory.AppServerFactory {
 	worker := new(postgresWorker)
 	shutdown, semaphore = make(chan struct{}, 1), make(chan struct{}, env.BaseEnv().MaxGoroutines)
 	startWorkerCh, releaseWorkerCh = make(chan struct{}), make(chan struct{})
 
 	worker.handlers = make(map[string]types.WorkerHandlerFunc)
-	db, listener := getListener()
+	db, listener := getListener(postgresDSN)
 	execCreateFunctionEventQuery(db)
 
 	for _, m := range service.GetModules() {
@@ -65,7 +65,8 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	if len(worker.handlers) == 0 {
 		log.Println("postgres listener: no table event provided")
 	} else {
-		fmt.Printf("\x1b[34;1m⇨ Postgres Event Listener running with %d table\x1b[0m\n\n", len(worker.handlers))
+		fmt.Printf("\x1b[34;1m⇨ Postgres Event Listener running with %d table. DSN: %s\x1b[0m\n\n",
+			len(worker.handlers), candihelper.MaskingPasswordURL(postgresDSN))
 	}
 
 	if env.BaseEnv().UseConsul {

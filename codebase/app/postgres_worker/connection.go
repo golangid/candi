@@ -7,22 +7,21 @@ import (
 
 	"github.com/lib/pq"
 	"pkg.agungdp.dev/candi/candihelper"
-	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
 )
 
-func getListener() (*sql.DB, *pq.Listener) {
+func getListener(dsn string) (*sql.DB, *pq.Listener) {
 
-	db, err := sql.Open("postgres", env.BaseEnv().DbSQLWriteDSN)
+	db, err := sql.Open("postgres", dsn)
 	if err != nil {
-		panic(fmt.Errorf(`[POSTGRES-LISTENER] ERROR: %v, connection: %s`, err, candihelper.MaskingPasswordURL(env.BaseEnv().DbSQLWriteDSN)))
+		panic(fmt.Errorf(`[POSTGRES-LISTENER] ERROR: %v, connection: %s`, err, candihelper.MaskingPasswordURL(dsn)))
 	}
 
 	if err := db.Ping(); err != nil {
-		panic(fmt.Errorf(`[POSTGRES-LISTENER] ERROR: %v, ping: %s`, err, candihelper.MaskingPasswordURL(env.BaseEnv().DbSQLWriteDSN)))
+		panic(fmt.Errorf(`[POSTGRES-LISTENER] ERROR: %v, ping: %s`, err, candihelper.MaskingPasswordURL(dsn)))
 	}
 
-	listener := pq.NewListener(env.BaseEnv().DbSQLWriteDSN, 10*time.Second, time.Minute, eventCallback)
+	listener := pq.NewListener(dsn, 10*time.Second, time.Minute, eventCallback)
 	return db, listener
 }
 
