@@ -44,48 +44,30 @@ func InitSQLDatabase() interfaces.SQLDatabase {
 	deferFunc := logger.LogWithDefer("Load SQL connection...")
 	defer deferFunc()
 
-	inst := new(sqlInstance)
+	return &sqlInstance{
+		read:  ConnectSQLDatabase(env.BaseEnv().DbSQLReadDSN),
+		write: ConnectSQLDatabase(env.BaseEnv().DbSQLWriteDSN),
+	}
+}
+
+// ConnectSQLDatabase connect to sql database with dsn
+func ConnectSQLDatabase(dsn string) *sql.DB {
 	var sqlDriver string
-	var err error
 	delimiter := "://"
-
-	if env.BaseEnv().DbSQLReadDSN != "" {
-		dsn := env.BaseEnv().DbSQLReadDSN
-		if u, err := url.Parse(dsn); err != nil {
-			idx := strings.Index(dsn, delimiter)
-			sqlDriver = dsn[0:idx]
-			dsn = dsn[idx+len(delimiter):]
-		} else {
-			sqlDriver = u.Scheme
-		}
-		inst.read, err = sql.Open(sqlDriver, dsn)
-		if err != nil {
-			log.Panicf("SQL Read: %v", err)
-		}
-
-		if err = inst.read.Ping(); err != nil {
-			log.Panicf("SQL Read: %v", err)
-		}
+	if u, err := url.Parse(dsn); err != nil {
+		idx := strings.Index(dsn, delimiter)
+		sqlDriver = dsn[0:idx]
+		dsn = dsn[idx+len(delimiter):]
+	} else {
+		sqlDriver = u.Scheme
+	}
+	db, err := sql.Open(sqlDriver, dsn)
+	if err != nil {
+		log.Panicf("SQL Connection: %v", err)
+	}
+	if err = db.Ping(); err != nil {
+		log.Panicf("SQL Connection: %v", err)
 	}
 
-	if env.BaseEnv().DbSQLWriteDSN != "" {
-		dsn := env.BaseEnv().DbSQLReadDSN
-		if u, err := url.Parse(dsn); err != nil {
-			idx := strings.Index(dsn, delimiter)
-			sqlDriver = env.BaseEnv().DbSQLReadDSN[0:idx]
-			dsn = dsn[idx+len(delimiter):]
-		} else {
-			sqlDriver = u.Scheme
-		}
-		inst.write, err = sql.Open(sqlDriver, dsn)
-		if err != nil {
-			log.Panicf("SQL Write: %v", err)
-		}
-
-		if err = inst.write.Ping(); err != nil {
-			log.Panicf("SQL Write: %v", err)
-		}
-	}
-
-	return inst
+	return db
 }

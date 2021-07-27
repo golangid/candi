@@ -178,7 +178,7 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 		if r := recover(); r != nil {
 			trace.SetError(fmt.Errorf("%v", r))
 		}
-		job.FinishedAt = time.Now().Format(time.RFC3339)
+		job.FinishedAt = time.Now()
 		repo.saveJob(job)
 		broadcastAllToSubscribers()
 		logger.LogGreen("task_queue > trace_url: " + tracer.GetTraceURL(ctx))

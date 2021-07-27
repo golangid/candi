@@ -91,9 +91,9 @@ type Env struct {
 	MaxGoroutines int
 
 	// Database environment
-	DbMongoWriteHost, DbMongoReadHost, DbMongoDatabaseName string
-	DbSQLWriteDSN, DbSQLReadDSN                            string
-	DbRedisReadDSN, DbRedisWriteDSN                        string
+	DbMongoWriteHost, DbMongoReadHost string
+	DbSQLWriteDSN, DbSQLReadDSN       string
+	DbRedisReadDSN, DbRedisWriteDSN   string
 }
 
 var env Env
@@ -332,7 +332,6 @@ func parseBrokerEnv() {
 func parseDatabaseEnv() {
 	env.DbMongoWriteHost = os.Getenv("MONGODB_HOST_WRITE")
 	env.DbMongoReadHost = os.Getenv("MONGODB_HOST_READ")
-	env.DbMongoDatabaseName = os.Getenv("MONGODB_DATABASE_NAME")
 
 	env.DbSQLReadDSN = os.Getenv("SQL_DB_READ_DSN")
 	env.DbSQLWriteDSN = os.Getenv("SQL_DB_WRITE_DSN")

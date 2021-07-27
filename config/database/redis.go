@@ -50,41 +50,33 @@ func (m *redisInstance) Disconnect(ctx context.Context) (err error) {
 }
 
 // InitRedis connection from environment:
-// REDIS_READ_DSN, REDIS_READ_TLS
-// REDIS_WRITE_DSN, REDIS_WRITE_TLS
+// REDIS_READ_DSN, REDIS_WRITE_DSN
 func InitRedis() interfaces.RedisPool {
 	deferFunc := logger.LogWithDefer("Load Redis connection...")
 	defer deferFunc()
 
-	inst := new(redisInstance)
-
-	inst.read = &redis.Pool{
-		Dial: func() (redis.Conn, error) {
-			return redis.DialURL(env.BaseEnv().DbRedisReadDSN)
-		},
+	inst := &redisInstance{
+		read:  ConnectRedis(env.BaseEnv().DbRedisReadDSN),
+		write: ConnectRedis(env.BaseEnv().DbRedisWriteDSN),
 	}
-
-	pingRead := inst.read.Get()
-	defer pingRead.Close()
-	_, err := pingRead.Do("PING")
-	if err != nil {
-		panic("redis read: " + err.Error())
-	}
-
-	inst.write = &redis.Pool{
-		Dial: func() (redis.Conn, error) {
-			return redis.DialURL(env.BaseEnv().DbRedisWriteDSN)
-		},
-	}
-
-	pingWrite := inst.write.Get()
-	defer pingWrite.Close()
-	_, err = pingWrite.Do("PING")
-	if err != nil {
-		panic("redis write: " + err.Error())
-	}
-
 	inst.cache = cache.NewRedisCache(inst.read, inst.write)
-
 	return inst
+}
+
+// ConnectRedis connect to redis with dsn
+func ConnectRedis(dsn string) *redis.Pool {
+	pool := &redis.Pool{
+		Dial: func() (redis.Conn, error) {
+			return redis.DialURL(dsn)
+		},
+	}
+
+	ping := pool.Get()
+	defer ping.Close()
+	_, err := ping.Do("PING")
+	if err != nil {
+		panic("redis ping: " + err.Error())
+	}
+
+	return pool
 }

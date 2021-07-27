@@ -15,18 +15,18 @@ const (
 
 // Job model
 type Job struct {
-	ID          string `bson:"_id" json:"_id"`
-	TaskName    string `bson:"task_name" json:"task_name"`
-	Arguments   string `bson:"arguments" json:"arguments"`
-	Retries     int    `bson:"retries" json:"retries"`
-	MaxRetry    int    `bson:"max_retry" json:"max_retry"`
-	Interval    string `bson:"interval" json:"interval"`
-	CreatedAt   string `bson:"created_at" json:"created_at"`
-	FinishedAt  string `bson:"finished_at" json:"finished_at"`
-	Status      string `bson:"status" json:"status"`
-	Error       string `bson:"error" json:"error"`
-	TraceID     string `bson:"traceId" json:"traceId"`
-	NextRetryAt string `bson:"-" json:"-"`
+	ID          string    `bson:"_id" json:"_id"`
+	TaskName    string    `bson:"task_name" json:"task_name"`
+	Arguments   string    `bson:"arguments" json:"arguments"`
+	Retries     int       `bson:"retries" json:"retries"`
+	MaxRetry    int       `bson:"max_retry" json:"max_retry"`
+	Interval    string    `bson:"interval" json:"interval"`
+	CreatedAt   time.Time `bson:"created_at" json:"created_at"`
+	FinishedAt  time.Time `bson:"finished_at" json:"finished_at"`
+	Status      string    `bson:"status" json:"status"`
+	Error       string    `bson:"error" json:"error"`
+	TraceID     string    `bson:"traceId" json:"traceId"`
+	NextRetryAt string    `bson:"-" json:"-"`
 }
 
 type errorHistory struct {
@@ -58,7 +58,7 @@ func AddJob(taskName string, maxRetry int, args []byte) (err error) {
 	newJob.MaxRetry = maxRetry
 	newJob.Interval = defaultInterval
 	newJob.Status = string(statusQueueing)
-	newJob.CreatedAt = time.Now().Format(time.RFC3339)
+	newJob.CreatedAt = time.Now()
 
 	go func(job Job, workerIndex int) {
 		queue.PushJob(&job)
