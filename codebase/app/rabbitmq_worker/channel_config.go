@@ -18,10 +18,10 @@ func setupQueueConfig(ch *amqp.Channel, queueName string) (<-chan amqp.Delivery,
 	return ch.Consume(
 		queue.Name,
 		env.BaseEnv().RabbitMQ.ConsumerGroup+"_"+queue.Name, // consumer
-		env.BaseEnv().RabbitMQ.AutoACK,                      // auto-ack
-		false,                                               // exclusive
-		false,                                               // no-local
-		false,                                               // no-wait
-		nil,                                                 // args
+		false, // auto-ack
+		false, // exclusive
+		false, // no-local
+		false, // no-wait
+		nil,   // args
 	)
 }

@@ -37,10 +37,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	}
 
 	var consumerHandler consumerHandler
-	consumerHandler.handlerFuncs = make(map[string]struct {
-		handlerFunc   types.WorkerHandlerFunc
-		errorHandlers []types.WorkerErrorHandler
-	})
+	consumerHandler.handlerFuncs = make(map[string]types.WorkerHandler)
 	for _, m := range service.GetModules() {
 		if h := m.WorkerHandler(types.Kafka); h != nil {
 			var handlerGroup types.WorkerHandlerGroup
@@ -49,12 +46,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 				if _, ok := consumerHandler.handlerFuncs[handler.Pattern]; ok {
 					logger.LogYellow(fmt.Sprintf("Kafka: warning, topic %s has been used in another module, overwrite handler func", handler.Pattern))
 				}
-				consumerHandler.handlerFuncs[handler.Pattern] = struct {
-					handlerFunc   types.WorkerHandlerFunc
-					errorHandlers []types.WorkerErrorHandler
-				}{
-					handlerFunc: handler.HandlerFunc, errorHandlers: handler.ErrorHandler,
-				}
+				consumerHandler.handlerFuncs[handler.Pattern] = handler
 				consumerHandler.topics = append(consumerHandler.topics, handler.Pattern)
 				logger.LogYellow(fmt.Sprintf(`[KAFKA-CONSUMER] (topic): %-15s  --> (module): "%s"`, `"`+handler.Pattern+`"`, m.Name()))
 			}

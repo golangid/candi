@@ -16,11 +16,6 @@ import (
 	"pkg.agungdp.dev/candi/tracer"
 )
 
-type handlerType struct {
-	handlerFunc   types.WorkerHandlerFunc
-	errorHandlers []types.WorkerErrorHandler
-}
-
 type rabbitmqWorker struct {
 	ctx           context.Context
 	ctxCancelFunc func()
@@ -31,7 +26,7 @@ type rabbitmqWorker struct {
 	semaphore  []chan struct{}
 	wg         sync.WaitGroup
 	channels   []reflect.SelectCase
-	handlers   map[string]handlerType
+	handlers   map[string]types.WorkerHandler
 }
 
 // NewWorker create new rabbitmq consumer
@@ -45,7 +40,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	worker.ch = service.GetDependency().GetBroker().GetConfiguration(types.RabbitMQ).(*amqp.Channel)
 
 	worker.shutdown = make(chan struct{}, 1)
-	worker.handlers = make(map[string]handlerType)
+	worker.handlers = make(map[string]types.WorkerHandler)
 
 	for _, m := range service.GetModules() {
 		if h := m.WorkerHandler(types.RabbitMQ); h != nil {
@@ -61,9 +56,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 				worker.channels = append(worker.channels, reflect.SelectCase{
 					Dir: reflect.SelectRecv, Chan: reflect.ValueOf(queueChan),
 				})
-				worker.handlers[handler.Pattern] = handlerType{
-					handlerFunc: handler.HandlerFunc, errorHandlers: handler.ErrorHandler,
-				}
+				worker.handlers[handler.Pattern] = handler
 				worker.semaphore = append(worker.semaphore, make(chan struct{}, 1))
 			}
 		}
@@ -139,17 +132,22 @@ func (r *rabbitmqWorker) processMessage(message amqp.Delivery) {
 		return
 	}
 
+	ctx := r.ctx
+	selectedHandler := r.handlers[message.RoutingKey]
+	if selectedHandler.DisableTrace {
+		ctx = tracer.SkipTraceContext(ctx)
+	}
+
 	var err error
-	trace, ctx := tracer.StartTraceWithContext(r.ctx, "RabbitMQConsumer")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "RabbitMQConsumer")
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
 		}
 
-		if err == nil && !env.BaseEnv().RabbitMQ.AutoACK {
+		if selectedHandler.AutoACK {
 			message.Ack(false)
 		}
-
 		trace.SetError(err)
 		logger.LogGreen("rabbitmq_consumer > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.Finish()
@@ -161,10 +159,13 @@ func (r *rabbitmqWorker) processMessage(message amqp.Delivery) {
 	trace.Log("header", message.Headers)
 	trace.Log("body", message.Body)
 
-	selectedHandler := r.handlers[message.RoutingKey]
-	err = selectedHandler.handlerFunc(ctx, message.Body)
+	if env.BaseEnv().DebugMode {
+		log.Printf("\x1b[35;3mRabbitMQ Consumer: message consumed, topic = %s\x1b[0m", message.RoutingKey)
+	}
+
+	err = selectedHandler.HandlerFunc(ctx, message.Body)
 	if err != nil {
-		for _, errHandler := range selectedHandler.errorHandlers {
+		for _, errHandler := range selectedHandler.ErrorHandler {
 			errHandler(ctx, types.RabbitMQ, message.RoutingKey, message.Body, err)
 		}
 	}

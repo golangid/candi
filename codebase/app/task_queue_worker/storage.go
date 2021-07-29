@@ -100,11 +100,13 @@ func (s *storage) findAllJob(filter Filter) (meta MetaJobList, jobs []Job) {
 			job.Error = ""
 		}
 		if delay, err := time.ParseDuration(job.Interval); err == nil && job.Status == string(statusQueueing) {
-			job.NextRetryAt = time.Now().Add(delay).Format(time.RFC3339)
+			job.NextRetryAt = time.Now().Add(delay).In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 		}
 		if job.TraceID != "" && defaultOption.JaegerTracingDashboard != "" {
 			job.TraceID = fmt.Sprintf("%s/trace/%s", defaultOption.JaegerTracingDashboard, job.TraceID)
 		}
+		job.CreatedAt = job.CreatedAt.In(candihelper.AsiaJakartaLocalTime)
+		job.FinishedAt = job.FinishedAt.In(candihelper.AsiaJakartaLocalTime)
 		jobs = append(jobs, job)
 	}
 

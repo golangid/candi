@@ -33,12 +33,9 @@ type (
 		pubSubConn func() (subFn func() *redis.PubSubConn)
 		isHaveJob  bool
 		service    factory.ServiceFactory
-		handlers   map[string]struct {
-			handlerFunc   types.WorkerHandlerFunc
-			errorHandlers []types.WorkerErrorHandler
-		}
-		consul *candiutils.Consul
-		wg     sync.WaitGroup
+		handlers   map[string]types.WorkerHandler
+		consul     *candiutils.Consul
+		wg         sync.WaitGroup
 	}
 )
 
@@ -46,22 +43,14 @@ type (
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	redisPool := service.GetDependency().GetRedisPool().WritePool()
 
-	handlers := make(map[string]struct {
-		handlerFunc   types.WorkerHandlerFunc
-		errorHandlers []types.WorkerErrorHandler
-	})
+	handlers := make(map[string]types.WorkerHandler)
 	for _, m := range service.GetModules() {
 		if h := m.WorkerHandler(types.RedisSubscriber); h != nil {
 			var handlerGroup types.WorkerHandlerGroup
 			h.MountHandlers(&handlerGroup)
 			for _, handler := range handlerGroup.Handlers {
 				logger.LogYellow(fmt.Sprintf(`[REDIS-SUBSCRIBER] (key prefix): %-15s  --> (module): "%s"`, `"`+handler.Pattern+`"`, m.Name()))
-				handlers[strings.Replace(handler.Pattern, "~", "", -1)] = struct {
-					handlerFunc   types.WorkerHandlerFunc
-					errorHandlers []types.WorkerErrorHandler
-				}{
-					handlerFunc: handler.HandlerFunc, errorHandlers: handler.ErrorHandler,
-				}
+				handlers[strings.Replace(handler.Pattern, "~", "", -1)] = handler
 			}
 		}
 	}
@@ -240,7 +229,13 @@ func (r *redisWorker) runListener(stop <-chan struct{}, count chan<- int, psc *r
 }
 
 func (r *redisWorker) processMessage(handlerName string, message []byte) {
-	trace, ctx := tracer.StartTraceWithContext(r.ctx, "RedisSubscriber")
+	ctx := r.ctx
+	selectedHandler := r.handlers[handlerName]
+	if selectedHandler.DisableTrace {
+		ctx = tracer.SkipTraceContext(ctx)
+	}
+
+	trace, ctx := tracer.StartTraceWithContext(ctx, "RedisSubscriber")
 	defer func() {
 		if r := recover(); r != nil {
 			tracer.SetError(ctx, fmt.Errorf("%v", r))
@@ -256,9 +251,8 @@ func (r *redisWorker) processMessage(handlerName string, message []byte) {
 	trace.SetTag("handler_name", handlerName)
 	trace.SetTag("message", string(message))
 
-	handler := r.handlers[handlerName]
-	if err := handler.handlerFunc(ctx, message); err != nil {
-		for _, errHandler := range handler.errorHandlers {
+	if err := selectedHandler.HandlerFunc(ctx, message); err != nil {
+		for _, errHandler := range selectedHandler.ErrorHandler {
 			errHandler(ctx, types.RedisSubscriber, handlerName, message, err)
 		}
 		tracer.SetError(ctx, err)

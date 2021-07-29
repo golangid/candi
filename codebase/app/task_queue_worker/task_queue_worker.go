@@ -36,11 +36,10 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, db *mong
 			for _, handler := range handlerGroup.Handlers {
 				workerIndex := len(workers)
 				registeredTask[handler.Pattern] = struct {
-					handlerFunc   types.WorkerHandlerFunc
-					errorHandlers []types.WorkerErrorHandler
-					workerIndex   int
+					handler     types.WorkerHandler
+					workerIndex int
 				}{
-					handlerFunc: handler.HandlerFunc, workerIndex: workerIndex, errorHandlers: handler.ErrorHandler,
+					handler: handler, workerIndex: workerIndex,
 				}
 				workerIndexTask[workerIndex] = &struct {
 					taskName       string
@@ -171,9 +170,13 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 		return
 	}
 
-	trace, ctx := tracer.StartTraceWithContext(t.ctx, "TaskQueueWorker")
-	defer trace.Finish()
+	ctx := t.ctx
+	selectedHandler := registeredTask[job.TaskName].handler
+	if selectedHandler.DisableTrace {
+		ctx = tracer.SkipTraceContext(ctx)
+	}
 
+	trace, ctx := tracer.StartTraceWithContext(ctx, "TaskQueueWorker")
 	defer func() {
 		if r := recover(); r != nil {
 			trace.SetError(fmt.Errorf("%v", r))
@@ -182,6 +185,7 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 		repo.saveJob(job)
 		broadcastAllToSubscribers()
 		logger.LogGreen("task_queue > trace_url: " + tracer.GetTraceURL(ctx))
+		trace.Finish()
 	}()
 
 	job.Retries++
@@ -208,7 +212,7 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 	}
 
 	ctx = context.WithValue(ctx, candishared.ContextKeyTaskQueueRetry, job.Retries)
-	if err := registeredTask[job.TaskName].handlerFunc(ctx, []byte(job.Arguments)); err != nil {
+	if err := selectedHandler.HandlerFunc(ctx, []byte(job.Arguments)); err != nil {
 		job.Error = err.Error()
 		job.Status = string(statusFailure)
 		trace.SetError(err)
@@ -216,7 +220,7 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 		case *candishared.ErrorRetrier:
 			if job.Retries >= job.MaxRetry {
 				logger.LogRed("TaskQueueWorker: GIVE UP: " + job.TaskName)
-				for _, errHandler := range registeredTask[job.TaskName].errorHandlers {
+				for _, errHandler := range selectedHandler.ErrorHandler {
 					errHandler(ctx, types.TaskQueue, job.TaskName, []byte(job.Arguments), err)
 				}
 				return

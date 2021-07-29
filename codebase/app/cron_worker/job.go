@@ -12,11 +12,11 @@ import (
 
 // Job model
 type Job struct {
-	HandlerName     string                  `json:"handler_name"`
-	Interval        string                  `json:"interval"`
-	HandlerFunc     types.WorkerHandlerFunc `json:"-"`
-	Params          string                  `json:"params"`
-	WorkerIndex     int                     `json:"worker_index"`
+	HandlerName     string              `json:"handler_name"`
+	Interval        string              `json:"interval"`
+	Handler         types.WorkerHandler `json:"-"`
+	Params          string              `json:"params"`
+	WorkerIndex     int                 `json:"worker_index"`
 	ticker          *time.Ticker
 	currentDuration time.Duration
 	nextDuration    *time.Duration
@@ -72,7 +72,7 @@ func AddJob(job Job) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	if job.HandlerFunc == nil {
+	if job.Handler.HandlerFunc == nil {
 		return errors.New("handler func cannot nil")
 	}
 	if job.HandlerName == "" {

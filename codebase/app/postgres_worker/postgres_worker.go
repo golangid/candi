@@ -35,7 +35,7 @@ type (
 
 		consul   *candiutils.Consul
 		listener *pq.Listener
-		handlers map[string]types.WorkerHandlerFunc
+		handlers map[string]types.WorkerHandler
 		wg       sync.WaitGroup
 	}
 )
@@ -46,7 +46,7 @@ func NewWorker(service factory.ServiceFactory, postgresDSN string) factory.AppSe
 	shutdown, semaphore = make(chan struct{}, 1), make(chan struct{}, env.BaseEnv().MaxGoroutines)
 	startWorkerCh, releaseWorkerCh = make(chan struct{}), make(chan struct{})
 
-	worker.handlers = make(map[string]types.WorkerHandlerFunc)
+	worker.handlers = make(map[string]types.WorkerHandler)
 	db, listener := getListener(postgresDSN)
 	execCreateFunctionEventQuery(db)
 
@@ -56,7 +56,7 @@ func NewWorker(service factory.ServiceFactory, postgresDSN string) factory.AppSe
 			h.MountHandlers(&handlerGroup)
 			for _, handler := range handlerGroup.Handlers {
 				logger.LogYellow(fmt.Sprintf(`[POSTGRES-LISTENER] (table): %-15s  --> (module): "%s"`, `"`+handler.Pattern+`"`, m.Name()))
-				worker.handlers[handler.Pattern] = handler.HandlerFunc
+				worker.handlers[handler.Pattern] = handler
 				execTriggerQuery(db, handler.Pattern)
 			}
 		}
@@ -108,7 +108,17 @@ START:
 					return
 				}
 
-				trace, ctx := tracer.StartTraceWithContext(p.ctx, "PostgresEventListener")
+				ctx := p.ctx
+				message := []byte(event.Extra)
+
+				var eventPayload EventPayload
+				json.Unmarshal(message, &eventPayload)
+
+				handler := p.handlers[eventPayload.Table]
+				if handler.DisableTrace {
+					ctx = tracer.SkipTraceContext(ctx)
+				}
+				trace, ctx := tracer.StartTraceWithContext(ctx, "PostgresEventListener")
 				defer func() {
 					if r := recover(); r != nil {
 						tracer.SetError(ctx, fmt.Errorf("panic: %v", r))
@@ -117,14 +127,14 @@ START:
 					trace.Finish()
 				}()
 
-				var eventPayload EventPayload
-				json.Unmarshal([]byte(event.Extra), &eventPayload)
-
 				trace.SetTag("database", candihelper.MaskingPasswordURL(env.BaseEnv().DbSQLWriteDSN))
 				trace.SetTag("table_name", eventPayload.Table)
 				trace.SetTag("action", eventPayload.Action)
 				trace.Log("payload", event.Extra)
-				if err := p.handlers[eventPayload.Table](ctx, []byte(event.Extra)); err != nil {
+				if err := handler.HandlerFunc(ctx, message); err != nil {
+					for _, errHandler := range handler.ErrorHandler {
+						errHandler(ctx, types.Kafka, eventPayload.Table, message, err)
+					}
 					trace.SetError(err)
 				}
 			}(e)

@@ -291,9 +291,14 @@ func SetError(ctx context.Context, err error) {
 
 // GetTraceURL log trace url
 func GetTraceURL(ctx context.Context) (u string) {
+	traceID := GetTraceID(ctx)
+	if traceID == "" {
+		return
+	}
+
 	urlAgent, err := url.Parse("//" + env.BaseEnv().JaegerTracingHost)
 	if urlAgent != nil && err == nil {
-		u = fmt.Sprintf("http://%s:16686/trace/%s", urlAgent.Hostname(), GetTraceID(ctx))
+		u = fmt.Sprintf("http://%s:16686/trace/%s", urlAgent.Hostname(), traceID)
 	}
 	return
 }

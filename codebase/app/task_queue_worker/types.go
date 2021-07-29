@@ -85,9 +85,8 @@ const (
 
 var (
 	registeredTask map[string]struct {
-		handlerFunc   types.WorkerHandlerFunc
-		errorHandlers []types.WorkerErrorHandler
-		workerIndex   int
+		handler     types.WorkerHandler
+		workerIndex int
 	}
 
 	workers         []reflect.SelectCase
@@ -133,9 +132,8 @@ func makeAllGlobalVars(q QueueStorage, db *mongo.Database, opts ...OptionFunc) {
 	clientJobTaskSubscribers = make(map[string]clientJobTaskSubscriber, defaultOption.MaxClientSubscriber)
 
 	registeredTask = make(map[string]struct {
-		handlerFunc   types.WorkerHandlerFunc
-		errorHandlers []types.WorkerErrorHandler
-		workerIndex   int
+		handler     types.WorkerHandler
+		workerIndex int
 	})
 	workerIndexTask = make(map[int]*struct {
 		taskName       string

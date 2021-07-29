@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -50,6 +51,14 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 	if !ok {
 		return nil, grpc.Errorf(codes.Aborted, "missing context metadata")
 	}
+
+	if metaDisableTrace := meta.Get(candihelper.HeaderDisableTrace); len(metaDisableTrace) > 0 {
+		isDisableTrace, _ := strconv.ParseBool(metaDisableTrace[0])
+		if isDisableTrace {
+			return handler(tracer.SkipTraceContext(ctx), req)
+		}
+	}
+
 	globalTracer := opentracing.GlobalTracer()
 	opName := fmt.Sprintf("GRPC: %s", info.FullMethod)
 
@@ -129,6 +138,16 @@ func (i *interceptor) streamTracerInterceptor(srv interface{}, stream grpc.Serve
 	if !ok {
 		return grpc.Errorf(codes.Aborted, "missing context metadata")
 	}
+
+	if metaDisableTrace := meta.Get(candihelper.HeaderDisableTrace); len(metaDisableTrace) > 0 {
+		isDisableTrace, _ := strconv.ParseBool(metaDisableTrace[0])
+		if isDisableTrace {
+			return handler(srv, &wrappedServerStream{
+				ServerStream: stream, wrappedContext: tracer.SkipTraceContext(ctx),
+			})
+		}
+	}
+
 	globalTracer := opentracing.GlobalTracer()
 	opName := fmt.Sprintf("GRPC-STREAM: %s", info.FullMethod)
 

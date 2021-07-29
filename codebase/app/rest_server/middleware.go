@@ -30,6 +30,13 @@ import (
 func echoRestTracerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		req := c.Request()
+
+		isDisableTrace, _ := strconv.ParseBool(req.Header.Get(candihelper.HeaderDisableTrace))
+		if isDisableTrace {
+			c.SetRequest(req.WithContext(tracer.SkipTraceContext(req.Context())))
+			return next(c)
+		}
+
 		globalTracer := opentracing.GlobalTracer()
 		operationName := fmt.Sprintf("%s %s", req.Method, req.Host)
 

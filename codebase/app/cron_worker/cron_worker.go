@@ -53,7 +53,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 
 				var job Job
 				job.HandlerName = funcName
-				job.HandlerFunc = handler.HandlerFunc
+				job.Handler = handler
 				job.Interval = interval
 				job.Params = args
 				if err := AddJob(job); err != nil {
@@ -198,23 +198,31 @@ func (c *cronWorker) createConsulSession() {
 }
 
 func (c *cronWorker) processJob(job *Job) {
-	trace, ctx := tracer.StartTraceWithContext(c.ctx, "CronScheduler")
-	defer trace.Finish()
+	ctx := c.ctx
+	if job.Handler.DisableTrace {
+		ctx = tracer.SkipTraceContext(ctx)
+	}
 
+	trace, ctx := tracer.StartTraceWithContext(ctx, "CronScheduler")
 	defer func() {
 		if r := recover(); r != nil {
 			trace.SetError(fmt.Errorf("%v", r))
 		}
 		logger.LogGreen("cron scheduler > trace_url: " + tracer.GetTraceURL(ctx))
+		trace.Finish()
 	}()
+	trace.SetTag("job_name", job.HandlerName)
+	trace.SetTag("job_param", job.Params)
 
 	if env.BaseEnv().DebugMode {
 		log.Printf("\x1b[35;3mCron Scheduler: executing task '%s' (interval: %s)\x1b[0m", job.HandlerName, job.Interval)
 	}
 
-	tags := trace.Tags()
-	tags["job_name"] = job.HandlerName
-	if err := job.HandlerFunc(ctx, []byte(job.Params)); err != nil {
+	params := []byte(job.Params)
+	if err := job.Handler.HandlerFunc(ctx, params); err != nil {
+		for _, errHandler := range job.Handler.ErrorHandler {
+			errHandler(ctx, types.RabbitMQ, job.HandlerName, params, err)
+		}
 		trace.SetError(err)
 	}
 }

@@ -33,6 +33,9 @@ const (
 	RepositoryMongo = "repositoryMongo"
 	// UsecaseUOW unit of work for usecase
 	UsecaseUOW = "usecaseUOW"
+
+	// HeaderDisableTrace const
+	HeaderDisableTrace = "X-Disable-Trace"
 )
 
 var (
