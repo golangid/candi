@@ -18,6 +18,14 @@ type (
 		Tagline                   string
 		TaskListClientSubscribers []string
 		JobListClientSubscribers  []string
+		MemoryStatistics          MemstatsResolver
+	}
+	// MemstatsResolver resolver
+	MemstatsResolver struct {
+		Alloc         string
+		TotalAlloc    string
+		NumGC         int
+		NumGoroutines int
 	}
 	// MetaTaskResolver meta resolver
 	MetaTaskResolver struct {
@@ -95,11 +103,12 @@ var (
 		activeInterval *time.Ticker
 	}
 
-	queue                                   QueueStorage
-	repo                                    *storage
-	refreshWorkerNotif, shutdown, semaphore chan struct{}
-	mutex                                   sync.Mutex
-	tasks                                   []string
+	queue                        QueueStorage
+	repo                         *storage
+	refreshWorkerNotif, shutdown chan struct{}
+	semaphore                    []chan struct{}
+	mutex                        sync.Mutex
+	tasks                        []string
 
 	clientTaskSubscribers    map[string]chan TaskListResolver
 	clientJobTaskSubscribers map[string]clientJobTaskSubscriber
@@ -127,7 +136,7 @@ func makeAllGlobalVars(q QueueStorage, db *mongo.Database, opts ...OptionFunc) {
 		opt(&defaultOption)
 	}
 
-	refreshWorkerNotif, shutdown, semaphore = make(chan struct{}), make(chan struct{}, 1), make(chan struct{}, env.BaseEnv().MaxGoroutines)
+	refreshWorkerNotif, shutdown = make(chan struct{}), make(chan struct{}, 1)
 	clientTaskSubscribers = make(map[string]chan TaskListResolver, defaultOption.MaxClientSubscriber)
 	clientJobTaskSubscribers = make(map[string]clientJobTaskSubscriber, defaultOption.MaxClientSubscriber)
 
@@ -140,11 +149,7 @@ func makeAllGlobalVars(q QueueStorage, db *mongo.Database, opts ...OptionFunc) {
 		activeInterval *time.Ticker
 	})
 
-	// add shutdown channel to first index
-	workers = append(workers, reflect.SelectCase{
-		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(shutdown),
-	})
-	// add refresh worker channel to second index
+	// add refresh worker channel to first index
 	workers = append(workers, reflect.SelectCase{
 		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(refreshWorkerNotif),
 	})

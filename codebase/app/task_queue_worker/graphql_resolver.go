@@ -54,7 +54,8 @@ func (r *rootResolver) Tagline(ctx context.Context) (res TaglineResolver) {
 	for client := range clientJobTaskSubscribers {
 		res.JobListClientSubscribers = append(res.JobListClientSubscribers, client)
 	}
-	res.Tagline = "GraphQL service for Task Queue Worker dashboard"
+	res.Tagline = "Task Queue Worker Dashboard"
+	res.MemoryStatistics = getMemstats()
 	return
 }
 
@@ -116,6 +117,7 @@ func (r *rootResolver) RetryJob(ctx context.Context, input struct {
 		repo.saveJob(job)
 		broadcastAllToSubscribers()
 		registerJobToWorker(&job, task.workerIndex)
+		refreshWorkerNotif <- struct{}{}
 	}(job)
 
 	return "Success retry job " + input.JobID, nil

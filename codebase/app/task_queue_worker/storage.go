@@ -198,6 +198,20 @@ func (s *storage) updateAllStatus(taskName string, status jobStatusEnum) {
 	}
 }
 
+func (s *storage) stopAllRetryingJob() {
+	ctx := context.Background()
+	_, err := s.db.Collection(mongoColl).UpdateMany(ctx,
+		bson.M{
+			"status": statusRetrying,
+		},
+		bson.M{
+			"$set": bson.M{"status": string(statusStopped)},
+		})
+	if err != nil {
+		logger.LogE(err.Error())
+	}
+}
+
 func (s *storage) findJobByID(id string) (job Job, err error) {
 	ctx := context.Background()
 

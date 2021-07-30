@@ -1,6 +1,9 @@
 package taskqueueworker
 
 import (
+	"fmt"
+	"runtime"
+
 	"pkg.agungdp.dev/candi/candihelper"
 	"pkg.agungdp.dev/candi/logger"
 )
@@ -97,4 +100,14 @@ func broadcastJobList() {
 			},
 		}.Do()
 	}
+}
+
+func getMemstats() (res MemstatsResolver) {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	res.Alloc = fmt.Sprintf("%d MB", m.Alloc/candihelper.MByte)
+	res.TotalAlloc = fmt.Sprintf("%d MB", m.TotalAlloc/candihelper.MByte)
+	res.NumGC = int(m.NumGC)
+	res.NumGoroutines = runtime.NumGoroutine()
+	return
 }

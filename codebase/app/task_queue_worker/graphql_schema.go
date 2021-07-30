@@ -27,6 +27,7 @@ type TaglineType {
 	tagline: String!
 	task_list_client_subscribers: [String!]!
 	job_list_client_subscribers: [String!]!
+	memory_statistics: MemstatsResolver!
 }
 
 type MetaType {
@@ -44,6 +45,13 @@ type MetaTaskResolver {
 	total_pages: Int!
 	total_records: Int!
 	is_close_session: Boolean!
+}
+
+type MemstatsResolver {
+	alloc: String!
+	total_alloc: String!
+	num_gc: Int!
+	num_goroutines: Int!
 }
 
 type TaskResolver {

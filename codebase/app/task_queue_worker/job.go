@@ -62,9 +62,10 @@ func AddJob(taskName string, maxRetry int, args []byte) (err error) {
 
 	go func(job Job, workerIndex int) {
 		queue.PushJob(&job)
-		registerJobToWorker(&job, workerIndex)
 		repo.saveJob(job)
 		broadcastAllToSubscribers()
+		registerJobToWorker(&job, workerIndex)
+		refreshWorkerNotif <- struct{}{}
 	}(newJob, task.workerIndex)
 
 	return nil
@@ -75,5 +76,4 @@ func registerJobToWorker(job *Job, workerIndex int) {
 	taskIndex := workerIndexTask[workerIndex]
 	taskIndex.activeInterval = time.NewTicker(interval)
 	workers[workerIndex].Chan = reflect.ValueOf(taskIndex.activeInterval.C)
-	refreshWorkerNotif <- struct{}{}
 }

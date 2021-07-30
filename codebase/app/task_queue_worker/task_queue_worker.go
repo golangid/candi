@@ -49,6 +49,7 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, db *mong
 				}
 				tasks = append(tasks, handler.Pattern)
 				workers = append(workers, reflect.SelectCase{Dir: reflect.SelectRecv})
+				semaphore = append(semaphore, make(chan struct{}, 1))
 
 				logger.LogYellow(fmt.Sprintf(`[TASK-QUEUE-WORKER] (task name): %-15s  --> (module): "%s"`, `"`+handler.Pattern+`"`, m.Name()))
 			}
@@ -89,30 +90,30 @@ func (t *taskQueueWorker) Serve() {
 
 	// run worker
 	for {
+		select {
+		case <-shutdown:
+			return
+		default:
+		}
 
 		chosen, _, ok := reflect.Select(workers)
 		if !ok {
 			continue
 		}
 
-		// if shutdown channel captured, break loop (no more jobs will run)
-		if chosen == 0 {
-			break
-		}
-
 		// notify for refresh worker
-		if chosen == 1 {
+		if chosen == 0 {
 			continue
 		}
 
-		semaphore <- struct{}{}
+		semaphore[chosen-1] <- struct{}{}
 		t.wg.Add(1)
 		go func(chosen int) {
 			defer func() {
 				recover()
 				t.wg.Done()
+				<-semaphore[chosen-1]
 				refreshWorkerNotif <- struct{}{}
-				<-semaphore
 			}()
 
 			if t.ctx.Err() != nil {
@@ -133,11 +134,15 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 	}
 
 	shutdown <- struct{}{}
-	runningJob := len(semaphore)
+	var runningJob int
+	for _, sem := range semaphore {
+		runningJob += len(sem)
+	}
 	if runningJob != 0 {
 		fmt.Printf("\x1b[34;1mTask Queue Worker:\x1b[0m waiting %d job until done...\x1b[0m\n", runningJob)
 	}
 
+	repo.stopAllRetryingJob()
 	t.wg.Wait()
 	t.ctxCancelFunc()
 }
