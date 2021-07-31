@@ -109,6 +109,7 @@ func (r *rabbitmqWorker) Shutdown(ctx context.Context) {
 	defer func() { log.Println("\x1b[33;1mStopping RabbitMQ Worker:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
 
 	r.shutdown <- struct{}{}
+	r.isShutdown = true
 	var runningJob int
 	for _, sem := range r.semaphore {
 		runningJob += len(sem)
