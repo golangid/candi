@@ -187,7 +187,7 @@ func (s *storage) countTaskJobDetail(taskName string, status jobStatusEnum) int 
 	return int(count)
 }
 
-func (s *storage) saveJob(job Job) {
+func (s *storage) saveJob(job *Job) {
 	ctx := context.Background()
 	var err error
 
@@ -243,10 +243,11 @@ func (s *storage) pauseAllRunningJob() {
 	}
 }
 
-func (s *storage) findJobByID(id string) (job Job, err error) {
+func (s *storage) findJobByID(id string) (job *Job, err error) {
 	ctx := context.Background()
 
-	err = s.db.Collection(mongoColl).FindOne(ctx, bson.M{"_id": id}).Decode(&job)
+	job = &Job{}
+	err = s.db.Collection(mongoColl).FindOne(ctx, bson.M{"_id": id}).Decode(job)
 	return
 }
 

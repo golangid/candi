@@ -1,5 +1,7 @@
 package candishared
 
+import "errors"
+
 // minQueueLen is smallest capacity that queue may have.
 // Must be power of 2 for bitwise modulus: x % n == x & (n - 1).
 const minQueueLen = 16
@@ -35,9 +37,9 @@ func (q *Queue) Push(elem interface{}) {
 
 // Pop Pops and returns the element from the front of the queue. If the
 // queue is empty, the call will panic.
-func (q *Queue) Pop() interface{} {
+func (q *Queue) Pop() (interface{}, error) {
 	if q.count <= 0 {
-		panic("queue: Pop() called on empty queue")
+		return nil, errors.New("queue: Pop() called on empty queue")
 	}
 	ret := q.buf[q.head]
 	q.buf[q.head] = nil
@@ -48,16 +50,16 @@ func (q *Queue) Pop() interface{} {
 	if len(q.buf) > minQueueLen && (q.count<<2) == len(q.buf) {
 		q.resize()
 	}
-	return ret
+	return ret, nil
 }
 
 // Peek returns the element at the head of the queue. This call panics
 // if the queue is empty.
-func (q *Queue) Peek() interface{} {
+func (q *Queue) Peek() (interface{}, error) {
 	if q.count <= 0 {
-		panic("queue: Peek() called on empty queue")
+		return nil, errors.New("queue: Peek() called on empty queue")
 	}
-	return q.buf[q.head]
+	return q.buf[q.head], nil
 }
 
 // resizes the queue to fit exactly twice its current contents

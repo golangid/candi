@@ -112,15 +112,15 @@ func (r *rootResolver) RetryJob(ctx context.Context, input struct {
 	}
 	job.Interval = defaultInterval
 	task := registeredTask[job.TaskName]
-	go func(job Job) {
+	go func(job *Job) {
 		if (job.Status == string(statusFailure)) || (job.Retries >= job.MaxRetry) {
 			job.Retries = 0
 		}
 		job.Status = string(statusQueueing)
-		queue.PushJob(&job)
+		queue.PushJob(job)
 		repo.saveJob(job)
 		broadcastAllToSubscribers()
-		registerJobToWorker(&job, task.workerIndex)
+		registerJobToWorker(job, task.workerIndex)
 		refreshWorkerNotif <- struct{}{}
 	}(job)
 

@@ -73,6 +73,7 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, db *mong
 				}
 			}
 		}
+		refreshWorkerNotif <- struct{}{}
 	}()
 
 	fmt.Printf("\x1b[34;1m⇨ Task Queue Worker running with %d task. Open [::]:%d for dashboard\x1b[0m\n\n",
@@ -175,19 +176,20 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 	}
 
 	taskIndex.activeInterval.Stop()
-	taskIndex.activeInterval = nil
-	job := queue.PopJob(taskIndex.taskName)
-	job, err := repo.findJobByID(job.ID)
+	jobID := queue.PopJob(taskIndex.taskName)
+	if jobID == "" {
+		return
+	}
+	job, err := repo.findJobByID(jobID)
 	if err != nil {
 		return
 	}
 	if job.Status == string(statusStopped) {
-		nextJob := queue.NextJob(taskIndex.taskName)
-		if nextJob != nil {
-			if jb, err := repo.findJobByID(nextJob.ID); err == nil {
-				nextJob = &jb
+		nextJobID := queue.NextJob(taskIndex.taskName)
+		if nextJobID != "" {
+			if nextJob, err := repo.findJobByID(nextJobID); err == nil {
+				registerJobToWorker(nextJob, workerIndex)
 			}
-			registerJobToWorker(nextJob, workerIndex)
 		}
 		return
 	}
@@ -225,12 +227,11 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 	tags["job_id"], tags["task_name"], tags["retries"], tags["max_retry"] = job.ID, job.TaskName, job.Retries, job.MaxRetry
 	tracer.Log(ctx, "job_args", job.Arguments)
 
-	nextJob := queue.NextJob(taskIndex.taskName)
-	if nextJob != nil {
-		if jb, err := repo.findJobByID(nextJob.ID); err == nil {
-			nextJob = &jb
+	nextJobID := queue.NextJob(taskIndex.taskName)
+	if nextJobID != "" {
+		if nextJob, err := repo.findJobByID(nextJobID); err == nil {
+			registerJobToWorker(nextJob, workerIndex)
 		}
-		registerJobToWorker(nextJob, workerIndex)
 	}
 
 	ctx = context.WithValue(ctx, candishared.ContextKeyTaskQueueRetry, job.Retries)
@@ -238,6 +239,7 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 		job.Error = err.Error()
 		job.Status = string(statusFailure)
 		trace.SetError(err)
+
 		switch e := err.(type) {
 		case *candishared.ErrorRetrier:
 			if job.Retries >= job.MaxRetry {
@@ -247,21 +249,13 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 				}
 				return
 			}
-
-			job.Status = string(statusQueueing)
-			delay := e.Delay
-			if nextJob != nil && nextJob.Retries == 0 {
-				nextJobDelay, _ := time.ParseDuration(nextJob.Interval)
-				delay += nextJobDelay
-			}
-
-			taskIndex.activeInterval = time.NewTicker(delay)
-			workers[workerIndex].Chan = reflect.ValueOf(taskIndex.activeInterval.C)
-
 			tags["is_retry"] = true
 
-			job.Interval = delay.String()
-			queue.PushJob(&job)
+			job.Status = string(statusQueueing)
+			job.Interval = e.Delay.String()
+
+			registerJobToWorker(job, workerIndex)
+			queue.PushJob(job)
 		}
 	} else {
 		job.Status = string(statusSuccess)

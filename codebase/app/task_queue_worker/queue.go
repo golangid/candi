@@ -2,6 +2,7 @@ package taskqueueworker
 
 import (
 	"encoding/json"
+	"sync"
 
 	"github.com/gomodule/redigo/redis"
 	"pkg.agungdp.dev/candi/candishared"
@@ -9,15 +10,15 @@ import (
 
 // QueueStorage abstraction for queue storage backend
 type QueueStorage interface {
-	GetAllJobs(taskName string) []*Job
 	PushJob(job *Job)
-	PopJob(taskName string) Job
-	NextJob(taskName string) *Job
+	PopJob(taskName string) string
+	NextJob(taskName string) string
 	Clear(taskName string)
 }
 
 // inMemQueue queue
 type inMemQueue struct {
+	mu    sync.Mutex
 	queue map[string]*candishared.Queue
 }
 
@@ -27,27 +28,41 @@ func NewInMemQueue() QueueStorage {
 	return q
 }
 
-func (i *inMemQueue) GetAllJobs(taskName string) (jobs []*Job) {
-	return nil
-}
 func (i *inMemQueue) PushJob(job *Job) {
-	defer func() { recover() }()
-	queue := i.queue[job.TaskName]
-	if queue == nil {
-		queue = candishared.NewQueue()
+	i.mu.Lock()
+	defer i.mu.Unlock()
+
+	if i.queue[job.TaskName] == nil {
+		i.queue[job.TaskName] = candishared.NewQueue()
 	}
-	queue.Push(job)
+	i.queue[job.TaskName].Push(job.ID)
 }
-func (i *inMemQueue) PopJob(taskName string) Job {
-	defer func() { recover() }()
-	return *i.queue[taskName].Pop().(*Job)
+func (i *inMemQueue) PopJob(taskName string) string {
+	el, err := i.queue[taskName].Pop()
+	if err != nil {
+		return ""
+	}
+
+	id, ok := el.(string)
+	if !ok {
+		return ""
+	}
+	return id
 }
-func (i *inMemQueue) NextJob(taskName string) *Job {
-	defer func() { recover() }()
-	return i.queue[taskName].Peek().(*Job)
+func (i *inMemQueue) NextJob(taskName string) string {
+
+	el, err := i.queue[taskName].Peek()
+	if err != nil {
+		return ""
+	}
+	id, ok := el.(string)
+	if !ok {
+		return ""
+	}
+	return id
 }
 func (i *inMemQueue) Clear(taskName string) {
-	defer func() { recover() }()
+
 	i.queue[taskName] = nil
 }
 
@@ -84,30 +99,26 @@ func (r *redisQueue) PushJob(job *Job) {
 
 	conn.Do("RPUSH", job.TaskName, job.ID)
 }
-func (r *redisQueue) PopJob(taskName string) Job {
+func (r *redisQueue) PopJob(taskName string) string {
 	conn := r.pool.Get()
 	defer conn.Close()
 
-	var job Job
-	job.ID, _ = redis.String(conn.Do("LPOP", taskName))
-	return job
+	id, _ := redis.String(conn.Do("LPOP", taskName))
+	return id
 }
-func (r *redisQueue) NextJob(taskName string) *Job {
+func (r *redisQueue) NextJob(taskName string) string {
 	conn := r.pool.Get()
 	defer conn.Close()
 
-	b, err := redis.String(conn.Do("LINDEX", taskName, 0))
+	id, err := redis.String(conn.Do("LINDEX", taskName, 0))
 	if err != nil {
-		return nil
+		return ""
 	}
 
-	if len(b) == 0 {
-		return nil
+	if len(id) == 0 {
+		return ""
 	}
-
-	var job Job
-	job.ID = b
-	return &job
+	return id
 }
 func (r *redisQueue) Clear(taskName string) {
 	conn := r.pool.Get()

@@ -12,7 +12,11 @@ func TestQueue(t *testing.T) {
 	q.Push("a")
 
 	assert.Equal(t, 2, q.count)
-	assert.Equal(t, "q", q.Peek())
-	assert.Equal(t, "q", q.Pop())
-	assert.Equal(t, "a", q.Peek())
+
+	peek, _ := q.Peek()
+	assert.Equal(t, "q", peek)
+	pop, _ := q.Pop()
+	assert.Equal(t, "q", pop)
+	peek, _ = q.Peek()
+	assert.Equal(t, "a", peek)
 }
