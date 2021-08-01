@@ -1,12 +1,15 @@
 package taskqueueworker
 
-import "time"
+import (
+	"time"
+)
 
 type (
 	option struct {
 		JaegerTracingDashboard   string
 		MaxClientSubscriber      int
 		AutoRemoveClientInterval time.Duration
+		DashboardBanner          string
 	}
 
 	// OptionFunc type
@@ -31,5 +34,12 @@ func SetMaxClientSubscriber(max int) OptionFunc {
 func SetAutoRemoveClientInterval(d time.Duration) OptionFunc {
 	return func(o *option) {
 		o.AutoRemoveClientInterval = d
+	}
+}
+
+// SetDashboardBanner option func
+func SetDashboardBanner(banner string) OptionFunc {
+	return func(o *option) {
+		o.DashboardBanner = banner
 	}
 }

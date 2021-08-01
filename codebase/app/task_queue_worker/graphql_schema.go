@@ -16,6 +16,7 @@ type Mutation {
 	stop_all_job(task_name: String!): String!
 	retry_job(job_id: String!): String!
 	clean_job(task_name: String!): String!
+	retry_all_job(task_name: String!): String!
 }
 
 type Subscription {
@@ -24,6 +25,8 @@ type Subscription {
 }
 
 type TaglineType {
+	version: String!
+	banner: String!
 	tagline: String!
 	task_list_client_subscribers: [String!]!
 	job_list_client_subscribers: [String!]!

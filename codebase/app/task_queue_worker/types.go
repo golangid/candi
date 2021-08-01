@@ -15,7 +15,9 @@ import (
 type (
 	// TaglineResolver resolver
 	TaglineResolver struct {
+		Banner                    string
 		Tagline                   string
+		Version                   string
 		TaskListClientSubscribers []string
 		JobListClientSubscribers  []string
 		MemoryStatistics          MemstatsResolver
@@ -131,6 +133,12 @@ func makeAllGlobalVars(q QueueStorage, db *mongo.Database, opts ...OptionFunc) {
 	}
 	defaultOption.MaxClientSubscriber = env.BaseEnv().TaskQueueDashboardMaxClientSubscribers
 	defaultOption.AutoRemoveClientInterval = 30 * time.Minute
+	defaultOption.DashboardBanner = `
+    _________    _   ______  ____
+   / ____/   |  / | / / __ \/  _/
+  / /   / /| | /  |/ / / / // /  
+ / /___/ ___ |/ /|  / /_/ // /   
+ \____/_/  |_/_/ |_/_____/___/   `
 
 	for _, opt := range opts {
 		opt(&defaultOption)

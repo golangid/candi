@@ -121,6 +121,39 @@ func (s *storage) findAllJob(filter Filter) (meta MetaJobList, jobs []Job) {
 	return
 }
 
+func (s *storage) findAllFailureJob(filter Filter) (jobs []Job) {
+	ctx := context.Background()
+	lim := int64(filter.Limit)
+	offset := int64((filter.Page - 1) * filter.Limit)
+	findOptions := &options.FindOptions{
+		Limit: &lim,
+		Skip:  &offset,
+		Sort:  bson.M{"created_at": -1},
+	}
+
+	pipeQuery := []bson.M{
+		{"task_name": filter.TaskName},
+	}
+	if len(filter.Status) > 0 {
+		pipeQuery = append(pipeQuery, bson.M{
+			"status": bson.M{
+				"$in": filter.Status,
+			},
+		})
+	}
+	query := bson.M{
+		"$and": pipeQuery,
+	}
+	cur, err := s.db.Collection(mongoColl).Find(ctx, query, findOptions)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer cur.Close(ctx)
+	cur.All(ctx, &jobs)
+	return
+}
+
 func (s *storage) countTaskJob(filter Filter) int {
 	ctx := context.Background()
 
@@ -179,18 +212,16 @@ func (s *storage) saveJob(job Job) {
 	}
 }
 
-func (s *storage) updateAllStatus(taskName string, status jobStatusEnum) {
+func (s *storage) updateAllStatus(taskName string, status jobStatusEnum, currentStatus []jobStatusEnum) {
 	ctx := context.Background()
 	filter := bson.M{
 		"task_name": taskName,
 	}
-	if status == statusStopped {
-		filter["status"] = bson.M{"$nin": []jobStatusEnum{statusFailure, statusSuccess, statusRetrying}}
-	}
+	filter["status"] = bson.M{"$in": currentStatus}
 	_, err := s.db.Collection(mongoColl).UpdateMany(ctx,
 		filter,
 		bson.M{
-			"$set": bson.M{"status": string(status)},
+			"$set": bson.M{"status": string(status), "retries": 0},
 		})
 
 	if err != nil {
@@ -198,14 +229,14 @@ func (s *storage) updateAllStatus(taskName string, status jobStatusEnum) {
 	}
 }
 
-func (s *storage) stopAllRetryingJob() {
+func (s *storage) pauseAllRunningJob() {
 	ctx := context.Background()
 	_, err := s.db.Collection(mongoColl).UpdateMany(ctx,
 		bson.M{
 			"status": statusRetrying,
 		},
 		bson.M{
-			"$set": bson.M{"status": string(statusStopped)},
+			"$set": bson.M{"status": string(statusQueueing)},
 		})
 	if err != nil {
 		logger.LogE(err.Error())

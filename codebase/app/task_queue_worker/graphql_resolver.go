@@ -3,6 +3,7 @@ package taskqueueworker
 import (
 	"context"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/golangid/graphql-go"
 	"github.com/golangid/graphql-go/relay"
 
+	"pkg.agungdp.dev/candi"
 	"pkg.agungdp.dev/candi/candishared"
 	"pkg.agungdp.dev/candi/codebase/app/graphql_server/static"
 	"pkg.agungdp.dev/candi/codebase/app/graphql_server/ws"
@@ -54,7 +56,9 @@ func (r *rootResolver) Tagline(ctx context.Context) (res TaglineResolver) {
 	for client := range clientJobTaskSubscribers {
 		res.JobListClientSubscribers = append(res.JobListClientSubscribers, client)
 	}
+	res.Banner = defaultOption.DashboardBanner
 	res.Tagline = "Task Queue Worker Dashboard"
+	res.Version = candi.Version
 	res.MemoryStatistics = getMemstats()
 	return
 }
@@ -92,7 +96,7 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 	}
 
 	queue.Clear(input.TaskName)
-	repo.updateAllStatus(input.TaskName, statusStopped)
+	repo.updateAllStatus(input.TaskName, statusStopped, []jobStatusEnum{statusQueueing})
 	broadcastAllToSubscribers()
 
 	return "Success stop all job in task " + input.TaskName, nil
@@ -131,6 +135,39 @@ func (r *rootResolver) CleanJob(ctx context.Context, input struct {
 	go broadcastAllToSubscribers()
 
 	return "Success clean all job in task " + input.TaskName, nil
+}
+
+func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
+	TaskName string
+}) (string, error) {
+
+	pageNumber := 1
+	filter := Filter{Limit: 10, Status: []string{string(statusFailure), string(statusStopped)}, TaskName: input.TaskName}
+	count := repo.countTaskJob(filter)
+	totalPages := int(math.Ceil(float64(count) / float64(filter.Limit)))
+	for pageNumber <= totalPages {
+		filter.Page = pageNumber
+		jobs := repo.findAllFailureJob(filter)
+		for _, job := range jobs {
+			job.Interval = defaultInterval
+			if (job.Status == string(statusFailure)) || (job.Retries >= job.MaxRetry) {
+				job.Retries = 0
+			}
+			task := registeredTask[job.TaskName]
+			job.Status = string(statusQueueing)
+			queue.PushJob(&job)
+			registerJobToWorker(&job, task.workerIndex)
+		}
+		pageNumber++
+	}
+
+	repo.updateAllStatus(input.TaskName, statusQueueing, []jobStatusEnum{statusFailure, statusStopped})
+	go func() {
+		broadcastAllToSubscribers()
+		refreshWorkerNotif <- struct{}{}
+	}()
+
+	return "Success retry all failure job in task " + input.TaskName, nil
 }
 
 func (r *rootResolver) ListenTask(ctx context.Context) (<-chan TaskListResolver, error) {

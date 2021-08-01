@@ -20,6 +20,7 @@ import (
 type taskQueueWorker struct {
 	ctx           context.Context
 	ctxCancelFunc func()
+	isShutdown    bool
 
 	service factory.ServiceFactory
 	wg      sync.WaitGroup
@@ -107,6 +108,10 @@ func (t *taskQueueWorker) Serve() {
 		}
 
 		semaphore[chosen-1] <- struct{}{}
+		if t.isShutdown {
+			return
+		}
+
 		t.wg.Add(1)
 		go func(chosen int) {
 			defer func() {
@@ -134,6 +139,7 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 	}
 
 	shutdown <- struct{}{}
+	t.isShutdown = true
 	var runningJob int
 	for _, sem := range semaphore {
 		runningJob += len(sem)
@@ -142,9 +148,20 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 		fmt.Printf("\x1b[34;1mTask Queue Worker:\x1b[0m waiting %d job until done...\x1b[0m\n", runningJob)
 	}
 
-	repo.stopAllRetryingJob()
-	t.wg.Wait()
-	t.ctxCancelFunc()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		t.wg.Wait()
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-ctx.Done():
+		repo.pauseAllRunningJob()
+	case <-done:
+		t.ctxCancelFunc()
+	}
+	broadcastAllToSubscribers()
 }
 
 func (t *taskQueueWorker) Name() string {
