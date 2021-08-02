@@ -11,8 +11,8 @@ import (
 // QueueStorage abstraction for queue storage backend
 type QueueStorage interface {
 	PushJob(job *Job)
-	PopJob(taskName string) string
-	NextJob(taskName string) string
+	PopJob(taskName string) (jobID string)
+	NextJob(taskName string) (jobID string)
 	Clear(taskName string)
 }
 

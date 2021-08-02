@@ -107,7 +107,9 @@ func someUsecase() {
 }
 ```
 
-* Or via GraphQL API
+* Or if running on a separate server
+
+Via GraphQL API
 
 `POST {{task-queue-worker-host}}/graphql`
 ```
@@ -117,5 +119,13 @@ mutation addJob {
     max_retry: 5
     args: "{\"params\": \"test-one\"}"
   )
+}
+```
+
+Direct call function
+```go
+// add task queue for `task-one` via HTTP request
+if err := taskqueueworker.AddJobViaHTTPRequest(ctx, "{{task-queue-worker-host}}", "task-one", 5, `{"params": "test-one"}`); err != nil {
+	log.Println(err)
 }
 ```

@@ -170,6 +170,18 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 	return "Success retry all failure job in task " + input.TaskName, nil
 }
 
+func (r *rootResolver) ClearAllClientSubscriber(ctx context.Context) (string, error) {
+
+	for range clientTaskSubscribers {
+		closeAllSubscribers <- struct{}{}
+	}
+	for range clientJobTaskSubscribers {
+		closeAllSubscribers <- struct{}{}
+	}
+
+	return "Success clear all client subscriber", nil
+}
+
 func (r *rootResolver) ListenTask(ctx context.Context) (<-chan TaskListResolver, error) {
 	output := make(chan TaskListResolver)
 
@@ -183,12 +195,17 @@ func (r *rootResolver) ListenTask(ctx context.Context) (<-chan TaskListResolver,
 	autoRemoveClient := time.NewTicker(defaultOption.AutoRemoveClientInterval)
 
 	go func() {
-		defer func() { close(output); autoRemoveClient.Stop() }()
+		defer func() { broadcastTaskList(); close(output); autoRemoveClient.Stop() }()
 
 		broadcastTaskList()
 
 		select {
 		case <-ctx.Done():
+			removeTaskListSubscriber(clientID)
+			return
+
+		case <-closeAllSubscribers:
+			output <- TaskListResolver{Meta: MetaTaskResolver{IsCloseSession: true}}
 			removeTaskListSubscriber(clientID)
 			return
 
@@ -246,6 +263,11 @@ func (r *rootResolver) ListenTaskJobDetail(ctx context.Context, input struct {
 
 		select {
 		case <-ctx.Done():
+			removeJobListSubscriber(input.TaskName, clientID)
+			return
+
+		case <-closeAllSubscribers:
+			output <- JobListResolver{Meta: MetaJobList{IsCloseSession: true}}
 			removeJobListSubscriber(input.TaskName, clientID)
 			return
 

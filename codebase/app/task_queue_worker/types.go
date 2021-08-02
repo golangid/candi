@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
 	"pkg.agungdp.dev/candi/config/env"
@@ -31,18 +33,19 @@ type (
 	}
 	// MetaTaskResolver meta resolver
 	MetaTaskResolver struct {
-		Page           int
-		Limit          int
-		TotalRecords   int
-		TotalPages     int
-		IsCloseSession bool
+		Page                  int
+		Limit                 int
+		TotalRecords          int
+		TotalPages            int
+		IsCloseSession        bool
+		TotalClientSubscriber int
 	}
 	// TaskResolver resolver
 	TaskResolver struct {
 		Name      string
 		TotalJobs int
 		Detail    struct {
-			GiveUp, Retrying, Success, Queueing, Stopped int
+			Failure, Retrying, Success, Queueing, Stopped int
 		}
 	}
 	// TaskListResolver resolver
@@ -59,7 +62,7 @@ type (
 		TotalPages     int
 		IsCloseSession bool
 		Detail         struct {
-			GiveUp, Retrying, Success, Queueing, Stopped int
+			Failure, Retrying, Success, Queueing, Stopped int
 		}
 	}
 
@@ -71,10 +74,11 @@ type (
 
 	// Filter type
 	Filter struct {
-		Page, Limit int
-		TaskName    string
-		Search      *string
-		Status      []string
+		Page, Limit  int
+		TaskName     string
+		TaskNameList []string
+		Search       *string
+		Status       []string
 	}
 
 	clientJobTaskSubscriber struct {
@@ -105,12 +109,12 @@ var (
 		activeInterval *time.Ticker
 	}
 
-	queue                        QueueStorage
-	repo                         *storage
-	refreshWorkerNotif, shutdown chan struct{}
-	semaphore                    []chan struct{}
-	mutex                        sync.Mutex
-	tasks                        []string
+	queue                                             QueueStorage
+	repo                                              *storage
+	refreshWorkerNotif, shutdown, closeAllSubscribers chan struct{}
+	semaphore                                         []chan struct{}
+	mutex                                             sync.Mutex
+	tasks                                             []string
 
 	clientTaskSubscribers    map[string]chan TaskListResolver
 	clientJobTaskSubscribers map[string]clientJobTaskSubscriber
@@ -144,7 +148,7 @@ func makeAllGlobalVars(q QueueStorage, db *mongo.Database, opts ...OptionFunc) {
 		opt(&defaultOption)
 	}
 
-	refreshWorkerNotif, shutdown = make(chan struct{}), make(chan struct{}, 1)
+	refreshWorkerNotif, shutdown, closeAllSubscribers = make(chan struct{}), make(chan struct{}, 1), make(chan struct{})
 	clientTaskSubscribers = make(map[string]chan TaskListResolver, defaultOption.MaxClientSubscriber)
 	clientJobTaskSubscribers = make(map[string]clientJobTaskSubscriber, defaultOption.MaxClientSubscriber)
 
@@ -161,4 +165,37 @@ func makeAllGlobalVars(q QueueStorage, db *mongo.Database, opts ...OptionFunc) {
 	workers = append(workers, reflect.SelectCase{
 		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(refreshWorkerNotif),
 	})
+}
+
+func (f *Filter) toBsonFilter() bson.M {
+	pipeQuery := []bson.M{}
+
+	if f.TaskName != "" {
+		pipeQuery = append(pipeQuery, bson.M{
+			"task_name": f.TaskName,
+		})
+	} else if len(f.TaskNameList) > 0 {
+		pipeQuery = append(pipeQuery, bson.M{
+			"task_name": bson.M{
+				"$in": f.TaskNameList,
+			},
+		})
+	}
+
+	if f.Search != nil && *f.Search != "" {
+		pipeQuery = append(pipeQuery, bson.M{
+			"arguments": primitive.Regex{Pattern: *f.Search, Options: "i"},
+		})
+	}
+	if len(f.Status) > 0 {
+		pipeQuery = append(pipeQuery, bson.M{
+			"status": bson.M{
+				"$in": f.Status,
+			},
+		})
+	}
+
+	return bson.M{
+		"$and": pipeQuery,
+	}
 }

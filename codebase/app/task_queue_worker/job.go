@@ -103,7 +103,6 @@ func AddJobViaHTTPRequest(ctx context.Context, workerHost string, taskName strin
 	}
 	respBody, _, err := httpReq.Do(ctx, http.MethodPost, workerHost+"/graphql", candihelper.ToBytes(reqBody), header)
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 

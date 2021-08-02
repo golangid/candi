@@ -17,6 +17,7 @@ type Mutation {
 	retry_job(job_id: String!): String!
 	clean_job(task_name: String!): String!
 	retry_all_job(task_name: String!): String!
+	clear_all_client_subscriber(): String!
 }
 
 type Subscription {
@@ -48,6 +49,7 @@ type MetaTaskResolver {
 	total_pages: Int!
 	total_records: Int!
 	is_close_session: Boolean!
+	total_client_subscriber: Int!
 }
 
 type MemstatsResolver {
@@ -69,7 +71,7 @@ type TaskListResolver {
 }
 
 type TaskDetailResolver {
-	give_up: Int!
+	failure: Int!
 	retrying: Int!
 	success: Int!
 	queueing: Int!

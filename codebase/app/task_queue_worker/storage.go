@@ -47,6 +47,12 @@ func createMongoIndex(db *mongo.Database) {
 			},
 			Options: &options.IndexOptions{},
 		},
+		{
+			Keys: bson.D{
+				{Key: "task_name", Value: 1},
+				{Key: "status", Value: 1},
+			},
+		},
 	}
 
 	indexView := db.Collection(mongoColl).Indexes()
@@ -110,12 +116,17 @@ func (s *storage) findAllJob(filter Filter) (meta MetaJobList, jobs []Job) {
 		jobs = append(jobs, job)
 	}
 
-	meta.Detail.GiveUp = repo.countTaskJobDetail(filter.TaskName, statusFailure)
-	meta.Detail.Retrying = repo.countTaskJobDetail(filter.TaskName, statusRetrying)
-	meta.Detail.Success = repo.countTaskJobDetail(filter.TaskName, statusSuccess)
-	meta.Detail.Queueing = repo.countTaskJobDetail(filter.TaskName, statusQueueing)
-	meta.Detail.Stopped = repo.countTaskJobDetail(filter.TaskName, statusStopped)
-	meta.TotalRecords = s.countTaskJob(filter)
+	filter.TaskNameList = []string{filter.TaskName}
+	counterAll := repo.countAllJobTask(context.Background(), filter)
+	if len(counterAll) == 1 {
+		meta.Detail.Failure = counterAll[0].Detail.Failure
+		meta.Detail.Retrying = counterAll[0].Detail.Retrying
+		meta.Detail.Success = counterAll[0].Detail.Success
+		meta.Detail.Queueing = counterAll[0].Detail.Queueing
+		meta.Detail.Stopped = counterAll[0].Detail.Stopped
+		meta.TotalRecords = counterAll[0].TotalJobs
+	}
+
 	meta.Page, meta.Limit = filter.Page, filter.Limit
 	meta.TotalPages = int(math.Ceil(float64(meta.TotalRecords) / float64(meta.Limit)))
 	return
@@ -146,7 +157,6 @@ func (s *storage) findAllFailureJob(filter Filter) (jobs []Job) {
 	}
 	cur, err := s.db.Collection(mongoColl).Find(ctx, query, findOptions)
 	if err != nil {
-		fmt.Println(err)
 		return
 	}
 	defer cur.Close(ctx)
@@ -157,34 +167,89 @@ func (s *storage) findAllFailureJob(filter Filter) (jobs []Job) {
 func (s *storage) countTaskJob(filter Filter) int {
 	ctx := context.Background()
 
-	pipeQuery := []bson.M{
-		{"task_name": filter.TaskName},
-	}
-	if filter.Search != nil && *filter.Search != "" {
-		pipeQuery = append(pipeQuery, bson.M{
-			"arguments": primitive.Regex{Pattern: *filter.Search, Options: "i"},
-		})
-	}
-	if len(filter.Status) > 0 {
-		pipeQuery = append(pipeQuery, bson.M{
-			"status": bson.M{
-				"$in": filter.Status,
-			},
-		})
-	}
-	query := bson.M{
-		"$and": pipeQuery,
-	}
-
-	count, _ := s.db.Collection(mongoColl).CountDocuments(ctx, query)
+	count, _ := s.db.Collection(mongoColl).CountDocuments(ctx, filter.toBsonFilter())
 	return int(count)
 }
 
-func (s *storage) countTaskJobDetail(taskName string, status jobStatusEnum) int {
-	ctx := context.Background()
+func (s *storage) countAllJobTask(ctx context.Context, filter Filter) (result []TaskResolver) {
 
-	count, _ := s.db.Collection(mongoColl).CountDocuments(ctx, bson.M{"task_name": taskName, "status": status})
-	return int(count)
+	pipeQuery := []bson.M{
+		{
+			"$match": filter.toBsonFilter(),
+		},
+		{
+			"$project": bson.M{
+				"task_name": "$task_name",
+				"success":   bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", statusSuccess}}, "then": 1, "else": 0}},
+				"queueing":  bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", statusQueueing}}, "then": 1, "else": 0}},
+				"retrying":  bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", statusRetrying}}, "then": 1, "else": 0}},
+				"failure":   bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", statusFailure}}, "then": 1, "else": 0}},
+				"stopped":   bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", statusStopped}}, "then": 1, "else": 0}},
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": "$task_name",
+				"success": bson.M{
+					"$sum": "$success",
+				},
+				"queueing": bson.M{
+					"$sum": "$queueing",
+				},
+				"retrying": bson.M{
+					"$sum": "$retrying",
+				},
+				"failure": bson.M{
+					"$sum": "$failure",
+				},
+				"stopped": bson.M{
+					"$sum": "$stopped",
+				},
+			},
+		},
+	}
+
+	findOptions := options.Aggregate()
+	findOptions.AllowDiskUse = candihelper.ToBoolPtr(true)
+	csr, err := s.db.Collection(mongoColl).Aggregate(ctx, pipeQuery, findOptions)
+	if err != nil {
+		return
+	}
+	defer csr.Close(ctx)
+
+	result = make([]TaskResolver, len(filter.TaskNameList))
+	mapper := make(map[string]int, len(filter.TaskNameList))
+	for i, task := range filter.TaskNameList {
+		result[i].Name = task
+		mapper[task] = i
+	}
+
+	for csr.Next(ctx) {
+		var obj struct {
+			TaskName string `bson:"_id"`
+			Success  int    `bson:"success"`
+			Queueing int    `bson:"queueing"`
+			Retrying int    `bson:"retrying"`
+			Failure  int    `bson:"failure"`
+			Stopped  int    `bson:"stopped"`
+		}
+		csr.Decode(&obj)
+
+		if idx, ok := mapper[obj.TaskName]; ok {
+			res := TaskResolver{
+				Name:      obj.TaskName,
+				TotalJobs: obj.Success + obj.Queueing + obj.Retrying + obj.Failure + obj.Stopped,
+			}
+			res.Detail.Success = obj.Success
+			res.Detail.Queueing = obj.Queueing
+			res.Detail.Retrying = obj.Retrying
+			res.Detail.Failure = obj.Failure
+			res.Detail.Stopped = obj.Stopped
+			result[idx] = res
+		}
+	}
+
+	return
 }
 
 func (s *storage) saveJob(job *Job) {
