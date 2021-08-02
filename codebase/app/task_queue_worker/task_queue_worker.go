@@ -244,8 +244,8 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 		case *candishared.ErrorRetrier:
 			if job.Retries >= job.MaxRetry {
 				logger.LogRed("TaskQueueWorker: GIVE UP: " + job.TaskName)
-				for _, errHandler := range selectedHandler.ErrorHandler {
-					errHandler(ctx, types.TaskQueue, job.TaskName, []byte(job.Arguments), err)
+				if selectedHandler.ErrorHandler != nil {
+					selectedHandler.ErrorHandler(ctx, types.TaskQueue, job.TaskName, []byte(job.Arguments), err)
 				}
 				return
 			}
@@ -256,6 +256,11 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 
 			registerJobToWorker(job, workerIndex)
 			queue.PushJob(job)
+
+		default:
+			if selectedHandler.ErrorHandler != nil {
+				selectedHandler.ErrorHandler(ctx, types.TaskQueue, job.TaskName, []byte(job.Arguments), err)
+			}
 		}
 	} else {
 		job.Status = string(statusSuccess)

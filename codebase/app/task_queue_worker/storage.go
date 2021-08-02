@@ -96,7 +96,7 @@ func (s *storage) findAllJob(filter Filter) (meta MetaJobList, jobs []Job) {
 	}
 	cur, err := s.db.Collection(mongoColl).Find(ctx, query, findOptions)
 	if err != nil {
-		fmt.Println(err)
+		logger.LogE(err.Error())
 		return
 	}
 	for cur.Next(ctx) {
@@ -157,6 +157,7 @@ func (s *storage) findAllFailureJob(filter Filter) (jobs []Job) {
 	}
 	cur, err := s.db.Collection(mongoColl).Find(ctx, query, findOptions)
 	if err != nil {
+		logger.LogE(err.Error())
 		return
 	}
 	defer cur.Close(ctx)
@@ -213,6 +214,7 @@ func (s *storage) countAllJobTask(ctx context.Context, filter Filter) (result []
 	findOptions.AllowDiskUse = candihelper.ToBoolPtr(true)
 	csr, err := s.db.Collection(mongoColl).Aggregate(ctx, pipeQuery, findOptions)
 	if err != nil {
+		logger.LogE(err.Error())
 		return
 	}
 	defer csr.Close(ctx)

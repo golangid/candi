@@ -96,7 +96,7 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 	}
 
 	queue.Clear(input.TaskName)
-	repo.updateAllStatus(input.TaskName, statusStopped, []jobStatusEnum{statusQueueing})
+	repo.updateAllStatus(input.TaskName, statusStopped, []jobStatusEnum{statusQueueing, statusRetrying})
 	broadcastAllToSubscribers()
 
 	return "Success stop all job in task " + input.TaskName, nil
