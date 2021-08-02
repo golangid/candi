@@ -76,8 +76,8 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 
 	ctx = candishared.SetToContext(ctx, candishared.ContextKeyWorkerKey, message.Key)
 	if err := handler.HandlerFunc(ctx, message.Value); err != nil {
-		for _, errHandler := range handler.ErrorHandler {
-			errHandler(ctx, types.Kafka, message.Topic, message.Value, err)
+		if handler.ErrorHandler != nil {
+			handler.ErrorHandler(ctx, types.Kafka, message.Topic, message.Value, err)
 		}
 		trace.SetError(err)
 	}

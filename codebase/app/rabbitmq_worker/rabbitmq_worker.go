@@ -166,8 +166,8 @@ func (r *rabbitmqWorker) processMessage(message amqp.Delivery) {
 
 	err = selectedHandler.HandlerFunc(ctx, message.Body)
 	if err != nil {
-		for _, errHandler := range selectedHandler.ErrorHandler {
-			errHandler(ctx, types.RabbitMQ, message.RoutingKey, message.Body, err)
+		if selectedHandler.ErrorHandler != nil {
+			selectedHandler.ErrorHandler(ctx, types.RabbitMQ, message.RoutingKey, message.Body, err)
 		}
 	}
 }

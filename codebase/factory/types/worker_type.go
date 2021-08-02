@@ -13,7 +13,7 @@ type (
 	WorkerHandler struct {
 		Pattern      string
 		HandlerFunc  WorkerHandlerFunc
-		ErrorHandler []WorkerErrorHandler
+		ErrorHandler WorkerErrorHandler
 		DisableTrace bool
 		AutoACK      bool
 	}
@@ -40,9 +40,9 @@ func (m *WorkerHandlerGroup) Add(pattern string, handlerFunc WorkerHandlerFunc, 
 }
 
 // WorkerHandlerOptionDisableTrace set disable trace
-func WorkerHandlerOptionDisableTrace(disable bool) WorkerHandlerOptionFunc {
+func WorkerHandlerOptionDisableTrace() WorkerHandlerOptionFunc {
 	return func(wh *WorkerHandler) {
-		wh.DisableTrace = disable
+		wh.DisableTrace = true
 	}
 }
 
@@ -54,8 +54,8 @@ func WorkerHandlerOptionAutoACK(auto bool) WorkerHandlerOptionFunc {
 }
 
 // WorkerHandlerOptionAddErrorHandler add error handlers
-func WorkerHandlerOptionAddErrorHandler(errHandlers ...WorkerErrorHandler) WorkerHandlerOptionFunc {
+func WorkerHandlerOptionAddErrorHandler(errHandler WorkerErrorHandler) WorkerHandlerOptionFunc {
 	return func(wh *WorkerHandler) {
-		wh.ErrorHandler = errHandlers
+		wh.ErrorHandler = errHandler
 	}
 }

@@ -252,8 +252,8 @@ func (r *redisWorker) processMessage(handlerName string, message []byte) {
 	trace.SetTag("message", string(message))
 
 	if err := selectedHandler.HandlerFunc(ctx, message); err != nil {
-		for _, errHandler := range selectedHandler.ErrorHandler {
-			errHandler(ctx, types.RedisSubscriber, handlerName, message, err)
+		if selectedHandler.ErrorHandler != nil {
+			selectedHandler.ErrorHandler(ctx, types.RedisSubscriber, handlerName, message, err)
 		}
 		tracer.SetError(ctx, err)
 	}

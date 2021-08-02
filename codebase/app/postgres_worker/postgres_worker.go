@@ -132,8 +132,8 @@ START:
 				trace.SetTag("action", eventPayload.Action)
 				trace.Log("payload", event.Extra)
 				if err := handler.HandlerFunc(ctx, message); err != nil {
-					for _, errHandler := range handler.ErrorHandler {
-						errHandler(ctx, types.Kafka, eventPayload.Table, message, err)
+					if handler.ErrorHandler != nil {
+						handler.ErrorHandler(ctx, types.Kafka, eventPayload.Table, message, err)
 					}
 					trace.SetError(err)
 				}

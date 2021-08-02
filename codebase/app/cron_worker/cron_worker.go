@@ -220,8 +220,8 @@ func (c *cronWorker) processJob(job *Job) {
 
 	params := []byte(job.Params)
 	if err := job.Handler.HandlerFunc(ctx, params); err != nil {
-		for _, errHandler := range job.Handler.ErrorHandler {
-			errHandler(ctx, types.RabbitMQ, job.HandlerName, params, err)
+		if job.Handler.ErrorHandler != nil {
+			job.Handler.ErrorHandler(ctx, types.RabbitMQ, job.HandlerName, params, err)
 		}
 		trace.SetError(err)
 	}
