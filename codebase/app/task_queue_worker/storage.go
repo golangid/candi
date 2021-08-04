@@ -142,20 +142,7 @@ func (s *storage) findAllFailureJob(filter Filter) (jobs []Job) {
 		Sort:  bson.M{"created_at": -1},
 	}
 
-	pipeQuery := []bson.M{
-		{"task_name": filter.TaskName},
-	}
-	if len(filter.Status) > 0 {
-		pipeQuery = append(pipeQuery, bson.M{
-			"status": bson.M{
-				"$in": filter.Status,
-			},
-		})
-	}
-	query := bson.M{
-		"$and": pipeQuery,
-	}
-	cur, err := s.db.Collection(mongoColl).Find(ctx, query, findOptions)
+	cur, err := s.db.Collection(mongoColl).Find(ctx, filter.toBsonFilter(), findOptions)
 	if err != nil {
 		logger.LogE(err.Error())
 		return
@@ -279,32 +266,20 @@ func (s *storage) saveJob(job *Job) {
 	}
 }
 
-func (s *storage) updateAllStatus(taskName string, status jobStatusEnum, currentStatus []jobStatusEnum) {
+func (s *storage) updateAllStatus(taskName string, updatedStatus jobStatusEnum, currentStatus []jobStatusEnum) {
 	ctx := context.Background()
-	filter := bson.M{
-		"task_name": taskName,
+	filter := bson.M{}
+
+	if taskName != "" {
+		filter["task_name"] = taskName
 	}
 	filter["status"] = bson.M{"$in": currentStatus}
 	_, err := s.db.Collection(mongoColl).UpdateMany(ctx,
 		filter,
 		bson.M{
-			"$set": bson.M{"status": string(status), "retries": 0},
+			"$set": bson.M{"status": updatedStatus, "retries": 0},
 		})
 
-	if err != nil {
-		logger.LogE(err.Error())
-	}
-}
-
-func (s *storage) pauseAllRunningJob() {
-	ctx := context.Background()
-	_, err := s.db.Collection(mongoColl).UpdateMany(ctx,
-		bson.M{
-			"status": statusRetrying,
-		},
-		bson.M{
-			"$set": bson.M{"status": string(statusQueueing)},
-		})
 	if err != nil {
 		logger.LogE(err.Error())
 	}
@@ -342,10 +317,8 @@ func (s *storage) findAllPendingJob() (jobs []Job) {
 	if err != nil {
 		return
 	}
-	for cur.Next(ctx) {
-		var job Job
-		cur.Decode(&job)
-		jobs = append(jobs, job)
-	}
+	defer cur.Close(ctx)
+
+	cur.All(ctx, &jobs)
 	return
 }

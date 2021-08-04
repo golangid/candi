@@ -35,6 +35,10 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, db *mong
 			var handlerGroup types.WorkerHandlerGroup
 			h.MountHandlers(&handlerGroup)
 			for _, handler := range handlerGroup.Handlers {
+				if _, ok := registeredTask[handler.Pattern]; ok {
+					panic("Task Queue Worker: task " + handler.Pattern + " has been registered")
+				}
+
 				workerIndex := len(workers)
 				registeredTask[handler.Pattern] = struct {
 					handler     types.WorkerHandler
@@ -62,16 +66,14 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, db *mong
 	}
 
 	go func() {
+		for taskName := range registeredTask {
+			queue.Clear(taskName)
+		}
 		// get current pending jobs
 		pendingJobs := repo.findAllPendingJob()
-		for taskName, registered := range registeredTask {
-			queue.Clear(taskName)
-			for _, job := range pendingJobs {
-				if job.TaskName == taskName {
-					queue.PushJob(&job)
-					registerJobToWorker(&job, registered.workerIndex)
-				}
-			}
+		for _, job := range pendingJobs {
+			queue.PushJob(&job)
+			registerJobToWorker(&job, registeredTask[job.TaskName].workerIndex)
 		}
 		refreshWorkerNotif <- struct{}{}
 	}()
@@ -158,7 +160,7 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 
 	select {
 	case <-ctx.Done():
-		repo.pauseAllRunningJob()
+		repo.updateAllStatus("", statusQueueing, []jobStatusEnum{statusRetrying})
 	case <-done:
 		t.ctxCancelFunc()
 	}
@@ -234,8 +236,9 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 		}
 	}
 
+	message := []byte(job.Arguments)
 	ctx = context.WithValue(ctx, candishared.ContextKeyTaskQueueRetry, job.Retries)
-	if err := selectedHandler.HandlerFunc(ctx, []byte(job.Arguments)); err != nil {
+	if err := selectedHandler.HandlerFunc(ctx, message); err != nil {
 		job.Error = err.Error()
 		job.Status = string(statusFailure)
 		trace.SetError(err)
@@ -245,7 +248,7 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 			if job.Retries >= job.MaxRetry {
 				logger.LogRed("TaskQueueWorker: GIVE UP: " + job.TaskName)
 				if selectedHandler.ErrorHandler != nil {
-					selectedHandler.ErrorHandler(ctx, types.TaskQueue, job.TaskName, []byte(job.Arguments), err)
+					selectedHandler.ErrorHandler(ctx, types.TaskQueue, job.TaskName, message, err)
 				}
 				return
 			}

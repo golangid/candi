@@ -79,6 +79,7 @@ type (
 		TaskNameList []string
 		Search       *string
 		Status       []string
+		ShowAll      bool
 	}
 
 	clientJobTaskSubscriber struct {
