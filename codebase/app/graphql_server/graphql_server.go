@@ -44,7 +44,7 @@ func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.Ap
 	httpHandler := NewHandler(service)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", candishared.HTTPRoot(string(service.Name())))
+	mux.HandleFunc("/", candishared.HTTPRoot(string(service.Name()), env.BaseEnv().BuildNumber))
 	mux.HandleFunc("/memstats", candishared.HTTPMemstatsHandler)
 	mux.HandleFunc(rootGraphQLPath, httpHandler.ServeGraphQL())
 	mux.HandleFunc(rootGraphQLPlayground, httpHandler.ServePlayground)
@@ -173,14 +173,14 @@ func (s *handlerImpl) ServeGraphQL() http.HandlerFunc {
 			params.Query = string(body)
 		}
 
-		ip := req.Header.Get("X-Forwarded-For")
+		ip := req.Header.Get(candihelper.HeaderXForwardedFor)
 		if ip == "" {
-			ip = req.Header.Get("X-Real-IP")
+			ip = req.Header.Get(candihelper.HeaderXRealIP)
 			if ip == "" {
 				ip, _, _ = net.SplitHostPort(req.RemoteAddr)
 			}
 		}
-		req.Header.Set("X-Real-IP", ip)
+		req.Header.Set(candihelper.HeaderXRealIP, ip)
 
 		ctx := context.WithValue(req.Context(), candishared.ContextKeyHTTPHeader, req.Header)
 		response := s.schema.Exec(ctx, params.Query, params.OperationName, params.Variables)
@@ -190,7 +190,7 @@ func (s *handlerImpl) ServeGraphQL() http.HandlerFunc {
 			return
 		}
 
-		resp.Header().Set("Content-Type", "application/json")
+		resp.Header().Set(candihelper.HeaderContentType, candihelper.HeaderMIMEApplicationJSON)
 		resp.Write(responseJSON)
 	}))
 }

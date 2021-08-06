@@ -90,7 +90,7 @@ func AddJobViaHTTPRequest(ctx context.Context, workerHost string, taskName strin
 	)
 
 	header := map[string]string{
-		"Content-Type": "application/json",
+		candihelper.HeaderContentType: candihelper.HeaderMIMEApplicationJSON,
 	}
 	reqBody := map[string]interface{}{
 		"operationName": "AddJob",

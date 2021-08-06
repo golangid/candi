@@ -9,7 +9,7 @@ import (
 	"pkg.agungdp.dev/candi/candishared"
 )
 
-// HTTPResponse format
+// HTTPResponse default candi http response format
 type HTTPResponse struct {
 	Success bool        `json:"success"`
 	Code    int         `json:"code"`
@@ -46,14 +46,14 @@ func NewHTTPResponse(code int, message string, params ...interface{}) *HTTPRespo
 
 // JSON for set http JSON response (Content-Type: application/json) with parameter is http response writer
 func (resp *HTTPResponse) JSON(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(candihelper.HeaderContentType, candihelper.HeaderMIMEApplicationJSON)
 	w.WriteHeader(resp.Code)
 	return json.NewEncoder(w).Encode(resp)
 }
 
 // XML for set http XML response (Content-Type: application/xml)
 func (resp *HTTPResponse) XML(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/xml")
+	w.Header().Set(candihelper.HeaderContentType, candihelper.HeaderMIMEApplicationXML)
 	w.WriteHeader(resp.Code)
 	return xml.NewEncoder(w).Encode(resp)
 }

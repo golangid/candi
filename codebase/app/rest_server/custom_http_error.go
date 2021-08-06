@@ -1,10 +1,11 @@
-package wrapper
+package restserver
 
 import (
 	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo"
+	"pkg.agungdp.dev/candi/wrapper"
 )
 
 // CustomHTTPErrorHandler custom echo http error
@@ -21,5 +22,5 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 			message = fmt.Sprintf(`Resource "%s %s" not found`, c.Request().Method, c.Request().URL.Path)
 		}
 	}
-	NewHTTPResponse(code, message).JSON(c.Response())
+	wrapper.NewHTTPResponse(code, message).JSON(c.Response())
 }

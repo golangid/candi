@@ -1,4 +1,4 @@
-package wrapper
+package restserver
 
 import (
 	"net/http"

@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"pkg.agungdp.dev/candi/candihelper"
 	"pkg.agungdp.dev/candi/candishared"
 	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/tracer"
@@ -48,8 +49,8 @@ func (m *Middleware) HTTPBearerAuth(next http.Handler) http.Handler {
 			trace := tracer.StartTrace(ctx, "Middleware:HTTPBearerAuth")
 			defer trace.Finish()
 
-			authorization := req.Header.Get("Authorization")
-			trace.SetTag("authorization", authorization)
+			authorization := req.Header.Get(candihelper.HeaderAuthorization)
+			trace.SetTag(candihelper.HeaderAuthorization, authorization)
 			tokenValue, err := extractAuthType(Bearer, authorization)
 			if err != nil {
 				trace.SetError(err)
@@ -79,8 +80,8 @@ func (m *Middleware) GraphQLBearerAuth(ctx context.Context) context.Context {
 	defer trace.Finish()
 
 	headers := ctx.Value(candishared.ContextKeyHTTPHeader).(http.Header)
-	authorization := headers.Get("Authorization")
-	trace.SetTag("authorization", authorization)
+	authorization := headers.Get(candihelper.HeaderAuthorization)
+	trace.SetTag(candihelper.HeaderAuthorization, authorization)
 
 	tokenValue, err := extractAuthType(Bearer, authorization)
 	if err != nil {
@@ -122,8 +123,8 @@ func (m *Middleware) GRPCBearerAuth(ctx context.Context) context.Context {
 		panic(err)
 	}
 
-	authorizationMap := meta["authorization"]
-	trace.SetTag("authorization", authorizationMap)
+	authorizationMap := meta[candihelper.HeaderAuthorization]
+	trace.SetTag(candihelper.HeaderAuthorization, authorizationMap)
 	if len(authorizationMap) != 1 {
 		err := grpc.Errorf(codes.Unauthenticated, "Invalid authorization")
 		trace.SetError(err)

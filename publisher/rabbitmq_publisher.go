@@ -47,7 +47,7 @@ func (r *RabbitMQPublisher) PublishMessage(ctx context.Context, args *candishare
 	defer ch.Close()
 
 	if args.ContentType == "" {
-		args.ContentType = "application/json"
+		args.ContentType = candihelper.HeaderMIMEApplicationJSON
 	}
 
 	trace.SetTag("topic", args.Topic)

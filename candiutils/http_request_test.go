@@ -35,7 +35,7 @@ func TestRequestDo(t *testing.T) {
 	urlMock := "http://agungdp.dev"
 	headerMock := map[string]string{"Content-Type": "application/json"}
 	successResponseMock := map[string]interface{}{"success": true, "message": "success", "code": http.StatusOK}
-	errorResponseMock := map[string]interface{}{"success": false, "message": "error", "code": http.StatusBadGateway}
+	errorResponseMock := map[string]interface{}{"success": false, "message": "error", "code": http.StatusBadRequest}
 
 	testCase := map[string]struct {
 		wantError bool
@@ -58,7 +58,7 @@ func TestRequestDo(t *testing.T) {
 		"Test #2 negative http request do client request": {
 			wantError: true,
 			url:       urlMock,
-			code:      http.StatusBadGateway,
+			code:      http.StatusBadRequest,
 			method:    http.MethodPut,
 			response:  errorResponseMock,
 			body: &candishared.Result{
@@ -80,26 +80,29 @@ func TestRequestDo(t *testing.T) {
 				HTTPRequestSetBreakerName("test"),
 			)
 
-			if test.code < 500 {
-				httpmock.RegisterResponder(http.MethodPost, test.url, func(req *http.Request) (*http.Response, error) {
-					resp, _ := httpmock.NewJsonResponse(test.code, test.response)
-					return resp, nil
-				})
-			}
+			httpmock.RegisterResponder(test.method, test.url, func(req *http.Request) (*http.Response, error) {
+				return httpmock.NewJsonResponse(test.code, test.response)
+			})
 
 			var (
-				err error
+				err  error
+				body []byte
+				code int
 			)
 
 			if test.body != nil {
 				req, _ := json.Marshal(test.body)
 
 				// do request
-				_, _, err = request.Do(context.Background(), test.method, test.url, req, test.header)
+				body, code, err = request.Do(context.Background(), test.method, test.url, req, test.header)
 			} else {
 				// do request
-				_, _, err = request.Do(context.Background(), test.method, test.url, nil, test.header)
+				body, code, err = request.Do(context.Background(), test.method, test.url, nil, test.header)
 			}
+
+			respByte, _ := json.Marshal(test.response)
+			assert.Equal(t, respByte, body)
+			assert.Equal(t, test.code, code)
 
 			if test.wantError {
 				assert.Error(t, err)

@@ -24,6 +24,8 @@ const (
 	KByte = Byte * 1024
 	// MByte ...
 	MByte = KByte * 1024
+	// GByte ...
+	GByte = MByte * 1024
 
 	// WORKDIR const for workdir environment
 	WORKDIR = "WORKDIR"
@@ -31,11 +33,27 @@ const (
 	RepositorySQL = "repositorySQL"
 	// RepositoryMongo unit of work for mongodb repository
 	RepositoryMongo = "repositoryMongo"
-	// UsecaseUOW unit of work for usecase
-	UsecaseUOW = "usecaseUOW"
 
 	// HeaderDisableTrace const
 	HeaderDisableTrace = "X-Disable-Trace"
+	// HeaderXForwardedFor const
+	HeaderXForwardedFor = "X-Forwarded-For"
+	// HeaderXRealIP const
+	HeaderXRealIP = "X-Real-IP"
+	// HeaderContentType const
+	HeaderContentType = "Content-Type"
+	// HeaderAuthorization const
+	HeaderAuthorization = "Authorization"
+	// HeaderMIMEApplicationJSON const
+	HeaderMIMEApplicationJSON = "application/json"
+	// HeaderMIMEApplicationXML const
+	HeaderMIMEApplicationXML = "application/xml"
+	// HeaderMIMEApplicationForm const
+	HeaderMIMEApplicationForm = "application/x-www-form-urlencoded"
+	// HeaderMIMEMultipartForm const
+	HeaderMIMEMultipartForm = "multipart/form-data"
+	// HeaderMIMEOctetStream const
+	HeaderMIMEOctetStream = "application/octet-stream"
 )
 
 var (

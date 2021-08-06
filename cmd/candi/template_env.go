@@ -1,10 +1,9 @@
 package main
 
-const envTemplate = `# Basic env configuration
+const envTemplate = `# Basic Candi env configuration
 ENVIRONMENT=development #development,staging,production
 DEBUG_MODE=true
 NO_AUTH=true
-IS_PRODUCTION=false
 LOAD_CONFIG_TIMEOUT=20s
 
 # Application Service Handlers
@@ -68,5 +67,6 @@ JAEGER_MAX_PACKET_SIZE=65000 # in bytes
 
 MAX_GOROUTINES=10
 
-# Additional env
+# Additional env for your service
+
 `

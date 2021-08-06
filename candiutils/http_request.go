@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"time"
@@ -151,7 +151,7 @@ func (request *httpRequestImpl) Do(ctx context.Context, method, url string, requ
 	trace.SetTag("http.timeout", request.timeout.String())
 	trace.SetTag("http.breaker_name", request.breakerName)
 	if requestBody != nil {
-		tracer.Log(ctx, "request.body", requestBody)
+		trace.Log("request.body", requestBody)
 	}
 
 	// client request
@@ -162,14 +162,14 @@ func (request *httpRequestImpl) Do(ctx context.Context, method, url string, requ
 	// close response body
 	defer resp.Body.Close()
 
-	respBody, err = ioutil.ReadAll(resp.Body)
+	respBody, err = io.ReadAll(resp.Body)
 	respCode = resp.StatusCode
 
 	dumpResponse, _ := httputil.DumpResponse(resp, false)
 	trace.SetTag("response.header", dumpResponse)
 	trace.SetTag("response.code", resp.StatusCode)
 	trace.SetTag("response.status", resp.Status)
-	tracer.Log(ctx, "response.body", respBody)
+	trace.Log("response.body", respBody)
 
 	if request.minHTTPErrorCodeThreshold != 0 && resp.StatusCode >= request.minHTTPErrorCodeThreshold {
 		err = errors.New(resp.Status)

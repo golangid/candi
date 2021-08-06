@@ -19,7 +19,6 @@ import (
 	"pkg.agungdp.dev/candi/codebase/factory/types"
 	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
-	"pkg.agungdp.dev/candi/wrapper"
 )
 
 type restServer struct {
@@ -41,10 +40,10 @@ func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.Ap
 		server.listener = muxListener.Match(cmux.HTTP1Fast())
 	}
 
-	server.serverEngine.HTTPErrorHandler = wrapper.CustomHTTPErrorHandler
+	server.serverEngine.HTTPErrorHandler = CustomHTTPErrorHandler
 	server.serverEngine.Use(echoCORS())
 
-	server.serverEngine.GET("/", echo.WrapHandler(http.HandlerFunc(candishared.HTTPRoot(string(service.Name())))))
+	server.serverEngine.GET("/", echo.WrapHandler(http.HandlerFunc(candishared.HTTPRoot(string(service.Name()), env.BaseEnv().BuildNumber))))
 	server.serverEngine.GET("/memstats",
 		echo.WrapHandler(http.HandlerFunc(candishared.HTTPMemstatsHandler)),
 		echo.WrapMiddleware(service.GetDependency().GetMiddleware().HTTPBasicAuth))

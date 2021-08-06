@@ -37,7 +37,7 @@ func InitZap() {
 			},
 		},
 		Level:       zap.NewAtomicLevelAt(zapcore.DebugLevel),
-		Development: !env.BaseEnv().IsProduction,
+		Development: env.BaseEnv().Environment != "production",
 	}
 
 	logg, err = cfg.Build()

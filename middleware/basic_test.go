@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/metadata"
+	"pkg.agungdp.dev/candi/candihelper"
 	"pkg.agungdp.dev/candi/candishared"
 	"pkg.agungdp.dev/candi/config/env"
 )
@@ -132,19 +133,19 @@ func TestMiddleware_GRPCBasicAuth(t *testing.T) {
 
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
 		ctx := metadata.NewIncomingContext(context.Background(), metadata.MD{
-			"authorization": []string{"Basic " + validBasicAuth},
+			candihelper.HeaderAuthorization: []string{"Basic " + validBasicAuth},
 		})
 		assert.NotPanics(t, func() { mw.GRPCBasicAuth(ctx) })
 	})
 	t.Run("Testcase #2: Negative", func(t *testing.T) {
 		ctx := metadata.NewIncomingContext(context.Background(), metadata.MD{
-			"authorization": []string{},
+			candihelper.HeaderAuthorization: []string{},
 		})
 		assert.Panics(t, func() { mw.GRPCBasicAuth(ctx) })
 	})
 	t.Run("Testcase #3: Negative", func(t *testing.T) {
 		ctx := metadata.NewIncomingContext(context.Background(), metadata.MD{
-			"authorization": []string{"Basic xxx"},
+			candihelper.HeaderAuthorization: []string{"Basic xxx"},
 		})
 		assert.Panics(t, func() { mw.GRPCBasicAuth(ctx) })
 	})

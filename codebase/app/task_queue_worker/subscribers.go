@@ -101,7 +101,12 @@ func getMemstats() (res MemstatsResolver) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 	res.Alloc = fmt.Sprintf("%d MB", m.Alloc/candihelper.MByte)
-	res.TotalAlloc = fmt.Sprintf("%d MB", m.TotalAlloc/candihelper.MByte)
+
+	if m.TotalAlloc > candihelper.GByte {
+		res.TotalAlloc = fmt.Sprintf("%.2f GB", float64(m.TotalAlloc)/float64(candihelper.GByte))
+	} else {
+		res.TotalAlloc = fmt.Sprintf("%d MB", m.TotalAlloc/candihelper.MByte)
+	}
 	res.NumGC = int(m.NumGC)
 	res.NumGoroutines = runtime.NumGoroutine()
 	return

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/labstack/echo"
+	"pkg.agungdp.dev/candi/candihelper"
 	"pkg.agungdp.dev/candi/candishared"
 	"pkg.agungdp.dev/candi/wrapper"
 )
@@ -22,7 +22,7 @@ func (m *Middleware) HTTPMultipleAuth(next http.Handler) http.Handler {
 		ctx := req.Context()
 
 		// get auth
-		authorization := req.Header.Get(echo.HeaderAuthorization)
+		authorization := req.Header.Get(candihelper.HeaderAuthorization)
 		if authorization == "" {
 			wrapper.NewHTTPResponse(http.StatusUnauthorized, "Invalid authorization").JSON(w)
 			return

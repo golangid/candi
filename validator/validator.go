@@ -13,7 +13,7 @@ type Validator struct {
 }
 
 // NewValidator constructor, using jsonschema & struct validator (github.com/go-playground/validator),
-// jsonschema source file load from JSON_SCHEMA_DIR environment
+// jsonschema source file load from "api/jsonschema" directory
 func NewValidator() *Validator {
 	return &Validator{
 		JSONSchemaValidator: NewJSONSchemaValidator(os.Getenv(candihelper.WORKDIR) + "api/jsonschema"),
