@@ -13,8 +13,8 @@ github.com/Shopify/toxiproxy v2.1.4+incompatible h1:TKdv8HiTLgE5wdJuEML90aBgNWso
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
 github.com/afex/hystrix-go v0.0.0-20180209013831-27fae8d30f1a h1:kUr+IdWoKBJQ+e0LC/ysc1w5clvmxbvNNE+lK2yGPrQ=
 github.com/afex/hystrix-go v0.0.0-20180209013831-27fae8d30f1a/go.mod h1:SkGFH1ia65gfNATL8TAiHDNxPzPdmEL5uirI2Uyuz6c=
-github.com/agungdwiprasetyo/task-queue-worker-dashboard/external v0.0.0-20210804071124-0b1178074c05 h1:UcxrCk7t1F160Gam5dp9g7rMovPzvRFQmwxKHlXKwPY=
-github.com/agungdwiprasetyo/task-queue-worker-dashboard/external v0.0.0-20210804071124-0b1178074c05/go.mod h1:oyuOHk50y8AZ4m9U55feZjFzJ1xFxFJwaoHIh4w6ZLA=
+github.com/agungdwiprasetyo/task-queue-worker-dashboard/external v0.0.0-20210808151550-cb2477948542 h1:pk3N5BYsmgWgW0xAmGB0LPSfKqQoBT2Qax3qMdcNMfI=
+github.com/agungdwiprasetyo/task-queue-worker-dashboard/external v0.0.0-20210808151550-cb2477948542/go.mod h1:oyuOHk50y8AZ4m9U55feZjFzJ1xFxFJwaoHIh4w6ZLA=
 github.com/ajstarks/svgo v0.0.0-20180226025133-644b8db467af/go.mod h1:K08gAheRH3/J6wwsYMMT4xOr94bZjxIelGM0+d/wbFw=
 github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e/go.mod h1:3U/XgcO3hCbHZ8TKRvWD2dDTCfh9M9ya+I9JpbB7O8o=
 github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da h1:8GUt8eRujhVEGZFFEjBj46YV4rDjvGrNxb0KMWYkL2I=

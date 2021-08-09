@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
 	github.com/Shopify/sarama v1.29.0
-	github.com/agungdwiprasetyo/task-queue-worker-dashboard/external v0.0.0-20210804071124-0b1178074c05
+	github.com/agungdwiprasetyo/task-queue-worker-dashboard/external v0.0.0-20210808151550-cb2477948542
 	github.com/go-playground/locales v0.13.0
 	github.com/go-playground/universal-translator v0.17.0
 	github.com/go-playground/validator/v10 v10.6.0

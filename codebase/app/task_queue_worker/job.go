@@ -73,9 +73,10 @@ func AddJob(taskName string, maxRetry int, args []byte) (err error) {
 	newJob.CreatedAt = time.Now()
 
 	go func(job *Job, workerIndex int) {
+		ctx := context.Background()
 		queue.PushJob(job)
-		repo.saveJob(job)
-		broadcastAllToSubscribers()
+		persistent.SaveJob(ctx, job)
+		broadcastAllToSubscribers(ctx)
 		registerJobToWorker(job, workerIndex)
 		refreshWorkerNotif <- struct{}{}
 	}(&newJob, task.workerIndex)

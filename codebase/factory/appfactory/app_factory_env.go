@@ -57,8 +57,8 @@ func NewAppFromEnvironmentConfig(service factory.ServiceFactory) (apps []factory
 			panic("Task queue worker require mongo for dashboard management")
 		}
 		queue := taskqueueworker.NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
-		db := service.GetDependency().GetMongoDatabase().WriteDB()
-		apps = append(apps, taskqueueworker.NewTaskQueueWorker(service, queue, db))
+		persistent := taskqueueworker.NewMongoPersistent(service.GetDependency().GetMongoDatabase().WriteDB())
+		apps = append(apps, taskqueueworker.NewTaskQueueWorker(service, queue, persistent))
 	}
 	if env.BaseEnv().UseRedisSubscriber {
 		apps = append(apps, redisworker.NewWorker(service))

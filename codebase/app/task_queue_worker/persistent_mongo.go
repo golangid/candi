@@ -3,7 +3,6 @@ package taskqueueworker
 import (
 	"context"
 	"fmt"
-	"math"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -18,7 +17,12 @@ const (
 	mongoColl = "task_queue_worker_jobs"
 )
 
-func createMongoIndex(db *mongo.Database) {
+type mongoPersistent struct {
+	db *mongo.Database
+}
+
+// NewMongoPersistent create mongodb persistent
+func NewMongoPersistent(db *mongo.Database) Persistent {
 	uniqueOpts := &options.IndexOptions{
 		Unique: candihelper.ToBoolPtr(true),
 	}
@@ -59,42 +63,20 @@ func createMongoIndex(db *mongo.Database) {
 	for _, idx := range indexes {
 		indexView.CreateOne(context.Background(), idx)
 	}
+	return &mongoPersistent{db}
 }
 
-type storage struct {
-	db *mongo.Database
-}
-
-func (s *storage) findAllJob(filter Filter) (meta MetaJobList, jobs []Job) {
-	ctx := context.Background()
-
-	lim := int64(filter.Limit)
-	offset := int64((filter.Page - 1) * filter.Limit)
+func (s *mongoPersistent) FindAllJob(ctx context.Context, filter Filter) (jobs []Job) {
 	findOptions := &options.FindOptions{
-		Limit: &lim,
-		Skip:  &offset,
-		Sort:  bson.M{"created_at": -1},
+		Sort: bson.M{"created_at": -1},
 	}
 
-	pipeQuery := []bson.M{
-		{"task_name": filter.TaskName},
+	if !filter.ShowAll {
+		findOptions.SetLimit(int64(filter.Limit))
+		findOptions.SetSkip(int64((filter.Page - 1) * filter.Limit))
 	}
-	if filter.Search != nil && *filter.Search != "" {
-		pipeQuery = append(pipeQuery, bson.M{
-			"arguments": primitive.Regex{Pattern: *filter.Search, Options: "i"},
-		})
-	}
-	if len(filter.Status) > 0 {
-		pipeQuery = append(pipeQuery, bson.M{
-			"status": bson.M{
-				"$in": filter.Status,
-			},
-		})
-	}
-	query := bson.M{
-		"$and": pipeQuery,
-	}
-	cur, err := s.db.Collection(mongoColl).Find(ctx, query, findOptions)
+
+	cur, err := s.db.Collection(mongoColl).Find(ctx, s.toBsonFilter(filter), findOptions)
 	if err != nil {
 		logger.LogE(err.Error())
 		return
@@ -116,54 +98,19 @@ func (s *storage) findAllJob(filter Filter) (meta MetaJobList, jobs []Job) {
 		jobs = append(jobs, job)
 	}
 
-	filter.TaskNameList = []string{filter.TaskName}
-	counterAll := repo.countAllJobTask(context.Background(), filter)
-	if len(counterAll) == 1 {
-		meta.Detail.Failure = counterAll[0].Detail.Failure
-		meta.Detail.Retrying = counterAll[0].Detail.Retrying
-		meta.Detail.Success = counterAll[0].Detail.Success
-		meta.Detail.Queueing = counterAll[0].Detail.Queueing
-		meta.Detail.Stopped = counterAll[0].Detail.Stopped
-		meta.TotalRecords = counterAll[0].TotalJobs
-	}
-
-	meta.Page, meta.Limit = filter.Page, filter.Limit
-	meta.TotalPages = int(math.Ceil(float64(meta.TotalRecords) / float64(meta.Limit)))
 	return
 }
 
-func (s *storage) findAllFailureJob(filter Filter) (jobs []Job) {
-	ctx := context.Background()
-	lim := int64(filter.Limit)
-	offset := int64((filter.Page - 1) * filter.Limit)
-	findOptions := &options.FindOptions{
-		Limit: &lim,
-		Skip:  &offset,
-		Sort:  bson.M{"created_at": -1},
-	}
-
-	cur, err := s.db.Collection(mongoColl).Find(ctx, filter.toBsonFilter(), findOptions)
-	if err != nil {
-		logger.LogE(err.Error())
-		return
-	}
-	defer cur.Close(ctx)
-	cur.All(ctx, &jobs)
-	return
-}
-
-func (s *storage) countTaskJob(filter Filter) int {
-	ctx := context.Background()
-
-	count, _ := s.db.Collection(mongoColl).CountDocuments(ctx, filter.toBsonFilter())
+func (s *mongoPersistent) CountAllJob(ctx context.Context, filter Filter) int {
+	count, _ := s.db.Collection(mongoColl).CountDocuments(ctx, s.toBsonFilter(filter))
 	return int(count)
 }
 
-func (s *storage) countAllJobTask(ctx context.Context, filter Filter) (result []TaskResolver) {
+func (s *mongoPersistent) AggregateAllTaskJob(ctx context.Context, filter Filter) (result []TaskResolver) {
 
 	pipeQuery := []bson.M{
 		{
-			"$match": filter.toBsonFilter(),
+			"$match": s.toBsonFilter(filter),
 		},
 		{
 			"$project": bson.M{
@@ -241,8 +188,7 @@ func (s *storage) countAllJobTask(ctx context.Context, filter Filter) (result []
 	return
 }
 
-func (s *storage) saveJob(job *Job) {
-	ctx := context.Background()
+func (s *mongoPersistent) SaveJob(ctx context.Context, job *Job) {
 	var err error
 
 	if job.ID == "" {
@@ -266,8 +212,7 @@ func (s *storage) saveJob(job *Job) {
 	}
 }
 
-func (s *storage) updateAllStatus(taskName string, updatedStatus jobStatusEnum, currentStatus []jobStatusEnum) {
-	ctx := context.Background()
+func (s *mongoPersistent) UpdateAllStatus(ctx context.Context, taskName string, currentStatus []jobStatusEnum, updatedStatus jobStatusEnum) {
 	filter := bson.M{}
 
 	if taskName != "" {
@@ -285,16 +230,14 @@ func (s *storage) updateAllStatus(taskName string, updatedStatus jobStatusEnum, 
 	}
 }
 
-func (s *storage) findJobByID(id string) (job *Job, err error) {
-	ctx := context.Background()
+func (s *mongoPersistent) FindJobByID(ctx context.Context, id string) (job *Job, err error) {
 
 	job = &Job{}
 	err = s.db.Collection(mongoColl).FindOne(ctx, bson.M{"_id": id}).Decode(job)
 	return
 }
 
-func (s *storage) cleanJob(taskName string) {
-	ctx := context.Background()
+func (s *mongoPersistent) CleanJob(ctx context.Context, taskName string) {
 
 	query := bson.M{
 		"$and": []bson.M{
@@ -305,20 +248,35 @@ func (s *storage) cleanJob(taskName string) {
 	s.db.Collection(mongoColl).DeleteMany(ctx, query)
 }
 
-func (s *storage) findAllPendingJob() (jobs []Job) {
-	ctx := context.Background()
+func (s *mongoPersistent) toBsonFilter(f Filter) bson.M {
+	pipeQuery := []bson.M{}
 
-	query := bson.M{
-		"status": bson.M{
-			"$in": []jobStatusEnum{statusRetrying, statusQueueing},
-		},
+	if f.TaskName != "" {
+		pipeQuery = append(pipeQuery, bson.M{
+			"task_name": f.TaskName,
+		})
+	} else if len(f.TaskNameList) > 0 {
+		pipeQuery = append(pipeQuery, bson.M{
+			"task_name": bson.M{
+				"$in": f.TaskNameList,
+			},
+		})
 	}
-	cur, err := s.db.Collection(mongoColl).Find(ctx, query)
-	if err != nil {
-		return
-	}
-	defer cur.Close(ctx)
 
-	cur.All(ctx, &jobs)
-	return
+	if f.Search != nil && *f.Search != "" {
+		pipeQuery = append(pipeQuery, bson.M{
+			"arguments": primitive.Regex{Pattern: *f.Search, Options: "i"},
+		})
+	}
+	if len(f.Status) > 0 {
+		pipeQuery = append(pipeQuery, bson.M{
+			"status": bson.M{
+				"$in": f.Status,
+			},
+		})
+	}
+
+	return bson.M{
+		"$and": pipeQuery,
+	}
 }

@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"go.mongodb.org/mongo-driver/mongo"
 	"pkg.agungdp.dev/candi/candishared"
 	"pkg.agungdp.dev/candi/codebase/factory"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
@@ -27,8 +26,13 @@ type taskQueueWorker struct {
 }
 
 // NewTaskQueueWorker create new task queue worker
-func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, db *mongo.Database, opts ...OptionFunc) factory.AppServerFactory {
-	makeAllGlobalVars(q, db, opts...)
+func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, perst Persistent, opts ...OptionFunc) factory.AppServerFactory {
+	makeAllGlobalVars(q, perst, opts...)
+
+	workerInstance := &taskQueueWorker{
+		service: service,
+	}
+	workerInstance.ctx, workerInstance.ctxCancelFunc = context.WithCancel(context.Background())
 
 	for _, m := range service.GetModules() {
 		if h := m.WorkerHandler(types.TaskQueue); h != nil {
@@ -70,7 +74,9 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, db *mong
 			queue.Clear(taskName)
 		}
 		// get current pending jobs
-		pendingJobs := repo.findAllPendingJob()
+		pendingJobs := persistent.FindAllJob(workerInstance.ctx, Filter{
+			Status: []string{string(statusRetrying), string(statusQueueing)},
+		})
 		for _, job := range pendingJobs {
 			queue.PushJob(&job)
 			registerJobToWorker(&job, registeredTask[job.TaskName].workerIndex)
@@ -81,10 +87,6 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, db *mong
 	fmt.Printf("\x1b[34;1m⇨ Task Queue Worker running with %d task. Open [::]:%d for dashboard\x1b[0m\n\n",
 		len(registeredTask), env.BaseEnv().TaskQueueDashboardPort)
 
-	workerInstance := &taskQueueWorker{
-		service: service,
-	}
-	workerInstance.ctx, workerInstance.ctxCancelFunc = context.WithCancel(context.Background())
 	return workerInstance
 }
 
@@ -160,11 +162,12 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 
 	select {
 	case <-ctx.Done():
-		repo.updateAllStatus("", statusQueueing, []jobStatusEnum{statusRetrying})
+		persistent.UpdateAllStatus(t.ctx, "", []jobStatusEnum{statusRetrying}, statusQueueing)
+		broadcastAllToSubscribers(t.ctx)
 	case <-done:
+		broadcastAllToSubscribers(t.ctx)
 		t.ctxCancelFunc()
 	}
-	broadcastAllToSubscribers()
 }
 
 func (t *taskQueueWorker) Name() string {
@@ -182,14 +185,14 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 	if jobID == "" {
 		return
 	}
-	job, err := repo.findJobByID(jobID)
+	job, err := persistent.FindJobByID(t.ctx, jobID)
 	if err != nil {
 		return
 	}
 	if job.Status == string(statusStopped) {
 		nextJobID := queue.NextJob(taskIndex.taskName)
 		if nextJobID != "" {
-			if nextJob, err := repo.findJobByID(nextJobID); err == nil {
+			if nextJob, err := persistent.FindJobByID(t.ctx, nextJobID); err == nil {
 				registerJobToWorker(nextJob, workerIndex)
 			}
 		}
@@ -208,16 +211,16 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 			trace.SetError(fmt.Errorf("%v", r))
 		}
 		job.FinishedAt = time.Now()
-		repo.saveJob(job)
-		broadcastAllToSubscribers()
+		persistent.SaveJob(t.ctx, job)
+		broadcastAllToSubscribers(t.ctx)
 		logger.LogGreen("task_queue > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.Finish()
 	}()
 
 	job.Retries++
 	job.Status = string(statusRetrying)
-	repo.saveJob(job)
-	broadcastAllToSubscribers()
+	persistent.SaveJob(t.ctx, job)
+	broadcastAllToSubscribers(t.ctx)
 
 	job.TraceID = tracer.GetTraceID(ctx)
 
@@ -231,7 +234,7 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 
 	nextJobID := queue.NextJob(taskIndex.taskName)
 	if nextJobID != "" {
-		if nextJob, err := repo.findJobByID(nextJobID); err == nil {
+		if nextJob, err := persistent.FindJobByID(t.ctx, nextJobID); err == nil {
 			registerJobToWorker(nextJob, workerIndex)
 		}
 	}

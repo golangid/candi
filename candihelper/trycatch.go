@@ -21,7 +21,10 @@ func (t TryCatch) Do() {
 			default:
 				err = fmt.Errorf("%v", r)
 			}
-			t.Catch(err)
+
+			if t.Catch != nil {
+				t.Catch(err)
+			}
 		}
 	}()
 	t.Try()

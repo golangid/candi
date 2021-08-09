@@ -3,8 +3,8 @@ package taskqueueworker
 import (
 	"context"
 	"fmt"
+	"math"
 	"runtime"
-	"time"
 
 	"pkg.agungdp.dev/candi/candihelper"
 	"pkg.agungdp.dev/candi/logger"
@@ -50,21 +50,23 @@ func removeJobListSubscriber(taskName, clientID string) {
 	delete(clientJobTaskSubscribers, clientID)
 }
 
-func broadcastAllToSubscribers() {
+func broadcastAllToSubscribers(ctx context.Context) {
 	if len(clientTaskSubscribers) > 0 {
-		go broadcastTaskList()
+		go broadcastTaskList(ctx)
 	}
 	if len(clientJobTaskSubscribers) > 0 {
-		go broadcastJobList()
+		go broadcastJobList(ctx)
 	}
 }
 
-func broadcastTaskList() {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+func broadcastTaskList(ctx context.Context) {
+	if ctx.Err() != nil {
+		logger.LogI(ctx.Err().Error())
+		return
+	}
 
 	var taskRes TaskListResolver
-	taskRes.Data = repo.countAllJobTask(ctx, Filter{TaskNameList: tasks})
+	taskRes.Data = persistent.AggregateAllTaskJob(ctx, Filter{TaskNameList: tasks})
 	taskRes.Meta.TotalClientSubscriber = len(clientTaskSubscribers) + len(clientJobTaskSubscribers)
 
 	for _, subscriber := range clientTaskSubscribers {
@@ -79,9 +81,27 @@ func broadcastTaskList() {
 	}
 }
 
-func broadcastJobList() {
+func broadcastJobList(ctx context.Context) {
+	if ctx.Err() != nil {
+		logger.LogI(ctx.Err().Error())
+		return
+	}
 	for _, subscriber := range clientJobTaskSubscribers {
-		meta, jobs := repo.findAllJob(subscriber.filter)
+		jobs := persistent.FindAllJob(ctx, subscriber.filter)
+
+		var meta MetaJobList
+		subscriber.filter.TaskNameList = []string{subscriber.filter.TaskName}
+		counterAll := persistent.AggregateAllTaskJob(ctx, subscriber.filter)
+		if len(counterAll) == 1 {
+			meta.Detail.Failure = counterAll[0].Detail.Failure
+			meta.Detail.Retrying = counterAll[0].Detail.Retrying
+			meta.Detail.Success = counterAll[0].Detail.Success
+			meta.Detail.Queueing = counterAll[0].Detail.Queueing
+			meta.Detail.Stopped = counterAll[0].Detail.Stopped
+			meta.TotalRecords = counterAll[0].TotalJobs
+		}
+		meta.Page, meta.Limit = subscriber.filter.Page, subscriber.filter.Limit
+		meta.TotalPages = int(math.Ceil(float64(meta.TotalRecords) / float64(meta.Limit)))
 
 		candihelper.TryCatch{
 			Try: func() {

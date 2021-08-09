@@ -14,10 +14,12 @@ import (
 	"github.com/golangid/graphql-go/relay"
 
 	"pkg.agungdp.dev/candi"
+	"pkg.agungdp.dev/candi/candihelper"
 	"pkg.agungdp.dev/candi/candishared"
 	"pkg.agungdp.dev/candi/codebase/app/graphql_server/static"
 	"pkg.agungdp.dev/candi/codebase/app/graphql_server/ws"
 	"pkg.agungdp.dev/candi/config/env"
+	"pkg.agungdp.dev/candi/logger"
 )
 
 func serveGraphQLAPI(wrk *taskQueueWorker) {
@@ -75,14 +77,14 @@ func (r *rootResolver) StopJob(ctx context.Context, input struct {
 	JobID string
 }) (string, error) {
 
-	job, err := repo.findJobByID(input.JobID)
+	job, err := persistent.FindJobByID(ctx, input.JobID)
 	if err != nil {
 		return "Failed", err
 	}
 
 	job.Status = string(statusStopped)
-	repo.saveJob(job)
-	broadcastAllToSubscribers()
+	persistent.SaveJob(ctx, job)
+	broadcastAllToSubscribers(r.worker.ctx)
 
 	return "Success stop job " + input.JobID, nil
 }
@@ -96,8 +98,8 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 	}
 
 	queue.Clear(input.TaskName)
-	repo.updateAllStatus(input.TaskName, statusStopped, []jobStatusEnum{statusQueueing, statusRetrying})
-	broadcastAllToSubscribers()
+	persistent.UpdateAllStatus(ctx, input.TaskName, []jobStatusEnum{statusQueueing, statusRetrying}, statusStopped)
+	broadcastAllToSubscribers(r.worker.ctx)
 
 	return "Success stop all job in task " + input.TaskName, nil
 }
@@ -106,7 +108,7 @@ func (r *rootResolver) RetryJob(ctx context.Context, input struct {
 	JobID string
 }) (string, error) {
 
-	job, err := repo.findJobByID(input.JobID)
+	job, err := persistent.FindJobByID(ctx, input.JobID)
 	if err != nil {
 		return "Failed", err
 	}
@@ -118,8 +120,8 @@ func (r *rootResolver) RetryJob(ctx context.Context, input struct {
 		}
 		job.Status = string(statusQueueing)
 		queue.PushJob(job)
-		repo.saveJob(job)
-		broadcastAllToSubscribers()
+		persistent.SaveJob(r.worker.ctx, job)
+		broadcastAllToSubscribers(r.worker.ctx)
 		registerJobToWorker(job, task.workerIndex)
 		refreshWorkerNotif <- struct{}{}
 	}(job)
@@ -131,8 +133,8 @@ func (r *rootResolver) CleanJob(ctx context.Context, input struct {
 	TaskName string
 }) (string, error) {
 
-	repo.cleanJob(input.TaskName)
-	go broadcastAllToSubscribers()
+	persistent.CleanJob(ctx, input.TaskName)
+	go broadcastAllToSubscribers(ctx)
 
 	return "Success clean all job in task " + input.TaskName, nil
 }
@@ -143,11 +145,11 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 
 	pageNumber := 1
 	filter := Filter{Limit: 10, Status: []string{string(statusFailure), string(statusStopped)}, TaskName: input.TaskName}
-	count := repo.countTaskJob(filter)
+	count := persistent.CountAllJob(ctx, filter)
 	totalPages := int(math.Ceil(float64(count) / float64(filter.Limit)))
 	for pageNumber <= totalPages {
 		filter.Page = pageNumber
-		jobs := repo.findAllFailureJob(filter)
+		jobs := persistent.FindAllJob(ctx, filter)
 		for _, job := range jobs {
 			job.Interval = defaultInterval
 			if (job.Status == string(statusFailure)) || (job.Retries >= job.MaxRetry) {
@@ -161,9 +163,9 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 		pageNumber++
 	}
 
-	repo.updateAllStatus(input.TaskName, statusQueueing, []jobStatusEnum{statusFailure, statusStopped})
+	persistent.UpdateAllStatus(ctx, input.TaskName, []jobStatusEnum{statusFailure, statusStopped}, statusQueueing)
 	go func() {
-		broadcastAllToSubscribers()
+		broadcastAllToSubscribers(r.worker.ctx)
 		refreshWorkerNotif <- struct{}{}
 	}()
 
@@ -194,10 +196,10 @@ func (r *rootResolver) ListenTask(ctx context.Context) (<-chan TaskListResolver,
 
 	autoRemoveClient := time.NewTicker(defaultOption.AutoRemoveClientInterval)
 
-	go func() {
-		defer func() { broadcastTaskList(); close(output); autoRemoveClient.Stop() }()
+	go broadcastTaskList(r.worker.ctx)
 
-		broadcastTaskList()
+	go func() {
+		defer func() { broadcastTaskList(r.worker.ctx); close(output); autoRemoveClient.Stop() }()
 
 		select {
 		case <-ctx.Done():
@@ -254,12 +256,34 @@ func (r *rootResolver) ListenTaskJobDetail(ctx context.Context, input struct {
 	autoRemoveClient := time.NewTicker(defaultOption.AutoRemoveClientInterval)
 
 	go func() {
-		defer func() { close(output); autoRemoveClient.Stop() }()
-
-		meta, jobs := repo.findAllJob(filter)
-		output <- JobListResolver{
-			Meta: meta, Data: jobs,
+		jobs := persistent.FindAllJob(r.worker.ctx, filter)
+		var meta MetaJobList
+		filter.TaskNameList = []string{filter.TaskName}
+		counterAll := persistent.AggregateAllTaskJob(r.worker.ctx, filter)
+		if len(counterAll) == 1 {
+			meta.Detail.Failure = counterAll[0].Detail.Failure
+			meta.Detail.Retrying = counterAll[0].Detail.Retrying
+			meta.Detail.Success = counterAll[0].Detail.Success
+			meta.Detail.Queueing = counterAll[0].Detail.Queueing
+			meta.Detail.Stopped = counterAll[0].Detail.Stopped
+			meta.TotalRecords = counterAll[0].TotalJobs
 		}
+		meta.Page, meta.Limit = filter.Page, filter.Limit
+		meta.TotalPages = int(math.Ceil(float64(meta.TotalRecords) / float64(meta.Limit)))
+		candihelper.TryCatch{
+			Try: func() {
+				output <- JobListResolver{
+					Meta: meta, Data: jobs,
+				}
+			},
+			Catch: func(e error) {
+				logger.LogE(e.Error())
+			},
+		}.Do()
+	}()
+
+	go func() {
+		defer func() { close(output); autoRemoveClient.Stop() }()
 
 		select {
 		case <-ctx.Done():

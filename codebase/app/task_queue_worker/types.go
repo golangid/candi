@@ -7,9 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
 	"pkg.agungdp.dev/candi/config/env"
 )
@@ -111,7 +108,7 @@ var (
 	}
 
 	queue                                             QueueStorage
-	repo                                              *storage
+	persistent                                        Persistent
 	refreshWorkerNotif, shutdown, closeAllSubscribers chan struct{}
 	semaphore                                         []chan struct{}
 	mutex                                             sync.Mutex
@@ -125,11 +122,10 @@ var (
 	defaultOption option
 )
 
-func makeAllGlobalVars(q QueueStorage, db *mongo.Database, opts ...OptionFunc) {
-	createMongoIndex(db)
+func makeAllGlobalVars(q QueueStorage, perst Persistent, opts ...OptionFunc) {
 
 	queue = q
-	repo = &storage{db: db}
+	persistent = perst
 
 	if env.BaseEnv().JaegerTracingDashboard != "" {
 		defaultOption.JaegerTracingDashboard = env.BaseEnv().JaegerTracingDashboard
@@ -166,37 +162,4 @@ func makeAllGlobalVars(q QueueStorage, db *mongo.Database, opts ...OptionFunc) {
 	workers = append(workers, reflect.SelectCase{
 		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(refreshWorkerNotif),
 	})
-}
-
-func (f *Filter) toBsonFilter() bson.M {
-	pipeQuery := []bson.M{}
-
-	if f.TaskName != "" {
-		pipeQuery = append(pipeQuery, bson.M{
-			"task_name": f.TaskName,
-		})
-	} else if len(f.TaskNameList) > 0 {
-		pipeQuery = append(pipeQuery, bson.M{
-			"task_name": bson.M{
-				"$in": f.TaskNameList,
-			},
-		})
-	}
-
-	if f.Search != nil && *f.Search != "" {
-		pipeQuery = append(pipeQuery, bson.M{
-			"arguments": primitive.Regex{Pattern: *f.Search, Options: "i"},
-		})
-	}
-	if len(f.Status) > 0 {
-		pipeQuery = append(pipeQuery, bson.M{
-			"status": bson.M{
-				"$in": f.Status,
-			},
-		})
-	}
-
-	return bson.M{
-		"$and": pipeQuery,
-	}
 }
