@@ -152,9 +152,7 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 		jobs := persistent.FindAllJob(ctx, filter)
 		for _, job := range jobs {
 			job.Interval = defaultInterval
-			if (job.Status == string(statusFailure)) || (job.Retries >= job.MaxRetry) {
-				job.Retries = 0
-			}
+			job.Retries = 0
 			task := registeredTask[job.TaskName]
 			job.Status = string(statusQueueing)
 			queue.PushJob(&job)

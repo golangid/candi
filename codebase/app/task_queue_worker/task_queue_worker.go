@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"reflect"
 	"sync"
 	"time"
@@ -70,16 +71,26 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, perst Pe
 	}
 
 	go func() {
-		for taskName := range registeredTask {
+		for _, taskName := range tasks {
 			queue.Clear(taskName)
 		}
 		// get current pending jobs
-		pendingJobs := persistent.FindAllJob(workerInstance.ctx, Filter{
-			Status: []string{string(statusRetrying), string(statusQueueing)},
-		})
-		for _, job := range pendingJobs {
-			queue.PushJob(&job)
-			registerJobToWorker(&job, registeredTask[job.TaskName].workerIndex)
+		pageNumber := 1
+		filter := Filter{
+			TaskNameList: tasks,
+			Status:       []string{string(statusRetrying), string(statusQueueing)},
+			Limit:        100,
+		}
+		count := persistent.CountAllJob(workerInstance.ctx, filter)
+		totalPages := int(math.Ceil(float64(count) / float64(filter.Limit)))
+		for pageNumber <= totalPages {
+			filter.Page = pageNumber
+			pendingJobs := persistent.FindAllJob(workerInstance.ctx, filter)
+			for _, job := range pendingJobs {
+				queue.PushJob(&job)
+				registerJobToWorker(&job, registeredTask[job.TaskName].workerIndex)
+			}
+			pageNumber++
 		}
 		refreshWorkerNotif <- struct{}{}
 	}()
