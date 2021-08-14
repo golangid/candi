@@ -24,8 +24,8 @@ import (
 	"{{.LibraryName}}/validator"
 )
 
-// LoadConfigs load selected dependency configuration in this service
-func LoadConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
+// LoadServiceConfigs load selected dependency configuration in this service
+func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 	logger.InitZap()
 
 	var sharedEnv shared.Environment
@@ -48,7 +48,7 @@ func LoadConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 		deps = dependency.InitDependency(
 			dependency.SetMiddleware(middleware.NewMiddleware(&shared.DefaultTokenValidator{}, &shared.DefaultACLPermissionChecker{})),
 			dependency.SetValidator(validator.NewValidator()),
-			dependency.SetBroker(brokerDeps),
+			dependency.SetBrokers(brokerDeps.GetBrokers()),
 			{{if not .RedisDeps}}// {{end}}dependency.SetRedisPool(redisDeps),
 			{{if not .SQLDeps}}// {{end}}dependency.SetSQLDatabase(sqlDeps),
 			{{if not .MongoDeps}}// {{end}}dependency.SetMongoDatabase(mongoDeps),

@@ -1,7 +1,10 @@
 package broker
 
 import (
+	"context"
+
 	"github.com/streadway/amqp"
+	"pkg.agungdp.dev/candi/codebase/factory/types"
 	"pkg.agungdp.dev/candi/codebase/interfaces"
 	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
@@ -80,4 +83,27 @@ func NewRabbitMQBroker(opts ...RabbitMQOptionFunc) *RabbitMQBroker {
 	}
 
 	return rabbitmq
+}
+
+// GetConfiguration method
+func (r *RabbitMQBroker) GetConfiguration() interface{} {
+	return r.ch
+}
+
+// GetPublisher method
+func (r *RabbitMQBroker) GetPublisher() interfaces.Publisher {
+	return r.pub
+}
+
+// Health method
+func (r *RabbitMQBroker) Health() map[string]error {
+	return map[string]error{string(types.RabbitMQ): nil}
+}
+
+// Disconnect method
+func (r *RabbitMQBroker) Disconnect(ctx context.Context) error {
+	deferFunc := logger.LogWithDefer("rabbitmq: disconnect...")
+	defer deferFunc()
+
+	return r.conn.Close()
 }

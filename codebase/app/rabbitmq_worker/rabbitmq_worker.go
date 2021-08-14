@@ -31,13 +31,13 @@ type rabbitmqWorker struct {
 
 // NewWorker create new rabbitmq consumer
 func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
-	if service.GetDependency().GetBroker().GetConfiguration(types.RabbitMQ) == nil {
+	if service.GetDependency().GetBroker(types.RabbitMQ) == nil {
 		panic("Missing RabbitMQ configuration")
 	}
 
 	worker := new(rabbitmqWorker)
 	worker.ctx, worker.ctxCancelFunc = context.WithCancel(context.Background())
-	worker.ch = service.GetDependency().GetBroker().GetConfiguration(types.RabbitMQ).(*amqp.Channel)
+	worker.ch = service.GetDependency().GetBroker(types.RabbitMQ).GetConfiguration().(*amqp.Channel)
 
 	worker.shutdown = make(chan struct{}, 1)
 	worker.handlers = make(map[string]types.WorkerHandler)

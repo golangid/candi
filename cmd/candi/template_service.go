@@ -28,7 +28,7 @@ type Service struct {
 
 // NewService in this service
 func NewService(cfg *config.Config) factory.ServiceFactory {
-	deps := configs.LoadConfigs(cfg)
+	deps := configs.LoadServiceConfigs(cfg)
 
 	modules := []factory.ModuleFactory{
 	{{- range $module := .Modules}}

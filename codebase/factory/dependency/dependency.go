@@ -1,6 +1,7 @@
 package dependency
 
 import (
+	"pkg.agungdp.dev/candi/codebase/factory/types"
 	"pkg.agungdp.dev/candi/codebase/interfaces"
 )
 
@@ -9,8 +10,8 @@ type Dependency interface {
 	GetMiddleware() interfaces.Middleware
 	SetMiddleware(mw interfaces.Middleware)
 
-	GetBroker() interfaces.Broker
-	SetBroker(i interfaces.Broker)
+	GetBroker(types.Worker) interfaces.Broker
+	AddBroker(brokerType types.Worker, b interfaces.Broker)
 
 	GetSQLDatabase() interfaces.SQLDatabase
 	GetMongoDatabase() interfaces.MongoDatabase
@@ -31,7 +32,7 @@ type Option func(*deps)
 
 type deps struct {
 	mw        interfaces.Middleware
-	broker    interfaces.Broker
+	brokers   map[types.Worker]interfaces.Broker
 	sqlDB     interfaces.SQLDatabase
 	mongoDB   interfaces.MongoDatabase
 	redisPool interfaces.RedisPool
@@ -49,10 +50,10 @@ func SetMiddleware(mw interfaces.Middleware) Option {
 	}
 }
 
-// SetBroker option func
-func SetBroker(broker interfaces.Broker) Option {
+// SetBrokers option func
+func SetBrokers(brokers map[types.Worker]interfaces.Broker) Option {
 	return func(d *deps) {
-		d.broker = broker
+		d.brokers = brokers
 	}
 }
 
@@ -113,11 +114,14 @@ func (d *deps) GetMiddleware() interfaces.Middleware {
 func (d *deps) SetMiddleware(mw interfaces.Middleware) {
 	d.mw = mw
 }
-func (d *deps) GetBroker() interfaces.Broker {
-	return d.broker
+func (d *deps) GetBroker(brokerType types.Worker) interfaces.Broker {
+	return d.brokers[brokerType]
 }
-func (d *deps) SetBroker(b interfaces.Broker) {
-	d.broker = b
+func (d *deps) AddBroker(brokerType types.Worker, b interfaces.Broker) {
+	if d.brokers == nil {
+		d.brokers = make(map[types.Worker]interfaces.Broker)
+	}
+	d.brokers[brokerType] = b
 }
 func (d *deps) GetSQLDatabase() interfaces.SQLDatabase {
 	return d.sqlDB
@@ -156,8 +160,8 @@ func GetMiddleware() interfaces.Middleware {
 }
 
 // GetBroker free function for get broker
-func GetBroker() interfaces.Broker {
-	return stdDeps.broker
+func GetBroker(brokerType types.Worker) interfaces.Broker {
+	return stdDeps.brokers[brokerType]
 }
 
 // GetSQLDatabase free function for get sql database

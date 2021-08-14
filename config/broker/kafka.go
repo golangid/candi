@@ -1,9 +1,12 @@
 package broker
 
 import (
+	"context"
+	"errors"
 	"time"
 
 	"github.com/Shopify/sarama"
+	"pkg.agungdp.dev/candi/codebase/factory/types"
 	"pkg.agungdp.dev/candi/codebase/interfaces"
 	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
@@ -34,7 +37,7 @@ type KafkaBroker struct {
 	pub    interfaces.Publisher
 }
 
-// NewKafkaBroker constructor with option, empty option param for default configuration
+// NewKafkaBroker setup kafka configuration for publisher or consumer, empty option param for default configuration
 func NewKafkaBroker(opts ...KafkaOptionFunc) *KafkaBroker {
 	deferFunc := logger.LogWithDefer("Load Kafka broker configuration... ")
 	defer deferFunc()
@@ -77,4 +80,35 @@ func NewKafkaBroker(opts ...KafkaOptionFunc) *KafkaBroker {
 	}
 
 	return kb
+}
+
+// GetConfiguration method
+func (k *KafkaBroker) GetConfiguration() interface{} {
+	return k.client
+}
+
+// GetPublisher method
+func (k *KafkaBroker) GetPublisher() interfaces.Publisher {
+	return k.pub
+}
+
+// Health method
+func (k *KafkaBroker) Health() map[string]error {
+	mErr := make(map[string]error)
+
+	var err error
+	if len(k.client.Brokers()) == 0 {
+		err = errors.New("not ok")
+	}
+	mErr[string(types.Kafka)] = err
+
+	return mErr
+}
+
+// Disconnect method
+func (k *KafkaBroker) Disconnect(ctx context.Context) error {
+	deferFunc := logger.LogWithDefer("kafka: disconnect...")
+	defer deferFunc()
+
+	return k.client.Close()
 }

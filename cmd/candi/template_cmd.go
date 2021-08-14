@@ -57,7 +57,10 @@ func main() {
 	sqlDeps := database.InitSQLDatabase()
 	gormWrite, err := gorm.Open({{ .SQLDriver }}.New({{ .SQLDriver }}.Config{
 		Conn: sqlDeps.WriteDB(),
-	}), &gorm.Config{})
+	}), &gorm.Config{
+		SkipDefaultTransaction:                   true,
+		DisableForeignKeyConstraintWhenMigrating: true,
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
