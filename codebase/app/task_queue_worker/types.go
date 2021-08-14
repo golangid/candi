@@ -84,15 +84,16 @@ type (
 		filter Filter
 	}
 
-	jobStatusEnum string
+	// JobStatusEnum enum status
+	JobStatusEnum string
 )
 
 const (
-	statusRetrying jobStatusEnum = "RETRYING"
-	statusFailure  jobStatusEnum = "FAILURE"
-	statusSuccess  jobStatusEnum = "SUCCESS"
-	statusQueueing jobStatusEnum = "QUEUEING"
-	statusStopped  jobStatusEnum = "STOPPED"
+	statusRetrying JobStatusEnum = "RETRYING"
+	statusFailure  JobStatusEnum = "FAILURE"
+	statusSuccess  JobStatusEnum = "SUCCESS"
+	statusQueueing JobStatusEnum = "QUEUEING"
+	statusStopped  JobStatusEnum = "STOPPED"
 )
 
 var (

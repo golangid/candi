@@ -98,7 +98,7 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 	}
 
 	queue.Clear(input.TaskName)
-	persistent.UpdateAllStatus(ctx, input.TaskName, []jobStatusEnum{statusQueueing, statusRetrying}, statusStopped)
+	persistent.UpdateAllStatus(ctx, input.TaskName, []JobStatusEnum{statusQueueing, statusRetrying}, statusStopped)
 	broadcastAllToSubscribers(r.worker.ctx)
 
 	return "Success stop all job in task " + input.TaskName, nil
@@ -161,7 +161,7 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 		pageNumber++
 	}
 
-	persistent.UpdateAllStatus(ctx, input.TaskName, []jobStatusEnum{statusFailure, statusStopped}, statusQueueing)
+	persistent.UpdateAllStatus(ctx, input.TaskName, []JobStatusEnum{statusFailure, statusStopped}, statusQueueing)
 	go func() {
 		broadcastAllToSubscribers(r.worker.ctx)
 		refreshWorkerNotif <- struct{}{}

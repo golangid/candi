@@ -9,6 +9,6 @@ type Persistent interface {
 	CountAllJob(ctx context.Context, filter Filter) int
 	AggregateAllTaskJob(ctx context.Context, filter Filter) (result []TaskResolver)
 	SaveJob(ctx context.Context, job *Job)
-	UpdateAllStatus(ctx context.Context, taskName string, currentStatus []jobStatusEnum, updatedStatus jobStatusEnum)
+	UpdateAllStatus(ctx context.Context, taskName string, currentStatus []JobStatusEnum, updatedStatus JobStatusEnum)
 	CleanJob(ctx context.Context, taskName string)
 }

@@ -212,7 +212,7 @@ func (s *mongoPersistent) SaveJob(ctx context.Context, job *Job) {
 	}
 }
 
-func (s *mongoPersistent) UpdateAllStatus(ctx context.Context, taskName string, currentStatus []jobStatusEnum, updatedStatus jobStatusEnum) {
+func (s *mongoPersistent) UpdateAllStatus(ctx context.Context, taskName string, currentStatus []JobStatusEnum, updatedStatus JobStatusEnum) {
 	filter := bson.M{}
 
 	if taskName != "" {
@@ -242,7 +242,7 @@ func (s *mongoPersistent) CleanJob(ctx context.Context, taskName string) {
 	query := bson.M{
 		"$and": []bson.M{
 			{"task_name": taskName},
-			{"status": bson.M{"$nin": []jobStatusEnum{statusRetrying, statusQueueing}}},
+			{"status": bson.M{"$nin": []JobStatusEnum{statusRetrying, statusQueueing}}},
 		},
 	}
 	s.db.Collection(mongoColl).DeleteMany(ctx, query)

@@ -173,7 +173,7 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 
 	select {
 	case <-ctx.Done():
-		persistent.UpdateAllStatus(t.ctx, "", []jobStatusEnum{statusRetrying}, statusQueueing)
+		persistent.UpdateAllStatus(t.ctx, "", []JobStatusEnum{statusRetrying}, statusQueueing)
 		broadcastAllToSubscribers(t.ctx)
 	case <-done:
 		broadcastAllToSubscribers(t.ctx)
