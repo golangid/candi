@@ -2,13 +2,22 @@ package broker
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/streadway/amqp"
+	"pkg.agungdp.dev/candi/candihelper"
+	"pkg.agungdp.dev/candi/candishared"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
 	"pkg.agungdp.dev/candi/codebase/interfaces"
 	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
-	"pkg.agungdp.dev/candi/publisher"
+	"pkg.agungdp.dev/candi/tracer"
+)
+
+const (
+	// RabbitMQDelayHeader header key
+	RabbitMQDelayHeader = "x-delay"
 )
 
 // RabbitMQOptionFunc func type
@@ -24,18 +33,18 @@ func RabbitMQSetChannel(ch *amqp.Channel) RabbitMQOptionFunc {
 // RabbitMQSetPublisher set custom publisher
 func RabbitMQSetPublisher(pub interfaces.Publisher) RabbitMQOptionFunc {
 	return func(bk *RabbitMQBroker) {
-		bk.pub = pub
+		bk.publisher = pub
 	}
 }
 
 // RabbitMQBroker broker
 type RabbitMQBroker struct {
-	conn *amqp.Connection
-	ch   *amqp.Channel
-	pub  interfaces.Publisher
+	conn      *amqp.Connection
+	ch        *amqp.Channel
+	publisher interfaces.Publisher
 }
 
-// NewRabbitMQBroker constructor, connection from RABBITMQ_BROKER environment
+// NewRabbitMQBroker setup rabbitmq configuration for publisher or consumer, connection from RABBITMQ_BROKER environment
 func NewRabbitMQBroker(opts ...RabbitMQOptionFunc) *RabbitMQBroker {
 	deferFunc := logger.LogWithDefer("Load RabbitMQ broker configuration... ")
 	defer deferFunc()
@@ -78,8 +87,8 @@ func NewRabbitMQBroker(opts ...RabbitMQOptionFunc) *RabbitMQBroker {
 		}
 	}
 
-	if rabbitmq.pub == nil {
-		rabbitmq.pub = publisher.NewRabbitMQPublisher(rabbitmq.conn)
+	if rabbitmq.publisher == nil {
+		rabbitmq.publisher = NewRabbitMQPublisher(rabbitmq.conn)
 	}
 
 	return rabbitmq
@@ -92,7 +101,7 @@ func (r *RabbitMQBroker) GetConfiguration() interface{} {
 
 // GetPublisher method
 func (r *RabbitMQBroker) GetPublisher() interfaces.Publisher {
-	return r.pub
+	return r.publisher
 }
 
 // Health method
@@ -106,4 +115,59 @@ func (r *RabbitMQBroker) Disconnect(ctx context.Context) error {
 	defer deferFunc()
 
 	return r.conn.Close()
+}
+
+// rabbitMQPublisher rabbitmq
+type rabbitMQPublisher struct {
+	conn *amqp.Connection
+}
+
+// NewRabbitMQPublisher setup only rabbitmq publisher with client connection
+func NewRabbitMQPublisher(conn *amqp.Connection) interfaces.Publisher {
+	return &rabbitMQPublisher{
+		conn: conn,
+	}
+}
+
+// PublishMessage method
+func (r *rabbitMQPublisher) PublishMessage(ctx context.Context, args *candishared.PublisherArgument) (err error) {
+	trace := tracer.StartTrace(ctx, "rabbitmq:publish_message")
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%v", r)
+		}
+		trace.SetError(err)
+		trace.Finish()
+	}()
+
+	ch, err := r.conn.Channel()
+	if err != nil {
+		return err
+	}
+	defer ch.Close()
+
+	if args.ContentType == "" {
+		args.ContentType = candihelper.HeaderMIMEApplicationJSON
+	}
+
+	trace.SetTag("topic", args.Topic)
+	trace.SetTag("key", args.Key)
+
+	msg := amqp.Publishing{
+		DeliveryMode: amqp.Persistent,
+		Timestamp:    time.Now(),
+		ContentType:  args.ContentType,
+		Body:         candihelper.ToBytes(args.Data),
+		Headers:      amqp.Table(args.Header),
+	}
+
+	trace.Log("header", msg.Headers)
+	trace.Log("message", msg.Body)
+
+	return ch.Publish(
+		env.BaseEnv().RabbitMQ.ExchangeName,
+		args.Topic, // routing key
+		false,      // mandatory
+		false,      // immediate
+		msg)
 }

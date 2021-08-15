@@ -14,14 +14,14 @@ type OptionFunc func(*Broker)
 // SetKafka setup kafka broker for publisher or consumer
 func SetKafka(bk interfaces.Broker) OptionFunc {
 	return func(bi *Broker) {
-		bi.brokers[types.Kafka] = bk
+		bi.RegisterBroker(types.Kafka, bk)
 	}
 }
 
 // SetRabbitMQ setup rabbitmq broker for publisher or consumer
 func SetRabbitMQ(bk interfaces.Broker) OptionFunc {
 	return func(bi *Broker) {
-		bi.brokers[types.RabbitMQ] = bk
+		bi.RegisterBroker(types.RabbitMQ, bk)
 	}
 }
 
@@ -31,7 +31,7 @@ type Broker struct {
 }
 
 /*
-InitBrokers init registered broker for publisher or consumer
+InitBrokers register all broker for publisher or consumer
 
 * for kafka, pass NewKafkaBroker(...KafkaOptionFunc) in param, init kafka broker configuration from env
 KAFKA_BROKERS, KAFKA_CLIENT_ID, KAFKA_CLIENT_VERSION
@@ -53,6 +53,18 @@ func InitBrokers(opts ...OptionFunc) *Broker {
 // GetBrokers get all registered broker
 func (b *Broker) GetBrokers() map[types.Worker]interfaces.Broker {
 	return b.brokers
+}
+
+// RegisterBroker register new broker
+func (b *Broker) RegisterBroker(brokerName types.Worker, bk interfaces.Broker) {
+	if b.brokers == nil {
+		b.brokers = make(map[types.Worker]interfaces.Broker)
+	}
+
+	if _, ok := b.brokers[brokerName]; ok {
+		panic("Register broker: " + brokerName + " has been registered")
+	}
+	b.brokers[brokerName] = bk
 }
 
 // Disconnect disconnect all registered broker

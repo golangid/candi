@@ -3,14 +3,17 @@ package broker
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Shopify/sarama"
+	"pkg.agungdp.dev/candi/candihelper"
+	"pkg.agungdp.dev/candi/candishared"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
 	"pkg.agungdp.dev/candi/codebase/interfaces"
 	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
-	"pkg.agungdp.dev/candi/publisher"
+	"pkg.agungdp.dev/candi/tracer"
 )
 
 // KafkaOptionFunc func type
@@ -26,15 +29,15 @@ func KafkaSetConfig(cfg *sarama.Config) KafkaOptionFunc {
 // KafkaSetPublisher set custom publisher
 func KafkaSetPublisher(pub interfaces.Publisher) KafkaOptionFunc {
 	return func(kb *KafkaBroker) {
-		kb.pub = pub
+		kb.publisher = pub
 	}
 }
 
 // KafkaBroker configuration
 type KafkaBroker struct {
-	config *sarama.Config
-	client sarama.Client
-	pub    interfaces.Publisher
+	config    *sarama.Config
+	client    sarama.Client
+	publisher interfaces.Publisher
 }
 
 // NewKafkaBroker setup kafka configuration for publisher or consumer, empty option param for default configuration
@@ -75,8 +78,8 @@ func NewKafkaBroker(opts ...KafkaOptionFunc) *KafkaBroker {
 	}
 	kb.client = saramaClient
 
-	if kb.pub == nil {
-		kb.pub = publisher.NewKafkaPublisher(saramaClient, false) // default publisher is sync
+	if kb.publisher == nil {
+		kb.publisher = NewKafkaPublisher(saramaClient, false) // default publisher is sync
 	}
 
 	return kb
@@ -89,7 +92,7 @@ func (k *KafkaBroker) GetConfiguration() interface{} {
 
 // GetPublisher method
 func (k *KafkaBroker) GetPublisher() interfaces.Publisher {
-	return k.pub
+	return k.publisher
 }
 
 // Health method
@@ -111,4 +114,61 @@ func (k *KafkaBroker) Disconnect(ctx context.Context) error {
 	defer deferFunc()
 
 	return k.client.Close()
+}
+
+// kafkaPublisher kafka publisher
+type kafkaPublisher struct {
+	producerSync  sarama.SyncProducer
+	producerAsync sarama.AsyncProducer
+}
+
+// NewKafkaPublisher setup only kafka publisher with client connection
+func NewKafkaPublisher(client sarama.Client, async bool) interfaces.Publisher {
+	var err error
+
+	kafkaPublisher := &kafkaPublisher{}
+	if async {
+		kafkaPublisher.producerAsync, err = sarama.NewAsyncProducerFromClient(client)
+	} else {
+		kafkaPublisher.producerSync, err = sarama.NewSyncProducerFromClient(client)
+	}
+
+	if err != nil {
+		logger.LogYellow(fmt.Sprintf("(Kafka publisher: warning, %v. Should be panicked when using kafka publisher.) ", err))
+		return nil
+	}
+
+	return kafkaPublisher
+}
+
+// PublishMessage method
+func (p *kafkaPublisher) PublishMessage(ctx context.Context, args *candishared.PublisherArgument) (err error) {
+	trace := tracer.StartTrace(ctx, "kafka:publish_message")
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%v", r)
+		}
+		trace.SetError(err)
+		trace.Finish()
+	}()
+
+	payload := candihelper.ToBytes(args.Data)
+
+	trace.SetTag("topic", args.Topic)
+	trace.SetTag("key", args.Key)
+	trace.Log("message", payload)
+
+	msg := &sarama.ProducerMessage{
+		Topic:     args.Topic,
+		Key:       sarama.ByteEncoder([]byte(args.Key)),
+		Value:     sarama.ByteEncoder(payload),
+		Timestamp: time.Now(),
+	}
+
+	if p.producerSync != nil {
+		_, _, err = p.producerSync.SendMessage(msg)
+	} else {
+		p.producerAsync.Input() <- msg
+	}
+	return
 }
