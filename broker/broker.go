@@ -8,23 +8,6 @@ import (
 	"pkg.agungdp.dev/candi/codebase/interfaces"
 )
 
-// OptionFunc type
-type OptionFunc func(*Broker)
-
-// SetKafka setup kafka broker for publisher or consumer
-func SetKafka(bk interfaces.Broker) OptionFunc {
-	return func(bi *Broker) {
-		bi.RegisterBroker(types.Kafka, bk)
-	}
-}
-
-// SetRabbitMQ setup rabbitmq broker for publisher or consumer
-func SetRabbitMQ(bk interfaces.Broker) OptionFunc {
-	return func(bi *Broker) {
-		bi.RegisterBroker(types.RabbitMQ, bk)
-	}
-}
-
 // Broker model
 type Broker struct {
 	brokers map[types.Worker]interfaces.Broker
@@ -33,18 +16,21 @@ type Broker struct {
 /*
 InitBrokers register all broker for publisher or consumer
 
-* for kafka, pass NewKafkaBroker(...KafkaOptionFunc) in param, init kafka broker configuration from env
+* for Kafka, pass NewKafkaBroker(...KafkaOptionFunc) in param, init kafka broker configuration from env
 KAFKA_BROKERS, KAFKA_CLIENT_ID, KAFKA_CLIENT_VERSION
 
-* for rabbitmq, pass NewRabbitMQBroker(...RabbitMQOptionFunc) in param, init rabbitmq broker configuration from env
+* for RabbitMQ, pass NewRabbitMQBroker(...RabbitMQOptionFunc) in param, init rabbitmq broker configuration from env
 RABBITMQ_BROKER, RABBITMQ_CONSUMER_GROUP, RABBITMQ_EXCHANGE_NAME
 */
-func InitBrokers(opts ...OptionFunc) *Broker {
+func InitBrokers(brokers ...interfaces.Broker) *Broker {
 	brokerInst := &Broker{
 		brokers: make(map[types.Worker]interfaces.Broker),
 	}
-	for _, opt := range opts {
-		opt(brokerInst)
+	for _, bk := range brokers {
+		if _, ok := brokerInst.brokers[bk.GetName()]; ok {
+			panic("Register broker: " + bk.GetName() + " has been registered")
+		}
+		brokerInst.brokers[bk.GetName()] = bk
 	}
 
 	return brokerInst

@@ -36,8 +36,8 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 
 	baseCfg.LoadFunc(func(ctx context.Context) []interfaces.Closer {
 		brokerDeps := broker.InitBrokers(
-			{{if not .KafkaHandler}} // {{ end }}broker.SetKafka(broker.NewKafkaBroker()),
-			{{if not .RabbitMQHandler}} // {{ end }}broker.SetRabbitMQ(broker.NewRabbitMQBroker()),
+			{{if not .KafkaHandler}}// {{ end }}broker.NewKafkaBroker(),
+			{{if not .RabbitMQHandler}}// {{ end }}broker.NewRabbitMQBroker(),
 		)
 		{{if not .RedisDeps}}// {{end}}redisDeps := database.InitRedis()
 		{{if not .SQLDeps}}// {{end}}sqlDeps := database.InitSQLDatabase()

@@ -23,6 +23,13 @@ const (
 // RabbitMQOptionFunc func type
 type RabbitMQOptionFunc func(*RabbitMQBroker)
 
+// RabbitMQSetBrokerHost set custom broker host
+func RabbitMQSetBrokerHost(brokers string) RabbitMQOptionFunc {
+	return func(bk *RabbitMQBroker) {
+		bk.brokerHost = brokers
+	}
+}
+
 // RabbitMQSetChannel set custom channel configuration
 func RabbitMQSetChannel(ch *amqp.Channel) RabbitMQOptionFunc {
 	return func(bk *RabbitMQBroker) {
@@ -39,23 +46,25 @@ func RabbitMQSetPublisher(pub interfaces.Publisher) RabbitMQOptionFunc {
 
 // RabbitMQBroker broker
 type RabbitMQBroker struct {
-	conn      *amqp.Connection
-	ch        *amqp.Channel
-	publisher interfaces.Publisher
+	brokerHost string
+	conn       *amqp.Connection
+	ch         *amqp.Channel
+	publisher  interfaces.Publisher
 }
 
-// NewRabbitMQBroker setup rabbitmq configuration for publisher or consumer, connection from RABBITMQ_BROKER environment
+// NewRabbitMQBroker setup rabbitmq configuration for publisher or consumer, default connection from RABBITMQ_BROKER environment
 func NewRabbitMQBroker(opts ...RabbitMQOptionFunc) *RabbitMQBroker {
 	deferFunc := logger.LogWithDefer("Load RabbitMQ broker configuration... ")
 	defer deferFunc()
 	var err error
 
 	rabbitmq := new(RabbitMQBroker)
+	rabbitmq.brokerHost = env.BaseEnv().RabbitMQ.Broker
 	for _, opt := range opts {
 		opt(rabbitmq)
 	}
 
-	rabbitmq.conn, err = amqp.Dial(env.BaseEnv().RabbitMQ.Broker)
+	rabbitmq.conn, err = amqp.Dial(rabbitmq.brokerHost)
 	if err != nil {
 		panic("RabbitMQ: cannot connect to server broker: " + err.Error())
 	}
@@ -102,6 +111,11 @@ func (r *RabbitMQBroker) GetConfiguration() interface{} {
 // GetPublisher method
 func (r *RabbitMQBroker) GetPublisher() interfaces.Publisher {
 	return r.publisher
+}
+
+// GetName method
+func (r *RabbitMQBroker) GetName() types.Worker {
+	return types.RabbitMQ
 }
 
 // Health method

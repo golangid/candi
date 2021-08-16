@@ -19,6 +19,13 @@ import (
 // KafkaOptionFunc func type
 type KafkaOptionFunc func(*KafkaBroker)
 
+// KafkaSetBrokerHost set custom broker host
+func KafkaSetBrokerHost(brokers []string) KafkaOptionFunc {
+	return func(kb *KafkaBroker) {
+		kb.brokerHost = brokers
+	}
+}
+
 // KafkaSetConfig set custom sarama configuration
 func KafkaSetConfig(cfg *sarama.Config) KafkaOptionFunc {
 	return func(kb *KafkaBroker) {
@@ -35,9 +42,10 @@ func KafkaSetPublisher(pub interfaces.Publisher) KafkaOptionFunc {
 
 // KafkaBroker configuration
 type KafkaBroker struct {
-	config    *sarama.Config
-	client    sarama.Client
-	publisher interfaces.Publisher
+	brokerHost []string
+	config     *sarama.Config
+	client     sarama.Client
+	publisher  interfaces.Publisher
 }
 
 // NewKafkaBroker setup kafka configuration for publisher or consumer, empty option param for default configuration
@@ -46,6 +54,7 @@ func NewKafkaBroker(opts ...KafkaOptionFunc) *KafkaBroker {
 	defer deferFunc()
 
 	kb := new(KafkaBroker)
+	kb.brokerHost = env.BaseEnv().Kafka.Brokers
 	for _, opt := range opts {
 		opt(kb)
 	}
@@ -72,7 +81,7 @@ func NewKafkaBroker(opts ...KafkaOptionFunc) *KafkaBroker {
 		kb.config.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
 	}
 
-	saramaClient, err := sarama.NewClient(env.BaseEnv().Kafka.Brokers, kb.config)
+	saramaClient, err := sarama.NewClient(kb.brokerHost, kb.config)
 	if err != nil {
 		panic(err)
 	}
@@ -93,6 +102,11 @@ func (k *KafkaBroker) GetConfiguration() interface{} {
 // GetPublisher method
 func (k *KafkaBroker) GetPublisher() interfaces.Publisher {
 	return k.publisher
+}
+
+// GetName method
+func (k *KafkaBroker) GetName() types.Worker {
+	return types.Kafka
 }
 
 // Health method

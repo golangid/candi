@@ -6,7 +6,7 @@ Include default broker (Kafka & RabbitMQ), or other broker (GCP PubSub, STOMP/AM
 
 **Register Kafka broker in service config**
 
-File `configs/configs.go` in your service
+Modify `configs/configs.go` in your service
 
 ```go
 package configs
@@ -21,7 +21,7 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 		...
 
 		brokerDeps := broker.InitBrokers(
-			broker.SetKafka(broker.NewKafkaBroker()),
+			broker.NewKafkaBroker(),
 		)
 
 		... 
@@ -50,7 +50,7 @@ type usecaseImpl {
 
 func NewUsecase(deps dependency.Dependency) Usecase {
 	return &usecaseImpl{
-        kafkaPub: deps.GetBroker(types.Kafka).GetPublisher(),
+		kafkaPub: deps.GetBroker(types.Kafka).GetPublisher(),
 	}
 }
 
@@ -67,7 +67,7 @@ func (uc *usecaseImpl) UsecaseToPublishMessage(ctx context.Context) error {
 
 **Register RabbitMQ broker in service config**
 
-File `configs/configs.go` in your service
+Modify `configs/configs.go` in your service
 
 ```go
 package configs
@@ -82,7 +82,7 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 		...
 
 		brokerDeps := broker.InitBrokers(
-			broker.SetRabbitMQ(broker.NewRabbitMQBroker()),
+			broker.NewRabbitMQBroker(),
 		)
 
 		... 
@@ -112,7 +112,7 @@ type usecaseImpl {
 
 func NewUsecase(deps dependency.Dependency) Usecase {
 	return &usecaseImpl{
-        rabbitmqPub: deps.GetBroker(types.RabbitMQ).GetPublisher(),
+		rabbitmqPub: deps.GetBroker(types.RabbitMQ).GetPublisher(),
 	}
 }
 
@@ -121,8 +121,8 @@ func (uc *usecaseImpl) UsecaseToPublishMessage(ctx context.Context) error {
 		Topic:  "example-topic",
 		Data:   "hello world"
 		Header: map[string]interface{}{
-            broker.RabbitMQDelayHeader: 5000, // if you want set delay consume your message by active consumer for 5 seconds
-        },
+			broker.RabbitMQDelayHeader: 5000, // if you want set delay consume your message by active consumer for 5 seconds
+		},
 	})
 	return err
 }
