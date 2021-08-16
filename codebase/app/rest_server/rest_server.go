@@ -105,8 +105,7 @@ func (h *restServer) Serve() {
 }
 
 func (h *restServer) Shutdown(ctx context.Context) {
-	log.Println("\x1b[33;1mStopping HTTP server...\x1b[0m")
-	defer func() { log.Println("\x1b[33;1mStopping HTTP server:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
+	defer log.Println("\x1b[33;1mStopping HTTP server:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
 
 	h.serverEngine.Shutdown(ctx)
 	if h.listener != nil {

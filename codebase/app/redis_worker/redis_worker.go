@@ -137,7 +137,6 @@ START:
 }
 
 func (r *redisWorker) Shutdown(ctx context.Context) {
-	log.Println("\x1b[33;1mStopping Redis Subscriber worker...\x1b[0m")
 	defer func() {
 		if r.consul != nil {
 			if err := r.consul.DestroySession(); err != nil {

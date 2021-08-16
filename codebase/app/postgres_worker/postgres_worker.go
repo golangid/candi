@@ -162,7 +162,6 @@ START:
 }
 
 func (p *postgresWorker) Shutdown(ctx context.Context) {
-	log.Println("\x1b[33;1mStopping Postgres Event Listener worker...\x1b[0m")
 	defer func() {
 		if p.consul != nil {
 			if err := p.consul.DestroySession(); err != nil {

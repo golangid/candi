@@ -155,7 +155,6 @@ START:
 }
 
 func (c *cronWorker) Shutdown(ctx context.Context) {
-	log.Println("\x1b[33;1mStopping Cron Job Scheduler worker...\x1b[0m")
 	defer func() {
 		if c.consul != nil {
 			if err := c.consul.DestroySession(); err != nil {

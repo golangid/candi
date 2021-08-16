@@ -95,8 +95,7 @@ func (h *kafkaWorker) Serve() {
 }
 
 func (h *kafkaWorker) Shutdown(ctx context.Context) {
-	log.Println("\x1b[33;1mStopping Kafka Consumer worker...\x1b[0m")
-	defer func() { log.Println("\x1b[33;1mStopping Kafka Consumer:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
+	defer log.Println("\x1b[33;1mStopping Kafka Consumer:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
 
 	h.cancelFunc()
 	h.engine.Close()

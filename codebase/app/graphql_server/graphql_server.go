@@ -84,8 +84,7 @@ func (s *graphqlServer) Serve() {
 }
 
 func (s *graphqlServer) Shutdown(ctx context.Context) {
-	log.Println("\x1b[33;1mStopping GraphQL HTTP server...\x1b[0m")
-	defer func() { log.Println("\x1b[33;1mStopping GraphQL HTTP server:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
+	defer log.Println("\x1b[33;1mStopping GraphQL HTTP server:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
 
 	s.httpEngine.Shutdown(ctx)
 	if s.listener != nil {

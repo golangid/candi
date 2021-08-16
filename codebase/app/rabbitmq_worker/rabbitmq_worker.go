@@ -62,12 +62,8 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 		}
 	}
 
-	if len(worker.channels) == 0 {
-		log.Println("rabbitmq consumer: no queue provided")
-	} else {
-		fmt.Printf("\x1b[34;1m⇨ RabbitMQ consumer running with %d queue. Broker: %s\x1b[0m\n\n", len(worker.channels),
-			candihelper.MaskingPasswordURL(env.BaseEnv().RabbitMQ.Broker))
-	}
+	fmt.Printf("\x1b[34;1m⇨ RabbitMQ consumer running with %d queue. Broker: %s\x1b[0m\n\n", len(worker.channels),
+		candihelper.MaskingPasswordURL(env.BaseEnv().RabbitMQ.Broker))
 
 	return worker
 }
@@ -105,8 +101,7 @@ func (r *rabbitmqWorker) Serve() {
 }
 
 func (r *rabbitmqWorker) Shutdown(ctx context.Context) {
-	log.Println("\x1b[33;1mStopping RabbitMQ Worker...\x1b[0m")
-	defer func() { log.Println("\x1b[33;1mStopping RabbitMQ Worker:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m") }()
+	defer log.Println("\x1b[33;1mStopping RabbitMQ Worker:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
 
 	r.shutdown <- struct{}{}
 	r.isShutdown = true
