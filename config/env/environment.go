@@ -1,8 +1,10 @@
 package env
 
 import (
+	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -115,8 +117,10 @@ func Load(serviceName string) {
 	// load main .env and additional .env in app
 	err := godotenv.Load(os.Getenv(candihelper.WORKDIR) + ".env")
 	if err != nil {
-		panic(fmt.Errorf("Load env: %v", err))
+		log.Printf("Warning: load env, %v", err)
 	}
+
+	mErrs := candihelper.NewMultiError()
 
 	// ------------------------------------
 	parseAppConfig()
@@ -129,17 +133,17 @@ func Load(serviceName string) {
 	// ------------------------------------
 	if env.UseREST || env.UseGraphQL {
 		if httpPort, ok := os.LookupEnv("HTTP_PORT"); !ok {
-			panic("missing HTTP_PORT environment")
+			mErrs.Append("HTTP_PORT", errors.New("missing HTTP_PORT environment"))
 		} else {
 			port, err := strconv.Atoi(httpPort)
 			if err != nil {
-				panic("HTTP_PORT environment must in integer format")
+				mErrs.Append("HTTP_PORT", errors.New("HTTP_PORT environment must in integer format"))
 			}
 			env.HTTPPort = uint16(port)
 		}
 	} else if env.UseGRPC {
 		if _, ok = os.LookupEnv("GRPC_PORT"); !ok {
-			panic("missing GRPC_PORT environment")
+			mErrs.Append("GRPC_PORT", errors.New("missing GRPC_PORT environment"))
 		}
 	}
 
@@ -153,7 +157,7 @@ func Load(serviceName string) {
 		}
 		port, err := strconv.Atoi(taskQueueDashboardPort)
 		if err != nil {
-			panic("TASK_QUEUE_DASHBOARD_PORT environment must in integer format")
+			mErrs.Append("TASK_QUEUE_DASHBOARD_PORT", errors.New("TASK_QUEUE_DASHBOARD_PORT environment must in integer format"))
 		}
 		env.TaskQueueDashboardPort = uint16(port)
 		env.TaskQueueDashboardMaxClientSubscribers, _ = strconv.Atoi(os.Getenv("TASK_QUEUE_DASHBOARD_MAX_CLIENT"))
@@ -166,7 +170,7 @@ func Load(serviceName string) {
 	if env.UseConsul {
 		env.ConsulAgentHost, ok = os.LookupEnv("CONSUL_AGENT_HOST")
 		if !ok {
-			panic("consul is active, missing CONSUL_AGENT_HOST environment")
+			mErrs.Append("CONSUL_AGENT_HOST", errors.New("consul is active, missing CONSUL_AGENT_HOST environment"))
 		}
 		env.ConsulMaxJobRebalance = 10
 		if count, err := strconv.Atoi(os.Getenv("CONSUL_MAX_JOB_REBALANCE")); err == nil {
@@ -186,24 +190,21 @@ func Load(serviceName string) {
 	}
 	env.UseSharedListener = parseBool("USE_SHARED_LISTENER")
 	if env.UseSharedListener && env.HTTPPort <= 0 {
-		panic("missing or invalid value for HTTP_PORT environment")
+		mErrs.Append("USE_SHARED_LISTENER", errors.New("missing or invalid value for HTTP_PORT environment"))
 	}
 
 	env.GraphQLDisableIntrospection = parseBool("GRAPHQL_DISABLE_INTROSPECTION")
 
 	env.BasicAuthUsername, ok = os.LookupEnv("BASIC_AUTH_USERNAME")
 	if !ok {
-		panic("missing BASIC_AUTH_USERNAME environment")
+		mErrs.Append("BASIC_AUTH_USERNAME", errors.New("missing BASIC_AUTH_USERNAME environment"))
 	}
 	env.BasicAuthPassword, ok = os.LookupEnv("BASIC_AUTH_PASS")
 	if !ok {
-		panic("missing BASIC_AUTH_PASS environment")
+		mErrs.Append("BASIC_AUTH_PASS", errors.New("missing BASIC_AUTH_PASS environment"))
 	}
 
-	env.JaegerTracingHost, ok = os.LookupEnv("JAEGER_TRACING_HOST")
-	if !ok {
-		panic("missing JAEGER_TRACING_HOST environment")
-	}
+	env.JaegerTracingHost = os.Getenv("JAEGER_TRACING_HOST")
 	env.JaegerTracingDashboard = os.Getenv("JAEGER_TRACING_DASHBOARD")
 	jaegerMaxpacketSize, err := strconv.Atoi(os.Getenv("JAEGER_MAX_PACKET_SIZE"))
 	if err != nil || jaegerMaxpacketSize < 0 {
@@ -212,7 +213,7 @@ func Load(serviceName string) {
 	env.JaegerMaxPacketSize = int(jaegerMaxpacketSize) * int(candihelper.Byte)
 
 	// kafka environment
-	parseBrokerEnv()
+	parseBrokerEnv(mErrs)
 
 	maxGoroutines, err := strconv.Atoi(os.Getenv("MAX_GOROUTINES"))
 	if err != nil || maxGoroutines <= 0 {
@@ -222,6 +223,10 @@ func Load(serviceName string) {
 
 	// Parse database environment
 	parseDatabaseEnv()
+
+	if mErrs.HasError() {
+		panic("Basic environment error: \n" + mErrs.Error())
+	}
 }
 
 func parseAppConfig() {
@@ -301,20 +306,20 @@ func parseAppConfig() {
 	flag.Parse()
 }
 
-func parseBrokerEnv() {
+func parseBrokerEnv(mErrs candihelper.MultiError) {
 	kafkaBrokerEnv := os.Getenv("KAFKA_BROKERS")
 	env.Kafka.Brokers = strings.Split(kafkaBrokerEnv, ",") // optional
 	env.Kafka.ClientID = os.Getenv("KAFKA_CLIENT_ID")      // optional
 	env.Kafka.ClientVersion = os.Getenv("KAFKA_CLIENT_VERSION")
 	if env.UseKafkaConsumer {
 		if kafkaBrokerEnv == "" {
-			panic("kafka consumer is active, missing KAFKA_BROKERS environment")
+			mErrs.Append("KAFKA_BROKERS", errors.New("kafka consumer is active, missing KAFKA_BROKERS environment"))
 		}
 
 		var ok bool
 		env.Kafka.ConsumerGroup, ok = os.LookupEnv("KAFKA_CONSUMER_GROUP")
 		if !ok {
-			panic("kafka consumer is active, missing KAFKA_CONSUMER_GROUP environment")
+			mErrs.Append("KAFKA_CONSUMER_GROUP", errors.New("kafka consumer is active, missing KAFKA_CONSUMER_GROUP environment"))
 		}
 	}
 	env.RabbitMQ.Broker = os.Getenv("RABBITMQ_BROKER")
