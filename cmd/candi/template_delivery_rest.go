@@ -14,6 +14,7 @@ import (
 
 	"{{.LibraryName}}/candihelper"
 	"{{.LibraryName}}/candishared"
+	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/interfaces"
 	"{{.LibraryName}}/tracer"
 	"{{.LibraryName}}/wrapper"
@@ -27,9 +28,9 @@ type RestHandler struct {
 }
 
 // NewRestHandler create new rest handler
-func NewRestHandler(mw interfaces.Middleware, uc usecase.Usecase, validator interfaces.Validator) *RestHandler {
+func NewRestHandler(uc usecase.Usecase, deps dependency.Dependency) *RestHandler {
 	return &RestHandler{
-		mw: mw, uc: uc, validator: validator,
+		uc: uc, mw: deps.GetMiddleware(), validator: deps.GetValidator(),
 	}
 }
 

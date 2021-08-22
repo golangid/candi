@@ -12,6 +12,7 @@ import (
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
 	"{{.LibraryName}}/candishared"
+	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
 	"{{.LibraryName}}/tracer"
@@ -24,10 +25,10 @@ type KafkaHandler struct {
 }
 
 // NewKafkaHandler constructor
-func NewKafkaHandler(uc usecase.Usecase, validator interfaces.Validator) *KafkaHandler {
+func NewKafkaHandler(uc usecase.Usecase, deps dependency.Dependency) *KafkaHandler {
 	return &KafkaHandler{
 		uc:        uc,
-		validator: validator,
+		validator: deps.GetValidator(),
 	}
 }
 
@@ -58,6 +59,7 @@ import (
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
 	"{{.LibraryName}}/candihelper"
+	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
 	"{{.LibraryName}}/tracer"
@@ -70,10 +72,10 @@ type CronHandler struct {
 }
 
 // NewCronHandler constructor
-func NewCronHandler(uc usecase.Usecase, validator interfaces.Validator) *CronHandler {
+func NewCronHandler(uc usecase.Usecase, deps dependency.Dependency) *CronHandler {
 	return &CronHandler{
 		uc:        uc,
-		validator: validator,
+		validator: deps.GetValidator(),
 	}
 }
 
@@ -101,6 +103,7 @@ import (
 
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
+	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
 	"{{.LibraryName}}/tracer"
@@ -113,10 +116,10 @@ type RedisHandler struct {
 }
 
 // NewRedisHandler constructor
-func NewRedisHandler(uc usecase.Usecase, validator interfaces.Validator) *RedisHandler {
+func NewRedisHandler(uc usecase.Usecase, deps dependency.Dependency) *RedisHandler {
 	return &RedisHandler{
 		uc:        uc,
-		validator: validator,
+		validator: deps.GetValidator(),
 	}
 }
 
@@ -146,6 +149,7 @@ import (
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
 	"{{.LibraryName}}/candishared"
+	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
 	"{{.LibraryName}}/tracer"
@@ -158,10 +162,10 @@ type TaskQueueHandler struct {
 }
 
 // NewTaskQueueHandler constructor
-func NewTaskQueueHandler(uc usecase.Usecase, validator interfaces.Validator) *TaskQueueHandler {
+func NewTaskQueueHandler(uc usecase.Usecase, deps dependency.Dependency) *TaskQueueHandler {
 	return &TaskQueueHandler{
 		uc:        uc,
-		validator: validator,
+		validator: deps.GetValidator(),
 	}
 }
 
@@ -206,6 +210,7 @@ import (
 
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
+	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
 	"{{.LibraryName}}/tracer"
@@ -218,10 +223,10 @@ type PostgresListenerHandler struct {
 }
 
 // NewPostgresListenerHandler constructor
-func NewPostgresListenerHandler(uc usecase.Usecase, validator interfaces.Validator) *PostgresListenerHandler {
+func NewPostgresListenerHandler(uc usecase.Usecase, deps dependency.Dependency) *PostgresListenerHandler {
 	return &PostgresListenerHandler{
 		uc:        uc,
-		validator: validator,
+		validator: deps.GetValidator(),
 	}
 }
 
@@ -249,6 +254,7 @@ import (
 
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
+	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
 	"{{.LibraryName}}/tracer"
@@ -261,10 +267,10 @@ type RabbitMQHandler struct {
 }
 
 // NewRabbitMQHandler constructor
-func NewRabbitMQHandler(uc usecase.Usecase, validator interfaces.Validator) *RabbitMQHandler {
+func NewRabbitMQHandler(uc usecase.Usecase, deps dependency.Dependency) *RabbitMQHandler {
 	return &RabbitMQHandler{
 		uc:        uc,
-		validator: validator,
+		validator: deps.GetValidator(),
 	}
 }
 

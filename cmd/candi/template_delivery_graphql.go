@@ -8,6 +8,7 @@ package graphqlhandler
 import (
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 	
+	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
 )
@@ -20,9 +21,9 @@ type GraphQLHandler struct {
 }
 
 // NewGraphQLHandler delivery
-func NewGraphQLHandler(mw interfaces.Middleware, uc usecase.Usecase, validator interfaces.Validator) *GraphQLHandler {
+func NewGraphQLHandler(uc usecase.Usecase, deps dependency.Dependency) *GraphQLHandler {
 	return &GraphQLHandler{
-		mw: mw, uc: uc, validator: validator,
+		uc: uc, mw: deps.GetMiddleware(), validator: deps.GetValidator(),
 	}
 }
 
@@ -136,7 +137,7 @@ func (m *mutationResolver) Update{{clean (upper .ModuleName)}}(ctx context.Conte
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:Update{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
-	// tokenClaim := golibshared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
+	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
 	if err := m.root.uc.{{clean (upper .ModuleName)}}().Update{{clean (upper .ModuleName)}}(ctx, input.ID, &input.Data); err != nil {
 		return ok, err

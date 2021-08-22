@@ -50,7 +50,7 @@ migration:
 	@go run cmd/migration/migration.go
 
 build:
-	go build -o bin
+	@go build -o bin
 
 run: build
 	./bin
@@ -61,15 +61,22 @@ docker:
 run-container:
 	docker run --name={{.ServiceName}} --network="host" -d {{.ServiceName}}
 
+clear-docker:
+	docker rm -f {{.ServiceName}}
+	docker rmi -f {{.ServiceName}}
+
+# mocks all interfaces for unit test
+mocks:
+	@mockery --all --keeptree --dir=internal --output=pkg/mocks --case underscore
+	@mockery --all --keeptree --dir=pkg --output=pkg/mocks --case underscore
+
 # unit test & calculate code coverage
 test:
+	@echo "\x1b[32;1m>>> running unit test and calculate coverage\x1b[0m"
 	@if [ -f coverage.txt ]; then rm coverage.txt; fi;
-	@echo ">> running unit test and calculate coverage"
-	@go test ./... -cover -coverprofile=coverage.txt -covermode=count -coverpkg=$(PACKAGES)
+	@go test ./... -cover -coverprofile=coverage.txt -covermode=count \
+		-coverpkg=$$(go list ./... | grep -v mocks | tr '\n' ',')
 	@go tool cover -func=coverage.txt
-
-clear:
-	rm bin {{.ServiceName}}
 `
 
 	gomodTemplate = `module {{.ServiceName}}
@@ -110,7 +117,12 @@ coverage.txt
 		"$ make run\n" +
 		"```\n\n" +
 		"## Run unit test & calculate code coverage\n" +
+		"\n" +
+		"Make sure generate mock using [mockery](https://github.com/vektra/mockery)\n" +
 		"```\n" +
+		"$ make mocks\n" +
+		"```\n\n" +
+		"Run test:\n```\n" +
 		"$ make test\n" +
 		"```\n\n" +
 		"## Create docker image\n" +
@@ -156,7 +168,7 @@ coverage.txt
 		"```\n\n" +
 
 		"## Run unit test and calculate code coverage\n" +
-		"* **Generate mocks first (using [mockery](https://github.com/vektra/mockery)):**\n" +
+		"* **Make sure generate mock using [mockery](https://github.com/vektra/mockery):**\n" +
 		"```\n" +
 		"$ make mocks service={{service_name}}\n" +
 		"```\n" +

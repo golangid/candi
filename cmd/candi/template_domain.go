@@ -1,7 +1,7 @@
 package main
 
 const (
-	templateDomain = `// {{.Header}}
+	templateSharedDomain = `// {{.Header}}
 
 package domain
 
@@ -18,5 +18,17 @@ type {{clean (upper .ModuleName)}} struct {
 	CreatedAt  time.Time ` + "`" + `{{if .SQLUseGORM}}gorm:"column:created_at" {{end}}` + `{{if .MongoDeps}}bson:"created_at"{{end}} ` + `json:"created_at"` + "`" + `
 	ModifiedAt time.Time ` + "`" + `{{if .SQLUseGORM}}gorm:"column:modified_at" {{end}}` + `{{if .MongoDeps}}bson:"modified_at"{{end}} ` + `json:"modified_at"` + "`" + `
 }	
+`
+	templateModuleDomain = `// {{.Header}}
+
+package domain
+
+import "{{.LibraryName}}/candishared"
+
+// Filter{{clean (upper .ModuleName)}} model
+type Filter{{clean (upper .ModuleName)}} struct {
+	candishared.Filter
+	ID string
+}
 `
 )

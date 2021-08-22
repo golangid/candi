@@ -19,6 +19,7 @@ import (
 
 	"{{.LibraryName}}/candihelper"
 	"{{.LibraryName}}/candishared"
+	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
 	"{{.LibraryName}}/tracer"
@@ -32,9 +33,9 @@ type GRPCHandler struct {
 }
 
 // NewGRPCHandler func
-func NewGRPCHandler(mw interfaces.Middleware, uc usecase.Usecase, validator interfaces.Validator) *GRPCHandler {
+func NewGRPCHandler(uc usecase.Usecase, deps dependency.Dependency) *GRPCHandler {
 	return &GRPCHandler{
-		mw: mw, uc: uc, validator: validator,
+		uc: uc, mw: deps.GetMiddleware(), validator: deps.GetValidator(),
 	}
 }
 

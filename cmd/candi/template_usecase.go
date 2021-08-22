@@ -103,6 +103,7 @@ package usecase
 import (
 	"context"
 
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 	{{ if not (or .SQLDeps .MongoDeps) }}// {{end}}"{{.PackagePrefix}}/pkg/shared/repository"
 	"{{$.PackagePrefix}}/pkg/shared/usecase/common"
@@ -110,9 +111,7 @@ import (
 	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/interfaces"
-	"{{.LibraryName}}/tracer"` +
-		`{{if and .MongoDeps (not .SQLDeps)}}
-	"go.mongodb.org/mongo-driver/bson/primitive"{{end}}` + `
+	"{{.LibraryName}}/tracer"
 )
 
 type {{clean .ModuleName}}UsecaseImpl struct {
@@ -138,11 +137,13 @@ func (uc *{{clean .ModuleName}}UsecaseImpl) GetAll{{clean (upper .ModuleName)}}(
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}Usecase:GetAll{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
-	{{if or .SQLDeps .MongoDeps}}data, err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().FetchAll(ctx, &filter)
+	filter.CalculateOffset()
+	{{if or .SQLDeps .MongoDeps}}repoFilter := domain.Filter{{clean (upper .ModuleName)}}{Filter: filter}
+	data, err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().FetchAll(ctx, &repoFilter)
 	if err != nil {
 		return data, meta, err
 	}
-	count := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Count(ctx, &filter)
+	count := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Count(ctx, &repoFilter)
 	meta = candishared.NewMeta(filter.Page, filter.Limit, count){{end}}
 
 	return
@@ -152,8 +153,8 @@ func (uc *{{clean .ModuleName}}UsecaseImpl) GetDetail{{clean (upper .ModuleName)
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}Usecase:GetDetail{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
-	{{if or .SQLDeps .MongoDeps}}{{if and .MongoDeps (not .SQLDeps)}}data.ID, _ = primitive.ObjectIDFromHex(id){{else}}data.ID = id{{end}}
-	err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Find(ctx, &data){{end}}
+	{{if or .SQLDeps .MongoDeps}}repoFilter := domain.Filter{{clean (upper .ModuleName)}}{ID: id}
+	data, err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Find(ctx, &repoFilter){{end}}
 	return
 }
 
@@ -168,21 +169,184 @@ func (uc *{{clean .ModuleName}}UsecaseImpl) Update{{clean (upper .ModuleName)}}(
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}Usecase:Update{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
-	var existing shareddomain.{{clean (upper .ModuleName)}}
-	{{if and .MongoDeps (not .SQLDeps)}}existing.ID, _ = primitive.ObjectIDFromHex(id){{else}}existing.ID = id{{end}}
-	{{if or .SQLDeps .MongoDeps}}if err := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Find(ctx, &existing); err != nil {
+	repoFilter := domain.Filter{{clean (upper .ModuleName)}}{ID: id}
+	{{if or .SQLDeps .MongoDeps}}existing, err := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Find(ctx, &repoFilter)
+	if err != nil {
 		return err
-	}{{end}}
+	}
 	data.ID = existing.ID
 	data.CreatedAt = existing.CreatedAt
-	return {{if or .SQLDeps .MongoDeps}} uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Save(ctx, data){{end}}
+	err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Save(ctx, data){{end}}
+	return
 }
 
 func (uc *{{clean .ModuleName}}UsecaseImpl) Delete{{clean (upper .ModuleName)}}(ctx context.Context, id string) (err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}Usecase:Delete{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
-	return{{if or .SQLDeps .MongoDeps}} uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Delete(ctx, id){{end}}
+	return {{if or .SQLDeps .MongoDeps}}uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Delete(ctx, id){{end}}
+}
+`
+
+	templateUsecaseTest = `// {{.Header}}
+
+package usecase
+
+import (
+	"context"
+	"errors"
+	mockrepo "{{$.PackagePrefix}}/pkg/mocks/modules/{{cleanPathModule .ModuleName}}/repository"
+	mocksharedrepo "{{$.PackagePrefix}}/pkg/mocks/shared/repository"
+	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
+	"testing"
+
+	"{{.LibraryName}}/candishared"
+	mockdeps "{{.LibraryName}}/mocks/codebase/factory/dependency"
+	mockinterfaces "{{.LibraryName}}/mocks/codebase/interfaces"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+)
+
+func TestNew{{clean (upper .ModuleName)}}Usecase(t *testing.T) {
+	mockCache := &mockinterfaces.Cache{}
+	mockRedisPool := &mockinterfaces.RedisPool{}
+	mockRedisPool.On("Cache").Return(mockCache)
+
+	mockDeps := &mockdeps.Dependency{}
+	mockDeps.On("GetRedisPool").Return(mockRedisPool)
+
+	uc, _ := New{{clean (upper .ModuleName)}}Usecase(mockDeps)
+	assert.NotNil(t, uc)
+}
+
+func Test_{{clean .ModuleName}}UsecaseImpl_GetAll{{clean (upper .ModuleName)}}(t *testing.T) {
+	t.Run("Testcase #1: Positive", func(t *testing.T) {
+
+		{{clean .ModuleName}}Repo := &mockrepo.{{clean (upper .ModuleName)}}Repository{}
+		{{clean .ModuleName}}Repo.On("FetchAll", mock.Anything, mock.Anything, mock.Anything).Return([]shareddomain.{{clean (upper .ModuleName)}}{}, nil)
+		{{clean .ModuleName}}Repo.On("Count", mock.Anything, mock.Anything).Return(10)
+
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}} := &mocksharedrepo.Repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}{}
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{clean (upper .ModuleName)}}Repo").Return({{clean .ModuleName}}Repo)
+
+		uc := {{clean .ModuleName}}UsecaseImpl{
+			repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}: repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}},
+		}
+
+		_, _, err := uc.GetAll{{clean (upper .ModuleName)}}(context.Background(), candishared.Filter{})
+		assert.NoError(t, err)
+	})
+
+	t.Run("Testcase #2: Negative", func(t *testing.T) {
+
+		{{clean .ModuleName}}Repo := &mockrepo.{{clean (upper .ModuleName)}}Repository{}
+		{{clean .ModuleName}}Repo.On("FetchAll", mock.Anything, mock.Anything, mock.Anything).Return([]shareddomain.{{clean (upper .ModuleName)}}{}, errors.New("Error"))
+		{{clean .ModuleName}}Repo.On("Count", mock.Anything, mock.Anything).Return(10)
+
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}} := &mocksharedrepo.Repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}{}
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{clean (upper .ModuleName)}}Repo").Return({{clean .ModuleName}}Repo)
+
+		uc := {{clean .ModuleName}}UsecaseImpl{
+			repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}: repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}},
+		}
+
+		_, _, err := uc.GetAll{{clean (upper .ModuleName)}}(context.Background(), candishared.Filter{})
+		assert.Error(t, err)
+	})
+}
+
+func Test_{{clean .ModuleName}}UsecaseImpl_GetDetail{{clean (upper .ModuleName)}}(t *testing.T) {
+	t.Run("Testcase #1: Positive", func(t *testing.T) {
+
+		responseData := shareddomain.{{clean (upper .ModuleName)}}{}
+
+		{{clean .ModuleName}}Repo := &mockrepo.{{clean (upper .ModuleName)}}Repository{}
+		{{clean .ModuleName}}Repo.On("Find", mock.Anything, mock.Anything).Return(responseData, nil)
+
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}} := &mocksharedrepo.Repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}{}
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{clean (upper .ModuleName)}}Repo").Return({{clean .ModuleName}}Repo)
+
+		uc := {{clean .ModuleName}}UsecaseImpl{
+			repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}: repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}},
+		}
+
+		result, err := uc.GetDetail{{clean (upper .ModuleName)}}(context.Background(), "id")
+		assert.NoError(t, err)
+		assert.Equal(t, responseData, result)
+	})
+}
+
+func Test_{{clean .ModuleName}}UsecaseImpl_Create{{clean (upper .ModuleName)}}(t *testing.T) {
+	t.Run("Testcase #1: Positive", func(t *testing.T) {
+
+		{{clean .ModuleName}}Repo := &mockrepo.{{clean (upper .ModuleName)}}Repository{}
+		{{clean .ModuleName}}Repo.On("Save", mock.Anything, mock.Anything).Return(nil)
+
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}} := &mocksharedrepo.Repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}{}
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{clean (upper .ModuleName)}}Repo").Return({{clean .ModuleName}}Repo)
+
+		uc := {{clean .ModuleName}}UsecaseImpl{
+			repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}: repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}},
+		}
+
+		err := uc.Create{{clean (upper .ModuleName)}}(context.Background(), &shareddomain.{{clean (upper .ModuleName)}}{})
+		assert.NoError(t, err)
+	})
+}
+
+func Test_{{clean .ModuleName}}UsecaseImpl_Update{{clean (upper .ModuleName)}}(t *testing.T) {
+	t.Run("Testcase #1: Positive", func(t *testing.T) {
+
+		{{clean .ModuleName}}Repo := &mockrepo.{{clean (upper .ModuleName)}}Repository{}
+		{{clean .ModuleName}}Repo.On("Find", mock.Anything, mock.Anything).Return(shareddomain.{{clean (upper .ModuleName)}}{}, nil)
+		{{clean .ModuleName}}Repo.On("Save", mock.Anything, mock.Anything).Return(nil)
+
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}} := &mocksharedrepo.Repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}{}
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{clean (upper .ModuleName)}}Repo").Return({{clean .ModuleName}}Repo)
+
+		uc := {{clean .ModuleName}}UsecaseImpl{
+			repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}: repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}},
+		}
+
+		err := uc.Update{{clean (upper .ModuleName)}}(context.Background(), "id", &shareddomain.{{clean (upper .ModuleName)}}{})
+		assert.NoError(t, err)
+	})
+
+	t.Run("Testcase #2: Negative", func(t *testing.T) {
+
+		{{clean .ModuleName}}Repo := &mockrepo.{{clean (upper .ModuleName)}}Repository{}
+		{{clean .ModuleName}}Repo.On("Find", mock.Anything, mock.Anything).Return(shareddomain.{{clean (upper .ModuleName)}}{}, errors.New("Error"))
+		{{clean .ModuleName}}Repo.On("Save", mock.Anything, mock.Anything).Return(nil)
+
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}} := &mocksharedrepo.Repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}{}
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{clean (upper .ModuleName)}}Repo").Return({{clean .ModuleName}}Repo)
+
+		uc := {{clean .ModuleName}}UsecaseImpl{
+			repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}: repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}},
+		}
+
+		err := uc.Update{{clean (upper .ModuleName)}}(context.Background(), "id", &shareddomain.{{clean (upper .ModuleName)}}{})
+		assert.Error(t, err)
+	})
+}
+
+func Test_{{clean .ModuleName}}UsecaseImpl_Delete{{clean (upper .ModuleName)}}(t *testing.T) {
+	t.Run("Testcase #1: Positive", func(t *testing.T) {
+
+		{{clean .ModuleName}}Repo := &mockrepo.{{clean (upper .ModuleName)}}Repository{}
+		{{clean .ModuleName}}Repo.On("Delete", mock.Anything, mock.Anything).Return(nil)
+
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}} := &mocksharedrepo.Repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}{}
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{clean (upper .ModuleName)}}Repo").Return({{clean .ModuleName}}Repo)
+
+		uc := {{clean .ModuleName}}UsecaseImpl{
+			repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}: repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}},
+		}
+
+		err := uc.Delete{{clean (upper .ModuleName)}}(context.Background(), "id")
+		assert.NoError(t, err)
+	})
 }
 `
 )

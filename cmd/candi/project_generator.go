@@ -110,7 +110,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 			{
 				TargetDir: "domain/", IsDir: true,
 				Childs: []FileStructure{
-					{FromTemplate: true, FileName: "payload.go"},
+					{FromTemplate: true, DataSource: mod, Source: templateModuleDomain, FileName: "filter.go"},
 				},
 			},
 			{
@@ -122,6 +122,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 				Childs: []FileStructure{
 					{FromTemplate: true, DataSource: mod, Source: templateUsecaseAbstraction, FileName: "usecase.go"},
 					{FromTemplate: true, DataSource: mod, Source: templateUsecaseImpl, FileName: "usecase_impl.go"},
+					{FromTemplate: true, DataSource: mod, Source: templateUsecaseTest, FileName: "usecase_impl_test.go"},
 				},
 			},
 		}
@@ -151,7 +152,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 
 		// for shared domain
 		sharedDomainFiles = append(sharedDomainFiles, FileStructure{
-			FromTemplate: true, DataSource: mod, Source: templateDomain, FileName: mod.ModuleName + ".go",
+			FromTemplate: true, DataSource: mod, Source: templateSharedDomain, FileName: mod.ModuleName + ".go",
 		})
 	}
 

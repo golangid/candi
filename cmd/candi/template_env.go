@@ -28,6 +28,7 @@ TASK_QUEUE_DASHBOARD_PORT=8080
 TASK_QUEUE_DASHBOARD_MAX_CLIENT=5
 
 GRAPHQL_DISABLE_INTROSPECTION=false
+HTTP_ROOT_PATH=""
 
 # use consul for distributed lock if run in multiple instance
 USE_CONSUL=false
