@@ -20,6 +20,7 @@ type Consul struct {
 	SessionID         string
 	LockRetryInterval time.Duration
 	SessionTTL        time.Duration
+	MaxJobRebalance   int
 }
 
 // ConsulConfig is used to configure creation of client
@@ -28,6 +29,7 @@ type ConsulConfig struct {
 	ConsulKey         string
 	LockRetryInterval time.Duration
 	SessionTTL        time.Duration
+	MaxJobRebalance   int
 }
 
 // NewConsul constructor
@@ -44,12 +46,16 @@ func NewConsul(opt *ConsulConfig) (*Consul, error) {
 	c.Key = opt.ConsulKey
 	c.LockRetryInterval = 30 * time.Second
 	c.SessionTTL = 5 * time.Minute
+	c.MaxJobRebalance = 10
 
 	if opt.LockRetryInterval != 0 {
 		c.LockRetryInterval = opt.LockRetryInterval
 	}
 	if opt.SessionTTL != 0 {
 		c.SessionTTL = opt.SessionTTL
+	}
+	if opt.MaxJobRebalance != 0 {
+		c.MaxJobRebalance = opt.MaxJobRebalance
 	}
 
 	return &c, nil

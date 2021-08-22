@@ -190,7 +190,6 @@ func (t *jaegerImpl) Finish(additionalTags ...map[string]interface{}) {
 	for k, v := range t.tags {
 		t.span.SetTag(k, toString(v))
 	}
-	t.span.SetTag("num_goroutines", runtime.NumGoroutine())
 }
 
 // Log trace

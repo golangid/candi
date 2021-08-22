@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	// RabbitMQDelayHeader header key
+	// RabbitMQDelayHeader header key, value in millisecond
 	RabbitMQDelayHeader = "x-delay"
 )
 

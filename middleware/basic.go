@@ -131,7 +131,7 @@ func (m *Middleware) GRPCBasicAuth(ctx context.Context) context.Context {
 		panic(err)
 	}
 
-	authorizationMap := meta[candihelper.HeaderAuthorization]
+	authorizationMap := meta[strings.ToLower(candihelper.HeaderAuthorization)]
 	trace.SetTag(candihelper.HeaderAuthorization, authorizationMap)
 	if len(authorizationMap) != 1 {
 		err := grpc.Errorf(codes.Unauthenticated, "Invalid authorization")

@@ -21,8 +21,8 @@ func NewRedisCache(read, write *redis.Pool) *RedisCache {
 
 // Get method
 func (r *RedisCache) Get(ctx context.Context, key string) (data []byte, err error) {
-	trace := tracer.StartTrace(ctx, "redis:get")
-	defer func() { trace.SetError(err); tracer.Log(trace.Context(), "result", data); trace.Finish() }()
+	trace, ctx := tracer.StartTraceWithContext(ctx, "redis:get")
+	defer func() { trace.SetError(err); trace.Log("result", data); trace.Finish() }()
 
 	trace.SetTag("db.statement", "GET")
 	trace.SetTag("db.key", key)
@@ -35,8 +35,8 @@ func (r *RedisCache) Get(ctx context.Context, key string) (data []byte, err erro
 
 // GetKeys method
 func (r *RedisCache) GetKeys(ctx context.Context, pattern string) (data []string, err error) {
-	trace := tracer.StartTrace(ctx, "redis:get_keys")
-	defer func() { trace.SetError(err); tracer.Log(trace.Context(), "result", data); trace.Finish() }()
+	trace, ctx := tracer.StartTraceWithContext(ctx, "redis:get_keys")
+	defer func() { trace.SetError(err); trace.Log("result", data); trace.Finish() }()
 
 	trace.SetTag("db.statement", "KEYS")
 	trace.SetTag("db.key", pattern)
@@ -49,12 +49,13 @@ func (r *RedisCache) GetKeys(ctx context.Context, pattern string) (data []string
 
 // Set method
 func (r *RedisCache) Set(ctx context.Context, key string, value interface{}, expire time.Duration) (err error) {
-	trace := tracer.StartTrace(ctx, "redis:set")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "redis:set")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
 	trace.SetTag("db.statement", "SET")
 	trace.SetTag("db.key", key)
 	trace.SetTag("db.expired", expire.String())
+	trace.Log("value", value)
 
 	cl := r.write.Get()
 	defer cl.Close()
@@ -70,8 +71,8 @@ func (r *RedisCache) Set(ctx context.Context, key string, value interface{}, exp
 
 // Exists method
 func (r RedisCache) Exists(ctx context.Context, key string) (exist bool, err error) {
-	trace := tracer.StartTrace(ctx, "redis:exists")
-	defer func() { trace.SetError(err); tracer.Log(trace.Context(), "result", exist); trace.Finish() }()
+	trace, ctx := tracer.StartTraceWithContext(ctx, "redis:exists")
+	defer func() { trace.SetError(err); trace.Log("result", exist); trace.Finish() }()
 
 	trace.SetTag("db.statement", "EXISTS")
 	trace.SetTag("db.key", key)
@@ -84,7 +85,7 @@ func (r RedisCache) Exists(ctx context.Context, key string) (exist bool, err err
 
 // Delete method
 func (r *RedisCache) Delete(ctx context.Context, key string) (err error) {
-	trace := tracer.StartTrace(ctx, "redis:delete")
+	trace, ctx := tracer.StartTraceWithContext(ctx, "redis:delete")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
 	trace.SetTag("db.statement", "DEL")

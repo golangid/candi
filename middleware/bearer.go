@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/golang-jwt/jwt"
 	gqlerr "github.com/golangid/graphql-go/errors"
@@ -123,7 +124,7 @@ func (m *Middleware) GRPCBearerAuth(ctx context.Context) context.Context {
 		panic(err)
 	}
 
-	authorizationMap := meta[candihelper.HeaderAuthorization]
+	authorizationMap := meta[strings.ToLower(candihelper.HeaderAuthorization)]
 	trace.SetTag(candihelper.HeaderAuthorization, authorizationMap)
 	if len(authorizationMap) != 1 {
 		err := grpc.Errorf(codes.Unauthenticated, "Invalid authorization")
