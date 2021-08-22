@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -133,19 +134,19 @@ func TestMiddleware_GRPCBasicAuth(t *testing.T) {
 
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
 		ctx := metadata.NewIncomingContext(context.Background(), metadata.MD{
-			candihelper.HeaderAuthorization: []string{"Basic " + validBasicAuth},
+			strings.ToLower(candihelper.HeaderAuthorization): []string{"Basic " + validBasicAuth},
 		})
 		assert.NotPanics(t, func() { mw.GRPCBasicAuth(ctx) })
 	})
 	t.Run("Testcase #2: Negative", func(t *testing.T) {
 		ctx := metadata.NewIncomingContext(context.Background(), metadata.MD{
-			candihelper.HeaderAuthorization: []string{},
+			strings.ToLower(candihelper.HeaderAuthorization): []string{},
 		})
 		assert.Panics(t, func() { mw.GRPCBasicAuth(ctx) })
 	})
 	t.Run("Testcase #3: Negative", func(t *testing.T) {
 		ctx := metadata.NewIncomingContext(context.Background(), metadata.MD{
-			candihelper.HeaderAuthorization: []string{"Basic xxx"},
+			strings.ToLower(candihelper.HeaderAuthorization): []string{"Basic xxx"},
 		})
 		assert.Panics(t, func() { mw.GRPCBasicAuth(ctx) })
 	})
