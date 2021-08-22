@@ -11,7 +11,7 @@ import (
 )
 
 func registerNewTaskListSubscriber(clientID string, clientChannel chan TaskListResolver) error {
-	if len(clientTaskSubscribers) >= defaultOption.MaxClientSubscriber {
+	if len(clientTaskSubscribers) >= defaultOption.maxClientSubscriber {
 		return errClientLimitExceeded
 	}
 
@@ -30,7 +30,7 @@ func removeTaskListSubscriber(clientID string) {
 }
 
 func registerNewJobListSubscriber(taskName, clientID string, filter Filter, clientChannel chan JobListResolver) error {
-	if len(clientJobTaskSubscribers) >= defaultOption.MaxClientSubscriber {
+	if len(clientJobTaskSubscribers) >= defaultOption.maxClientSubscriber {
 		return errClientLimitExceeded
 	}
 

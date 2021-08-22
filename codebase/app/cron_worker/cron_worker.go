@@ -12,10 +12,8 @@ import (
 	"time"
 
 	"pkg.agungdp.dev/candi/candihelper"
-	"pkg.agungdp.dev/candi/candiutils"
 	"pkg.agungdp.dev/candi/codebase/factory"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
 	"pkg.agungdp.dev/candi/tracer"
 )
@@ -24,15 +22,24 @@ type cronWorker struct {
 	ctx           context.Context
 	ctxCancelFunc func()
 
+	opt     option
 	service factory.ServiceFactory
-	consul  *candiutils.Consul
 	wg      sync.WaitGroup
 }
 
 // NewWorker create new cron worker
-func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
+func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
+	c := &cronWorker{
+		service: service,
+		opt:     getDefaultOption(),
+	}
+
+	for _, opt := range opts {
+		opt(&c.opt)
+	}
+
 	refreshWorkerNotif, shutdown = make(chan struct{}), make(chan struct{})
-	semaphore = make(chan struct{}, env.BaseEnv().MaxGoroutines)
+	semaphore = make(chan struct{}, c.opt.maxGoroutines)
 	startWorkerCh, releaseWorkerCh = make(chan struct{}), make(chan struct{})
 
 	// add shutdown channel to first index
@@ -65,22 +72,6 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 		}
 	}
 	fmt.Printf("\x1b[34;1m⇨ Cron worker running with %d jobs\x1b[0m\n\n", len(activeJobs))
-
-	c := &cronWorker{
-		service: service,
-	}
-
-	if env.BaseEnv().UseConsul {
-		consul, err := candiutils.NewConsul(&candiutils.ConsulConfig{
-			ConsulAgentHost:   env.BaseEnv().ConsulAgentHost,
-			ConsulKey:         fmt.Sprintf("%s_cron_worker", service.Name()),
-			LockRetryInterval: time.Second,
-		})
-		if err != nil {
-			panic(err)
-		}
-		c.consul = consul
-	}
 
 	c.ctx, c.ctxCancelFunc = context.WithCancel(context.Background())
 	return c
@@ -137,10 +128,10 @@ START:
 				c.processJob(j)
 			}(job)
 
-			if c.consul != nil {
+			if c.opt.consul != nil {
 				totalRunJobs++
 				// if already running n jobs, release lock so that run in another instance
-				if totalRunJobs == env.BaseEnv().ConsulMaxJobRebalance {
+				if totalRunJobs == c.opt.consul.MaxJobRebalance {
 					// recreate session
 					c.createConsulSession()
 					<-releaseWorkerCh
@@ -156,8 +147,8 @@ START:
 
 func (c *cronWorker) Shutdown(ctx context.Context) {
 	defer func() {
-		if c.consul != nil {
-			if err := c.consul.DestroySession(); err != nil {
+		if c.opt.consul != nil {
+			if err := c.opt.consul.DestroySession(); err != nil {
 				panic(err)
 			}
 		}
@@ -183,17 +174,17 @@ func (c *cronWorker) Name() string {
 }
 
 func (c *cronWorker) createConsulSession() {
-	if c.consul == nil {
+	if c.opt.consul == nil {
 		go func() { startWorkerCh <- struct{}{} }()
 		return
 	}
-	c.consul.DestroySession()
+	c.opt.consul.DestroySession()
 	stopAllJob()
 	hostname, _ := os.Hostname()
 	value := map[string]string{
 		"hostname": hostname,
 	}
-	go c.consul.RetryLockAcquire(value, startWorkerCh, releaseWorkerCh)
+	go c.opt.consul.RetryLockAcquire(value, startWorkerCh, releaseWorkerCh)
 }
 
 func (c *cronWorker) processJob(job *Job) {
@@ -213,7 +204,7 @@ func (c *cronWorker) processJob(job *Job) {
 	trace.SetTag("job_name", job.HandlerName)
 	trace.SetTag("job_param", job.Params)
 
-	if env.BaseEnv().DebugMode {
+	if c.opt.debugMode {
 		log.Printf("\x1b[35;3mCron Scheduler: executing task '%s' (interval: %s)\x1b[0m", job.HandlerName, job.Interval)
 	}
 

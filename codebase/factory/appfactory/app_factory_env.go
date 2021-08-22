@@ -1,15 +1,6 @@
 package appfactory
 
 import (
-	cronworker "pkg.agungdp.dev/candi/codebase/app/cron_worker"
-	graphqlserver "pkg.agungdp.dev/candi/codebase/app/graphql_server"
-	grpcserver "pkg.agungdp.dev/candi/codebase/app/grpc_server"
-	kafkaworker "pkg.agungdp.dev/candi/codebase/app/kafka_worker"
-	postgresworker "pkg.agungdp.dev/candi/codebase/app/postgres_worker"
-	rabbitmqworker "pkg.agungdp.dev/candi/codebase/app/rabbitmq_worker"
-	redisworker "pkg.agungdp.dev/candi/codebase/app/redis_worker"
-	restserver "pkg.agungdp.dev/candi/codebase/app/rest_server"
-	taskqueueworker "pkg.agungdp.dev/candi/codebase/app/task_queue_worker"
 	"pkg.agungdp.dev/candi/codebase/factory"
 	"pkg.agungdp.dev/candi/config/env"
 )
@@ -44,41 +35,32 @@ USE_RABBITMQ_CONSUMER=[bool] # event driven handler and dynamic scheduler
 func NewAppFromEnvironmentConfig(service factory.ServiceFactory) (apps []factory.AppServerFactory) {
 
 	if env.BaseEnv().UseKafkaConsumer {
-		apps = append(apps, kafkaworker.NewWorker(service))
+		apps = append(apps, setupKafkaWorker(service))
 	}
 	if env.BaseEnv().UseCronScheduler {
-		apps = append(apps, cronworker.NewWorker(service))
+		apps = append(apps, setupCronWorker(service))
 	}
 	if env.BaseEnv().UseTaskQueueWorker {
-		if service.GetDependency().GetRedisPool() == nil {
-			panic("Task queue worker require redis for queue")
-		}
-		if service.GetDependency().GetMongoDatabase() == nil {
-			panic("Task queue worker require mongo for dashboard management")
-		}
-		queue := taskqueueworker.NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
-		persistent := taskqueueworker.NewMongoPersistent(service.GetDependency().GetMongoDatabase().WriteDB())
-		apps = append(apps, taskqueueworker.NewTaskQueueWorker(service, queue, persistent))
+		apps = append(apps, setupTaskQueueWorker(service))
 	}
 	if env.BaseEnv().UseRedisSubscriber {
-		apps = append(apps, redisworker.NewWorker(service))
+		apps = append(apps, setupRedisWorker(service))
 	}
 	if env.BaseEnv().UsePostgresListenerWorker {
-		apps = append(apps, postgresworker.NewWorker(service, env.BaseEnv().DbSQLWriteDSN))
+		apps = append(apps, setupPostgresWorker(service))
 	}
 	if env.BaseEnv().UseRabbitMQWorker {
-		apps = append(apps, rabbitmqworker.NewWorker(service))
+		apps = append(apps, setupRabbitMQWorker(service))
 	}
 
-	sharedListener := service.GetConfig().SharedListener
 	if env.BaseEnv().UseREST {
-		apps = append(apps, restserver.NewServer(service, sharedListener))
+		apps = append(apps, setupRESTServer(service))
 	}
 	if env.BaseEnv().UseGRPC {
-		apps = append(apps, grpcserver.NewServer(service, sharedListener))
+		apps = append(apps, setupGRPCServer(service))
 	}
 	if !env.BaseEnv().UseREST && env.BaseEnv().UseGraphQL {
-		apps = append(apps, graphqlserver.NewServer(service, sharedListener))
+		apps = append(apps, setupGraphQLServer(service))
 	}
 
 	return

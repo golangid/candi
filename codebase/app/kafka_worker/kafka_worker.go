@@ -11,11 +11,11 @@ import (
 	"github.com/Shopify/sarama"
 	"pkg.agungdp.dev/candi/codebase/factory"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
 )
 
 type kafkaWorker struct {
+	opt             option
 	engine          sarama.ConsumerGroup
 	service         factory.ServiceFactory
 	consumerHandler *consumerHandler
@@ -23,13 +23,22 @@ type kafkaWorker struct {
 }
 
 // NewWorker create new kafka consumer
-func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
+func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
+	worker := &kafkaWorker{
+		service: service,
+		opt:     getDefaultOption(),
+	}
+
+	for _, opt := range opts {
+		opt(&worker.opt)
+	}
+
 	// init kafka consumer
 	if service.GetDependency().GetBroker(types.Kafka) == nil {
 		log.Panic("Missing Kafka configuration")
 	}
 	consumerEngine, err := sarama.NewConsumerGroupFromClient(
-		env.BaseEnv().Kafka.ConsumerGroup,
+		worker.opt.consumerGroup,
 		service.GetDependency().GetBroker(types.Kafka).GetConfiguration().(sarama.Client),
 	)
 	if err != nil {
@@ -52,15 +61,15 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 			}
 		}
 	}
-	fmt.Printf("\x1b[34;1m⇨ Kafka consumer running with %d topics. Brokers: "+strings.Join(env.BaseEnv().Kafka.Brokers, ", ")+"\x1b[0m\n\n",
+	fmt.Printf("\x1b[34;1m⇨ Kafka consumer running with %d topics. Brokers: "+strings.Join(worker.opt.brokers, ", ")+"\x1b[0m\n\n",
 		len(consumerHandler.topics))
 
 	consumerHandler.ready = make(chan struct{})
-	return &kafkaWorker{
-		engine:          consumerEngine,
-		service:         service,
-		consumerHandler: &consumerHandler,
-	}
+	consumerHandler.opt = &worker.opt
+
+	worker.engine = consumerEngine
+	worker.consumerHandler = &consumerHandler
+	return worker
 }
 
 func (h *kafkaWorker) Serve() {

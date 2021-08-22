@@ -12,7 +12,6 @@ import (
 	"pkg.agungdp.dev/candi/candishared"
 	"pkg.agungdp.dev/candi/codebase/factory"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
 	"pkg.agungdp.dev/candi/tracer"
 )
@@ -68,35 +67,37 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, perst Pe
 
 	if len(tasks) == 0 {
 		logger.LogYellow("Task Queue Worker: warning, no task provided")
+
+	} else {
+
+		go func() {
+			for _, taskName := range tasks {
+				queue.Clear(taskName)
+			}
+			// get current pending jobs
+			pageNumber := 1
+			filter := Filter{
+				TaskNameList: tasks,
+				Status:       []string{string(statusRetrying), string(statusQueueing)},
+				Limit:        100,
+			}
+			count := persistent.CountAllJob(workerInstance.ctx, filter)
+			totalPages := int(math.Ceil(float64(count) / float64(filter.Limit)))
+			for pageNumber <= totalPages {
+				filter.Page = pageNumber
+				pendingJobs := persistent.FindAllJob(workerInstance.ctx, filter)
+				for _, job := range pendingJobs {
+					queue.PushJob(&job)
+					registerJobToWorker(&job, registeredTask[job.TaskName].workerIndex)
+				}
+				pageNumber++
+			}
+			refreshWorkerNotif <- struct{}{}
+		}()
 	}
 
-	go func() {
-		for _, taskName := range tasks {
-			queue.Clear(taskName)
-		}
-		// get current pending jobs
-		pageNumber := 1
-		filter := Filter{
-			TaskNameList: tasks,
-			Status:       []string{string(statusRetrying), string(statusQueueing)},
-			Limit:        100,
-		}
-		count := persistent.CountAllJob(workerInstance.ctx, filter)
-		totalPages := int(math.Ceil(float64(count) / float64(filter.Limit)))
-		for pageNumber <= totalPages {
-			filter.Page = pageNumber
-			pendingJobs := persistent.FindAllJob(workerInstance.ctx, filter)
-			for _, job := range pendingJobs {
-				queue.PushJob(&job)
-				registerJobToWorker(&job, registeredTask[job.TaskName].workerIndex)
-			}
-			pageNumber++
-		}
-		refreshWorkerNotif <- struct{}{}
-	}()
-
 	fmt.Printf("\x1b[34;1m⇨ Task Queue Worker running with %d task. Open [::]:%d for dashboard\x1b[0m\n\n",
-		len(registeredTask), env.BaseEnv().TaskQueueDashboardPort)
+		len(registeredTask), defaultOption.dashboardPort)
 
 	return workerInstance
 }
@@ -234,7 +235,7 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 
 	job.TraceID = tracer.GetTraceID(ctx)
 
-	if env.BaseEnv().DebugMode {
+	if defaultOption.debugMode {
 		log.Printf("\x1b[35;3mTask Queue Worker: executing task '%s'\x1b[0m", job.TaskName)
 	}
 

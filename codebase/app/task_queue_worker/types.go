@@ -2,13 +2,11 @@ package taskqueueworker
 
 import (
 	"errors"
-	"net/url"
 	"reflect"
 	"sync"
 	"time"
 
 	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/config/env"
 )
 
 type (
@@ -128,27 +126,27 @@ func makeAllGlobalVars(q QueueStorage, perst Persistent, opts ...OptionFunc) {
 	queue = q
 	persistent = perst
 
-	if env.BaseEnv().JaegerTracingDashboard != "" {
-		defaultOption.JaegerTracingDashboard = env.BaseEnv().JaegerTracingDashboard
-	} else if urlTracerAgent, _ := url.Parse("//" + env.BaseEnv().JaegerTracingHost); urlTracerAgent != nil {
-		defaultOption.JaegerTracingDashboard = urlTracerAgent.Hostname()
-	}
-	defaultOption.MaxClientSubscriber = env.BaseEnv().TaskQueueDashboardMaxClientSubscribers
-	defaultOption.AutoRemoveClientInterval = 30 * time.Minute
-	defaultOption.DashboardBanner = `
+	// set default value
+	defaultOption.jaegerTracingDashboard = "http://127.0.0.1:16686"
+	defaultOption.maxClientSubscriber = 5
+	defaultOption.autoRemoveClientInterval = 30 * time.Minute
+	defaultOption.dashboardPort = 8080
+	defaultOption.debugMode = true
+	defaultOption.dashboardBanner = `
     _________    _   ______  ____
    / ____/   |  / | / / __ \/  _/
   / /   / /| | /  |/ / / / // /  
  / /___/ ___ |/ /|  / /_/ // /   
  \____/_/  |_/_/ |_/_____/___/   `
 
+	//  override option value
 	for _, opt := range opts {
 		opt(&defaultOption)
 	}
 
 	refreshWorkerNotif, shutdown, closeAllSubscribers = make(chan struct{}), make(chan struct{}, 1), make(chan struct{})
-	clientTaskSubscribers = make(map[string]chan TaskListResolver, defaultOption.MaxClientSubscriber)
-	clientJobTaskSubscribers = make(map[string]clientJobTaskSubscriber, defaultOption.MaxClientSubscriber)
+	clientTaskSubscribers = make(map[string]chan TaskListResolver, defaultOption.maxClientSubscriber)
+	clientJobTaskSubscribers = make(map[string]clientJobTaskSubscriber, defaultOption.maxClientSubscriber)
 
 	registeredTask = make(map[string]struct {
 		handler     types.WorkerHandler

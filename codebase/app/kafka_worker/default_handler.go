@@ -7,13 +7,13 @@ import (
 	"github.com/Shopify/sarama"
 	"pkg.agungdp.dev/candi/candishared"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
 	"pkg.agungdp.dev/candi/tracer"
 )
 
 // consumerHandler represents a Sarama consumer group consumer
 type consumerHandler struct {
+	opt          *option
 	topics       []string
 	handlerFuncs map[string]types.WorkerHandler
 	ready        chan struct{}
@@ -68,9 +68,10 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 	trace.SetTag("key", string(message.Key))
 	trace.SetTag("partition", message.Partition)
 	trace.SetTag("offset", message.Offset)
+	trace.SetTag("consumer_group", c.opt.consumerGroup)
 	trace.Log("message", message.Value)
 
-	if env.BaseEnv().DebugMode {
+	if c.opt.debugMode {
 		log.Printf("\x1b[35;3mKafka Consumer: message consumed, timestamp = %v, topic = %s\x1b[0m", message.Timestamp, message.Topic)
 	}
 

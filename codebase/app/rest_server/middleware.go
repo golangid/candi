@@ -20,14 +20,13 @@ import (
 	"github.com/opentracing/opentracing-go/ext"
 	"github.com/valyala/fasttemplate"
 	"pkg.agungdp.dev/candi/candihelper"
-	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
 	"pkg.agungdp.dev/candi/tracer"
 	"pkg.agungdp.dev/candi/wrapper"
 )
 
 // echoRestTracerMiddleware for wrap from http inbound (request from client)
-func echoRestTracerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+func (h *restServer) echoRestTracerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		req := c.Request()
 
@@ -51,7 +50,7 @@ func echoRestTracerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		body, _ := ioutil.ReadAll(req.Body)
-		if len(body) < env.BaseEnv().JaegerMaxPacketSize { // limit request body size to 65000 bytes (if higher tracer cannot show root span)
+		if len(body) < h.opt.jaegerMaxPacketSize { // limit request body size to 65000 bytes (if higher tracer cannot show root span)
 			span.LogKV("request.body", string(body))
 		} else {
 			span.LogKV("request.body.size", len(body))
@@ -80,7 +79,7 @@ func echoRestTracerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			ext.Error.Set(span, true)
 		}
 
-		if resBody.Len() < env.BaseEnv().JaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
+		if resBody.Len() < h.opt.jaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
 			span.LogKV("response.body", resBody.String())
 		} else {
 			span.LogKV("response.body.size", resBody.Len())

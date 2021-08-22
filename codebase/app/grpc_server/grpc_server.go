@@ -13,18 +13,18 @@ import (
 	"pkg.agungdp.dev/candi/candihelper"
 	"pkg.agungdp.dev/candi/codebase/factory"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
 )
 
 type grpcServer struct {
+	opt          option
 	serverEngine *grpc.Server
 	listener     net.Listener
 	service      factory.ServiceFactory
 }
 
 // NewServer create new GRPC server
-func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.AppServerFactory {
+func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
 
 	var (
 		kaep = keepalive.EnforcementPolicy{
@@ -56,17 +56,21 @@ func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.Ap
 			)),
 		),
 		service: service,
+		opt:     getDefaultOption(),
+	}
+	for _, opt := range opts {
+		opt(&server.opt)
 	}
 
-	grpcPort := fmt.Sprintf(":%d", env.BaseEnv().GRPCPort)
-	if muxListener == nil {
+	grpcPort := server.opt.tcpPort
+	if server.opt.sharedListener == nil {
 		var err error
 		server.listener, err = net.Listen("tcp", grpcPort)
 		if err != nil {
 			panic(err)
 		}
 	} else {
-		server.listener = muxListener.MatchWithWriters(
+		server.listener = server.opt.sharedListener.MatchWithWriters(
 			cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"),
 			cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc+proto"),
 		)
@@ -75,6 +79,7 @@ func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.Ap
 
 	// register all module
 	intercept.middleware = make(types.MiddlewareGroup)
+	intercept.opt = &server.opt
 	for _, m := range service.GetModules() {
 		if h := m.GRPCHandler(); h != nil {
 			h.Register(server.serverEngine, &intercept.middleware)

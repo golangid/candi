@@ -11,10 +11,8 @@ import (
 
 	"github.com/lib/pq"
 	"pkg.agungdp.dev/candi/candihelper"
-	"pkg.agungdp.dev/candi/candiutils"
 	"pkg.agungdp.dev/candi/codebase/factory"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
 	"pkg.agungdp.dev/candi/tracer"
 )
@@ -32,8 +30,8 @@ type (
 	postgresWorker struct {
 		ctx           context.Context
 		ctxCancelFunc func()
+		opt           option
 
-		consul   *candiutils.Consul
 		listener *pq.Listener
 		handlers map[string]types.WorkerHandler
 		wg       sync.WaitGroup
@@ -41,13 +39,20 @@ type (
 )
 
 // NewWorker create new postgres event listener
-func NewWorker(service factory.ServiceFactory, postgresDSN string) factory.AppServerFactory {
-	worker := new(postgresWorker)
-	shutdown, semaphore = make(chan struct{}, 1), make(chan struct{}, env.BaseEnv().MaxGoroutines)
+func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
+	worker := &postgresWorker{
+		opt: getDefaultOption(),
+	}
+
+	for _, opt := range opts {
+		opt(&worker.opt)
+	}
+
+	shutdown, semaphore = make(chan struct{}, 1), make(chan struct{}, worker.opt.maxGoroutines)
 	startWorkerCh, releaseWorkerCh = make(chan struct{}), make(chan struct{})
 
 	worker.handlers = make(map[string]types.WorkerHandler)
-	db, listener := getListener(postgresDSN)
+	db, listener := getListener(worker.opt.postgresDSN)
 	execCreateFunctionEventQuery(db)
 
 	for _, m := range service.GetModules() {
@@ -66,19 +71,7 @@ func NewWorker(service factory.ServiceFactory, postgresDSN string) factory.AppSe
 		log.Println("postgres listener: no table event provided")
 	} else {
 		fmt.Printf("\x1b[34;1m⇨ Postgres Event Listener running with %d table. DSN: %s\x1b[0m\n\n",
-			len(worker.handlers), candihelper.MaskingPasswordURL(postgresDSN))
-	}
-
-	if env.BaseEnv().UseConsul {
-		consul, err := candiutils.NewConsul(&candiutils.ConsulConfig{
-			ConsulAgentHost:   env.BaseEnv().ConsulAgentHost,
-			ConsulKey:         fmt.Sprintf("%s_postgres_event_listener", service.Name()),
-			LockRetryInterval: 1 * time.Second,
-		})
-		if err != nil {
-			panic(err)
-		}
-		worker.consul = consul
+			len(worker.handlers), candihelper.MaskingPasswordURL(worker.opt.postgresDSN))
 	}
 
 	worker.listener = listener
@@ -127,7 +120,7 @@ START:
 					trace.Finish()
 				}()
 
-				trace.SetTag("database", candihelper.MaskingPasswordURL(env.BaseEnv().DbSQLWriteDSN))
+				trace.SetTag("database", candihelper.MaskingPasswordURL(p.opt.postgresDSN))
 				trace.SetTag("table_name", eventPayload.Table)
 				trace.SetTag("action", eventPayload.Action)
 				trace.Log("payload", event.Extra)
@@ -140,10 +133,10 @@ START:
 			}(e)
 
 			// rebalance worker if run in multiple instance and using consul
-			if p.consul != nil {
+			if p.opt.consul != nil {
 				totalRunJobs++
 				// if already running n jobs, release lock so that run in another instance
-				if totalRunJobs == env.BaseEnv().ConsulMaxJobRebalance {
+				if totalRunJobs == p.opt.consul.MaxJobRebalance {
 					p.listener.Unlisten(eventsConst)
 					// recreate session
 					p.createConsulSession()
@@ -163,8 +156,8 @@ START:
 
 func (p *postgresWorker) Shutdown(ctx context.Context) {
 	defer func() {
-		if p.consul != nil {
-			if err := p.consul.DestroySession(); err != nil {
+		if p.opt.consul != nil {
+			if err := p.opt.consul.DestroySession(); err != nil {
 				panic(err)
 			}
 		}
@@ -192,14 +185,14 @@ func (p *postgresWorker) Name() string {
 }
 
 func (p *postgresWorker) createConsulSession() {
-	if p.consul == nil {
+	if p.opt.consul == nil {
 		go func() { startWorkerCh <- struct{}{} }()
 		return
 	}
-	p.consul.DestroySession()
+	p.opt.consul.DestroySession()
 	hostname, _ := os.Hostname()
 	value := map[string]string{
 		"hostname": hostname,
 	}
-	go p.consul.RetryLockAcquire(value, startWorkerCh, releaseWorkerCh)
+	go p.opt.consul.RetryLockAcquire(value, startWorkerCh, releaseWorkerCh)
 }

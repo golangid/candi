@@ -18,7 +18,6 @@ import (
 	"pkg.agungdp.dev/candi/candishared"
 	"pkg.agungdp.dev/candi/codebase/app/graphql_server/static"
 	"pkg.agungdp.dev/candi/codebase/app/graphql_server/ws"
-	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
 )
 
@@ -36,7 +35,7 @@ func serveGraphQLAPI(wrk *taskQueueWorker) {
 	mux.HandleFunc("/voyager", func(rw http.ResponseWriter, r *http.Request) { rw.Write([]byte(static.VoyagerAsset)) })
 
 	httpEngine := new(http.Server)
-	httpEngine.Addr = fmt.Sprintf(":%d", env.BaseEnv().TaskQueueDashboardPort)
+	httpEngine.Addr = fmt.Sprintf(":%d", defaultOption.dashboardPort)
 	httpEngine.Handler = mux
 
 	if err := httpEngine.ListenAndServe(); err != nil {
@@ -58,7 +57,7 @@ func (r *rootResolver) Tagline(ctx context.Context) (res TaglineResolver) {
 	for client := range clientJobTaskSubscribers {
 		res.JobListClientSubscribers = append(res.JobListClientSubscribers, client)
 	}
-	res.Banner = defaultOption.DashboardBanner
+	res.Banner = defaultOption.dashboardBanner
 	res.Tagline = "Task Queue Worker Dashboard"
 	res.Version = candi.Version
 	res.MemoryStatistics = getMemstats()
@@ -192,7 +191,7 @@ func (r *rootResolver) ListenTask(ctx context.Context) (<-chan TaskListResolver,
 		return nil, err
 	}
 
-	autoRemoveClient := time.NewTicker(defaultOption.AutoRemoveClientInterval)
+	autoRemoveClient := time.NewTicker(defaultOption.autoRemoveClientInterval)
 
 	go broadcastTaskList(r.worker.ctx)
 
@@ -251,7 +250,7 @@ func (r *rootResolver) ListenTaskJobDetail(ctx context.Context, input struct {
 		return nil, err
 	}
 
-	autoRemoveClient := time.NewTicker(defaultOption.AutoRemoveClientInterval)
+	autoRemoveClient := time.NewTicker(defaultOption.autoRemoveClientInterval)
 
 	go func() {
 		jobs := persistent.FindAllJob(r.worker.ctx, filter)

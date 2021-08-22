@@ -6,10 +6,12 @@ import (
 
 type (
 	option struct {
-		JaegerTracingDashboard   string
-		MaxClientSubscriber      int
-		AutoRemoveClientInterval time.Duration
-		DashboardBanner          string
+		jaegerTracingDashboard   string
+		maxClientSubscriber      int
+		autoRemoveClientInterval time.Duration
+		dashboardBanner          string
+		dashboardPort            uint16
+		debugMode                bool
 	}
 
 	// OptionFunc type
@@ -19,27 +21,41 @@ type (
 // SetJaegerTracingDashboard option func
 func SetJaegerTracingDashboard(host string) OptionFunc {
 	return func(o *option) {
-		o.JaegerTracingDashboard = host
+		o.jaegerTracingDashboard = host
 	}
 }
 
 // SetMaxClientSubscriber option func
 func SetMaxClientSubscriber(max int) OptionFunc {
 	return func(o *option) {
-		o.MaxClientSubscriber = max
+		o.maxClientSubscriber = max
 	}
 }
 
 // SetAutoRemoveClientInterval option func
 func SetAutoRemoveClientInterval(d time.Duration) OptionFunc {
 	return func(o *option) {
-		o.AutoRemoveClientInterval = d
+		o.autoRemoveClientInterval = d
 	}
 }
 
 // SetDashboardBanner option func
 func SetDashboardBanner(banner string) OptionFunc {
 	return func(o *option) {
-		o.DashboardBanner = banner
+		o.dashboardBanner = banner
+	}
+}
+
+// SetDashboardHTTPPort option func
+func SetDashboardHTTPPort(port uint16) OptionFunc {
+	return func(o *option) {
+		o.dashboardPort = port
+	}
+}
+
+// SetDebugMode option func
+func SetDebugMode(debugMode bool) OptionFunc {
+	return func(o *option) {
+		o.debugMode = debugMode
 	}
 }

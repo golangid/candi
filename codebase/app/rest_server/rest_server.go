@@ -17,39 +17,42 @@ import (
 	graphqlserver "pkg.agungdp.dev/candi/codebase/app/graphql_server"
 	"pkg.agungdp.dev/candi/codebase/factory"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
 )
 
 type restServer struct {
 	serverEngine *echo.Echo
 	service      factory.ServiceFactory
-	httpPort     string
 	listener     net.Listener
+	opt          option
 }
 
 // NewServer create new REST server
-func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.AppServerFactory {
+func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
 	server := &restServer{
 		serverEngine: echo.New(),
 		service:      service,
-		httpPort:     fmt.Sprintf(":%d", env.BaseEnv().HTTPPort),
+		opt:          getDefaultOption(),
+	}
+	for _, opt := range opts {
+		opt(&server.opt)
 	}
 
-	if muxListener != nil {
-		server.listener = muxListener.Match(cmux.HTTP1Fast())
+	if server.opt.sharedListener != nil {
+		server.listener = server.opt.sharedListener.Match(cmux.HTTP1Fast())
 	}
 
 	server.serverEngine.HTTPErrorHandler = CustomHTTPErrorHandler
 	server.serverEngine.Use(echoCORS())
 
-	server.serverEngine.GET("/", echo.WrapHandler(http.HandlerFunc(candishared.HTTPRoot(string(service.Name()), env.BaseEnv().BuildNumber))))
+	server.serverEngine.GET("/", echo.WrapHandler(server.opt.rootHandler))
 	server.serverEngine.GET("/memstats",
 		echo.WrapHandler(http.HandlerFunc(candishared.HTTPMemstatsHandler)),
-		echo.WrapMiddleware(service.GetDependency().GetMiddleware().HTTPBasicAuth))
+		echo.WrapMiddleware(service.GetDependency().GetMiddleware().HTTPBasicAuth),
+	)
 
-	restRootPath := server.serverEngine.Group("", echoRestTracerMiddleware)
-	if env.BaseEnv().DebugMode {
+	restRootPath := server.serverEngine.Group(server.opt.rootPath, server.echoRestTracerMiddleware)
+	if server.opt.debugMode {
 		restRootPath.Use(echoLogger())
 	}
 	for _, m := range service.GetModules() {
@@ -69,18 +72,18 @@ func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.Ap
 	}
 
 	// inject graphql handler to rest server
-	if env.BaseEnv().UseGraphQL {
-		graphqlHandler := graphqlserver.NewHandler(service)
-		server.serverEngine.Any("/graphql", echo.WrapHandler(graphqlHandler.ServeGraphQL()))
-		server.serverEngine.GET("/graphql/playground", echo.WrapHandler(http.HandlerFunc(graphqlHandler.ServePlayground)))
-		server.serverEngine.GET("/graphql/voyager", echo.WrapHandler(http.HandlerFunc(graphqlHandler.ServeVoyager)))
+	if server.opt.includeGraphQL {
+		graphqlHandler := graphqlserver.NewHandler(service, server.opt.graphqlDisableIntrospection)
+		server.serverEngine.Any(server.opt.rootPath+"/graphql", echo.WrapHandler(graphqlHandler.ServeGraphQL()))
+		server.serverEngine.GET(server.opt.rootPath+"/graphql/playground", echo.WrapHandler(http.HandlerFunc(graphqlHandler.ServePlayground)))
+		server.serverEngine.GET(server.opt.rootPath+"/graphql/voyager", echo.WrapHandler(http.HandlerFunc(graphqlHandler.ServeVoyager)))
 
-		logger.LogYellow("[GraphQL] endpoint : /graphql")
-		logger.LogYellow("[GraphQL] playground : /graphql/playground")
-		logger.LogYellow("[GraphQL] voyager : /graphql/voyager")
+		logger.LogYellow("[GraphQL] endpoint : " + server.opt.rootPath + "/graphql")
+		logger.LogYellow("[GraphQL] playground : " + server.opt.rootPath + "/graphql/playground")
+		logger.LogYellow("[GraphQL] voyager : " + server.opt.rootPath + "/graphql/voyager")
 	}
 
-	fmt.Printf("\x1b[34;1m⇨ HTTP server run at port [::]%s\x1b[0m\n\n", server.httpPort)
+	fmt.Printf("\x1b[34;1m⇨ HTTP server run at port [::]%s\x1b[0m\n\n", server.opt.httpPort)
 
 	return server
 }
@@ -95,7 +98,7 @@ func (h *restServer) Serve() {
 		h.serverEngine.Listener = h.listener
 		err = h.serverEngine.Start("")
 	} else {
-		err = h.serverEngine.Start(h.httpPort)
+		err = h.serverEngine.Start(h.opt.httpPort)
 	}
 
 	switch e := err.(type) {

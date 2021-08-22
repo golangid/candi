@@ -1,0 +1,33 @@
+package appfactory
+
+import (
+	"net/url"
+
+	taskqueueworker "pkg.agungdp.dev/candi/codebase/app/task_queue_worker"
+	"pkg.agungdp.dev/candi/codebase/factory"
+	"pkg.agungdp.dev/candi/config/env"
+)
+
+func setupTaskQueueWorker(service factory.ServiceFactory) factory.AppServerFactory {
+	if service.GetDependency().GetRedisPool() == nil {
+		panic("Task queue worker require redis for queue")
+	}
+	if service.GetDependency().GetMongoDatabase() == nil {
+		panic("Task queue worker require mongo for dashboard management")
+	}
+	queue := taskqueueworker.NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
+	persistent := taskqueueworker.NewMongoPersistent(service.GetDependency().GetMongoDatabase().WriteDB())
+	var tracingDashboard string
+	if env.BaseEnv().JaegerTracingDashboard != "" {
+		tracingDashboard = env.BaseEnv().JaegerTracingDashboard
+	} else if urlTracerAgent, _ := url.Parse("//" + env.BaseEnv().JaegerTracingHost); urlTracerAgent != nil {
+		tracingDashboard = urlTracerAgent.Hostname()
+	}
+	return taskqueueworker.NewTaskQueueWorker(service,
+		queue, persistent,
+		taskqueueworker.SetDashboardHTTPPort(env.BaseEnv().TaskQueueDashboardPort),
+		taskqueueworker.SetMaxClientSubscriber(env.BaseEnv().TaskQueueDashboardMaxClientSubscribers),
+		taskqueueworker.SetJaegerTracingDashboard(tracingDashboard),
+		taskqueueworker.SetDebugMode(env.BaseEnv().DebugMode),
+	)
+}

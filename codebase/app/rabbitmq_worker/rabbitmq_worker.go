@@ -11,7 +11,6 @@ import (
 	"pkg.agungdp.dev/candi/candihelper"
 	"pkg.agungdp.dev/candi/codebase/factory"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
 	"pkg.agungdp.dev/candi/tracer"
 )
@@ -19,6 +18,7 @@ import (
 type rabbitmqWorker struct {
 	ctx           context.Context
 	ctxCancelFunc func()
+	opt           option
 
 	ch         *amqp.Channel
 	shutdown   chan struct{}
@@ -30,12 +30,18 @@ type rabbitmqWorker struct {
 }
 
 // NewWorker create new rabbitmq consumer
-func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
+func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
 	if service.GetDependency().GetBroker(types.RabbitMQ) == nil {
 		panic("Missing RabbitMQ configuration")
 	}
 
-	worker := new(rabbitmqWorker)
+	worker := &rabbitmqWorker{
+		opt: getDefaultOption(),
+	}
+	for _, opt := range opts {
+		opt(&worker.opt)
+	}
+
 	worker.ctx, worker.ctxCancelFunc = context.WithCancel(context.Background())
 	worker.ch = service.GetDependency().GetBroker(types.RabbitMQ).GetConfiguration().(*amqp.Channel)
 
@@ -48,7 +54,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 			h.MountHandlers(&handlerGroup)
 			for _, handler := range handlerGroup.Handlers {
 				logger.LogYellow(fmt.Sprintf(`[RABBITMQ-CONSUMER] (queue): %-15s  --> (module): "%s"`, `"`+handler.Pattern+`"`, m.Name()))
-				queueChan, err := setupQueueConfig(worker.ch, handler.Pattern)
+				queueChan, err := setupQueueConfig(worker.ch, worker.opt.consumerGroup, worker.opt.exchangeName, handler.Pattern)
 				if err != nil {
 					panic(err)
 				}
@@ -63,7 +69,7 @@ func NewWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	}
 
 	fmt.Printf("\x1b[34;1m⇨ RabbitMQ consumer running with %d queue. Broker: %s\x1b[0m\n\n", len(worker.channels),
-		candihelper.MaskingPasswordURL(env.BaseEnv().RabbitMQ.Broker))
+		candihelper.MaskingPasswordURL(worker.opt.broker))
 
 	return worker
 }
@@ -149,13 +155,13 @@ func (r *rabbitmqWorker) processMessage(message amqp.Delivery) {
 		trace.Finish()
 	}()
 
-	trace.SetTag("broker", candihelper.MaskingPasswordURL(env.BaseEnv().RabbitMQ.Broker))
+	trace.SetTag("broker", candihelper.MaskingPasswordURL(r.opt.broker))
 	trace.SetTag("exchange", message.Exchange)
 	trace.SetTag("routing_key", message.RoutingKey)
 	trace.Log("header", message.Headers)
 	trace.Log("body", message.Body)
 
-	if env.BaseEnv().DebugMode {
+	if r.opt.debugMode {
 		log.Printf("\x1b[35;3mRabbitMQ Consumer: message consumed, topic = %s\x1b[0m", message.RoutingKey)
 	}
 

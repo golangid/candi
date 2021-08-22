@@ -14,13 +14,13 @@ import (
 	"google.golang.org/grpc/metadata"
 	"pkg.agungdp.dev/candi/candihelper"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
 	"pkg.agungdp.dev/candi/tracer"
 )
 
 type interceptor struct {
 	middleware types.MiddlewareGroup
+	opt        *option
 }
 
 // for unary server
@@ -75,9 +75,9 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 			err = grpc.Errorf(codes.Aborted, "%v", r)
 		}
 		tracer.SetError(ctx, err)
-		logInterceptor(start, err, info.FullMethod, "GRPC")
+		i.logInterceptor(start, err, info.FullMethod, "GRPC")
 		logger.LogGreen("grpc > trace_url: " + tracer.GetTraceURL(ctx))
-		if respBody := candihelper.ToBytes(resp); len(respBody) < env.BaseEnv().JaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
+		if respBody := candihelper.ToBytes(resp); len(respBody) < i.opt.jaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
 			span.LogKV("response.body", string(respBody))
 		} else {
 			span.LogKV("response.body.size", len(respBody))
@@ -89,7 +89,7 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 		span.SetTag("metadata", string(candihelper.ToBytes(meta)))
 	}
 
-	if reqBody := candihelper.ToBytes(req); len(reqBody) < env.BaseEnv().JaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
+	if reqBody := candihelper.ToBytes(req); len(reqBody) < i.opt.jaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
 		span.LogKV("request.body", string(reqBody))
 	} else {
 		span.LogKV("request.body.size", len(reqBody))
@@ -164,7 +164,7 @@ func (i *interceptor) streamTracerInterceptor(srv interface{}, stream grpc.Serve
 			err = grpc.Errorf(codes.Aborted, "%v", r)
 			tracer.SetError(ctx, err)
 		}
-		logInterceptor(start, err, info.FullMethod, "GRPC-STREAM")
+		i.logInterceptor(start, err, info.FullMethod, "GRPC-STREAM")
 		logger.LogGreen("grpc_stream > trace_url: " + tracer.GetTraceURL(ctx))
 		span.Finish()
 	}()
@@ -211,8 +211,8 @@ func (i *interceptor) middlewareInterceptor(ctx context.Context, fullMethod stri
 }
 
 // Log incoming grpc request
-func logInterceptor(startTime time.Time, err error, fullMethod string, reqType string) {
-	if !env.BaseEnv().DebugMode {
+func (i *interceptor) logInterceptor(startTime time.Time, err error, fullMethod string, reqType string) {
+	if !i.opt.debugMode {
 		return
 	}
 
@@ -224,8 +224,8 @@ func logInterceptor(startTime time.Time, err error, fullMethod string, reqType s
 		status = "ERROR"
 	}
 
-	fmt.Fprintf(os.Stdout, "%s[%s]%s :%d %v | %s %-5s %s | %13v | %s\n",
-		candihelper.Cyan, reqType, candihelper.Reset, env.BaseEnv().GRPCPort,
+	fmt.Fprintf(os.Stdout, "%s[%s]%s %s %v | %s %-5s %s | %13v | %s\n",
+		candihelper.Cyan, reqType, candihelper.Reset, i.opt.tcpPort,
 		end.Format("2006/01/02 - 15:04:05"),
 		statusColor, status, candihelper.Reset,
 		end.Sub(startTime),

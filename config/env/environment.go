@@ -47,6 +47,7 @@ type Env struct {
 
 	DebugMode bool
 
+	HTTPRootPath                string
 	GraphQLDisableIntrospection bool
 
 	// HTTPPort config
@@ -194,6 +195,7 @@ func Load(serviceName string) {
 	}
 
 	env.GraphQLDisableIntrospection = parseBool("GRAPHQL_DISABLE_INTROSPECTION")
+	env.HTTPRootPath = os.Getenv("HTTP_ROOT_PATH")
 
 	env.BasicAuthUsername, ok = os.LookupEnv("BASIC_AUTH_USERNAME")
 	if !ok {

@@ -90,8 +90,8 @@ func (s *mongoPersistent) FindAllJob(ctx context.Context, filter Filter) (jobs [
 		if delay, err := time.ParseDuration(job.Interval); err == nil && job.Status == string(statusQueueing) {
 			job.NextRetryAt = time.Now().Add(delay).In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 		}
-		if job.TraceID != "" && defaultOption.JaegerTracingDashboard != "" {
-			job.TraceID = fmt.Sprintf("%s/trace/%s", defaultOption.JaegerTracingDashboard, job.TraceID)
+		if job.TraceID != "" && defaultOption.jaegerTracingDashboard != "" {
+			job.TraceID = fmt.Sprintf("%s/trace/%s", defaultOption.jaegerTracingDashboard, job.TraceID)
 		}
 		job.CreatedAt = job.CreatedAt.In(candihelper.AsiaJakartaLocalTime)
 		job.FinishedAt = job.FinishedAt.In(candihelper.AsiaJakartaLocalTime)

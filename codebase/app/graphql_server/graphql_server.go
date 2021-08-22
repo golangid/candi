@@ -18,7 +18,6 @@ import (
 	"pkg.agungdp.dev/candi/codebase/app/graphql_server/ws"
 	"pkg.agungdp.dev/candi/codebase/factory"
 	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/config/env"
 	"pkg.agungdp.dev/candi/logger"
 	"pkg.agungdp.dev/candi/tracer"
 
@@ -33,37 +32,41 @@ const (
 )
 
 type graphqlServer struct {
+	opt        option
 	httpEngine *http.Server
 	listener   net.Listener
 }
 
 // NewServer create new GraphQL server
-func NewServer(service factory.ServiceFactory, muxListener cmux.CMux) factory.AppServerFactory {
+func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
 
 	httpEngine := new(http.Server)
-	httpHandler := NewHandler(service)
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", candishared.HTTPRoot(string(service.Name()), env.BaseEnv().BuildNumber))
-	mux.HandleFunc("/memstats", candishared.HTTPMemstatsHandler)
-	mux.HandleFunc(rootGraphQLPath, httpHandler.ServeGraphQL())
-	mux.HandleFunc(rootGraphQLPlayground, httpHandler.ServePlayground)
-	mux.HandleFunc(rootGraphQLVoyager, httpHandler.ServeVoyager)
-
-	httpEngine.Addr = fmt.Sprintf(":%d", env.BaseEnv().HTTPPort)
-	httpEngine.Handler = mux
-
-	logger.LogYellow("[GraphQL] endpoint : " + rootGraphQLPath)
-	logger.LogYellow("[GraphQL] playground : " + rootGraphQLPlayground)
-	logger.LogYellow("[GraphQL] voyager : " + rootGraphQLVoyager)
-	fmt.Printf("\x1b[34;1m⇨ GraphQL HTTP server run at port [::]%s\x1b[0m\n\n", httpEngine.Addr)
-
 	server := &graphqlServer{
 		httpEngine: httpEngine,
 	}
+	for _, opt := range opts {
+		opt(&server.opt)
+	}
 
-	if muxListener != nil {
-		server.listener = muxListener.Match(cmux.HTTP1Fast())
+	httpHandler := NewHandler(service, server.opt.disableIntrospection)
+
+	mux := http.NewServeMux()
+	mux.Handle("/", server.opt.rootHandler)
+	mux.HandleFunc("/memstats", candishared.HTTPMemstatsHandler)
+	mux.HandleFunc(server.opt.rootPath+rootGraphQLPath, httpHandler.ServeGraphQL())
+	mux.HandleFunc(server.opt.rootPath+rootGraphQLPlayground, httpHandler.ServePlayground)
+	mux.HandleFunc(server.opt.rootPath+rootGraphQLVoyager, httpHandler.ServeVoyager)
+
+	httpEngine.Addr = server.opt.httpPort
+	httpEngine.Handler = mux
+
+	logger.LogYellow("[GraphQL] endpoint : " + server.opt.rootPath + rootGraphQLPath)
+	logger.LogYellow("[GraphQL] playground : " + server.opt.rootPath + rootGraphQLPlayground)
+	logger.LogYellow("[GraphQL] voyager : " + server.opt.rootPath + rootGraphQLVoyager)
+	fmt.Printf("\x1b[34;1m⇨ GraphQL HTTP server run at port [::]%s\x1b[0m\n\n", httpEngine.Addr)
+
+	if server.opt.sharedListener != nil {
+		server.listener = server.opt.sharedListener.Match(cmux.HTTP1Fast())
 	}
 
 	return server
@@ -104,7 +107,7 @@ type Handler interface {
 }
 
 // NewHandler for create public graphql handler (maybe inject to rest handler)
-func NewHandler(service factory.ServiceFactory) Handler {
+func NewHandler(service factory.ServiceFactory, disableIntrospection bool) Handler {
 
 	// create dynamic struct
 	queryResolverValues := make(map[string]interface{})
@@ -139,19 +142,21 @@ func NewHandler(service factory.ServiceFactory) Handler {
 		graphql.Tracer(newGraphQLMiddleware(middlewareResolvers)),
 		graphql.Logger(&panicLogger{}),
 	}
-	if env.BaseEnv().GraphQLDisableIntrospection {
+	if disableIntrospection {
 		// handling vulnerabilities exploit schema
 		schemaOpts = append(schemaOpts, graphql.DisableIntrospection())
 	}
 	schema := graphql.MustParseSchema(string(gqlSchema), &root, schemaOpts...)
 
 	return &handlerImpl{
-		schema: schema,
+		disableIntrospection: disableIntrospection,
+		schema:               schema,
 	}
 }
 
 type handlerImpl struct {
-	schema *graphql.Schema
+	disableIntrospection bool
+	schema               *graphql.Schema
 }
 
 func (s *handlerImpl) ServeGraphQL() http.HandlerFunc {
@@ -195,7 +200,7 @@ func (s *handlerImpl) ServeGraphQL() http.HandlerFunc {
 }
 
 func (s *handlerImpl) ServePlayground(resp http.ResponseWriter, req *http.Request) {
-	if env.BaseEnv().GraphQLDisableIntrospection {
+	if s.disableIntrospection {
 		http.Error(resp, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -203,7 +208,7 @@ func (s *handlerImpl) ServePlayground(resp http.ResponseWriter, req *http.Reques
 }
 
 func (s *handlerImpl) ServeVoyager(resp http.ResponseWriter, req *http.Request) {
-	if env.BaseEnv().GraphQLDisableIntrospection {
+	if s.disableIntrospection {
 		http.Error(resp, "Forbidden", http.StatusForbidden)
 		return
 	}
