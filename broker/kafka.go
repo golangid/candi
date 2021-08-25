@@ -170,6 +170,7 @@ func (p *kafkaPublisher) PublishMessage(ctx context.Context, args *candishared.P
 
 	trace.SetTag("topic", args.Topic)
 	trace.SetTag("key", args.Key)
+	trace.Log("header", args.Header)
 	trace.Log("message", payload)
 
 	msg := &sarama.ProducerMessage{
@@ -177,6 +178,13 @@ func (p *kafkaPublisher) PublishMessage(ctx context.Context, args *candishared.P
 		Key:       sarama.ByteEncoder([]byte(args.Key)),
 		Value:     sarama.ByteEncoder(payload),
 		Timestamp: time.Now(),
+	}
+
+	for keyHeader, valueHeader := range args.Header {
+		msg.Headers = append(msg.Headers, sarama.RecordHeader{
+			Key:   []byte(keyHeader),
+			Value: candihelper.ToBytes(valueHeader),
+		})
 	}
 
 	if p.producerSync != nil {
