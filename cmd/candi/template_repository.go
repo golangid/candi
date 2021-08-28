@@ -37,6 +37,9 @@ import (
 
 	"{{.LibraryName}}/tracer"` +
 		`{{if .SQLUseGORM}}
+
+	{{ if .IsMonorepo }}"monorepo/globalshared"{{else}}"{{$.PackagePrefix}}/pkg/shared"{{end}}
+
 	"gorm.io/driver/{{.SQLDriver}}"
 	"gorm.io/gorm"{{end}}` + `
 )
@@ -67,7 +70,6 @@ func setSharedRepoSQL(readDB, writeDB *sql.DB) {
 	{{if .SQLUseGORM}}gormRead, err := gorm.Open({{.SQLDriver}}.New({{.SQLDriver}}.Config{
 		Conn: readDB,
 	}), &gorm.Config{})
-
 	if err != nil {
 		panic(err)
 	}
@@ -75,10 +77,13 @@ func setSharedRepoSQL(readDB, writeDB *sql.DB) {
 	gormWrite, err := gorm.Open({{.SQLDriver}}.New({{.SQLDriver}}.Config{
 		Conn: writeDB,
 	}), &gorm.Config{SkipDefaultTransaction: true})
-
 	if err != nil {
 		panic(err)
-	}{{end}}
+	}
+	
+	{{ if .IsMonorepo }}global{{end}}shared.AddGormCallbacks(gormRead)
+	{{ if .IsMonorepo }}global{{end}}shared.AddGormCallbacks(gormWrite){{end}}
+
 	globalRepoSQL = NewRepositorySQL({{if .SQLUseGORM}}gormRead, gormWrite{{else}}readDB, writeDB, nil{{end}})
 }
 
@@ -241,7 +246,9 @@ type {{clean .ModuleName}}RepoMongo struct {
 // New{{clean (upper .ModuleName)}}RepoMongo mongo repo constructor
 func New{{clean (upper .ModuleName)}}RepoMongo(readDB, writeDB *mongo.Database) {{clean (upper .ModuleName)}}Repository {
 	return &{{clean .ModuleName}}RepoMongo{
-		readDB, writeDB, "{{clean .ModuleName}}s",
+		readDB: 	readDB, 
+		writeDB: 	writeDB, 
+		collection: shareddomain.{{clean (upper .ModuleName)}}{}.CollectionName(),
 	}
 }
 
@@ -347,6 +354,9 @@ import (
 
 	"{{.LibraryName}}/tracer"` +
 		`{{if .SQLUseGORM}}
+
+	{{ if .IsMonorepo }}"monorepo/globalshared"{{else}}"{{$.PackagePrefix}}/pkg/shared"{{end}}
+
 	"gorm.io/gorm"{{end}}` + `
 )
 
@@ -369,8 +379,9 @@ func (r *{{clean .ModuleName}}RepoSQL) FetchAll(ctx context.Context, filter *dom
 		filter.OrderBy = ` + `"modified_at"` + `
 	}
 	
-	{{if .SQLUseGORM}}err = r.readDB.
-		Order(filter.OrderBy + " " + filter.Sort).
+	{{if .SQLUseGORM}}db := {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, r.readDB)
+	
+	err = db.Order(filter.OrderBy + " " + filter.Sort).
 		Limit(filter.Limit).Offset(filter.Offset).
 		Find(&data).Error
 	{{else}}query := fmt.Sprintf("SELECT id, field, created_at, modified_at FROM {{clean .ModuleName}}s ORDER BY %s %s LIMIT %d OFFSET %d",
@@ -395,8 +406,10 @@ func (r *{{clean .ModuleName}}RepoSQL) Count(ctx context.Context, filter *domain
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Count")
 	defer trace.Finish()
 
-	{{if .SQLUseGORM}}var total int64
-	r.readDB.Model(&shareddomain.{{clean (upper .ModuleName)}}{}).Count(&total)
+	{{if .SQLUseGORM}}db := {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, r.readDB)
+	
+	var total int64
+	db.Model(&shareddomain.{{clean (upper .ModuleName)}}{}).Count(&total)
 	count = int(total)
 	{{else}}r.readDB.QueryRow("SELECT COUNT(*) FROM {{clean .ModuleName}}s").Scan(&count){{end}}
 	return
@@ -406,12 +419,12 @@ func (r *{{clean .ModuleName}}RepoSQL) Find(ctx context.Context, filter *domain.
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Find")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
-	db := r.readDB
+	{{if .SQLUseGORM}}db := {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, r.readDB)
 	if filter.ID != "" {
 		db = db.Where("id = ?", filter.ID)
 	}
 
-	err = {{if .SQLUseGORM}} db.First(&result).Error{{end}}
+	err = db.First(&result).Error{{end}}
 	return
 }
 
@@ -426,8 +439,10 @@ func (r *{{clean .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddom
 	}
 	if data.ID == "" {
 		data.ID = uuid.NewString()
+		{{if .SQLUseGORM}}err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, r.writeDB).Create(data).Error{{end}}
+	} else {
+		{{if .SQLUseGORM}}err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, r.writeDB).Save(data).Error{{end}}
 	}
-	{{if .SQLUseGORM}}err = r.writeDB.Save(data).Error{{end}}
 	{{end}}return
 }
 
@@ -435,7 +450,7 @@ func (r *{{clean .ModuleName}}RepoSQL) Delete(ctx context.Context, id string) (e
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Delete")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
-	return{{if .SQLUseGORM}} r.writeDB.Delete(&shareddomain.{{clean (upper .ModuleName)}}{ID: id}).Error{{end}}
+	return{{if .SQLUseGORM}} {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, r.writeDB).Delete(&shareddomain.{{clean (upper .ModuleName)}}{ID: id}).Error{{end}}
 }
 `
 )

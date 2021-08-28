@@ -281,8 +281,10 @@ func parseSharedRepository(data serviceConfig) (repos []FileStructure) {
 
 func parseRepositoryModule(data moduleConfig) (repos []FileStructure) {
 	repos = append(repos, []FileStructure{
-		{FromTemplate: true, Skip: !data.SQLDeps, DataSource: data, Source: templateRepositorySQLImpl, FileName: "repository_sql.go"},
-		{FromTemplate: true, Skip: !data.MongoDeps, DataSource: data, Source: templateRepositoryMongoImpl, FileName: "repository_mongo.go"},
+		{FromTemplate: true, Skip: !data.SQLDeps, DataSource: data, Source: templateRepositorySQLImpl,
+			FileName: "repository_" + cleanSpecialChar.Replace(strings.ToLower(data.ModuleName)) + "_sql.go"},
+		{FromTemplate: true, Skip: !data.MongoDeps, DataSource: data, Source: templateRepositoryMongoImpl,
+			FileName: "repository_" + cleanSpecialChar.Replace(strings.ToLower(data.ModuleName)) + "_mongo.go"},
 	}...)
 	return
 }

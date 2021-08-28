@@ -82,6 +82,7 @@ package usecase
 import (
 	"context"
 
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 
 	"{{.LibraryName}}/candishared"
@@ -89,7 +90,7 @@ import (
 
 // {{clean (upper .ModuleName)}}Usecase abstraction
 type {{clean (upper .ModuleName)}}Usecase interface {
-	GetAll{{clean (upper .ModuleName)}}(ctx context.Context, filter candishared.Filter) (data []shareddomain.{{clean (upper .ModuleName)}}, meta candishared.Meta, err error)
+	GetAll{{clean (upper .ModuleName)}}(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) (data []shareddomain.{{clean (upper .ModuleName)}}, meta candishared.Meta, err error)
 	GetDetail{{clean (upper .ModuleName)}}(ctx context.Context, id string) (data shareddomain.{{clean (upper .ModuleName)}}, err error)
 	Create{{clean (upper .ModuleName)}}(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error)
 	Update{{clean (upper .ModuleName)}}(ctx context.Context, id string, data *shareddomain.{{clean (upper .ModuleName)}}) (err error)
@@ -109,7 +110,8 @@ import (
 	"{{$.PackagePrefix}}/pkg/shared/usecase/common"
 
 	"{{.LibraryName}}/candishared"
-	"{{.LibraryName}}/codebase/factory/dependency"
+	"{{.LibraryName}}/codebase/factory/dependency"{{if or .KafkaHandler .RabbitMQHandler}}
+	"{{.LibraryName}}/codebase/factory/types"{{end}}
 	"{{.LibraryName}}/codebase/interfaces"
 	"{{.LibraryName}}/tracer"
 )
@@ -117,8 +119,10 @@ import (
 type {{clean .ModuleName}}UsecaseImpl struct {
 	sharedUsecase common.Usecase
 	cache         interfaces.Cache
-	{{if .SQLDeps}}repoSQL   repository.RepoSQL{{end}}
-	{{if .MongoDeps}}repoMongo repository.RepoMongo{{end}}
+	{{if .SQLDeps}}repoSQL       repository.RepoSQL{{end}}
+	{{if .MongoDeps}}repoMongo     repository.RepoMongo{{end}}
+	{{if not .KafkaHandler}}// {{ end }}kafkaPub      interfaces.Publisher
+	{{if not .RabbitMQHandler}}// {{ end }}rabbitmqPub   interfaces.Publisher
 }
 
 // New{{clean (upper .ModuleName)}}Usecase usecase impl constructor
@@ -127,23 +131,24 @@ func New{{clean (upper .ModuleName)}}Usecase(deps dependency.Dependency) ({{clea
 		{{if .RedisDeps}}cache: deps.GetRedisPool().Cache(),{{end}}
 		{{if .SQLDeps}}repoSQL:   repository.GetSharedRepoSQL(),{{end}}
 		{{if .MongoDeps}}repoMongo: repository.GetSharedRepoMongo(),{{end}}
+		{{if not .KafkaHandler}}// {{ end }}kafkaPub: deps.GetBroker(types.Kafka).GetPublisher(),
+		{{if not .RabbitMQHandler}}// {{ end }}rabbitmqPub: deps.GetBroker(types.RabbitMQ).GetPublisher(),
 	}
 	return uc, func(sharedUsecase common.Usecase) {
 		uc.sharedUsecase = sharedUsecase
 	}
 }
 
-func (uc *{{clean .ModuleName}}UsecaseImpl) GetAll{{clean (upper .ModuleName)}}(ctx context.Context, filter candishared.Filter) (data []shareddomain.{{clean (upper .ModuleName)}}, meta candishared.Meta, err error) {
+func (uc *{{clean .ModuleName}}UsecaseImpl) GetAll{{clean (upper .ModuleName)}}(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) (data []shareddomain.{{clean (upper .ModuleName)}}, meta candishared.Meta, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}Usecase:GetAll{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
 	filter.CalculateOffset()
-	{{if or .SQLDeps .MongoDeps}}repoFilter := domain.Filter{{clean (upper .ModuleName)}}{Filter: filter}
-	data, err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().FetchAll(ctx, &repoFilter)
+	{{if or .SQLDeps .MongoDeps}}data, err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().FetchAll(ctx, filter)
 	if err != nil {
 		return data, meta, err
 	}
-	count := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Count(ctx, &repoFilter)
+	count := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Count(ctx, filter)
 	meta = candishared.NewMeta(filter.Page, filter.Limit, count){{end}}
 
 	return
@@ -195,12 +200,13 @@ package usecase
 import (
 	"context"
 	"errors"
+
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	mockrepo "{{$.PackagePrefix}}/pkg/mocks/modules/{{cleanPathModule .ModuleName}}/repository"
 	mocksharedrepo "{{$.PackagePrefix}}/pkg/mocks/shared/repository"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 	"testing"
 
-	"{{.LibraryName}}/candishared"
 	mockdeps "{{.LibraryName}}/mocks/codebase/factory/dependency"
 	mockinterfaces "{{.LibraryName}}/mocks/codebase/interfaces"
 
@@ -209,14 +215,21 @@ import (
 )
 
 func TestNew{{clean (upper .ModuleName)}}Usecase(t *testing.T) {
+{{if not (or .KafkaHandler .RabbitMQHandler)}}/*{{end}}
+	mockPublisher := &mockinterfaces.Publisher{}
+	mockBroker := &mockinterfaces.Broker{}
+	mockBroker.On("GetPublisher").Return(mockPublisher)
+{{if not (or .KafkaHandler .RabbitMQHandler)}}*/{{end}}
 	mockCache := &mockinterfaces.Cache{}
 	mockRedisPool := &mockinterfaces.RedisPool{}
 	mockRedisPool.On("Cache").Return(mockCache)
 
 	mockDeps := &mockdeps.Dependency{}
 	mockDeps.On("GetRedisPool").Return(mockRedisPool)
+	{{if not (or .KafkaHandler .RabbitMQHandler)}}// {{end}}mockDeps.On("GetBroker", mock.Anything).Return(mockBroker)
 
-	uc, _ := New{{clean (upper .ModuleName)}}Usecase(mockDeps)
+	uc, setFunc := New{{clean (upper .ModuleName)}}Usecase(mockDeps)
+	setFunc(nil)
 	assert.NotNil(t, uc)
 }
 
@@ -234,7 +247,7 @@ func Test_{{clean .ModuleName}}UsecaseImpl_GetAll{{clean (upper .ModuleName)}}(t
 			repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}: repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}},
 		}
 
-		_, _, err := uc.GetAll{{clean (upper .ModuleName)}}(context.Background(), candishared.Filter{})
+		_, _, err := uc.GetAll{{clean (upper .ModuleName)}}(context.Background(), &domain.Filter{{clean (upper .ModuleName)}}{})
 		assert.NoError(t, err)
 	})
 
@@ -251,7 +264,7 @@ func Test_{{clean .ModuleName}}UsecaseImpl_GetAll{{clean (upper .ModuleName)}}(t
 			repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}: repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}},
 		}
 
-		_, _, err := uc.GetAll{{clean (upper .ModuleName)}}(context.Background(), candishared.Filter{})
+		_, _, err := uc.GetAll{{clean (upper .ModuleName)}}(context.Background(), &domain.Filter{{clean (upper .ModuleName)}}{})
 		assert.Error(t, err)
 	})
 }

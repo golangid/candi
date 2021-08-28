@@ -9,6 +9,7 @@ import (
 
 	"github.com/labstack/echo"
 
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
@@ -53,12 +54,12 @@ func (h *RestHandler) getAll{{clean (upper .ModuleName)}}(c echo.Context) error 
 
 	tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using HTTPBearerAuth in middleware for this handler
 
-	var filter candishared.Filter
+	var filter domain.Filter{{clean (upper .ModuleName)}}
 	if err := candihelper.ParseFromQueryParam(c.Request().URL.Query(), &filter); err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
 
-	data, meta, err := h.uc.{{clean (upper .ModuleName)}}().GetAll{{clean (upper .ModuleName)}}(ctx, filter)
+	data, meta, err := h.uc.{{clean (upper .ModuleName)}}().GetAll{{clean (upper .ModuleName)}}(ctx, &filter)
 	if err != nil {
 		return wrapper.NewHTTPResponse(http.StatusOK, err.Error()).JSON(c.Response())
 	}

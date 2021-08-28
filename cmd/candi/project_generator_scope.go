@@ -217,7 +217,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 func generateServiceSDK(srvConfig serviceConfig) {
 	b, err := os.ReadFile("sdk/sdk.go")
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
 
 	b = bytes.Replace(b, []byte("@candi:serviceImport"), []byte(fmt.Sprintf("@candi:serviceImport\n	\"monorepo/sdk/%s\"", srvConfig.ServiceName)), -1)
@@ -245,6 +245,18 @@ func Set{{upper (clean $.ServiceName)}}({{lower (clean $.ServiceName)}} {{lower 
 		}},
 	}
 	execGenerator(fileStructure)
+
+	// generate global shared
+	b, err = os.ReadFile("globalshared/gorm_tracer.go")
+	if err != nil && srvConfig.SQLUseGORM {
+		globalShared := FileStructure{
+			TargetDir: "globalshared/", IsDir: true, SkipIfExist: true, Childs: []FileStructure{
+				{FromTemplate: true, DataSource: srvConfig,
+					Source: templateGORMTracer, FileName: "gorm_tracer.go"},
+			},
+		}
+		execGenerator(globalShared)
+	}
 }
 
 func updateGraphQLRoot(flagParam flagParameter, cfg serviceConfig) {

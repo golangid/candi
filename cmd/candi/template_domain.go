@@ -13,11 +13,21 @@ import (
 
 // {{clean (upper .ModuleName)}} model
 type {{clean (upper .ModuleName)}} struct {
-	ID         {{if and .MongoDeps (not .SQLDeps)}}primitive.ObjectID{{else}}string{{end}}    ` + "`" + `{{if .SQLUseGORM}}gorm:"column:id;primary_key" {{end}}` + `{{if .MongoDeps}}bson:"_id"{{end}} ` + `json:"id"` + "`" + `
-	Field      string ` + "`" + `{{if .SQLUseGORM}}gorm:"column:field" {{end}}` + `{{if .MongoDeps}}bson:"field"{{end}} ` + `json:"field"` + "`" + `
-	CreatedAt  time.Time ` + "`" + `{{if .SQLUseGORM}}gorm:"column:created_at" {{end}}` + `{{if .MongoDeps}}bson:"created_at"{{end}} ` + `json:"created_at"` + "`" + `
-	ModifiedAt time.Time ` + "`" + `{{if .SQLUseGORM}}gorm:"column:modified_at" {{end}}` + `{{if .MongoDeps}}bson:"modified_at"{{end}} ` + `json:"modified_at"` + "`" + `
+	ID         {{if and .MongoDeps (not .SQLDeps)}}primitive.ObjectID{{else}}string{{end}}    ` + "`" + `{{if .SQLUseGORM}}gorm:"column:id;primary_key" {{end}}` + `{{if .MongoDeps}}bson:"_id" {{end}}` + `json:"id"` + "`" + `
+	Field      string    ` + "`" + `{{if .SQLUseGORM}}gorm:"column:field" {{end}}` + `{{if .MongoDeps}}bson:"field" {{end}}` + `json:"field"` + "`" + `
+	CreatedAt  time.Time ` + "`" + `{{if .SQLUseGORM}}gorm:"column:created_at" {{end}}` + `{{if .MongoDeps}}bson:"created_at" {{end}}` + `json:"created_at"` + "`" + `
+	ModifiedAt time.Time ` + "`" + `{{if .SQLUseGORM}}gorm:"column:modified_at" {{end}}` + `{{if .MongoDeps}}bson:"modified_at" {{end}}` + `json:"modified_at"` + "`" + `
 }	
+{{if .SQLUseGORM}}
+// TableName return table name of {{clean (upper .ModuleName)}} model
+func ({{clean (upper .ModuleName)}}) TableName() string {
+	return "{{clean .ModuleName}}s"
+}{{end}}
+{{if .MongoDeps}}
+// CollectionName return collection name of {{clean (upper .ModuleName)}} model
+func ({{clean (upper .ModuleName)}}) CollectionName() string {
+	return "{{clean .ModuleName}}s"
+}{{end}}
 `
 	templateModuleDomain = `// {{.Header}}
 

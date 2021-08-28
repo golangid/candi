@@ -10,6 +10,7 @@ import (
 	"time"
 
 	proto "{{.ProtoSource}}/{{.ModuleName}}"
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
@@ -58,11 +59,13 @@ func (h *GRPCHandler) GetAll{{clean (upper .ModuleName)}}(ctx context.Context, r
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
 
-	filter := candishared.Filter{
-		Limit: int(req.Limit), Page: int(req.Page), Search: req.Search, OrderBy: req.OrderBy, Sort: req.Sort, ShowAll: req.ShowAll,
+	filter := domain.Filter{{clean (upper .ModuleName)}}{
+		Filter: candishared.Filter{
+			Limit: int(req.Limit), Page: int(req.Page), Search: req.Search, OrderBy: req.OrderBy, Sort: req.Sort, ShowAll: req.ShowAll,
+		},
 	}
 
-	data, meta, err := h.uc.{{clean (upper .ModuleName)}}().GetAll{{clean (upper .ModuleName)}}(ctx, filter)
+	data, meta, err := h.uc.{{clean (upper .ModuleName)}}().GetAll{{clean (upper .ModuleName)}}(ctx, &filter)
 	if err != nil {
 		return nil, err
 	}

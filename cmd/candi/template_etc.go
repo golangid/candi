@@ -53,7 +53,7 @@ build:
 	@go build -o bin
 
 run: build
-	./bin
+	@./bin
 
 docker:
 	docker build -t {{.ServiceName}}:latest .
@@ -275,10 +275,13 @@ clear-docker: check
 	docker rm -f $(service)
 	docker rmi -f $(service)
 
-# mocks all interfaces in sdk for unit test
-mocks:
+# mocks all interfaces from selected service for unit test
+mocks: check
 	@mockery --all --keeptree --dir=sdk --output=./sdk/mocks
 	@if [ -f sdk/mocks/Option.go ]; then rm sdk/mocks/Option.go; fi;
+	@mockery --all --keeptree --dir=globalshared --output=./globalshared/mocks
+	@mockery --all --keeptree --dir=services/$(service)/internal --output=services/$(service)/pkg/mocks --case underscore
+	@mockery --all --keeptree --dir=services/$(service)/pkg --output=services/$(service)/pkg/mocks --case underscore
 
 # unit test & calculate code coverage from selected service (please run mocks before run this rule)
 test: check

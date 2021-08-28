@@ -58,7 +58,7 @@ package graphqlhandler
 
 import (
 	"context"
-	
+
 	shareddomain "{{.PackagePrefix}}/pkg/shared/domain"
 
 	"{{.LibraryName}}/tracer"
@@ -79,7 +79,7 @@ func (q *queryResolver) GetAll{{clean (upper .ModuleName)}}(ctx context.Context,
 		input.Filter = new(CommonFilter)
 	}
 	filter := input.Filter.toSharedFilter()
-	data, meta, err := q.root.uc.{{clean (upper .ModuleName)}}().GetAll{{clean (upper .ModuleName)}}(ctx, filter)
+	data, meta, err := q.root.uc.{{clean (upper .ModuleName)}}().GetAll{{clean (upper .ModuleName)}}(ctx, &filter)
 	if err != nil {
 		return results, err
 	}
@@ -207,6 +207,7 @@ func (s *subscriptionResolver) ListenData(ctx context.Context) <-chan shareddoma
 	deliveryGraphqlFieldResolverTemplate = `package graphqlhandler
 
 import (
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	shareddomain "{{.PackagePrefix}}/pkg/shared/domain"
 
 	"{{.LibraryName}}/candihelper"
@@ -224,7 +225,7 @@ type CommonFilter struct {
 }
 
 // toSharedFilter method
-func (f *CommonFilter) toSharedFilter() (filter candishared.Filter) {
+func (f *CommonFilter) toSharedFilter() (filter domain.Filter{{clean (upper .ModuleName)}}) {
 	filter.Search = candihelper.PtrToString(f.Search)
 	filter.OrderBy = candihelper.PtrToString(f.OrderBy)
 	filter.Sort = candihelper.PtrToString(f.Sort)
