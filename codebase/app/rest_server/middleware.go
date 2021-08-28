@@ -88,7 +88,7 @@ func (h *restServer) echoRestTracerMiddleware(next echo.HandlerFunc) echo.Handle
 	}
 }
 
-func echoCORS() echo.MiddlewareFunc {
+func defaultCORS() echo.MiddlewareFunc {
 	allowMethods := strings.Join([]string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete}, ",")
 	allowHeaders := ""
 	exposeHeaders := ""

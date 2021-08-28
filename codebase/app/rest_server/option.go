@@ -4,18 +4,20 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/labstack/echo"
 	"github.com/soheilhy/cmux"
 )
 
 type (
 	option struct {
+		rootMiddlewares             []echo.MiddlewareFunc
+		rootHandler                 http.Handler
 		httpPort                    string
 		rootPath                    string
 		debugMode                   bool
 		includeGraphQL              bool
 		graphqlDisableIntrospection bool
 		jaegerMaxPacketSize         int
-		rootHandler                 http.Handler
 		sharedListener              cmux.CMux
 	}
 
@@ -25,9 +27,10 @@ type (
 
 func getDefaultOption() option {
 	return option{
-		httpPort:  ":8000",
-		rootPath:  "",
-		debugMode: true,
+		httpPort:        ":8000",
+		rootPath:        "",
+		debugMode:       true,
+		rootMiddlewares: []echo.MiddlewareFunc{defaultCORS()},
 		rootHandler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			rw.Write([]byte("REST Server up and running"))
 		}),
@@ -87,5 +90,12 @@ func SetGraphQLDisableIntrospection(graphqlDisableIntrospection bool) OptionFunc
 func SetJaegerMaxPacketSize(max int) OptionFunc {
 	return func(o *option) {
 		o.jaegerMaxPacketSize = max
+	}
+}
+
+// SetRootMiddlewares option func
+func SetRootMiddlewares(middlewares ...echo.MiddlewareFunc) OptionFunc {
+	return func(o *option) {
+		o.rootMiddlewares = middlewares
 	}
 }

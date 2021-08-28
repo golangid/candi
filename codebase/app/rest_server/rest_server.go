@@ -43,7 +43,7 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 	}
 
 	server.serverEngine.HTTPErrorHandler = CustomHTTPErrorHandler
-	server.serverEngine.Use(echoCORS())
+	server.serverEngine.Use(server.opt.rootMiddlewares...)
 
 	server.serverEngine.GET("/", echo.WrapHandler(server.opt.rootHandler))
 	server.serverEngine.GET("/memstats",
