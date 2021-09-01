@@ -28,18 +28,20 @@ FROM alpine:latest
 
 ARG BUILD_NUMBER
 RUN apk --no-cache add ca-certificates tzdata
-WORKDIR /root/
+WORKDIR /usr/app/
 ENV BUILD_NUMBER=$BUILD_NUMBER
 
-RUN mkdir -p /root/api
+RUN mkdir -p /usr/app/api
 COPY --from=service_builder /usr/app/bin bin
 COPY --from=service_builder /usr/app/.env .env
-COPY --from=service_builder /usr/app/api /root/api
+COPY --from=service_builder /usr/app/api /usr/app/api
 
 ENTRYPOINT ["./bin"]
 `
 
 	makefileTemplate = `.PHONY : build run
+
+args = ` + "`arg=\"$(filter-out $@,$(MAKECMDGOALS))\" && echo $${arg:-${1}}`" + `
 
 proto:
 	$(foreach proto_file, $(shell find api/proto -name '*.proto'),\
@@ -47,7 +49,7 @@ proto:
 	--go_opt=paths=source_relative $(proto_file);)
 
 migration:
-	@go run cmd/migration/migration.go
+	@go run cmd/migration/migration.go $(call args,up)
 
 build:
 	@go build -o bin
@@ -102,33 +104,58 @@ coverage.txt
 }
 `
 
-	readmeTemplate = "# {{upper .ServiceName}}\n\n" +
-		"## Build and run service\n" +
-		"If include GRPC handler, run this command (must install `protoc` compiler min version `libprotoc 3.14.0`):\n\n" +
-		"```\n" +
-		"$ make proto\n" +
-		"```\n\n" +
-		"If using SQL database, run this command for migration:\n" +
-		"```\n" +
-		"$ make migration\n" +
-		"```\n\n" +
-		"And then, build and run this service:\n" +
-		"```\n" +
-		"$ make run\n" +
-		"```\n\n" +
-		"## Run unit test & calculate code coverage\n" +
-		"\n" +
-		"Make sure generate mock using [mockery](https://github.com/vektra/mockery)\n" +
-		"```\n" +
-		"$ make mocks\n" +
-		"```\n\n" +
-		"Run test:\n```\n" +
-		"$ make test\n" +
-		"```\n\n" +
-		"## Create docker image\n" +
-		"```\n" +
-		"$ make docker\n" +
-		"```\n"
+	readmeTemplate = `# {{upper .ServiceName}}
+
+## Prepare service
+
+` + "```" + `
+$ go mod tidy
+` + "```" + `
+
+### If include GRPC handler, run this command (must install ` + "`protoc`" + ` compiler min version ` + "`libprotoc` 3.14.0`" + `)
+
+` + "```" + `
+$ make proto
+` + "```" + `
+
+### If using SQL database, run this commands for migration
+
+Create new migration:
+` + "```" + `
+$ make migration create [your_migration_name]
+` + "```" + `
+
+UP migration:
+` + "```" + `
+$ make migration
+` + "```" + `
+
+Rollback migration:
+` + "```" + `
+$ make migration down
+` + "```" + `
+
+## Build and run service
+` + "```" + `
+$ make run
+` + "```" + `
+
+## Run unit test & calculate code coverage
+
+Make sure generate mock using [mockery](https://github.com/vektra/mockery)
+` + "```" + `
+$ make mocks
+` + "```" + `
+
+Run test:
+` + "```" + `
+$ make test
+` + "```" + `
+
+## Create docker image
+` + "```" + `
+$ make docker
+` + "```"
 
 	readmeMonorepoTemplate = "# Backend Microservices\n\n" +
 		"## Made with\n" +
@@ -146,14 +173,29 @@ coverage.txt
 		"```\n" +
 		"$ candi -init\n" +
 		"```\n" +
-		"If include GRPC handler, run this command (must install `protoc` compiler min version `libprotoc 3.14.0`):\n\n" +
-		"```\n" +
-		"$ make proto service={{service_name}}\n" +
-		"```\n\n" +
-		"If using SQL database, run this command for migration:\n" +
-		"```\n" +
-		"$ make migration service={{service_name}}\n" +
-		"```\n\n" +
+		`
+### If include GRPC handler, run this command (must install ` + "`protoc`" + ` compiler min version ` + "`libprotoc` 3.14.0`" + `)
+
+` + "```" + `
+$ make proto service={{service_name}}
+` + "```" + `
+
+### If using SQL database, run this commands for migration
+
+Create new migration:
+` + "```" + `
+$ make migration service={{service_name}} create [your_migration_name]
+` + "```" + `
+
+UP migration:
+` + "```" + `
+$ make migration service={{service_name}}
+` + "```" + `
+
+Rollback migration:
+` + "```" + `
+$ make migration service={{service_name}} down
+` + "```\n\n" +
 		"## Run all services\n" +
 		"```\n" +
 		"$ candi -run\n" +
@@ -220,20 +262,22 @@ FROM alpine:latest
 ARG BUILD_NUMBER
 ARG SERVICE_NAME
 RUN apk --no-cache add ca-certificates tzdata
-WORKDIR /root/
+WORKDIR /usr/app/
 ENV WORKDIR=services/$SERVICE_NAME/
 ENV BUILD_NUMBER=$BUILD_NUMBER
 
-RUN mkdir -p /root/services/$SERVICE_NAME
-RUN mkdir -p /root/services/$SERVICE_NAME/api
+RUN mkdir -p /usr/app/services/$SERVICE_NAME
+RUN mkdir -p /usr/app/services/$SERVICE_NAME/api
 COPY --from=service_builder /usr/app/bin bin
-COPY --from=service_builder /usr/app/services/$SERVICE_NAME/.env /root/services/$SERVICE_NAME/.env
-COPY --from=service_builder /usr/app/services/$SERVICE_NAME/api /root/services/$SERVICE_NAME/api
+COPY --from=service_builder /usr/app/services/$SERVICE_NAME/.env /usr/app/services/$SERVICE_NAME/.env
+COPY --from=service_builder /usr/app/services/$SERVICE_NAME/api /usr/app/services/$SERVICE_NAME/api
 
 ENTRYPOINT ["./bin"]
 `
 
-	makefileMonorepoTemplate = `.PHONY : prepare build run
+	makefileMonorepoTemplate = `.PHONY : build run
+
+args = ` + "`arg=\"$(filter-out $@,$(MAKECMDGOALS))\" && echo $${arg:-${1}}`" + `
 
 $(eval $(service):;@:)
 
@@ -248,7 +292,7 @@ init:
 	@candi --init
 
 add-module: check
-	@candi -scope=2 -servicename=$(service)
+	@candi --add-module --service=$(service)
 
 proto: check
 	@if [ ! -d "sdk/$(service)/proto" ]; then echo "creating new proto files..." && mkdir sdk/$(service)/proto; fi
@@ -257,7 +301,7 @@ proto: check
 	--go_opt=paths=source_relative $(proto_file);)
 
 migration: check
-	@go run services/$(service)/cmd/migration/migration.go
+	@WORKDIR="services/$(service)/" go run services/$(service)/cmd/migration/migration.go $(call args,up)
 
 build: check
 	@go build -o services/$(service)/bin services/$(service)/*.go

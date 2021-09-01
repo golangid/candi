@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"pkg.agungdp.dev/candi"
 )
@@ -23,17 +24,6 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 
 	apiStructure := FileStructure{
 		TargetDir: "api/", IsDir: true,
-	}
-	cmdStructure := FileStructure{
-		TargetDir: "cmd/", IsDir: true,
-		Childs: []FileStructure{
-			{TargetDir: srvConfig.ServiceName + "/", IsDir: true, DataSource: srvConfig},
-			{TargetDir: "migration/", IsDir: true, Childs: []FileStructure{
-				{FromTemplate: true, DataSource: srvConfig, Source: templateCmdMigration, FileName: "migration.go", SkipFunc: func() bool {
-					return !srvConfig.SQLDeps
-				}},
-			}},
-		},
 	}
 	internalServiceStructure := FileStructure{
 		TargetDir: "internal/", IsDir: true,
@@ -56,7 +46,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 	moduleStructure := FileStructure{
 		TargetDir: "modules/", IsDir: true, DataSource: srvConfig,
 	}
-	var sharedDomainFiles []FileStructure
+	var sharedDomainFiles, migrationFiles []FileStructure
 
 	for _, mod := range srvConfig.Modules {
 		mod.configHeader = srvConfig.configHeader
@@ -154,6 +144,10 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 		sharedDomainFiles = append(sharedDomainFiles, FileStructure{
 			FromTemplate: true, DataSource: mod, Source: templateSharedDomain, FileName: mod.ModuleName + ".go",
 		})
+		migrationFiles = append(migrationFiles, FileStructure{
+			FromTemplate: true, DataSource: mod, Source: templateCmdMigrationInitModule,
+			FileName: time.Now().Format("20060102150405") + "_init_" + cleanSpecialChar.Replace(mod.ModuleName) + ".go",
+		})
 	}
 
 	configsStructure := FileStructure{
@@ -189,6 +183,22 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 				},
 			},
 			apiProtoStructure,
+		}
+		migrationFiles = append(migrationFiles, FileStructure{FromTemplate: true, DataSource: srvConfig,
+			Source: templateCmdMigrationInitTable, FileName: "00000000000000_init_tables.go"})
+		cmdStructure := FileStructure{
+			TargetDir: "cmd/", IsDir: true,
+			Childs: []FileStructure{
+				{TargetDir: srvConfig.ServiceName + "/", IsDir: true, DataSource: srvConfig},
+				{TargetDir: "migration/", IsDir: true, Childs: []FileStructure{
+					{FromTemplate: true, DataSource: srvConfig,
+						Source: templateCmdMigration, FileName: "migration.go",
+					},
+					{TargetDir: "migrations/", IsDir: true, Childs: migrationFiles},
+				}, SkipFunc: func() bool {
+					return !srvConfig.SQLDeps
+				}},
+			},
 		}
 		internalServiceStructure.Childs = append(internalServiceStructure.Childs, moduleStructure)
 		pkgServiceStructure.Childs = append(pkgServiceStructure.Childs, []FileStructure{
@@ -242,7 +252,15 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 		}
 
 	case addModule:
-		cmdStructure.Skip = true
+		cmdStructure := FileStructure{
+			TargetDir: "cmd/", IsDir: true, Skip: true, Childs: []FileStructure{
+				{TargetDir: "migration/", IsDir: true, Skip: true, Childs: []FileStructure{
+					{TargetDir: "migrations/", IsDir: true, Skip: true, Childs: migrationFiles},
+				}, SkipFunc: func() bool {
+					return !srvConfig.SQLDeps
+				}},
+			},
+		}
 		configsStructure.Skip = true
 		moduleStructure.Skip = true
 		pkgServiceStructure.Skip = true
@@ -250,13 +268,6 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 		pkgServiceStructure.Childs = []FileStructure{
 			{TargetDir: "shared/", IsDir: true, Skip: true, Childs: []FileStructure{
 				{TargetDir: "domain/", IsDir: true, Skip: true, Childs: sharedDomainFiles},
-			}},
-		}
-		cmdStructure.Childs = []FileStructure{
-			{TargetDir: "migration/", IsDir: true, Skip: true, Childs: []FileStructure{
-				{FromTemplate: true, DataSource: srvConfig, Source: templateCmdMigration, FileName: "migration.go", SkipFunc: func() bool {
-					return !srvConfig.SQLDeps
-				}},
 			}},
 		}
 
