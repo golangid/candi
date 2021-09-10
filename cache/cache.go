@@ -47,6 +47,26 @@ func (r *RedisCache) GetKeys(ctx context.Context, pattern string) (data []string
 	return redis.Strings(cl.Do("KEYS", fmt.Sprintf("%s*", pattern)))
 }
 
+// GetTTL method
+func (r *RedisCache) GetTTL(ctx context.Context, key string) (dur time.Duration, err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "redis:get_ttl")
+	defer func() { trace.SetError(err); trace.Log("result", dur.String()); trace.Finish() }()
+
+	trace.SetTag("db.statement", "GetTTL")
+	trace.SetTag("db.key", key)
+
+	cl := r.read.Get()
+	defer cl.Close()
+
+	reply, err := cl.Do("TTL", key)
+	if err != nil {
+		return dur, err
+	}
+
+	sec, _ := reply.(int64)
+	return time.Duration(sec) * time.Second, nil
+}
+
 // Set method
 func (r *RedisCache) Set(ctx context.Context, key string, value interface{}, expire time.Duration) (err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "redis:set")
