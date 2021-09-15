@@ -47,8 +47,7 @@ import (
 type (
 	// RepoSQL abstraction
 	RepoSQL interface {
-		WithTransaction(ctx context.Context, txFunc func(ctx context.Context, repo RepoSQL) error) (err error)
-		Free()
+		WithTransaction(ctx context.Context, txFunc func(ctx context.Context) error) (err error)
 
 		// @candi:repositoryMethod
 	}
@@ -84,7 +83,7 @@ func setSharedRepoSQL(readDB, writeDB *sql.DB) {
 	{{ if .IsMonorepo }}global{{end}}shared.AddGormCallbacks(gormRead)
 	{{ if .IsMonorepo }}global{{end}}shared.AddGormCallbacks(gormWrite){{end}}
 
-	globalRepoSQL = NewRepositorySQL({{if .SQLUseGORM}}gormRead, gormWrite{{else}}readDB, writeDB, nil{{end}})
+	globalRepoSQL = NewRepositorySQL({{if .SQLUseGORM}}gormRead, gormWrite{{else}}readDB, writeDB{{end}})
 }
 
 // GetSharedRepoSQL returns the global singleton "RepoSQL" implementation
@@ -93,17 +92,17 @@ func GetSharedRepoSQL() RepoSQL {
 }
 
 // NewRepositorySQL constructor
-func NewRepositorySQL(readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB{{if not .SQLUseGORM}}, tx *sql.Tx{{end}}) RepoSQL {
+func NewRepositorySQL(readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB) RepoSQL {
 
 	return &repoSQLImpl{
-		readDB: readDB, writeDB: writeDB,{{if not .SQLUseGORM}} tx: tx,{{end}}
+		readDB: readDB, writeDB: writeDB,
 
 		// @candi:repositoryConstructor
 	}
 }
 
 // WithTransaction run transaction for each repository with context, include handle canceled or timeout context
-func (r *repoSQLImpl) WithTransaction(ctx context.Context, txFunc func(ctx context.Context, repo RepoSQL) error) (err error) {
+func (r *repoSQLImpl) WithTransaction(ctx context.Context, txFunc func(ctx context.Context) error) (err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "RepoSQL:Transaction")
 	defer trace.Finish()
 
@@ -112,8 +111,6 @@ func (r *repoSQLImpl) WithTransaction(ctx context.Context, txFunc func(ctx conte
 		return err
 	}
 
-	// reinit new repository in different memory address with tx value
-	manager := NewRepositorySQL(r.readDB, {{if not .SQLUseGORM}}r.writeDB, {{end}}tx)
 	defer func() {
 		if err != nil {
 			tx.Rollback()
@@ -121,11 +118,10 @@ func (r *repoSQLImpl) WithTransaction(ctx context.Context, txFunc func(ctx conte
 		} else {
 			tx.Commit()
 		}
-		manager.Free()
 	}()
 
 	errChan := make(chan error)
-	go func() {
+	go func(ctx context.Context) {
 		defer func() {
 			if r := recover(); r != nil {
 				errChan <- fmt.Errorf("panic: %v", r)
@@ -133,10 +129,10 @@ func (r *repoSQLImpl) WithTransaction(ctx context.Context, txFunc func(ctx conte
 			close(errChan)
 		}()
 
-		if err := txFunc(ctx, manager); err != nil {
+		if err := txFunc(ctx); err != nil {
 			errChan <- err
 		}
-	}()
+	}(candishared.SetToContext(ctx, candishared.ContextKeySQLTransaction, tx))
 
 	select {
 	case <-ctx.Done():
@@ -144,11 +140,6 @@ func (r *repoSQLImpl) WithTransaction(ctx context.Context, txFunc func(ctx conte
 	case e := <-errChan:
 		return e
 	}
-}
-
-func (r *repoSQLImpl) Free() {
-	// make nil all repository
-	// @candi:repositoryDestructor
 }
 
 // @candi:repositoryImplementation
@@ -352,6 +343,7 @@ import (
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 
+	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/tracer"` +
 		`{{if .SQLUseGORM}}
 
@@ -361,13 +353,13 @@ import (
 )
 
 type {{clean .ModuleName}}RepoSQL struct {
-	readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB` + "{{if not .SQLUseGORM}}\n	tx              *sql.Tx{{end}}" + `
+	readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB
 }
 
 // New{{clean (upper .ModuleName)}}RepoSQL mongo repo constructor
-func New{{clean (upper .ModuleName)}}RepoSQL(readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB{{if not .SQLUseGORM}}, tx *sql.Tx{{end}}) {{clean (upper .ModuleName)}}Repository {
+func New{{clean (upper .ModuleName)}}RepoSQL(readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB) {{clean (upper .ModuleName)}}Repository {
 	return &{{clean .ModuleName}}RepoSQL{
-		readDB, writeDB,{{if not .SQLUseGORM}} tx,{{end}}
+		readDB, writeDB,
 	}
 }
 
@@ -424,8 +416,10 @@ func (r *{{clean .ModuleName}}RepoSQL) Find(ctx context.Context, filter *domain.
 		db = db.Where("id = ?", filter.ID)
 	}
 
-	err = db.First(&result).Error{{end}}
-	return
+	err = db.First(&result).Error
+	{{else}}err = r.readDB.QueryRow("SELECT id, field, created_at, modified_at FROM {{clean .ModuleName}}s WHERE id={{if eq .SQLDriver "postgres"}}$1{{else}}?{{end}}", filter.ID).
+		Scan(&result.ID, &result.Field, &result.CreatedAt, &result.ModifiedAt)
+	{{end}}return
 }
 
 func (r *{{clean .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
@@ -433,16 +427,47 @@ func (r *{{clean .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddom
 	defer func() { trace.SetError(err); trace.Finish() }()
 	tracer.Log(ctx, "data", data)
 
-	{{if .SQLDeps}}data.ModifiedAt = time.Now()
+	{{if .SQLUseGORM}}db := r.writeDB
+	if tx, ok := candishared.GetValueFromContext(ctx, candishared.ContextKeySQLTransaction).(*gorm.DB); ok {
+		db = tx
+	}
+	data.ModifiedAt = time.Now()
 	if data.CreatedAt.IsZero() {
 		data.CreatedAt = time.Now()
 	}
 	if data.ID == "" {
 		data.ID = uuid.NewString()
-		{{if .SQLUseGORM}}err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, r.writeDB).Create(data).Error{{end}}
+		err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, db).Create(data).Error
 	} else {
-		{{if .SQLUseGORM}}err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, r.writeDB).Save(data).Error{{end}}
+		err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, db).Save(data).Error
 	}
+	{{else}}var query string
+	var args []interface{}
+
+	data.ModifiedAt = time.Now()
+	if data.CreatedAt.IsZero() {
+		data.CreatedAt = time.Now()
+	}
+	if data.ID == "" {
+		data.ID = uuid.NewString()
+		query = "INSERT INTO {{clean .ModuleName}}s (id, field, created_at, modified_at) VALUES ({{if eq .SQLDriver "postgres"}}$1,$2,$3,$4{{else}}?,?,?,?{{end}})"
+		args = []interface{}{data.ID, data.Field, data.CreatedAt, data.ModifiedAt}
+	} else {
+		query = "UPDATE {{clean .ModuleName}}s SET field={{if eq .SQLDriver "postgres"}}$1{{else}}?{{end}} created_at={{if eq .SQLDriver "postgres"}}$2{{else}}?{{end}} modified_at={{if eq .SQLDriver "postgres"}}$3{{else}}?{{end}} WHERE id={{if eq .SQLDriver "postgres"}}$4{{else}}?{{end}}"
+		args = []interface{}{data.Field, data.CreatedAt, data.ModifiedAt, data.ID}
+	}
+
+	var stmt *sql.Stmt
+	if tx, ok := candishared.GetValueFromContext(ctx, candishared.ContextKeySQLTransaction).(*sql.Tx); ok {
+		stmt, err = tx.PrepareContext(ctx, query)
+	} else {
+		stmt, err = r.writeDB.PrepareContext(ctx, query)
+	}
+
+	if err != nil {
+		return err
+	}
+	_, err = stmt.ExecContext(ctx, args...)
 	{{end}}return
 }
 
@@ -450,7 +475,23 @@ func (r *{{clean .ModuleName}}RepoSQL) Delete(ctx context.Context, id string) (e
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Delete")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
-	return{{if .SQLUseGORM}} {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, r.writeDB).Delete(&shareddomain.{{clean (upper .ModuleName)}}{ID: id}).Error{{end}}
+	{{if .SQLUseGORM}}db := r.writeDB
+	if tx, ok := candishared.GetValueFromContext(ctx, candishared.ContextKeySQLTransaction).(*gorm.DB); ok {
+		db = tx
+	}
+	err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, db).Delete(&shareddomain.{{clean (upper .ModuleName)}}{ID: id}).Error
+	{{else}}var stmt *sql.Stmt
+	if tx, ok := candishared.GetValueFromContext(ctx, candishared.ContextKeySQLTransaction).(*sql.Tx); ok {
+		stmt, err = tx.PrepareContext(ctx, "DELETE FROM {{clean .ModuleName}}s WHERE id={{if eq .SQLDriver "postgres"}}$1{{else}}?{{end}}")
+	} else {
+		stmt, err = r.writeDB.PrepareContext(ctx, "DELETE FROM {{clean .ModuleName}}s WHERE id={{if eq .SQLDriver "postgres"}}$1{{else}}?{{end}}")
+	}
+
+	if err != nil {
+		return err
+	}
+	_, err = stmt.ExecContext(ctx, id)
+	{{end}}return
 }
 `
 )

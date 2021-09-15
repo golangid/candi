@@ -17,6 +17,9 @@ const (
 
 	// ContextKeyWorkerKey context key
 	ContextKeyWorkerKey ContextKey = "workerKey"
+
+	// ContextKeySQLTransaction context key
+	ContextKeySQLTransaction ContextKey = "sqltx"
 )
 
 // SetToContext will set context with specific key

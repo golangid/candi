@@ -331,12 +331,8 @@ func updateSharedRepository(flagParam flagParameter, cfg serviceConfig) {
 				[]byte(fmt.Sprintf("@candi:repositoryField\n		%sRepo %srepo.%sRepository", cleanMod, cleanMod, cleanUpperMod)), -1)
 
 			if repoType == "SQL" && cfg.SQLDeps {
-				includeTx := ")"
-				if !cfg.SQLUseGORM {
-					includeTx = ", tx)"
-				}
 				b = bytes.Replace(b, []byte("@candi:repositoryConstructor"),
-					[]byte(fmt.Sprintf("@candi:repositoryConstructor\n		%sRepo: %srepo.New%sRepoSQL(readDB, writeDB%s,", cleanMod, cleanMod, cleanUpperMod, includeTx)), -1)
+					[]byte(fmt.Sprintf("@candi:repositoryConstructor\n		%sRepo: %srepo.New%sRepoSQL(readDB, writeDB),", cleanMod, cleanMod, cleanUpperMod)), -1)
 				b = bytes.Replace(b, []byte("@candi:repositoryDestructor"),
 					[]byte(fmt.Sprintf("@candi:repositoryDestructor\n	r.%sRepo = nil", cleanMod)), -1)
 			} else if repoType == "Mongo" && cfg.MongoDeps {

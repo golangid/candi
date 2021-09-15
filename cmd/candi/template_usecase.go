@@ -174,8 +174,8 @@ func (uc *{{clean .ModuleName}}UsecaseImpl) Update{{clean (upper .ModuleName)}}(
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}Usecase:Update{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
-	repoFilter := domain.Filter{{clean (upper .ModuleName)}}{ID: id}
-	{{if or .SQLDeps .MongoDeps}}existing, err := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Find(ctx, &repoFilter)
+	{{if or .SQLDeps .MongoDeps}}repoFilter := domain.Filter{{clean (upper .ModuleName)}}{ID: id}
+	existing, err := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Find(ctx, &repoFilter)
 	if err != nil {
 		return err
 	}
