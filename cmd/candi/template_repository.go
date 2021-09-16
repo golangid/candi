@@ -35,6 +35,7 @@ import (
 
 	// @candi:repositoryImport
 
+	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/tracer"` +
 		`{{if .SQLUseGORM}}
 

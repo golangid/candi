@@ -79,6 +79,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 					{TargetDir: "resthandler/", IsDir: true, SkipFunc: func() bool { return !srvConfig.RestHandler },
 						Childs: []FileStructure{
 							{FromTemplate: true, DataSource: mod, Source: deliveryRestTemplate, FileName: "resthandler.go"},
+							{FromTemplate: true, DataSource: mod, Source: deliveryRestTestTemplate, FileName: "resthandler_test.go"},
 						}},
 					{TargetDir: "workerhandler/", IsDir: true, Skip: !srvConfig.IsWorkerActive,
 						Childs: []FileStructure{
