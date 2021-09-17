@@ -7,15 +7,15 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/config/env"
+	"github.com/golangid/candi/tracer"
+	"github.com/golangid/candi/wrapper"
 	gqlerr "github.com/golangid/graphql-go/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"pkg.agungdp.dev/candi/candihelper"
-	"pkg.agungdp.dev/candi/candishared"
-	"pkg.agungdp.dev/candi/config/env"
-	"pkg.agungdp.dev/candi/tracer"
-	"pkg.agungdp.dev/candi/wrapper"
 )
 
 const (

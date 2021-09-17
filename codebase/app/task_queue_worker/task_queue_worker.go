@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"pkg.agungdp.dev/candi/candishared"
-	"pkg.agungdp.dev/candi/codebase/factory"
-	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/logger"
-	"pkg.agungdp.dev/candi/tracer"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/logger"
+	"github.com/golangid/candi/tracer"
 )
 
 type taskQueueWorker struct {

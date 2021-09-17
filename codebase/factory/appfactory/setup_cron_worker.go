@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"pkg.agungdp.dev/candi/candiutils"
-	cronworker "pkg.agungdp.dev/candi/codebase/app/cron_worker"
-	"pkg.agungdp.dev/candi/codebase/factory"
-	"pkg.agungdp.dev/candi/config/env"
+	"github.com/golangid/candi/candiutils"
+	cronworker "github.com/golangid/candi/codebase/app/cron_worker"
+	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/config/env"
 )
 
 func setupCronWorker(service factory.ServiceFactory) factory.AppServerFactory {

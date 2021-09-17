@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/golangid/candi/codebase/interfaces"
+	"github.com/golangid/candi/config/env"
 	"github.com/soheilhy/cmux"
-	"pkg.agungdp.dev/candi/codebase/interfaces"
-	"pkg.agungdp.dev/candi/config/env"
 )
 
 // Config app

@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/golangid/candi/candishared"
 	"github.com/gorilla/websocket"
-	"pkg.agungdp.dev/candi/candishared"
 )
 
 const protocolGraphQLWS = "graphql-ws"

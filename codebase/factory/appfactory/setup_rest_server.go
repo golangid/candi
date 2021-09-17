@@ -3,10 +3,10 @@ package appfactory
 import (
 	"net/http"
 
-	"pkg.agungdp.dev/candi/candishared"
-	restserver "pkg.agungdp.dev/candi/codebase/app/rest_server"
-	"pkg.agungdp.dev/candi/codebase/factory"
-	"pkg.agungdp.dev/candi/config/env"
+	"github.com/golangid/candi/candishared"
+	restserver "github.com/golangid/candi/codebase/app/rest_server"
+	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/config/env"
 )
 
 func setupRESTServer(service factory.ServiceFactory) factory.AppServerFactory {

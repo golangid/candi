@@ -1,9 +1,9 @@
 package appfactory
 
 import (
-	grpcserver "pkg.agungdp.dev/candi/codebase/app/grpc_server"
-	"pkg.agungdp.dev/candi/codebase/factory"
-	"pkg.agungdp.dev/candi/config/env"
+	grpcserver "github.com/golangid/candi/codebase/app/grpc_server"
+	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/config/env"
 )
 
 func setupGRPCServer(service factory.ServiceFactory) factory.AppServerFactory {

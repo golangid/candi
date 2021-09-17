@@ -3,11 +3,11 @@ package database
 import (
 	"context"
 
+	"github.com/golangid/candi/cache"
+	"github.com/golangid/candi/codebase/interfaces"
+	"github.com/golangid/candi/config/env"
+	"github.com/golangid/candi/logger"
 	"github.com/gomodule/redigo/redis"
-	"pkg.agungdp.dev/candi/cache"
-	"pkg.agungdp.dev/candi/codebase/interfaces"
-	"pkg.agungdp.dev/candi/config/env"
-	"pkg.agungdp.dev/candi/logger"
 )
 
 type redisInstance struct {

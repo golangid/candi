@@ -3,9 +3,9 @@ package broker
 import (
 	"context"
 
-	"pkg.agungdp.dev/candi/candihelper"
-	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/codebase/interfaces"
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/codebase/interfaces"
 )
 
 // Broker model

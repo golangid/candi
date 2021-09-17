@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"pkg.agungdp.dev/candi/candihelper"
-	"pkg.agungdp.dev/candi/config/env"
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/config/env"
 )
 
 func init() {

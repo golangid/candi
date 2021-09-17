@@ -8,10 +8,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
 	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
-	"pkg.agungdp.dev/candi/candihelper"
-	"pkg.agungdp.dev/candi/candishared"
 )
 
 func TestNewHTTPResponse(t *testing.T) {

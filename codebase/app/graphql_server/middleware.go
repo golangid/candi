@@ -12,17 +12,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/config/env"
+	"github.com/golangid/candi/logger"
+	"github.com/golangid/candi/tracer"
 	gqlerrors "github.com/golangid/graphql-go/errors"
 	"github.com/golangid/graphql-go/introspection"
 	"github.com/golangid/graphql-go/trace"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
-	"pkg.agungdp.dev/candi/candihelper"
-	"pkg.agungdp.dev/candi/candishared"
-	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/config/env"
-	"pkg.agungdp.dev/candi/logger"
-	"pkg.agungdp.dev/candi/tracer"
 )
 
 const schemaRootInstropectionField = "__schema"

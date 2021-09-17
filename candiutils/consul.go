@@ -5,8 +5,8 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/golangid/candi/logger"
 	api "github.com/hashicorp/consul/api"
-	"pkg.agungdp.dev/candi/logger"
 )
 
 /*

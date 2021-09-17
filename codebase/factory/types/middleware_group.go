@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/golangid/candi/candihelper"
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"pkg.agungdp.dev/candi/candihelper"
 )
 
 // MiddlewareFunc type

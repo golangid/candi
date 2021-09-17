@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"pkg.agungdp.dev/candi/candiutils"
-	redisworker "pkg.agungdp.dev/candi/codebase/app/redis_worker"
-	"pkg.agungdp.dev/candi/codebase/factory"
-	"pkg.agungdp.dev/candi/config/env"
+	"github.com/golangid/candi/candiutils"
+	redisworker "github.com/golangid/candi/codebase/app/redis_worker"
+	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/config/env"
 )
 
 func setupRedisWorker(service factory.ServiceFactory) factory.AppServerFactory {

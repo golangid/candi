@@ -3,7 +3,7 @@ package validator
 import (
 	"os"
 
-	"pkg.agungdp.dev/candi/candihelper"
+	"github.com/golangid/candi/candihelper"
 )
 
 // Validator instance

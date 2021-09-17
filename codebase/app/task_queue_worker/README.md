@@ -9,9 +9,9 @@ import (
 	"context"
 	"time"
 
-	taskqueueworker "pkg.agungdp.dev/candi/codebase/app/task_queue_worker"
-	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/logger"
+	taskqueueworker "github.com/golangid/candi/codebase/app/task_queue_worker"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/logger"
 )
 
 // TaskQueueHandler struct
@@ -57,9 +57,9 @@ import (
 
 	"example.service/internal/modules/examplemodule/delivery/workerhandler"
 
-	"pkg.agungdp.dev/candi/codebase/factory/dependency"
-	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/codebase/interfaces"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/codebase/interfaces"
 )
 
 type Module struct {
@@ -91,7 +91,7 @@ import (
 	"context"
 	"log"
 
-	taskqueueworker "pkg.agungdp.dev/candi/codebase/app/task_queue_worker"
+	taskqueueworker "github.com/golangid/candi/codebase/app/task_queue_worker"
 )
 
 func someUsecase() {

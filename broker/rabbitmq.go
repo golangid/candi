@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/codebase/interfaces"
+	"github.com/golangid/candi/config/env"
+	"github.com/golangid/candi/logger"
+	"github.com/golangid/candi/tracer"
 	"github.com/streadway/amqp"
-	"pkg.agungdp.dev/candi/candihelper"
-	"pkg.agungdp.dev/candi/candishared"
-	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/codebase/interfaces"
-	"pkg.agungdp.dev/candi/config/env"
-	"pkg.agungdp.dev/candi/logger"
-	"pkg.agungdp.dev/candi/tracer"
 )
 
 const (

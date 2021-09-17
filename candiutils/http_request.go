@@ -14,7 +14,7 @@ import (
 
 	"github.com/gojektech/heimdall/v6"
 	"github.com/gojektech/heimdall/v6/hystrix"
-	"pkg.agungdp.dev/candi/tracer"
+	"github.com/golangid/candi/tracer"
 )
 
 // httpRequestImpl struct

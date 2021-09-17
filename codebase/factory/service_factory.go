@@ -1,9 +1,9 @@
 package factory
 
 import (
-	"pkg.agungdp.dev/candi/codebase/factory/dependency"
-	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/config"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/config"
 )
 
 // ServiceFactory factory

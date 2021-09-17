@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"pkg.agungdp.dev/candi/codebase/factory"
+	"github.com/golangid/candi/codebase/factory"
 )
 
 // App service

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golangid/candi/candihelper"
 	"github.com/joho/godotenv"
-	"pkg.agungdp.dev/candi/candihelper"
 )
 
 // Env model

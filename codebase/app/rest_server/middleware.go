@@ -14,15 +14,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/logger"
+	"github.com/golangid/candi/tracer"
+	"github.com/golangid/candi/wrapper"
 	"github.com/labstack/echo"
 	"github.com/labstack/gommon/color"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	"github.com/valyala/fasttemplate"
-	"pkg.agungdp.dev/candi/candihelper"
-	"pkg.agungdp.dev/candi/logger"
-	"pkg.agungdp.dev/candi/tracer"
-	"pkg.agungdp.dev/candi/wrapper"
 )
 
 // echoRestTracerMiddleware for wrap from http inbound (request from client)

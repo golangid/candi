@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	candishared "pkg.agungdp.dev/candi/candishared"
+	candishared "github.com/golangid/candi/candishared"
 
 	mock "github.com/stretchr/testify/mock"
 )

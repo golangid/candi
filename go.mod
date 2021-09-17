@@ -1,4 +1,4 @@
-module pkg.agungdp.dev/candi
+module github.com/golangid/candi
 
 go 1.16
 

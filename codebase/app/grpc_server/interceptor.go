@@ -7,15 +7,15 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/logger"
+	"github.com/golangid/candi/tracer"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"pkg.agungdp.dev/candi/candihelper"
-	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/logger"
-	"pkg.agungdp.dev/candi/tracer"
 )
 
 type interceptor struct {

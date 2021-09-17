@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/config/env"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/metadata"
-	"pkg.agungdp.dev/candi/candihelper"
-	"pkg.agungdp.dev/candi/candishared"
-	"pkg.agungdp.dev/candi/config/env"
 )
 
 const (

@@ -5,10 +5,10 @@ import (
 	"log"
 
 	"github.com/Shopify/sarama"
-	"pkg.agungdp.dev/candi/candishared"
-	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/logger"
-	"pkg.agungdp.dev/candi/tracer"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/logger"
+	"github.com/golangid/candi/tracer"
 )
 
 // consumerHandler represents a Sarama consumer group consumer

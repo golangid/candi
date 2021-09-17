@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golangid/candi/tracer"
 	"github.com/gomodule/redigo/redis"
-	"pkg.agungdp.dev/candi/tracer"
 )
 
 // RedisCache redis implement interfaces.Cache

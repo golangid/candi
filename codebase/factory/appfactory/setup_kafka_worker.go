@@ -1,9 +1,9 @@
 package appfactory
 
 import (
-	kafkaworker "pkg.agungdp.dev/candi/codebase/app/kafka_worker"
-	"pkg.agungdp.dev/candi/codebase/factory"
-	"pkg.agungdp.dev/candi/config/env"
+	kafkaworker "github.com/golangid/candi/codebase/app/kafka_worker"
+	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/config/env"
 )
 
 func setupKafkaWorker(service factory.ServiceFactory) factory.AppServerFactory {

@@ -1,9 +1,9 @@
 package interfaces
 
 import (
+	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/labstack/echo"
 	"google.golang.org/grpc"
-	"pkg.agungdp.dev/candi/codebase/factory/types"
 )
 
 // RESTHandler delivery factory for REST handler (default using echo rest framework)

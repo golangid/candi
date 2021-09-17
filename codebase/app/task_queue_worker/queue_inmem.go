@@ -3,7 +3,7 @@ package taskqueueworker
 import (
 	"sync"
 
-	"pkg.agungdp.dev/candi/candishared"
+	"github.com/golangid/candi/candishared"
 )
 
 // inMemQueue queue

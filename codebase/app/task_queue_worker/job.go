@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candiutils"
 	"github.com/google/uuid"
-	"pkg.agungdp.dev/candi/candihelper"
-	"pkg.agungdp.dev/candi/candiutils"
 )
 
 const (

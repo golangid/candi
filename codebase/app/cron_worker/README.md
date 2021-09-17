@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"time"
 
-	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/candihelper"
-	"pkg.agungdp.dev/candi/logger"
-	"pkg.agungdp.dev/candi/tracer"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/logger"
+	"github.com/golangid/candi/tracer"
 )
 
 // CronHandler struct
@@ -62,9 +62,9 @@ import (
 
 	"example.service/internal/modules/examplemodule/delivery/workerhandler"
 
-	"pkg.agungdp.dev/candi/codebase/factory/dependency"
-	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/codebase/interfaces"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/codebase/interfaces"
 )
 
 type Module struct {

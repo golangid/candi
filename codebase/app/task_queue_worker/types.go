@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"pkg.agungdp.dev/candi/codebase/factory/types"
+	"github.com/golangid/candi/codebase/factory/types"
 )
 
 type (

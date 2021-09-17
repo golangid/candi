@@ -3,7 +3,7 @@ package interfaces
 import (
 	"context"
 
-	"pkg.agungdp.dev/candi/candishared"
+	"github.com/golangid/candi/candishared"
 )
 
 // Publisher abstract interface

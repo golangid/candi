@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/golangid/candi/wrapper"
 	"github.com/labstack/echo"
-	"pkg.agungdp.dev/candi/wrapper"
 )
 
 // CustomHTTPErrorHandler custom echo http error

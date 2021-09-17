@@ -3,9 +3,9 @@ package logger
 import (
 	"runtime"
 
+	"github.com/golangid/candi/config/env"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"pkg.agungdp.dev/candi/config/env"
 )
 
 var logger *zap.SugaredLogger

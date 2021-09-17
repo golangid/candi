@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	"pkg.agungdp.dev/candi/codebase/factory"
-	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/logger"
+	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/logger"
 )
 
 type kafkaWorker struct {

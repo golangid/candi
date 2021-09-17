@@ -85,7 +85,7 @@ test:
 
 go 1.16
 
-require pkg.agungdp.dev/candi {{.Version}}
+require github.com/golangid/candi {{.Version}}
 `
 
 	gitignoreTemplate = `bin
@@ -169,7 +169,7 @@ $ make docker
 		"</p>\n\n" +
 		"This repository explain implementation of Go for building multiple microservices using a single codebase. Using [Standard Golang Project Layout](https://github.com/golang-standards/project-layout) and [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)\n\n" +
 		"## Create new service (for new project)\n" +
-		"Please install **latest** [**candi**](https://pkg.agungdp.dev/candi) CLI first, and then:\n" +
+		"Please install **latest** [**candi**](https://github.com/golangid/candi) CLI first, and then:\n" +
 		"```\n" +
 		"$ candi -init\n" +
 		"```\n" +

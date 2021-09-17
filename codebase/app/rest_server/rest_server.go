@@ -12,12 +12,12 @@ import (
 	"github.com/labstack/echo"
 	"github.com/soheilhy/cmux"
 
-	"pkg.agungdp.dev/candi/candihelper"
-	"pkg.agungdp.dev/candi/candishared"
-	graphqlserver "pkg.agungdp.dev/candi/codebase/app/graphql_server"
-	"pkg.agungdp.dev/candi/codebase/factory"
-	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/logger"
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
+	graphqlserver "github.com/golangid/candi/codebase/app/graphql_server"
+	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/logger"
 )
 
 type restServer struct {

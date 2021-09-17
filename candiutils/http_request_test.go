@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golangid/candi/candishared"
 	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/assert"
-	"pkg.agungdp.dev/candi/candishared"
 )
 
 func TestNewRequest(t *testing.T) {

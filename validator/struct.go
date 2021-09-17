@@ -10,7 +10,7 @@ import (
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	idTranslations "github.com/go-playground/validator/v10/translations/id"
-	"pkg.agungdp.dev/candi/candihelper"
+	"github.com/golangid/candi/candihelper"
 )
 
 const (

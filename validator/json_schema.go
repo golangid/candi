@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/golangid/candi/candihelper"
 	"github.com/xeipuuv/gojsonschema"
-	"pkg.agungdp.dev/candi/candihelper"
 )
 
 var notShowErrorListType = map[string]bool{

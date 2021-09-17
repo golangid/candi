@@ -1,6 +1,6 @@
 package redisworker
 
-import "pkg.agungdp.dev/candi/candiutils"
+import "github.com/golangid/candi/candiutils"
 
 type (
 	option struct {

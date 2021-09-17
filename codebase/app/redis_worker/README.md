@@ -9,8 +9,8 @@ import (
 	"context"
 	"time"
 
-	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/logger"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/logger"
 )
 
 // RedisHandler struct
@@ -52,9 +52,9 @@ import (
 
 	"example.service/internal/modules/examplemodule/delivery/workerhandler"
 
-	"pkg.agungdp.dev/candi/codebase/factory/dependency"
-	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/codebase/interfaces"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/codebase/interfaces"
 )
 
 type Module struct {
@@ -84,7 +84,7 @@ import (
 	"context"
 	"time"
 
-	"pkg.agungdp.dev/candi/candihelper"
+	"github.com/golangid/candi/candihelper"
 )
 
 func (uc *usecaseImpl) someUsecase(ctx context.Context) {

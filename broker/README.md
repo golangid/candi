@@ -12,7 +12,7 @@ Modify `configs/configs.go` in your service
 package configs
 
 import (
-	"pkg.agungdp.dev/candi/broker"
+	"github.com/golangid/candi/broker"
 ...
 
 // LoadServiceConfigs load selected dependency configuration in this service
@@ -38,10 +38,10 @@ package usecase
 import (
 	"context"
 
-	"pkg.agungdp.dev/candi/candishared"
-	"pkg.agungdp.dev/candi/codebase/factory/dependency"
-	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/codebase/interfaces"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/codebase/interfaces"
 )
 
 type usecaseImpl {
@@ -73,7 +73,7 @@ Modify `configs/configs.go` in your service
 package configs
 
 import (
-	"pkg.agungdp.dev/candi/broker"
+	"github.com/golangid/candi/broker"
 ...
 
 // LoadServiceConfigs load selected dependency configuration in this service
@@ -99,11 +99,11 @@ package usecase
 import (
 	"context"
 
-	"pkg.agungdp.dev/candi/broker"
-	"pkg.agungdp.dev/candi/candishared"
-	"pkg.agungdp.dev/candi/codebase/factory/dependency"
-	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/codebase/interfaces"
+	"github.com/golangid/candi/broker"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/codebase/interfaces"
 )
 
 type usecaseImpl {

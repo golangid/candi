@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"pkg.agungdp.dev/candi/candiutils"
-	postgresworker "pkg.agungdp.dev/candi/codebase/app/postgres_worker"
-	"pkg.agungdp.dev/candi/codebase/factory"
-	"pkg.agungdp.dev/candi/config/env"
+	"github.com/golangid/candi/candiutils"
+	postgresworker "github.com/golangid/candi/codebase/app/postgres_worker"
+	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/config/env"
 )
 
 func setupPostgresWorker(service factory.ServiceFactory) factory.AppServerFactory {

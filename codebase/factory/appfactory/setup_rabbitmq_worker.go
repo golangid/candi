@@ -1,9 +1,9 @@
 package appfactory
 
 import (
-	rabbitmqworker "pkg.agungdp.dev/candi/codebase/app/rabbitmq_worker"
-	"pkg.agungdp.dev/candi/codebase/factory"
-	"pkg.agungdp.dev/candi/config/env"
+	rabbitmqworker "github.com/golangid/candi/codebase/app/rabbitmq_worker"
+	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/config/env"
 )
 
 func setupRabbitMQWorker(service factory.ServiceFactory) factory.AppServerFactory {

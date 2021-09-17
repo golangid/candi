@@ -4,14 +4,14 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/config/env"
+	"github.com/golangid/candi/tracer"
+	"github.com/golangid/candi/wrapper"
 	gqlerr "github.com/golangid/graphql-go/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"pkg.agungdp.dev/candi/candishared"
-	"pkg.agungdp.dev/candi/codebase/factory/types"
-	"pkg.agungdp.dev/candi/config/env"
-	"pkg.agungdp.dev/candi/tracer"
-	"pkg.agungdp.dev/candi/wrapper"
 )
 
 func (m *Middleware) checkACLPermissionFromContext(ctx context.Context, permissionCode string) (*candishared.TokenClaim, error) {

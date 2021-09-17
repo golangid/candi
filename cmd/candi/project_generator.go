@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"pkg.agungdp.dev/candi"
+	"github.com/golangid/candi"
 )
 
 func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceConfig) {
@@ -324,7 +324,7 @@ func monorepoGenerator(flagParam flagParameter) {
 		globalShared,
 		sdkStructure,
 		{TargetDir: "services/", IsDir: true, Childs: []FileStructure{{FileName: ".gitkeep"}}},
-		{FileName: "go.mod", Source: "module monorepo\n\ngo 1.16\n\nrequire pkg.agungdp.dev/candi " + candi.Version},
+		{FileName: "go.mod", Source: "module monorepo\n\ngo 1.16\n\nrequire github.com/golangid/candi " + candi.Version},
 		{Source: gitignoreMonorepoTemplate, FileName: ".gitignore"},
 		{Source: makefileMonorepoTemplate, FileName: "Makefile"},
 		{Source: readmeMonorepoTemplate, FileName: "README.md"},

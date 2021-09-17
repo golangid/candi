@@ -3,9 +3,9 @@ package appfactory
 import (
 	"net/url"
 
-	taskqueueworker "pkg.agungdp.dev/candi/codebase/app/task_queue_worker"
-	"pkg.agungdp.dev/candi/codebase/factory"
-	"pkg.agungdp.dev/candi/config/env"
+	taskqueueworker "github.com/golangid/candi/codebase/app/task_queue_worker"
+	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/config/env"
 )
 
 func setupTaskQueueWorker(service factory.ServiceFactory) factory.AppServerFactory {

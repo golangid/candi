@@ -27,7 +27,7 @@ func main() {
 	flag.BoolVar(&flagParam.withGoModFlag, "withgomod", true, "[project generator] generate go.mod or not")
 	flag.StringVar(&flagParam.protoOutputPkgFlag, "protooutputpkg", "", "[project generator] define generated proto output target (if using grpc), with prefix is your go.mod")
 	flag.StringVar(&flagParam.outputFlag, "output", "", "[project generator] directory to write project to (default is service name)")
-	flag.StringVar(&flagParam.libraryNameFlag, "libraryname", "pkg.agungdp.dev/candi", "[project generator] define library name")
+	flag.StringVar(&flagParam.libraryNameFlag, "libraryname", "github.com/golangid/candi", "[project generator] define library name")
 
 	flag.BoolVar(&flagParam.run, "run", false, "[service runner] run selected service or all service in monorepo")
 	flag.StringVar(&flagParam.serviceName, "service", "", `Describe service name (if run multiple services, separate by comma)`)

@@ -5,8 +5,8 @@ import (
 	"encoding/xml"
 	"net/http"
 
-	"pkg.agungdp.dev/candi/candihelper"
-	"pkg.agungdp.dev/candi/candishared"
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
 )
 
 // HTTPResponse default candi http response format

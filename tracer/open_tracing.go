@@ -14,15 +14,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golangid/candi"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/codebase/interfaces"
+	"github.com/golangid/candi/config/env"
 	opentracing "github.com/opentracing/opentracing-go"
 	ext "github.com/opentracing/opentracing-go/ext"
 	otlog "github.com/opentracing/opentracing-go/log"
 	config "github.com/uber/jaeger-client-go/config"
 	"google.golang.org/grpc/metadata"
-	"pkg.agungdp.dev/candi"
-	"pkg.agungdp.dev/candi/candishared"
-	"pkg.agungdp.dev/candi/codebase/interfaces"
-	"pkg.agungdp.dev/candi/config/env"
 )
 
 // InitOpenTracing init jaeger tracing

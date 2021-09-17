@@ -3,10 +3,10 @@ package appfactory
 import (
 	"net/http"
 
-	"pkg.agungdp.dev/candi/candishared"
-	graphqlserver "pkg.agungdp.dev/candi/codebase/app/graphql_server"
-	"pkg.agungdp.dev/candi/codebase/factory"
-	"pkg.agungdp.dev/candi/config/env"
+	"github.com/golangid/candi/candishared"
+	graphqlserver "github.com/golangid/candi/codebase/app/graphql_server"
+	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/config/env"
 )
 
 func setupGraphQLServer(service factory.ServiceFactory) factory.AppServerFactory {
