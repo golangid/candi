@@ -1,9 +1,9 @@
 # Candi, a framework and library for `Membangun Candi` project in Golang
 
-<a href="https://codeclimate.com/github/agungdwiprasetyo/candi/maintainability"><img src="https://api.codeclimate.com/v1/badges/38c8703e672eb53bea87/maintainability" /></a>
-[![Build Status](https://github.com/agungdwiprasetyo/candi/workflows/build/badge.svg)](https://github.com/agungdwiprasetyo/candi/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/agungdwiprasetyo/candi)](https://goreportcard.com/report/github.com/agungdwiprasetyo/candi)
-[![codecov](https://codecov.io/gh/agungdwiprasetyo/candi/branch/master/graph/badge.svg)](https://codecov.io/gh/agungdwiprasetyo/candi)
+<a href="https://codeclimate.com/github/golangid/candi/maintainability"><img src="https://api.codeclimate.com/v1/badges/38c8703e672eb53bea87/maintainability" /></a>
+[![Build Status](https://github.com/golangid/candi/workflows/build/badge.svg)](https://github.com/golangid/candi/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/golangid/candi)](https://goreportcard.com/report/github.com/golangid/candi)
+[![codecov](https://codecov.io/gh/golangid/candi/branch/master/graph/badge.svg)](https://codecov.io/gh/golangid/candi)
 
 ## Build with :heart: and
 <p align="center">
@@ -100,19 +100,19 @@ $ make run
 If include GRPC handler, run `$ make proto` for generate rpc files from proto (must install `protoc` compiler min version `libprotoc 3.14.0`)
 
 ## Server handlers example:
-* [**Example REST API in delivery layer**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/services/user-service/internal/modules/auth/delivery/resthandler)
-* [**Example gRPC in delivery layer**](https://github.com/agungdwiprasetyo/backend-microservices/blob/master/services/storage-service/internal/modules/storage/delivery/grpchandler/grpchandler.go)
-* [**Example GraphQL in delivery layer**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/services/user-service/internal/modules/auth/delivery/graphqlhandler)
+* [**Example REST API in delivery layer**](https://github.com/golangid/backend-microservices/tree/master/services/user-service/internal/modules/auth/delivery/resthandler)
+* [**Example gRPC in delivery layer**](https://github.com/golangid/backend-microservices/blob/master/services/storage-service/internal/modules/storage/delivery/grpchandler/grpchandler.go)
+* [**Example GraphQL in delivery layer**](https://github.com/golangid/backend-microservices/tree/master/services/user-service/internal/modules/auth/delivery/graphqlhandler)
 
 ## Worker handlers example:
-* [**Example Cron worker in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/cron_worker) (Static Scheduler)
-* [**Example Kafka consumer in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/kafka_worker) (Event Driven Handler)
-* [**Example Redis subscriber in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/redis_worker) (Dynamic Scheduler)
-* [**Example Task queue worker in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/task_queue_worker)
-* [**Example Postgres event listener in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/postgres_worker)
-* [**Example RabbitMQ consumer in delivery layer**](https://github.com/agungdwiprasetyo/candi/tree/master/codebase/app/rabbitmq_worker) (Event Driven Handler and Dynamic Scheduler)
+* [**Example Cron worker in delivery layer**](https://github.com/golangid/candi/tree/master/codebase/app/cron_worker) (Static Scheduler)
+* [**Example Kafka consumer in delivery layer**](https://github.com/golangid/candi/tree/master/codebase/app/kafka_worker) (Event Driven Handler)
+* [**Example Redis subscriber in delivery layer**](https://github.com/golangid/candi/tree/master/codebase/app/redis_worker) (Dynamic Scheduler)
+* [**Example Task queue worker in delivery layer**](https://github.com/golangid/candi/tree/master/codebase/app/task_queue_worker)
+* [**Example Postgres event listener in delivery layer**](https://github.com/golangid/candi/tree/master/codebase/app/postgres_worker)
+* [**Example RabbitMQ consumer in delivery layer**](https://github.com/golangid/candi/tree/master/codebase/app/rabbitmq_worker) (Event Driven Handler and Dynamic Scheduler)
 
-## Plugin: [Candi Plugin](https://github.com/agungdwiprasetyo/candi-plugin)
+## Plugin: [Candi Plugin](https://github.com/golangid/candi-plugin)
 
 ## Example microservices project using this library: [Backend Microservices](https://github.com/agungdwiprasetyo/backend-microservices)
 
