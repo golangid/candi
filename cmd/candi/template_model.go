@@ -1,9 +1,9 @@
 package main
 
 const (
-	templateSharedDomain = `// {{.Header}}
+	templateSharedModel = `// {{.Header}}
 
-package domain
+package sharedmodel
 
 import (
 	"time"` +
@@ -29,9 +29,9 @@ func ({{clean (upper .ModuleName)}}) CollectionName() string {
 	return "{{clean .ModuleName}}s"
 }{{end}}
 `
-	templateModuleDomain = `// {{.Header}}
+	templateModuleModel = `// {{.Header}}
 
-package domain
+package model
 
 import "{{.LibraryName}}/candishared"
 

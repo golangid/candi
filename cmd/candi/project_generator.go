@@ -46,7 +46,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 	moduleStructure := FileStructure{
 		TargetDir: "modules/", IsDir: true, DataSource: srvConfig,
 	}
-	var sharedDomainFiles, migrationFiles []FileStructure
+	var sharedModelFiles, migrationFiles []FileStructure
 
 	for _, mod := range srvConfig.Modules {
 		mod.configHeader = srvConfig.configHeader
@@ -99,9 +99,9 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 				},
 			},
 			{
-				TargetDir: "domain/", IsDir: true,
+				TargetDir: "model/", IsDir: true,
 				Childs: []FileStructure{
-					{FromTemplate: true, DataSource: mod, Source: templateModuleDomain, FileName: "filter.go"},
+					{FromTemplate: true, DataSource: mod, Source: templateModuleModel, FileName: "filter.go"},
 				},
 			},
 			{
@@ -141,9 +141,9 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 			SkipFunc: func() bool { return !srvConfig.GraphQLHandler },
 		})
 
-		// for shared domain
-		sharedDomainFiles = append(sharedDomainFiles, FileStructure{
-			FromTemplate: true, DataSource: mod, Source: templateSharedDomain, FileName: mod.ModuleName + ".go",
+		// for shared model
+		sharedModelFiles = append(sharedModelFiles, FileStructure{
+			FromTemplate: true, DataSource: mod, Source: templateSharedModel, FileName: mod.ModuleName + ".go",
 		})
 		migrationFiles = append(migrationFiles, FileStructure{
 			FromTemplate: true, DataSource: mod, Source: templateCmdMigrationInitModule,
@@ -207,7 +207,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 				{FromTemplate: true, FileName: "helper.go"},
 			}},
 			{TargetDir: "shared/", IsDir: true, Childs: []FileStructure{
-				{TargetDir: "domain/", IsDir: true, Childs: sharedDomainFiles},
+				{TargetDir: "sharedmodel/", IsDir: true, Childs: sharedModelFiles},
 				{TargetDir: "repository/", IsDir: true, Childs: parseSharedRepository(srvConfig)},
 				{TargetDir: "usecase/", IsDir: true, Childs: []FileStructure{
 					{FromTemplate: true, DataSource: srvConfig, Source: templateUsecaseUOW, FileName: "usecase.go"},
@@ -268,7 +268,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 		internalServiceStructure.Skip = true
 		pkgServiceStructure.Childs = []FileStructure{
 			{TargetDir: "shared/", IsDir: true, Skip: true, Childs: []FileStructure{
-				{TargetDir: "domain/", IsDir: true, Skip: true, Childs: sharedDomainFiles},
+				{TargetDir: "sharedmodel/", IsDir: true, Skip: true, Childs: sharedModelFiles},
 			}},
 		}
 

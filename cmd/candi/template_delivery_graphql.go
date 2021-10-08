@@ -59,7 +59,7 @@ package graphqlhandler
 import (
 	"context"
 
-	shareddomain "{{.PackagePrefix}}/pkg/shared/domain"
+	"{{.PackagePrefix}}/pkg/shared/sharedmodel"
 
 	"{{.LibraryName}}/tracer"
 )
@@ -90,7 +90,7 @@ func (q *queryResolver) GetAll{{clean (upper .ModuleName)}}(ctx context.Context,
 }
 
 // GetDetail{{clean (upper .ModuleName)}} resolver
-func (q *queryResolver) GetDetail{{clean (upper .ModuleName)}}(ctx context.Context, input struct{ ID string }) (data shareddomain.{{clean (upper .ModuleName)}}, err error) {
+func (q *queryResolver) GetDetail{{clean (upper .ModuleName)}}(ctx context.Context, input struct{ ID string }) (data sharedmodel.{{clean (upper .ModuleName)}}, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:GetDetail{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
@@ -107,7 +107,7 @@ package graphqlhandler
 import (
 	"context"
 	
-	shareddomain "{{.PackagePrefix}}/pkg/shared/domain"
+	"{{.PackagePrefix}}/pkg/shared/sharedmodel"
 
 	"{{.LibraryName}}/tracer"
 )
@@ -117,7 +117,7 @@ type mutationResolver struct {
 }
 
 // Create{{clean (upper .ModuleName)}} resolver
-func (m *mutationResolver) Create{{clean (upper .ModuleName)}}(ctx context.Context, input struct{ Data shareddomain.{{clean (upper .ModuleName)}} }) (ok string, err error) {
+func (m *mutationResolver) Create{{clean (upper .ModuleName)}}(ctx context.Context, input struct{ Data sharedmodel.{{clean (upper .ModuleName)}} }) (ok string, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:Create{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
@@ -132,7 +132,7 @@ func (m *mutationResolver) Create{{clean (upper .ModuleName)}}(ctx context.Conte
 // Update{{clean (upper .ModuleName)}} resolver
 func (m *mutationResolver) Update{{clean (upper .ModuleName)}}(ctx context.Context, input struct {
 	ID   string
-	Data shareddomain.{{clean (upper .ModuleName)}}
+	Data sharedmodel.{{clean (upper .ModuleName)}}
 }) (ok string, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryGraphQL:Update{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
@@ -166,7 +166,7 @@ import (
 	"context"
 	"time"
 
-	shareddomain "{{.PackagePrefix}}/pkg/shared/domain"` + `
+	"{{.PackagePrefix}}/pkg/shared/sharedmodel"` + `
 	
 	{{if and .MongoDeps (not .SQLDeps)}}"go.mongodb.org/mongo-driver/bson/primitive"{{else}}"github.com/google/uuid"{{end}}` + `
 
@@ -178,8 +178,8 @@ type subscriptionResolver struct {
 }
 
 // ListenData resolver, broadcast event to client
-func (s *subscriptionResolver) ListenData(ctx context.Context) <-chan shareddomain.{{clean (upper .ModuleName)}} {
-	output := make(chan shareddomain.{{clean (upper .ModuleName)}})
+func (s *subscriptionResolver) ListenData(ctx context.Context) <-chan sharedmodel.{{clean (upper .ModuleName)}} {
+	output := make(chan sharedmodel.{{clean (upper .ModuleName)}})
 
 	go func() {
 		// example send event to client every 5 seconds
@@ -187,7 +187,7 @@ func (s *subscriptionResolver) ListenData(ctx context.Context) <-chan shareddoma
 		for {
 			select {
 			case <-tick.C:
-				data := shareddomain.{{clean (upper .ModuleName)}}{
+				data := sharedmodel.{{clean (upper .ModuleName)}}{
 					CreatedAt:  time.Now(),
 					ModifiedAt: time.Now(),
 				}
@@ -207,8 +207,8 @@ func (s *subscriptionResolver) ListenData(ctx context.Context) <-chan shareddoma
 	deliveryGraphqlFieldResolverTemplate = `package graphqlhandler
 
 import (
-	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
-	shareddomain "{{.PackagePrefix}}/pkg/shared/domain"
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/model"
+	"{{.PackagePrefix}}/pkg/shared/sharedmodel"
 
 	"{{.LibraryName}}/candihelper"
 	"{{.LibraryName}}/candishared"
@@ -225,7 +225,7 @@ type CommonFilter struct {
 }
 
 // toSharedFilter method
-func (f *CommonFilter) toSharedFilter() (filter domain.Filter{{clean (upper .ModuleName)}}) {
+func (f *CommonFilter) toSharedFilter() (filter model.Filter{{clean (upper .ModuleName)}}) {
 	filter.Search = candihelper.PtrToString(f.Search)
 	filter.OrderBy = candihelper.PtrToString(f.OrderBy)
 	filter.Sort = candihelper.PtrToString(f.Sort)
@@ -248,7 +248,7 @@ func (f *CommonFilter) toSharedFilter() (filter domain.Filter{{clean (upper .Mod
 // {{clean (upper .ModuleName)}}ListResolver resolver
 type {{clean (upper .ModuleName)}}ListResolver struct {
 	Meta candishared.Meta
-	Data []shareddomain.{{clean (upper .ModuleName)}}
+	Data []sharedmodel.{{clean (upper .ModuleName)}}
 }
 `
 

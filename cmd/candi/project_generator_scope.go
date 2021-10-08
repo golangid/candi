@@ -122,7 +122,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 				FromTemplate: true, DataSource: mod, Source: deliveryKafkaTemplate, FileName: "kafka_handler.go",
 			})
 			replaceEnv["USE_KAFKA_CONSUMER=false"] = "USE_KAFKA_CONSUMER=true"
-			replaceConfigs["// broker.SetKafka(broker.NewKafkaBroker())"] = "	broker.SetKafka(broker.NewKafkaBroker())"
+			replaceConfigs["// broker.NewKafkaBroker()"] = "	broker.NewKafkaBroker()"
 			replaceMainModule["// types.Kafka"] = "types.Kafka"
 			replaceMainModule["// "+deliveryPackageDir+"/workerhandler"] = deliveryPackageDir + "/workerhandler"
 		case schedulerHandler:
@@ -162,7 +162,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 				FromTemplate: true, DataSource: mod, Source: deliveryRabbitMQTemplate, FileName: "rabbitmq_handler.go",
 			})
 			replaceEnv["USE_RABBITMQ_CONSUMER=false"] = "USE_RABBITMQ_CONSUMER=true"
-			replaceConfigs["// broker.SetRabbitMQ(broker.NewRabbitMQBroker())"] = "	broker.SetRabbitMQ(broker.NewRabbitMQBroker())"
+			replaceConfigs["// broker.NewRabbitMQBroker()"] = "	broker.NewRabbitMQBroker()"
 			replaceMainModule["// types.RabbitMQ"] = "types.RabbitMQ"
 			replaceMainModule["// "+deliveryPackageDir+"/workerhandler"] = deliveryPackageDir + "/workerhandler"
 		}

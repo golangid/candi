@@ -116,7 +116,7 @@ var (
 	migrateTables []interface{}
 )
 
-// GetMigrateTables get migrate table list
+// GetMigrateTables get migrate table list, using gorm for auto create relations
 func GetMigrateTables() []interface{} {
 	return migrateTables
 }
@@ -126,7 +126,7 @@ func GetMigrateTables() []interface{} {
 
 import (
 	"database/sql"
-	"{{$.PackagePrefix}}/pkg/shared/domain"
+	"{{$.PackagePrefix}}/pkg/shared/sharedmodel"
 
 	"github.com/pressly/goose/v3"
 )
@@ -137,7 +137,7 @@ func init() {
 
 func upAlterTable{{clean (upper .ModuleName)}}s(tx *sql.Tx) error {
 	// This code is executed when the migration is applied.
-	migrateTables = append(migrateTables, &domain.{{clean (upper .ModuleName)}}{})
+	migrateTables = append(migrateTables, &sharedmodel.{{clean (upper .ModuleName)}}{})
 	return nil
 }
 

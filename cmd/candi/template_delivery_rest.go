@@ -10,8 +10,8 @@ import (
 
 	"github.com/labstack/echo"
 
-	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
-	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/model"
+	"{{$.PackagePrefix}}/pkg/shared/sharedmodel"
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
 	"{{.LibraryName}}/candihelper"
@@ -55,7 +55,7 @@ func (h *RestHandler) getAll{{clean (upper .ModuleName)}}(c echo.Context) error 
 
 	tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using HTTPBearerAuth in middleware for this handler
 
-	var filter domain.Filter{{clean (upper .ModuleName)}}
+	var filter model.Filter{{clean (upper .ModuleName)}}
 	if err := candihelper.ParseFromQueryParam(c.Request().URL.Query(), &filter); err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
@@ -85,7 +85,7 @@ func (h *RestHandler) create{{clean (upper .ModuleName)}}(c echo.Context) error 
 	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:Create{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
-	var payload shareddomain.{{clean (upper .ModuleName)}}
+	var payload sharedmodel.{{clean (upper .ModuleName)}}
 	if err := c.Bind(&payload); err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
@@ -102,7 +102,7 @@ func (h *RestHandler) update{{clean (upper .ModuleName)}}(c echo.Context) error 
 	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:Update{{clean (upper .ModuleName)}}")
 	defer trace.Finish()
 
-	var payload shareddomain.{{clean (upper .ModuleName)}}
+	var payload sharedmodel.{{clean (upper .ModuleName)}}
 	if err := c.Bind(&payload); err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
@@ -140,7 +140,7 @@ import (
 
 	mockusecase "{{$.PackagePrefix}}/pkg/mocks/modules/{{cleanPathModule .ModuleName}}/usecase"
 	mocksharedusecase "{{$.PackagePrefix}}/pkg/mocks/shared/usecase"
-	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
+	"{{$.PackagePrefix}}/pkg/shared/sharedmodel"
 
 	"{{.LibraryName}}/candishared"
 	mockdeps "{{.LibraryName}}/mocks/codebase/factory/dependency"
@@ -193,7 +193,7 @@ func TestRestHandler_getAll{{clean (upper .ModuleName)}}(t *testing.T) {
 
 			{{cleanPathModule .ModuleName}}Usecase := &mockusecase.{{clean (upper .ModuleName)}}Usecase{}
 			{{cleanPathModule .ModuleName}}Usecase.On("GetAll{{clean (upper .ModuleName)}}", mock.Anything, mock.Anything).Return(
-				[]shareddomain.{{clean (upper .ModuleName)}}{}, candishared.Meta{}, tt.wantUsecaseError)
+				[]sharedmodel.{{clean (upper .ModuleName)}}{}, candishared.Meta{}, tt.wantUsecaseError)
 			mockValidator := &mockinterfaces.Validator{}
 			mockValidator.On("ValidateDocument", mock.Anything, mock.Anything).Return(tt.wantValidateError)
 
@@ -227,7 +227,7 @@ func TestRestHandler_getDetail{{clean (upper .ModuleName)}}ByID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			{{cleanPathModule .ModuleName}}Usecase := &mockusecase.{{clean (upper .ModuleName)}}Usecase{}
-			{{cleanPathModule .ModuleName}}Usecase.On("GetDetail{{clean (upper .ModuleName)}}", mock.Anything, mock.Anything).Return(shareddomain.{{clean (upper .ModuleName)}}{}, tt.wantUsecaseError)
+			{{cleanPathModule .ModuleName}}Usecase.On("GetDetail{{clean (upper .ModuleName)}}", mock.Anything, mock.Anything).Return(sharedmodel.{{clean (upper .ModuleName)}}{}, tt.wantUsecaseError)
 			mockValidator := &mockinterfaces.Validator{}
 			mockValidator.On("ValidateDocument", mock.Anything, mock.Anything).Return(tt.wantValidateError)
 

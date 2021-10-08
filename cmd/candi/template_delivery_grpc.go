@@ -10,8 +10,8 @@ import (
 	"time"
 
 	proto "{{.ProtoSource}}/{{.ModuleName}}"
-	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
-	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/model"
+	"{{$.PackagePrefix}}/pkg/shared/sharedmodel"
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
 	"google.golang.org/grpc"` + `
@@ -59,7 +59,7 @@ func (h *GRPCHandler) GetAll{{clean (upper .ModuleName)}}(ctx context.Context, r
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
 
-	filter := domain.Filter{{clean (upper .ModuleName)}}{
+	filter := model.Filter{{clean (upper .ModuleName)}}{
 		Filter: candishared.Filter{
 			Limit: int(req.Limit), Page: int(req.Page), Search: req.Search, OrderBy: req.OrderBy, Sort: req.Sort, ShowAll: req.ShowAll,
 		},
@@ -115,7 +115,7 @@ func (h *GRPCHandler) Create{{clean (upper .ModuleName)}}(ctx context.Context, r
 
 	mErr := candihelper.NewMultiError()
 
-	var payload shareddomain.{{clean (upper .ModuleName)}}
+	var payload sharedmodel.{{clean (upper .ModuleName)}}
 	{{if and .MongoDeps (not .SQLDeps)}}payload.ID, err = primitive.ObjectIDFromHex(req.ID)
 	mErr.Append("id", err){{else}}payload.ID = req.ID{{end}}
 
@@ -143,7 +143,7 @@ func (h *GRPCHandler) Update{{clean (upper .ModuleName)}}(ctx context.Context, r
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
 
-	var payload shareddomain.{{clean (upper .ModuleName)}}
+	var payload sharedmodel.{{clean (upper .ModuleName)}}
 	{{if and .MongoDeps (not .SQLDeps)}}if payload.ID, err = primitive.ObjectIDFromHex(req.ID); err != nil {
 		return nil, err
 	}{{else}}payload.ID = req.ID{{end}}

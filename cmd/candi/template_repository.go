@@ -196,16 +196,16 @@ package repository
 import (
 	"context"
 
-	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
-	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/model"
+	"{{$.PackagePrefix}}/pkg/shared/sharedmodel"
 )
 
 // {{clean (upper .ModuleName)}}Repository abstract interface
 type {{clean (upper .ModuleName)}}Repository interface {
-	FetchAll(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) ([]shareddomain.{{clean (upper .ModuleName)}}, error)
-	Count(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) int
-	Find(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) (shareddomain.{{clean (upper .ModuleName)}}, error)
-	Save(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) error
+	FetchAll(ctx context.Context, filter *model.Filter{{clean (upper .ModuleName)}}) ([]sharedmodel.{{clean (upper .ModuleName)}}, error)
+	Count(ctx context.Context, filter *model.Filter{{clean (upper .ModuleName)}}) int
+	Find(ctx context.Context, filter *model.Filter{{clean (upper .ModuleName)}}) (sharedmodel.{{clean (upper .ModuleName)}}, error)
+	Save(ctx context.Context, data *sharedmodel.{{clean (upper .ModuleName)}}) error
 	Delete(ctx context.Context, id string) (err error)
 }
 `
@@ -223,8 +223,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
-	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/model"
+	"{{$.PackagePrefix}}/pkg/shared/sharedmodel"
 
 	"{{.LibraryName}}/candihelper"
 	"{{.LibraryName}}/tracer"
@@ -240,11 +240,11 @@ func New{{clean (upper .ModuleName)}}RepoMongo(readDB, writeDB *mongo.Database) 
 	return &{{clean .ModuleName}}RepoMongo{
 		readDB: 	readDB, 
 		writeDB: 	writeDB, 
-		collection: shareddomain.{{clean (upper .ModuleName)}}{}.CollectionName(),
+		collection: sharedmodel.{{clean (upper .ModuleName)}}{}.CollectionName(),
 	}
 }
 
-func (r *{{clean .ModuleName}}RepoMongo) FetchAll(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) (data []shareddomain.{{clean (upper .ModuleName)}}, err error) {
+func (r *{{clean .ModuleName}}RepoMongo) FetchAll(ctx context.Context, filter *model.Filter{{clean (upper .ModuleName)}}) (data []sharedmodel.{{clean (upper .ModuleName)}}, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoMongo:FetchAll")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
@@ -270,7 +270,7 @@ func (r *{{clean .ModuleName}}RepoMongo) FetchAll(ctx context.Context, filter *d
 	return
 }
 
-func (r *{{clean .ModuleName}}RepoMongo) Find(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) (result shareddomain.{{clean (upper .ModuleName)}}, err error) {
+func (r *{{clean .ModuleName}}RepoMongo) Find(ctx context.Context, filter *model.Filter{{clean (upper .ModuleName)}}) (result sharedmodel.{{clean (upper .ModuleName)}}, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Find")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
@@ -284,7 +284,7 @@ func (r *{{clean .ModuleName}}RepoMongo) Find(ctx context.Context, filter *domai
 	return
 }
 
-func (r *{{clean .ModuleName}}RepoMongo) Count(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) int {
+func (r *{{clean .ModuleName}}RepoMongo) Count(ctx context.Context, filter *model.Filter{{clean (upper .ModuleName)}}) int {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Count")
 	defer trace.Finish()
 
@@ -294,7 +294,7 @@ func (r *{{clean .ModuleName}}RepoMongo) Count(ctx context.Context, filter *doma
 	return int(count)
 }
 
-func (r *{{clean .ModuleName}}RepoMongo) Save(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
+func (r *{{clean .ModuleName}}RepoMongo) Save(ctx context.Context, data *sharedmodel.{{clean (upper .ModuleName)}}) (err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Save")
 	defer func() { trace.SetError(err); trace.Finish() }()
 	tracer.Log(ctx, "data", data)
@@ -341,8 +341,8 @@ import (
 	"time"{{end}}` + `{{if .SQLDeps}}
 	"github.com/google/uuid"{{end}}` + `
 
-	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
-	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/model"
+	"{{$.PackagePrefix}}/pkg/shared/sharedmodel"
 
 	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/tracer"` +
@@ -364,7 +364,7 @@ func New{{clean (upper .ModuleName)}}RepoSQL(readDB, writeDB *{{if .SQLUseGORM}}
 	}
 }
 
-func (r *{{clean .ModuleName}}RepoSQL) FetchAll(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) (data []shareddomain.{{clean (upper .ModuleName)}}, err error) {
+func (r *{{clean .ModuleName}}RepoSQL) FetchAll(ctx context.Context, filter *model.Filter{{clean (upper .ModuleName)}}) (data []sharedmodel.{{clean (upper .ModuleName)}}, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:FetchAll")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
@@ -386,7 +386,7 @@ func (r *{{clean .ModuleName}}RepoSQL) FetchAll(ctx context.Context, filter *dom
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var res shareddomain.{{clean (upper .ModuleName)}}
+		var res sharedmodel.{{clean (upper .ModuleName)}}
 		if err := rows.Scan(&res.ID, &res.Field, &res.CreatedAt, &res.ModifiedAt); err != nil {
 			return nil, err
 		}
@@ -395,20 +395,20 @@ func (r *{{clean .ModuleName}}RepoSQL) FetchAll(ctx context.Context, filter *dom
 	{{end}}return
 }
 
-func (r *{{clean .ModuleName}}RepoSQL) Count(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) (count int) {
+func (r *{{clean .ModuleName}}RepoSQL) Count(ctx context.Context, filter *model.Filter{{clean (upper .ModuleName)}}) (count int) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Count")
 	defer trace.Finish()
 
 	{{if .SQLUseGORM}}db := {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, r.readDB)
 	
 	var total int64
-	db.Model(&shareddomain.{{clean (upper .ModuleName)}}{}).Count(&total)
+	db.Model(&sharedmodel.{{clean (upper .ModuleName)}}{}).Count(&total)
 	count = int(total)
 	{{else}}r.readDB.QueryRow("SELECT COUNT(*) FROM {{clean .ModuleName}}s").Scan(&count){{end}}
 	return
 }
 
-func (r *{{clean .ModuleName}}RepoSQL) Find(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) (result shareddomain.{{clean (upper .ModuleName)}}, err error) {
+func (r *{{clean .ModuleName}}RepoSQL) Find(ctx context.Context, filter *model.Filter{{clean (upper .ModuleName)}}) (result sharedmodel.{{clean (upper .ModuleName)}}, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Find")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
@@ -423,7 +423,7 @@ func (r *{{clean .ModuleName}}RepoSQL) Find(ctx context.Context, filter *domain.
 	{{end}}return
 }
 
-func (r *{{clean .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
+func (r *{{clean .ModuleName}}RepoSQL) Save(ctx context.Context, data *sharedmodel.{{clean (upper .ModuleName)}}) (err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Save")
 	defer func() { trace.SetError(err); trace.Finish() }()
 	tracer.Log(ctx, "data", data)
@@ -480,7 +480,7 @@ func (r *{{clean .ModuleName}}RepoSQL) Delete(ctx context.Context, id string) (e
 	if tx, ok := candishared.GetValueFromContext(ctx, candishared.ContextKeySQLTransaction).(*gorm.DB); ok {
 		db = tx
 	}
-	err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, db).Delete(&shareddomain.{{clean (upper .ModuleName)}}{ID: id}).Error
+	err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, db).Delete(&sharedmodel.{{clean (upper .ModuleName)}}{ID: id}).Error
 	{{else}}var stmt *sql.Stmt
 	if tx, ok := candishared.GetValueFromContext(ctx, candishared.ContextKeySQLTransaction).(*sql.Tx); ok {
 		stmt, err = tx.PrepareContext(ctx, "DELETE FROM {{clean .ModuleName}}s WHERE id={{if eq .SQLDriver "postgres"}}$1{{else}}?{{end}}")
