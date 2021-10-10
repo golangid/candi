@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -96,6 +97,9 @@ type Env struct {
 	DbMongoWriteHost, DbMongoReadHost string
 	DbSQLWriteDSN, DbSQLReadDSN       string
 	DbRedisReadDSN, DbRedisWriteDSN   string
+
+	// CORS Environment
+	CORSAllowOrigins, CORSAllowMethods, CORSAllowHeaders []string
 }
 
 var env Env
@@ -226,6 +230,9 @@ func Load(serviceName string) {
 	// Parse database environment
 	parseDatabaseEnv()
 
+	// Parse CORS environment
+	parseCorsEnv()
+
 	if mErrs.HasError() {
 		panic("Basic environment error: \n" + mErrs.Error())
 	}
@@ -338,6 +345,32 @@ func parseDatabaseEnv() {
 
 	env.DbRedisReadDSN = os.Getenv("REDIS_READ_DSN")
 	env.DbRedisWriteDSN = os.Getenv("REDIS_WRITE_DSN")
+}
+
+func parseCorsEnv() {
+	CORSAllowOrigins := os.Getenv("CORS_ALLOW_ORIGINS")
+	if CORSAllowOrigins == "" {
+		env.CORSAllowOrigins = []string{"*"}
+	} else {
+		env.CORSAllowOrigins = strings.Split(CORSAllowOrigins, ",")
+	}
+	CORSAllowMethods := os.Getenv("CORS_ALLOW_METHODS")
+	if CORSAllowMethods == "" {
+		env.CORSAllowMethods = []string{
+			http.MethodGet,
+			http.MethodHead,
+			http.MethodPut,
+			http.MethodPatch,
+			http.MethodPost,
+			http.MethodDelete,
+		}
+	} else {
+		env.CORSAllowMethods = strings.Split(CORSAllowMethods, ",")
+	}
+	CORSAllowHeaders := os.Getenv("CORS_ALLOW_HEADERS")
+	if CORSAllowHeaders != "" {
+		env.CORSAllowHeaders = strings.Split(CORSAllowHeaders, ",")
+	}
 }
 
 func parseBool(envName string) bool {

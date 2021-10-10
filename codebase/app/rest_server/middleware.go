@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
 	"github.com/golangid/candi/wrapper"
@@ -89,8 +90,9 @@ func (h *restServer) echoRestTracerMiddleware(next echo.HandlerFunc) echo.Handle
 }
 
 func defaultCORS() echo.MiddlewareFunc {
-	allowMethods := strings.Join([]string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete}, ",")
-	allowHeaders := ""
+	allowMethods := strings.Join(env.BaseEnv().CORSAllowMethods, ",")
+	allowHeaders := strings.Join(env.BaseEnv().CORSAllowHeaders, ",")
+	allowOrigins := strings.Join(env.BaseEnv().CORSAllowOrigins, ",")
 	exposeHeaders := ""
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -98,21 +100,11 @@ func defaultCORS() echo.MiddlewareFunc {
 
 			req := c.Request()
 			res := c.Response()
-			origin := req.Header.Get(echo.HeaderOrigin)
-			allowOrigin := ""
-
-			// Check allowed origins
-			for _, o := range []string{"*"} {
-				if o == "*" || o == origin {
-					allowOrigin = o
-					break
-				}
-			}
 
 			res.Header().Set(echo.HeaderAccessControlAllowCredentials, "true")
 			if req.Method != http.MethodOptions {
 				res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
-				res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowOrigin)
+				res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowOrigins)
 				if exposeHeaders != "" {
 					res.Header().Set(echo.HeaderAccessControlExposeHeaders, exposeHeaders)
 				}
@@ -123,7 +115,7 @@ func defaultCORS() echo.MiddlewareFunc {
 			res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
 			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestMethod)
 			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestHeaders)
-			res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowOrigin)
+			res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowOrigins)
 			res.Header().Set(echo.HeaderAccessControlAllowMethods, allowMethods)
 			if allowHeaders != "" {
 				res.Header().Set(echo.HeaderAccessControlAllowHeaders, allowHeaders)
