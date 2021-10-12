@@ -119,6 +119,11 @@ func ParseToQueryParam(source interface{}) (s string) {
 			continue
 		}
 
+		if field.Kind() == reflect.Ptr {
+			uri = append(uri, ParseToQueryParam(field.Elem().Interface()))
+			continue
+		}
+
 		switch field.Interface().(type) {
 		case string:
 			uri = append(uri, fmt.Sprintf("%s=%s", key, field.String()))
