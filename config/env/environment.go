@@ -100,6 +100,7 @@ type Env struct {
 
 	// CORS Environment
 	CORSAllowOrigins, CORSAllowMethods, CORSAllowHeaders []string
+	CORSAllowCredential                                  bool
 }
 
 var env Env
@@ -371,6 +372,7 @@ func parseCorsEnv() {
 	if CORSAllowHeaders != "" {
 		env.CORSAllowHeaders = strings.Split(CORSAllowHeaders, ",")
 	}
+	env.CORSAllowCredential, _ = strconv.ParseBool(os.Getenv("CORS_ALLOW_CREDENTIAL"))
 }
 
 func parseBool(envName string) bool {
