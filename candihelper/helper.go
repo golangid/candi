@@ -104,6 +104,16 @@ func ParseToQueryParam(source interface{}) (s string) {
 	var uri []string
 	for i := 0; i < pValue.NumField(); i++ {
 		field := pValue.Field(i)
+		typ := pType.Field(i)
+
+		if typ.PkgPath != "" && !typ.Anonymous { // unexported
+			continue
+		}
+
+		if typ.Anonymous { // embedded struct
+			uri = append(uri, ParseToQueryParam(field.Interface()))
+			continue
+		}
 		key := strings.TrimSuffix(pType.Field(i).Tag.Get("json"), ",omitempty")
 		if key == "-" {
 			continue
@@ -111,7 +121,8 @@ func ParseToQueryParam(source interface{}) (s string) {
 
 		switch field.Interface().(type) {
 		case string:
-			uri = append(uri, fmt.Sprintf("%s=%s", key, field.String()))
+			val := url.PathEscape(field.String())
+			uri = append(uri, fmt.Sprintf("%s=%s", key, val))
 		default:
 			uri = append(uri, fmt.Sprintf("%s=%v", key, field.Interface()))
 		}
