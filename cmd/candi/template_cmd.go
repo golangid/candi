@@ -106,7 +106,7 @@ func main() {
 			tx.Commit()
 		}
 	}
-	log.Printf("\x1b[32;1mMigration to \"%s\" suceess\x1b[0m\n", candihelper.MaskingPasswordURL(env.BaseEnv().DbSQLWriteDSN))
+	log.Printf("\x1b[32;1mMigration to \"%s\" success\x1b[0m\n", candihelper.MaskingPasswordURL(env.BaseEnv().DbSQLWriteDSN))
 }
 `
 
