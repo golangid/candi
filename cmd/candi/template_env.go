@@ -38,8 +38,8 @@ CONSUL_MAX_JOB_REBALANCE=10 # if worker execute total job in env config, rebalan
 BASIC_AUTH_USERNAME=user
 BASIC_AUTH_PASS=pass
 
-MONGODB_HOST_WRITE=mongodb://user:pass@localhost:27017/{{.ServiceName}}
-MONGODB_HOST_READ=mongodb://user:pass@localhost:27017/{{.ServiceName}}
+MONGODB_HOST_WRITE=mongodb://user:pass@localhost:27017/{{.ServiceName}}?authSource=admin
+MONGODB_HOST_READ=mongodb://user:pass@localhost:27017/{{.ServiceName}}?authSource=admin
 
 SQL_DB_READ_DSN={{ if .SQLDeps }}{{.SQLDriver}}://` +
 	"{{if eq .SQLDriver \"postgres\"}}user:pass@localhost:5432/db_name?sslmode=disable{{else if eq .SQLDriver \"mysql\"}}" +
