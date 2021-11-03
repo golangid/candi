@@ -38,7 +38,7 @@ https://storage.googleapis.com/agungdp/bin/candi/candi-x86.exe (32 bit)
 
 Or build binary from source:
 ```
-$ go get -u github.com/golangid/candi/cmd/candi
+$ go install github.com/golangid/candi/cmd/candi@latest
 $ candi
 ```
 
@@ -55,7 +55,7 @@ Usage of candi:
   -init-monorepo
         [project generator] init monorepo codebase
   -libraryname string
-        [project generator] define library name (default "github.com/golangid/candi")
+        [project generator] define library name (default "github.com/golangid/candi"), you can custom set to CANDI_CLI_PACKAGES global environment variable 
   -monorepo-name string
         [project generator] set monorepo project name (default "monorepo")
   -output string

@@ -83,9 +83,9 @@ test:
 
 	gomodTemplate = `module {{.ServiceName}}
 
-go 1.16
+go {{.GoVersion}}
 
-require github.com/golangid/candi {{.Version}}
+require {{.LibraryName}} {{.Version}}
 `
 
 	gitignoreTemplate = `bin

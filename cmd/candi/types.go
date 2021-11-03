@@ -80,6 +80,7 @@ func (f *flagParameter) getFullModuleChildDir(paths ...string) string {
 }
 
 type configHeader struct {
+	GoVersion     string
 	Version       string
 	Header        string
 	LibraryName   string

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"text/template"
@@ -223,4 +224,19 @@ func readFileAndApply(filepath string, oldContent, newContent string) {
 		return
 	}
 	os.WriteFile(filepath, bytes.Replace(b, []byte(oldContent), []byte(newContent), -1), 0644)
+}
+
+func getDefaultPackageName() (packageName string) {
+	if packageOptions := strings.Split(os.Getenv(candiPackagesEnv), ","); len(packageOptions) == 1 {
+		return packageOptions[0]
+	}
+	return defaultPackageName
+}
+
+func getGoVersion() (version string) {
+	version = strings.TrimPrefix(runtime.Version(), "go")
+	if versionDetails := strings.Split(version, "."); len(versionDetails) > 2 {
+		version = strings.Join(versionDetails[:len(versionDetails)-1], ".")
+	}
+	return
 }
