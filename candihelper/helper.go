@@ -119,9 +119,16 @@ func ParseToQueryParam(source interface{}) (s string) {
 			continue
 		}
 
-		switch field.Interface().(type) {
-		case string:
+		dataType := reflect.ValueOf(field.Interface()).Type().Kind()
+		switch dataType {
+		case reflect.String:
 			val := url.PathEscape(field.String())
+			uri = append(uri, fmt.Sprintf("%s=%s", key, val))
+		case reflect.Ptr:
+			val := ""
+			if !field.IsNil(){
+				val = fmt.Sprintf("%v", field.Elem())
+			}
 			uri = append(uri, fmt.Sprintf("%s=%s", key, val))
 		default:
 			uri = append(uri, fmt.Sprintf("%s=%v", key, field.Interface()))
