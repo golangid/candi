@@ -129,7 +129,7 @@ func ParseToQueryParam(source interface{}) (s string) {
 			if !field.IsNil(){
 				val = fmt.Sprintf("%v", field.Elem())
 			}
-			uri = append(uri, fmt.Sprintf("%s=%s", key, val))
+			uri = append(uri, fmt.Sprintf("%s=%s", key, url.PathEscape(val)))
 		default:
 			uri = append(uri, fmt.Sprintf("%s=%v", key, field.Interface()))
 		}
