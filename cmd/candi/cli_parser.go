@@ -245,7 +245,7 @@ stageSelectDependencies:
 			cliWording += strconv.Itoa(i+1) + ") " + packageOpt + "\n"
 		}
 		cmdInput = readInput(strings.TrimSpace(cliWording))
-		srvConfig.LibraryName, ok = sqlDrivers[cmdInput]
+		srvConfig.LibraryName, ok = inputPackageName[cmdInput]
 		if !ok {
 			fmt.Printf(redFormat, "Invalid option, try again")
 			goto stageSelectPackageName
