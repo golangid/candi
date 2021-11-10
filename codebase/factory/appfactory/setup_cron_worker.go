@@ -10,7 +10,8 @@ import (
 	"github.com/golangid/candi/config/env"
 )
 
-func setupCronWorker(service factory.ServiceFactory) factory.AppServerFactory {
+// SetupCronWorker setup cron worker with default config
+func SetupCronWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	cronOptions := []cronworker.OptionFunc{
 		cronworker.SetMaxGoroutines(env.BaseEnv().MaxGoroutines),
 		cronworker.SetDebugMode(env.BaseEnv().DebugMode),

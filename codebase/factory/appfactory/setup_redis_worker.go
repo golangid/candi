@@ -10,7 +10,8 @@ import (
 	"github.com/golangid/candi/config/env"
 )
 
-func setupRedisWorker(service factory.ServiceFactory) factory.AppServerFactory {
+// SetupRedisWorker setup cron worker with default config
+func SetupRedisWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	redisOptions := []redisworker.OptionFunc{
 		redisworker.SetMaxGoroutines(env.BaseEnv().MaxGoroutines),
 		redisworker.SetDebugMode(env.BaseEnv().DebugMode),

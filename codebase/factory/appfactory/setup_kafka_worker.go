@@ -6,7 +6,8 @@ import (
 	"github.com/golangid/candi/config/env"
 )
 
-func setupKafkaWorker(service factory.ServiceFactory) factory.AppServerFactory {
+// SetupKafkaWorker setup cron worker with default config
+func SetupKafkaWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	return kafkaworker.NewWorker(service,
 		kafkaworker.SetMaxGoroutines(env.BaseEnv().MaxGoroutines),
 		kafkaworker.SetDebugMode(env.BaseEnv().DebugMode),

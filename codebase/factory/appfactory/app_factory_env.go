@@ -35,32 +35,32 @@ USE_RABBITMQ_CONSUMER=[bool] # event driven handler and dynamic scheduler
 func NewAppFromEnvironmentConfig(service factory.ServiceFactory) (apps []factory.AppServerFactory) {
 
 	if env.BaseEnv().UseKafkaConsumer {
-		apps = append(apps, setupKafkaWorker(service))
+		apps = append(apps, SetupKafkaWorker(service))
 	}
 	if env.BaseEnv().UseCronScheduler {
-		apps = append(apps, setupCronWorker(service))
+		apps = append(apps, SetupCronWorker(service))
 	}
 	if env.BaseEnv().UseTaskQueueWorker {
-		apps = append(apps, setupTaskQueueWorker(service))
+		apps = append(apps, SetupTaskQueueWorker(service))
 	}
 	if env.BaseEnv().UseRedisSubscriber {
-		apps = append(apps, setupRedisWorker(service))
+		apps = append(apps, SetupRedisWorker(service))
 	}
 	if env.BaseEnv().UsePostgresListenerWorker {
-		apps = append(apps, setupPostgresWorker(service))
+		apps = append(apps, SetupPostgresWorker(service))
 	}
 	if env.BaseEnv().UseRabbitMQWorker {
-		apps = append(apps, setupRabbitMQWorker(service))
+		apps = append(apps, SetupRabbitMQWorker(service))
 	}
 
 	if env.BaseEnv().UseREST {
-		apps = append(apps, setupRESTServer(service))
+		apps = append(apps, SetupRESTServer(service))
 	}
 	if env.BaseEnv().UseGRPC {
-		apps = append(apps, setupGRPCServer(service))
+		apps = append(apps, SetupGRPCServer(service))
 	}
 	if !env.BaseEnv().UseREST && env.BaseEnv().UseGraphQL {
-		apps = append(apps, setupGraphQLServer(service))
+		apps = append(apps, SetupGraphQLServer(service))
 	}
 
 	return

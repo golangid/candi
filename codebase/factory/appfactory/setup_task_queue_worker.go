@@ -8,7 +8,8 @@ import (
 	"github.com/golangid/candi/config/env"
 )
 
-func setupTaskQueueWorker(service factory.ServiceFactory) factory.AppServerFactory {
+// SetupTaskQueueWorker setup cron worker with default config
+func SetupTaskQueueWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	if service.GetDependency().GetRedisPool() == nil {
 		panic("Task queue worker require redis for queue")
 	}

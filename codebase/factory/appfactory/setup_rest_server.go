@@ -9,7 +9,8 @@ import (
 	"github.com/golangid/candi/config/env"
 )
 
-func setupRESTServer(service factory.ServiceFactory) factory.AppServerFactory {
+// SetupRESTServer setup cron worker with default config
+func SetupRESTServer(service factory.ServiceFactory) factory.AppServerFactory {
 	return restserver.NewServer(
 		service,
 		restserver.SetHTTPPort(env.BaseEnv().HTTPPort),

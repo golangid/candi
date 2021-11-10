@@ -9,7 +9,8 @@ import (
 	"github.com/golangid/candi/config/env"
 )
 
-func setupGraphQLServer(service factory.ServiceFactory) factory.AppServerFactory {
+// SetupGraphQLServer setup cron worker with default config
+func SetupGraphQLServer(service factory.ServiceFactory) factory.AppServerFactory {
 	return graphqlserver.NewServer(
 		service,
 		graphqlserver.SetHTTPPort(env.BaseEnv().HTTPPort),

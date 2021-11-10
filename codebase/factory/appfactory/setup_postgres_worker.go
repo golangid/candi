@@ -10,7 +10,8 @@ import (
 	"github.com/golangid/candi/config/env"
 )
 
-func setupPostgresWorker(service factory.ServiceFactory) factory.AppServerFactory {
+// SetupPostgresWorker setup cron worker with default config
+func SetupPostgresWorker(service factory.ServiceFactory) factory.AppServerFactory {
 	postgresOptions := []postgresworker.OptionFunc{
 		postgresworker.SetPostgresDSN(env.BaseEnv().DbSQLWriteDSN),
 		postgresworker.SetMaxGoroutines(env.BaseEnv().MaxGoroutines),
