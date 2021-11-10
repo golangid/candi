@@ -99,3 +99,10 @@ func SetRootMiddlewares(middlewares ...echo.MiddlewareFunc) OptionFunc {
 		o.rootMiddlewares = middlewares
 	}
 }
+
+// AddRootMiddlewares option func
+func AddRootMiddlewares(middlewares ...echo.MiddlewareFunc) OptionFunc {
+	return func(o *option) {
+		o.rootMiddlewares = append(o.rootMiddlewares, middlewares...)
+	}
+}
