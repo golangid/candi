@@ -15,9 +15,7 @@ type (
 	}
 
 	// NoopLocker empty locker
-	NoopLocker struct {
-		conn redis.Conn
-	}
+	NoopLocker struct{}
 )
 
 // NewRedisLocker constructor
