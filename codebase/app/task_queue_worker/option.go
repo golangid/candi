@@ -2,6 +2,8 @@ package taskqueueworker
 
 import (
 	"time"
+
+	"github.com/golangid/candi/candiutils"
 )
 
 type (
@@ -12,6 +14,7 @@ type (
 		dashboardBanner          string
 		dashboardPort            uint16
 		debugMode                bool
+		locker                   candiutils.Locker
 	}
 
 	// OptionFunc type
@@ -57,5 +60,12 @@ func SetDashboardHTTPPort(port uint16) OptionFunc {
 func SetDebugMode(debugMode bool) OptionFunc {
 	return func(o *option) {
 		o.debugMode = debugMode
+	}
+}
+
+// SetLocker option func
+func SetLocker(locker candiutils.Locker) OptionFunc {
+	return func(o *option) {
+		o.locker = locker
 	}
 }

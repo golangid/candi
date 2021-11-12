@@ -6,6 +6,7 @@ type (
 	option struct {
 		maxGoroutines int
 		consul        *candiutils.Consul
+		locker        candiutils.Locker
 		debugMode     bool
 	}
 
@@ -38,5 +39,12 @@ func SetConsul(consul *candiutils.Consul) OptionFunc {
 func SetDebugMode(debugMode bool) OptionFunc {
 	return func(o *option) {
 		o.debugMode = debugMode
+	}
+}
+
+// SetLocker option func
+func SetLocker(locker candiutils.Locker) OptionFunc {
+	return func(o *option) {
+		o.locker = locker
 	}
 }

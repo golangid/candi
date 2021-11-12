@@ -32,6 +32,7 @@ type (
 		ctxCancelFunc func()
 		opt           option
 
+		service  factory.ServiceFactory
 		listener *pq.Listener
 		handlers map[string]types.WorkerHandler
 		wg       sync.WaitGroup
@@ -41,7 +42,8 @@ type (
 // NewWorker create new postgres event listener
 func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
 	worker := &postgresWorker{
-		opt: getDefaultOption(),
+		service: service,
+		opt:     getDefaultOption(),
 	}
 
 	for _, opt := range opts {
@@ -106,6 +108,10 @@ START:
 
 				var eventPayload EventPayload
 				json.Unmarshal(message, &eventPayload)
+
+				if p.opt.locker.IsLocked(fmt.Sprintf("postgres-worker-lock-%s-%s-%s", p.service.Name(), eventPayload.Table, eventPayload.Action)) {
+					return
+				}
 
 				handler := p.handlers[eventPayload.Table]
 				if handler.DisableTrace {

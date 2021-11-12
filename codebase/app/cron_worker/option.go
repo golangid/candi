@@ -7,6 +7,7 @@ type (
 		maxGoroutines int
 		consul        *candiutils.Consul
 		debugMode     bool
+		locker        candiutils.Locker
 	}
 
 	// OptionFunc type
@@ -17,6 +18,7 @@ func getDefaultOption() option {
 	return option{
 		maxGoroutines: 10,
 		debugMode:     true,
+		locker:        &candiutils.NoopLocker{},
 	}
 }
 
@@ -38,5 +40,12 @@ func SetConsul(consul *candiutils.Consul) OptionFunc {
 func SetDebugMode(debugMode bool) OptionFunc {
 	return func(o *option) {
 		o.debugMode = debugMode
+	}
+}
+
+// SetLocker option func
+func SetLocker(locker candiutils.Locker) OptionFunc {
+	return func(o *option) {
+		o.locker = locker
 	}
 }

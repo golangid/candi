@@ -196,6 +196,11 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 	if jobID == "" {
 		return
 	}
+
+	if defaultOption.locker.IsLocked(fmt.Sprintf("task-queue-worker-lock-%s-%s", t.service.Name(), jobID)) {
+		return
+	}
+
 	job, err := persistent.FindJobByID(t.ctx, jobID)
 	if err != nil {
 		return

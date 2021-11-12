@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candiutils"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
@@ -44,6 +45,7 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 		service: service,
 		opt:     getDefaultOption(),
 	}
+	workerInstance.opt.locker = candiutils.NewRedisLocker(redisPool.Get())
 
 	for _, opt := range opts {
 		opt(&workerInstance.opt)
@@ -185,6 +187,10 @@ func (r *redisWorker) runListener(stop <-chan struct{}, count chan<- int, psc *r
 		default:
 			switch msg := psc.Receive().(type) {
 			case redis.Message:
+
+				if r.opt.locker.IsLocked(fmt.Sprintf("redis-worker-lock-%s-%s", r.service.Name(), msg.Data)) {
+					continue
+				}
 
 				handlerName, messageData := candihelper.ParseRedisPubSubKeyTopic(string(msg.Data))
 				if _, ok := r.handlers[handlerName]; ok {
