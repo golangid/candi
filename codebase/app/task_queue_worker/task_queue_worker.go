@@ -197,9 +197,11 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 		return
 	}
 
-	if defaultOption.locker.IsLocked(fmt.Sprintf("task-queue-worker-lock-%s-%s", t.service.Name(), jobID)) {
+	isLocked, releaseLock := defaultOption.locker.IsLocked(fmt.Sprintf("%s:task-queue-worker-lock:%s", t.service.Name(), jobID))
+	if isLocked {
 		return
 	}
+	defer releaseLock()
 
 	job, err := persistent.FindJobByID(t.ctx, jobID)
 	if err != nil {

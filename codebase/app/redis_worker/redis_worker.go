@@ -188,10 +188,6 @@ func (r *redisWorker) runListener(stop <-chan struct{}, count chan<- int, psc *r
 			switch msg := psc.Receive().(type) {
 			case redis.Message:
 
-				if r.opt.locker.IsLocked(fmt.Sprintf("redis-worker-lock-%s-%s", r.service.Name(), msg.Data)) {
-					continue
-				}
-
 				handlerName, messageData := candihelper.ParseRedisPubSubKeyTopic(string(msg.Data))
 				if _, ok := r.handlers[handlerName]; ok {
 
@@ -225,6 +221,15 @@ func (r *redisWorker) runListener(stop <-chan struct{}, count chan<- int, psc *r
 }
 
 func (r *redisWorker) processMessage(handlerName string, message []byte) {
+
+	isLocked, releaseLock := r.opt.locker.IsLocked(
+		fmt.Sprintf("%s:redis-worker-lock:%s-%s", r.service.Name(), handlerName, message),
+	)
+	if isLocked {
+		return
+	}
+	defer releaseLock()
+
 	ctx := r.ctx
 	selectedHandler := r.handlers[handlerName]
 	if selectedHandler.DisableTrace {

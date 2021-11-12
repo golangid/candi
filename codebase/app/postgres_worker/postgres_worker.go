@@ -109,9 +109,13 @@ START:
 				var eventPayload EventPayload
 				json.Unmarshal(message, &eventPayload)
 
-				if p.opt.locker.IsLocked(fmt.Sprintf("postgres-worker-lock-%s-%s-%s", p.service.Name(), eventPayload.Table, eventPayload.Action)) {
+				isLocked, releaseLock := p.opt.locker.IsLocked(
+					fmt.Sprintf("%s:postgres-worker-lock:%s-%s", p.service.Name(), eventPayload.Table, eventPayload.Action),
+				)
+				if isLocked {
 					return
 				}
+				defer releaseLock()
 
 				handler := p.handlers[eventPayload.Table]
 				if handler.DisableTrace {

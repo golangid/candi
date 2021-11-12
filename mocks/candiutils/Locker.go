@@ -10,7 +10,7 @@ type Locker struct {
 }
 
 // IsLocked provides a mock function with given fields: key
-func (_m *Locker) IsLocked(key string) bool {
+func (_m *Locker) IsLocked(key string) (bool, func()) {
 	ret := _m.Called(key)
 
 	var r0 bool
@@ -20,5 +20,14 @@ func (_m *Locker) IsLocked(key string) bool {
 		r0 = ret.Get(0).(bool)
 	}
 
-	return r0
+	var r1 func()
+	if rf, ok := ret.Get(1).(func(string) func()); ok {
+		r1 = rf(key)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(func())
+		}
+	}
+
+	return r0, r1
 }

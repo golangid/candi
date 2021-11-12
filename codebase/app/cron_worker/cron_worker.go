@@ -193,9 +193,11 @@ func (c *cronWorker) processJob(job *Job) {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
 
-	if c.opt.locker.IsLocked(fmt.Sprintf("cron-worker-lock-%s-%s", c.service.Name(), job.HandlerName)) {
+	isLocked, releaseLock := c.opt.locker.IsLocked(fmt.Sprintf("%s:cron-worker-lock:%s", c.service.Name(), job.HandlerName))
+	if isLocked {
 		return
 	}
+	defer releaseLock()
 
 	trace, ctx := tracer.StartTraceWithContext(ctx, "CronScheduler")
 	defer func() {

@@ -7,7 +7,7 @@ import (
 type (
 	// Locker abstraction, lock concurrent processs
 	Locker interface {
-		IsLocked(key string) bool
+		IsLocked(key string) (isLock bool, releaseLock func())
 	}
 
 	redisLocker struct {
@@ -23,18 +23,13 @@ func NewRedisLocker(conn redis.Conn) Locker {
 	return &redisLocker{conn: conn}
 }
 
-func (r *redisLocker) IsLocked(key string) bool {
+func (r *redisLocker) IsLocked(key string) (bool, func()) {
 	incr, _ := redis.Int64(r.conn.Do("INCR", key))
-	defer func() {
-		if incr <= 1 {
-			r.conn.Do("DEL", key)
-		}
-	}()
 
-	return incr > 1
+	return incr > 1, func() { r.conn.Do("DEL", key) }
 }
 
 // IsLocked method
-func (NoopLocker) IsLocked(key string) bool {
-	return false
+func (NoopLocker) IsLocked(key string) (bool, func()) {
+	return false, func() {}
 }
