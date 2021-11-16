@@ -29,9 +29,14 @@ func TestCommon(t *testing.T) {
 
 func TestParseFromQueryParam(t *testing.T) {
 	type Embed struct {
-		Page   int    `json:"page"`
-		Offset int    `json:"-"`
-		Sort   string `json:"sort,omitempty" default:"desc" lower:"true"`
+		Page        int       `json:"page"`
+		Offset      int       `json:"-"`
+		Sort        string    `json:"sort,omitempty" default:"desc" lower:"true"`
+		Includes    []string  `json:"includes"`
+		IncludeInts []int     `json:"include-ints"`
+		Floats      []float64 `json:"floats"`
+		Query       string    `query:"query"`
+		NoTag       string
 	}
 	type params struct {
 		Embed
@@ -40,7 +45,7 @@ func TestParseFromQueryParam(t *testing.T) {
 	}
 
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
-		urlVal, err := url.ParseQuery("page=1&ptr=val&isActive=true")
+		urlVal, err := url.ParseQuery("page=1&ptr=val&isActive=true&floats=1.0,2.0&query=search&NoTag=notag&includes=one,two,three&include-ints=1,2,3")
 		assert.NoError(t, err)
 
 		var p params
@@ -49,6 +54,11 @@ func TestParseFromQueryParam(t *testing.T) {
 		assert.Equal(t, p.Page, 1)
 		assert.Equal(t, *p.Ptr, "val")
 		assert.Equal(t, p.IsActive, true)
+		assert.Equal(t, []string{"one", "two", "three"}, p.Includes)
+		assert.Equal(t, []int{1, 2, 3}, p.IncludeInts)
+		assert.Equal(t, []float64{1.0, 2.0}, p.Floats)
+		assert.Equal(t, "search", p.Query)
+		assert.Equal(t, "notag", p.NoTag)
 	})
 	t.Run("Testcase #2: Negative, invalid data type (string to int in struct)", func(t *testing.T) {
 		urlVal, err := url.ParseQuery("page=undefined")
@@ -72,6 +82,14 @@ func TestParseFromQueryParam(t *testing.T) {
 
 		var p params
 		err = ParseFromQueryParam(urlVal, p)
+		assert.Error(t, err)
+	})
+	t.Run("Testcase #5: Negative, invalid target type (not int slice)", func(t *testing.T) {
+		urlVal, err := url.ParseQuery("include-ints=one,2,three&floats=one")
+		assert.NoError(t, err)
+
+		var p params
+		err = ParseFromQueryParam(urlVal, &p)
 		assert.Error(t, err)
 	})
 }

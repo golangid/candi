@@ -21,7 +21,7 @@ func ParseFromQueryParam(query url.Values, target interface{}) (err error) {
 		}
 	}()
 
-	var parseDataTypeValue func(typ reflect.Type, val reflect.Value)
+	var parseDataTypeValue func(queryValue string, typ reflect.Type, val reflect.Value)
 
 	var errs = NewMultiError()
 
@@ -40,9 +40,18 @@ func ParseFromQueryParam(query url.Values, target interface{}) (err error) {
 			}
 		}
 
-		key := strings.TrimSuffix(typ.Tag.Get("json"), ",omitempty")
-		if key == "-" {
-			continue
+		var key string
+		for _, tag := range []string{"query", "json"} {
+			key = strings.TrimSuffix(typ.Tag.Get(tag), ",omitempty")
+			if key == "-" {
+				continue
+			} else if key != "" {
+				break
+			}
+		}
+
+		if key == "" {
+			key = typ.Name
 		}
 
 		var v string
@@ -52,35 +61,53 @@ func ParseFromQueryParam(query url.Values, target interface{}) (err error) {
 			v = typ.Tag.Get("default")
 		}
 
-		parseDataTypeValue = func(sourceType reflect.Type, targetField reflect.Value) {
+		parseDataTypeValue = func(queryValue string, sourceType reflect.Type, targetField reflect.Value) {
 			switch sourceType.Kind() {
 			case reflect.String:
 				if ok, _ := strconv.ParseBool(typ.Tag.Get("lower")); ok {
-					v = strings.ToLower(v)
+					queryValue = strings.ToLower(queryValue)
 				}
-				targetField.SetString(v)
+				targetField.SetString(queryValue)
 			case reflect.Int32, reflect.Int, reflect.Int64:
-				vInt, err := strconv.Atoi(v)
-				if v != "" && err != nil {
-					errs.Append(key, fmt.Errorf("Cannot parse '%s' (%T) to type number", v, v))
+				vInt, err := strconv.Atoi(queryValue)
+				if queryValue != "" && err != nil {
+					errs.Append(key, fmt.Errorf("Cannot parse '%s' (%T) to type number", queryValue, queryValue))
 				}
 				targetField.SetInt(int64(vInt))
 			case reflect.Bool:
-				vBool, err := strconv.ParseBool(v)
-				if v != "" && err != nil {
-					errs.Append(key, fmt.Errorf("Cannot parse '%s' (%T) to type boolean", v, v))
+				vBool, err := strconv.ParseBool(queryValue)
+				if queryValue != "" && err != nil {
+					errs.Append(key, fmt.Errorf("Cannot parse '%s' (%T) to type boolean", queryValue, queryValue))
 				}
 				targetField.SetBool(vBool)
-			case reflect.Ptr:
-				if v != "" {
-					// allocate new value to pointer targetField
-					targetField.Set(reflect.ValueOf(reflect.New(sourceType.Elem()).Interface()))
-					parseDataTypeValue(sourceType.Elem(), targetField.Elem())
+			case reflect.Float32, reflect.Float64:
+				vFloat, err := strconv.ParseFloat(queryValue, 64)
+				if queryValue != "" && err != nil {
+					errs.Append(key, fmt.Errorf("Cannot parse '%s' (%T) to type float", queryValue, queryValue))
 				}
+				targetField.SetFloat(vFloat)
+			case reflect.Slice:
+				separator := typ.Tag.Get("separator")
+				if separator == "" {
+					separator = ","
+				}
+				values := strings.Split(queryValue, separator)
+				targetSlice := reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(targetField.Interface()).Elem()), len(values), len(values))
+				for i := 0; i < targetSlice.Len(); i++ {
+					parseDataTypeValue(values[i], targetSlice.Index(i).Type(), targetSlice.Index(i))
+				}
+				targetField.Set(targetSlice)
+
+			case reflect.Ptr:
+				// allocate new value to pointer targetField
+				targetField.Set(reflect.ValueOf(reflect.New(sourceType.Elem()).Interface()))
+				parseDataTypeValue(queryValue, sourceType.Elem(), targetField.Elem())
 			}
 		}
 
-		parseDataTypeValue(field.Type(), field)
+		if v != "" {
+			parseDataTypeValue(v, field.Type(), field)
+		}
 	}
 
 	if errs.HasError() {
@@ -126,7 +153,7 @@ func ParseToQueryParam(source interface{}) (s string) {
 			uri = append(uri, fmt.Sprintf("%s=%s", key, val))
 		case reflect.Ptr:
 			val := ""
-			if !field.IsNil(){
+			if !field.IsNil() {
 				val = fmt.Sprintf("%v", field.Elem())
 			}
 			uri = append(uri, fmt.Sprintf("%s=%s", key, url.PathEscape(val)))
