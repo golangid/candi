@@ -12,6 +12,7 @@ type (
 	option struct {
 		rootMiddlewares             []echo.MiddlewareFunc
 		rootHandler                 http.Handler
+		errorHandler                echo.HTTPErrorHandler
 		httpPort                    string
 		rootPath                    string
 		debugMode                   bool
@@ -34,6 +35,7 @@ func getDefaultOption() option {
 		rootHandler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			rw.Write([]byte("REST Server up and running"))
 		}),
+		errorHandler: CustomHTTPErrorHandler,
 	}
 }
 
@@ -104,5 +106,12 @@ func SetRootMiddlewares(middlewares ...echo.MiddlewareFunc) OptionFunc {
 func AddRootMiddlewares(middlewares ...echo.MiddlewareFunc) OptionFunc {
 	return func(o *option) {
 		o.rootMiddlewares = append(o.rootMiddlewares, middlewares...)
+	}
+}
+
+// SetErrorHandler option func
+func SetErrorHandler(errorHandler echo.HTTPErrorHandler) OptionFunc {
+	return func(o *option) {
+		o.errorHandler = errorHandler
 	}
 }

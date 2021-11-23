@@ -42,7 +42,7 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 		server.listener = server.opt.sharedListener.Match(cmux.HTTP1Fast())
 	}
 
-	server.serverEngine.HTTPErrorHandler = CustomHTTPErrorHandler
+	server.serverEngine.HTTPErrorHandler = server.opt.errorHandler
 	server.serverEngine.Use(server.opt.rootMiddlewares...)
 
 	server.serverEngine.GET("/", echo.WrapHandler(server.opt.rootHandler))
