@@ -6,7 +6,6 @@ package {{clean $.ServiceName}}
 
 import (
 	"{{.LibraryName}}/codebase/factory"
-	"{{.LibraryName}}/codebase/factory/appfactory"
 	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/config"
@@ -43,7 +42,7 @@ func NewService(cfg *config.Config) factory.ServiceFactory {
 		name:    types.Service(cfg.ServiceName),
 	}
 
-	s.applications = appfactory.NewAppFromEnvironmentConfig(s)
+	s.applications = configs.InitAppFromEnvironmentConfig(s)
 
 	// Add custom application runner, must implement ` + "`" + `factory.AppServerFactory` + "`" + ` methods
 	s.applications = append(s.applications, []factory.AppServerFactory{

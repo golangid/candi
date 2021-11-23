@@ -154,6 +154,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 	configsStructure := FileStructure{
 		TargetDir: "configs/", IsDir: true,
 		Childs: []FileStructure{
+			{FromTemplate: true, DataSource: srvConfig, Source: appFactoryTemplate, FileName: "app_factory.go"},
 			{FromTemplate: true, DataSource: srvConfig, Source: configsTemplate, FileName: "configs.go"},
 		},
 	}
