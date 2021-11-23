@@ -227,7 +227,8 @@ func readFileAndApply(filepath string, oldContent, newContent string) {
 }
 
 func getDefaultPackageName() (packageName string) {
-	if packageOptions := strings.Split(os.Getenv(candiPackagesEnv), ","); len(packageOptions) == 1 {
+	packageOptions := strings.Split(os.Getenv(candiPackagesEnv), ",")
+	if len(packageOptions) == 1 && packageOptions[0] != "" {
 		return packageOptions[0]
 	}
 	return defaultPackageName
