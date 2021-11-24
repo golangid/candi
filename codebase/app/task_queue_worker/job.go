@@ -123,7 +123,10 @@ func AddJobViaHTTPRequest(ctx context.Context, workerHost string, taskName strin
 }
 
 func registerJobToWorker(job *Job, workerIndex int) {
-	interval, _ := time.ParseDuration(job.Interval)
+	interval, err := time.ParseDuration(job.Interval)
+	if err != nil {
+		return
+	}
 	taskIndex := workerIndexTask[workerIndex]
 	if taskIndex.activeInterval == nil {
 		taskIndex.activeInterval = time.NewTicker(interval)
