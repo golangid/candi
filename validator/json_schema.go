@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/golangid/candi/candihelper"
-	"github.com/xeipuuv/gojsonschema"
+	"github.com/golangid/gojsonschema"
 )
 
 var notShowErrorListType = map[string]bool{
@@ -87,7 +87,6 @@ func (v *JSONSchemaValidator) ValidateDocument(schemaID string, documentSource i
 	if err != nil {
 		return err
 	}
-	jsonObj, _ := inMemJSON[schemaID]
 
 	document := gojsonschema.NewBytesLoader(candihelper.ToBytes(documentSource))
 	result, err := schema.Validate(document)
@@ -95,8 +94,8 @@ func (v *JSONSchemaValidator) ValidateDocument(schemaID string, documentSource i
 		return err
 	}
 
-	multiError := candihelper.NewMultiError()
 	if !result.Valid() {
+		multiError := candihelper.NewMultiError()
 		for _, desc := range result.Errors() {
 			if notShowErrorListType[desc.Type()] {
 				continue
@@ -106,38 +105,12 @@ func (v *JSONSchemaValidator) ValidateDocument(schemaID string, documentSource i
 				field = fmt.Sprintf("%s.%s", field, desc.Details()["property"])
 				field = strings.TrimPrefix(field, "(root).")
 			}
-			msg, found := getMessage(jsonObj, field, "message")
-			if found {
-				multiError.Append(field, errors.New(msg))
-			} else {
-				multiError.Append(field, errors.New(desc.Description()))
-			}
+			multiError.Append(field, errors.New(desc.Description()))
 		}
-	}
-
-	if multiError.HasError() {
-		return multiError
+		if multiError.HasError() {
+			return multiError
+		}
 	}
 
 	return nil
-}
-
-func getMessage(obj interface{}, key, messageKey string) (string, bool) {
-	switch t := obj.(type) {
-	case map[string]interface{}:
-		if v, ok := t[key]; ok {
-			if msg, ok := v.(map[string]interface{})[messageKey]; ok {
-				return fmt.Sprintf("%v", msg), ok
-			}
-			if msg, ok := getMessage(v, key, messageKey); ok {
-				return msg, ok
-			}
-		}
-		for _, v := range t {
-			if msg, ok := getMessage(v, key, messageKey); ok {
-				return msg, ok
-			}
-		}
-	}
-	return "", false
 }

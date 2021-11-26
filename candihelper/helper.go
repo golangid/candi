@@ -1,6 +1,7 @@
 package candihelper
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -366,4 +367,12 @@ func GetFuncName(fn interface{}) string {
 	defer func() { recover() }()
 	handlerName := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
 	return strings.TrimSuffix(strings.TrimPrefix(filepath.Ext(handlerName), "."), "-fm") // if `fn` is method, trim `-fm`
+}
+
+// PrintJSON for show data in pretty JSON with stack trace
+func PrintJSON(data interface{}) {
+	buff, _ := json.Marshal(data)
+	var prettyJSON bytes.Buffer
+	json.Indent(&prettyJSON, buff, "", "     ")
+	fmt.Println(prettyJSON.String())
 }

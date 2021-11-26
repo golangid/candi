@@ -11,6 +11,7 @@ require (
 	github.com/go-playground/validator/v10 v10.6.0
 	github.com/gojektech/heimdall/v6 v6.1.0
 	github.com/golang-jwt/jwt v3.2.1+incompatible
+	github.com/golangid/gojsonschema v0.0.0
 	github.com/golangid/graphql-go v0.0.7
 	github.com/gomodule/redigo v1.8.4
 	github.com/google/uuid v1.2.0
@@ -28,7 +29,6 @@ require (
 	github.com/uber/jaeger-client-go v2.28.0+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/valyala/fasttemplate v1.2.1
-	github.com/xeipuuv/gojsonschema v1.2.0
 	go.mongodb.org/mongo-driver v1.5.2
 	go.uber.org/zap v1.16.0
 	google.golang.org/grpc v1.37.0
