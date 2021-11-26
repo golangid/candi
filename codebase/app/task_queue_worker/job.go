@@ -124,7 +124,7 @@ func AddJobViaHTTPRequest(ctx context.Context, workerHost string, taskName strin
 
 func registerJobToWorker(job *Job, workerIndex int) {
 	interval, err := time.ParseDuration(job.Interval)
-	if err != nil {
+	if err != nil || interval <= 0 {
 		return
 	}
 	taskIndex := workerIndexTask[workerIndex]
