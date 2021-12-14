@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
@@ -22,16 +21,18 @@ type cronWorker struct {
 	ctx           context.Context
 	ctxCancelFunc func()
 
-	opt     option
-	service factory.ServiceFactory
-	wg      sync.WaitGroup
+	opt       option
+	service   factory.ServiceFactory
+	wg        sync.WaitGroup
+	semaphore map[string]chan struct{}
 }
 
 // NewWorker create new cron worker
 func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
 	c := &cronWorker{
-		service: service,
-		opt:     getDefaultOption(),
+		service:   service,
+		opt:       getDefaultOption(),
+		semaphore: make(map[string]chan struct{}),
 	}
 
 	for _, opt := range opts {
@@ -39,7 +40,6 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 	}
 
 	refreshWorkerNotif, shutdown = make(chan struct{}), make(chan struct{})
-	semaphore = make(chan struct{}, c.opt.maxGoroutines)
 	startWorkerCh, releaseWorkerCh = make(chan struct{}), make(chan struct{})
 
 	// add shutdown channel to first index
@@ -51,12 +51,13 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(refreshWorkerNotif),
 	})
 
+	c.opt.locker.Reset(fmt.Sprintf(lockPattern, c.service.Name(), "*"))
 	for _, m := range service.GetModules() {
 		if h := m.WorkerHandler(types.Scheduler); h != nil {
 			var handlerGroup types.WorkerHandlerGroup
 			h.MountHandlers(&handlerGroup)
 			for _, handler := range handlerGroup.Handlers {
-				funcName, args, interval := candihelper.ParseCronJobKey(handler.Pattern)
+				funcName, args, interval := ParseCronJobKey(handler.Pattern)
 
 				var job Job
 				job.HandlerName = funcName
@@ -67,6 +68,7 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 					panic(fmt.Errorf(`Cron Worker: "%s" %v`, interval, err))
 				}
 
+				c.semaphore[funcName] = make(chan struct{}, c.opt.maxGoroutines)
 				logger.LogYellow(fmt.Sprintf(`[CRON-WORKER] (job name): %s (every): %-8s  --> (module): "%s"`, `"`+funcName+`"`, interval, m.Name()))
 			}
 		}
@@ -113,12 +115,16 @@ START:
 				activeJobs[chosen].nextDuration = nil
 			}
 
-			semaphore <- struct{}{}
+			if len(c.semaphore[job.HandlerName]) >= c.opt.maxGoroutines {
+				continue
+			}
+
+			c.semaphore[job.HandlerName] <- struct{}{}
 			c.wg.Add(1)
 			go func(j *Job) {
 				defer func() {
 					c.wg.Done()
-					<-semaphore
+					<-c.semaphore[j.HandlerName]
 				}()
 
 				if c.ctx.Err() != nil {
@@ -159,8 +165,12 @@ func (c *cronWorker) Shutdown(ctx context.Context) {
 		return
 	}
 
+	stopAllJob()
 	shutdown <- struct{}{}
-	runningJob := len(semaphore)
+	runningJob := 0
+	for _, sem := range c.semaphore {
+		runningJob += len(sem)
+	}
 	if runningJob != 0 {
 		fmt.Printf("\x1b[34;1mCron Job Scheduler:\x1b[0m waiting %d job until done...\n", runningJob)
 	}
@@ -193,11 +203,11 @@ func (c *cronWorker) processJob(job *Job) {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
 
-	isLocked, releaseLock := c.opt.locker.IsLocked(fmt.Sprintf("%s:cron-worker-lock:%s", c.service.Name(), job.HandlerName))
-	if isLocked {
+	// lock for multiple worker (if running on multiple pods/instance)
+	if c.opt.locker.IsLocked(c.getLockKey(job.HandlerName)) {
 		return
 	}
-	defer releaseLock()
+	defer c.opt.locker.Unlock(c.getLockKey(job.HandlerName))
 
 	trace, ctx := tracer.StartTraceWithContext(ctx, "CronScheduler")
 	defer func() {
@@ -221,4 +231,8 @@ func (c *cronWorker) processJob(job *Job) {
 		}
 		trace.SetError(err)
 	}
+}
+
+func (c *cronWorker) getLockKey(handlerName string) string {
+	return fmt.Sprintf("%s:cron-worker-lock:%s", c.service.Name(), handlerName)
 }

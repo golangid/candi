@@ -96,6 +96,7 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 		return "", fmt.Errorf("task '%s' unregistered, task must one of [%s]", input.TaskName, strings.Join(tasks, ", "))
 	}
 
+	stopAllJobInTask(input.TaskName)
 	queue.Clear(input.TaskName)
 	persistent.UpdateAllStatus(ctx, input.TaskName, []JobStatusEnum{statusQueueing, statusRetrying}, statusStopped)
 	broadcastAllToSubscribers(r.worker.ctx)

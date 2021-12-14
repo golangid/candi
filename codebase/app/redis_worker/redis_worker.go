@@ -6,11 +6,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
-	"strings"
 	"sync"
 
-	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candiutils"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
@@ -20,7 +17,7 @@ import (
 )
 
 var (
-	refreshWorkerNotif, shutdown, semaphore, startWorkerCh, releaseWorkerCh chan struct{}
+	refreshWorkerNotif, shutdown chan struct{}
 )
 
 type (
@@ -29,11 +26,12 @@ type (
 		ctxCancelFunc func()
 		opt           option
 
-		pubSubConn func() (subFn func() *redis.PubSubConn)
-		isHaveJob  bool
-		service    factory.ServiceFactory
-		handlers   map[string]types.WorkerHandler
-		wg         sync.WaitGroup
+		pool      *redis.Pool
+		isHaveJob bool
+		service   factory.ServiceFactory
+		handlers  map[string]types.WorkerHandler
+		wg        sync.WaitGroup
+		semaphore map[string]chan struct{}
 	}
 )
 
@@ -42,14 +40,17 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 	redisPool := service.GetDependency().GetRedisPool().WritePool()
 
 	workerInstance := &redisWorker{
-		service: service,
-		opt:     getDefaultOption(),
+		service:   service,
+		opt:       getDefaultOption(),
+		semaphore: make(map[string]chan struct{}),
+		pool:      redisPool,
 	}
-	workerInstance.opt.locker = candiutils.NewRedisLocker(redisPool.Get())
+	workerInstance.opt.locker = candiutils.NewRedisLocker(redisPool)
 
 	for _, opt := range opts {
 		opt(&workerInstance.opt)
 	}
+	workerInstance.opt.locker.Reset(fmt.Sprintf("%s:redis-worker-lock:*", service.Name()))
 
 	handlers := make(map[string]types.WorkerHandler)
 	for _, m := range service.GetModules() {
@@ -58,7 +59,8 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 			h.MountHandlers(&handlerGroup)
 			for _, handler := range handlerGroup.Handlers {
 				logger.LogYellow(fmt.Sprintf(`[REDIS-SUBSCRIBER] (key prefix): %-15s  --> (module): "%s"`, `"`+handler.Pattern+`"`, m.Name()))
-				handlers[strings.Replace(handler.Pattern, "~", "", -1)] = handler
+				workerInstance.semaphore[handler.Pattern] = make(chan struct{}, workerInstance.opt.maxGoroutines)
+				handlers[handler.Pattern] = handler
 			}
 		}
 	}
@@ -69,20 +71,9 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 		fmt.Printf("\x1b[34;1m⇨ Redis pubsub worker running with %d keys\x1b[0m\n\n", len(handlers))
 	}
 
-	shutdown, semaphore = make(chan struct{}, 1), make(chan struct{}, workerInstance.opt.maxGoroutines)
-	startWorkerCh, releaseWorkerCh = make(chan struct{}), make(chan struct{})
+	shutdown = make(chan struct{}, 1)
 
 	workerInstance.handlers = handlers
-	workerInstance.pubSubConn = func() func() *redis.PubSubConn {
-		conn := redisPool.Get()
-		conn.Do("CONFIG", "SET", "notify-keyspace-events", "Ex")
-
-		return func() *redis.PubSubConn {
-			psc := &redis.PubSubConn{Conn: conn}
-			psc.PSubscribe("__keyevent@*__:expired")
-			return psc
-		}
-	}
 	workerInstance.isHaveJob = len(handlers) != 0
 	workerInstance.ctx, workerInstance.ctxCancelFunc = context.WithCancel(context.Background())
 
@@ -94,57 +85,65 @@ func (r *redisWorker) Serve() {
 		return
 	}
 
-	r.createConsulSession()
-	subFunc := r.pubSubConn()
+	psc := r.getPubSubConn()
+	messageChan := make(chan redis.Message)
 
-START:
-	select {
-	case <-startWorkerCh:
-		psc := subFunc()
-
-		stopListener := make(chan struct{})
-		countJobs := make(chan int)
-		go r.runListener(stopListener, countJobs, psc)
-
+	go func() {
 		for {
-			select {
-			case count := <-countJobs:
-				if r.opt.consul != nil && count == r.opt.consul.MaxJobRebalance {
-					// recreate session
-					r.createConsulSession()
-					<-releaseWorkerCh
-					psc.PUnsubscribe()
-					go func() { stopListener <- struct{}{} }()
-					goto START
-				}
+			switch msg := psc.Receive().(type) {
+			case redis.Message:
+				messageChan <- msg
 
-			case <-shutdown:
-				go func() { stopListener <- struct{}{} }()
-				return
+			case error:
+				// if network connection error, create new connection from pool
+				psc.Close()
+				psc = r.getPubSubConn()
 			}
 		}
+	}()
 
-	case <-shutdown:
-		return
+	for {
+		select {
+		case <-shutdown:
+			psc.Unsubscribe()
+			return
+
+		case msg := <-messageChan:
+			redisMessage := ParseRedisPubSubKeyTopic(msg.Data)
+			if _, ok := r.handlers[redisMessage.HandlerName]; ok {
+
+				r.semaphore[redisMessage.HandlerName] <- struct{}{}
+				r.wg.Add(1)
+				go func(message RedisMessage) {
+					defer func() {
+						r.wg.Done()
+						<-r.semaphore[message.HandlerName]
+					}()
+
+					if r.ctx.Err() != nil {
+						logger.LogRed("redis_subscriber > ctx root err: " + r.ctx.Err().Error())
+						return
+					}
+					r.processMessage(message)
+				}(redisMessage)
+
+			}
+		}
 	}
 }
 
 func (r *redisWorker) Shutdown(ctx context.Context) {
-	defer func() {
-		if r.opt.consul != nil {
-			if err := r.opt.consul.DestroySession(); err != nil {
-				panic(err)
-			}
-		}
-		log.Println("\x1b[33;1mStopping Redis Subscriber:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
-	}()
+	defer log.Println("\x1b[33;1mStopping Redis Subscriber:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
 
 	if !r.isHaveJob {
 		return
 	}
 
 	shutdown <- struct{}{}
-	runningJob := len(semaphore)
+	runningJob := 0
+	for _, sem := range r.semaphore {
+		runningJob += len(sem)
+	}
 	if runningJob != 0 {
 		fmt.Printf("\x1b[34;1mRedis Subscriber:\x1b[0m waiting %d job until done...\n", runningJob)
 	}
@@ -157,78 +156,23 @@ func (r *redisWorker) Name() string {
 	return string(types.RedisSubscriber)
 }
 
-func (r *redisWorker) createConsulSession() {
-	if r.opt.consul == nil {
-		go func() { startWorkerCh <- struct{}{} }()
-		return
-	}
-	r.opt.consul.DestroySession()
-	hostname, _ := os.Hostname()
-	value := map[string]string{
-		"hostname": hostname,
-	}
-	go r.opt.consul.RetryLockAcquire(value, startWorkerCh, releaseWorkerCh)
+func (r *redisWorker) getPubSubConn() *redis.PubSubConn {
+	conn := r.pool.Get()
+	conn.Do("CONFIG", "SET", "notify-keyspace-events", "Ex")
+
+	psc := &redis.PubSubConn{Conn: conn}
+	psc.PSubscribe("__keyevent@*__:expired")
+	return psc
 }
 
-func (r *redisWorker) runListener(stop <-chan struct{}, count chan<- int, psc *redis.PubSubConn) {
-	defer func() {
-		if r := recover(); r != nil {
-			logger.LogE(fmt.Sprint(r))
-		}
-	}()
+func (r *redisWorker) processMessage(param RedisMessage) {
+	handlerName, message := param.HandlerName, []byte(param.Message)
 
-	totalRunJobs := 0
-	// listen redis subscriber
-	for {
-		select {
-		case <-stop:
-			return
-
-		default:
-			switch msg := psc.Receive().(type) {
-			case redis.Message:
-
-				handlerName, messageData := candihelper.ParseRedisPubSubKeyTopic(string(msg.Data))
-				if _, ok := r.handlers[handlerName]; ok {
-
-					semaphore <- struct{}{}
-					r.wg.Add(1)
-					go func(handlerName string, message []byte) {
-						defer func() {
-							r.wg.Done()
-							<-semaphore
-							totalRunJobs++
-							count <- totalRunJobs
-						}()
-
-						if r.ctx.Err() != nil {
-							logger.LogRed("redis_subscriber > ctx root err: " + r.ctx.Err().Error())
-							return
-						}
-						r.processMessage(handlerName, message)
-					}(handlerName, []byte(messageData))
-
-				}
-
-			case error:
-				psc.Close()
-				// if network connection error, create new connection from pool
-				subFn := r.pubSubConn()
-				psc = subFn()
-			}
-		}
-	}
-}
-
-func (r *redisWorker) processMessage(handlerName string, message []byte) {
-
-	isLocked, releaseLock := r.opt.locker.IsLocked(
-		fmt.Sprintf("%s:redis-worker-lock:%s-%s", r.service.Name(), handlerName, message),
-	)
-	if isLocked {
+	// lock for multiple worker (if running on multiple pods/instance)
+	if r.opt.locker.IsLocked(r.getLockKey(handlerName, param.EventID)) {
 		return
 	}
-	defer releaseLock()
+	defer r.opt.locker.Unlock(r.getLockKey(handlerName, param.EventID))
 
 	ctx := r.ctx
 	selectedHandler := r.handlers[handlerName]
@@ -250,6 +194,7 @@ func (r *redisWorker) processMessage(handlerName string, message []byte) {
 	}
 
 	trace.SetTag("handler_name", handlerName)
+	trace.SetTag("event_id", param.EventID)
 	trace.Log("message", string(message))
 
 	if err := selectedHandler.HandlerFunc(ctx, message); err != nil {
@@ -258,4 +203,8 @@ func (r *redisWorker) processMessage(handlerName string, message []byte) {
 		}
 		tracer.SetError(ctx, err)
 	}
+}
+
+func (r *redisWorker) getLockKey(handlerName, eventID string) string {
+	return fmt.Sprintf("%s:redis-worker-lock:%s-%s", r.service.Name(), handlerName, eventID)
 }

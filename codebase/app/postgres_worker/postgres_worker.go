@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candiutils"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
@@ -23,7 +24,7 @@ Listen event from data change from selected table in postgres
 */
 
 var (
-	shutdown, semaphore, startWorkerCh, releaseWorkerCh chan struct{}
+	shutdown, startWorkerCh, releaseWorkerCh chan struct{}
 )
 
 type (
@@ -31,6 +32,7 @@ type (
 		ctx           context.Context
 		ctxCancelFunc func()
 		opt           option
+		semaphore     map[string]chan struct{}
 
 		service  factory.ServiceFactory
 		listener *pq.Listener
@@ -42,21 +44,24 @@ type (
 // NewWorker create new postgres event listener
 func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
 	worker := &postgresWorker{
-		service: service,
-		opt:     getDefaultOption(),
+		service:   service,
+		opt:       getDefaultOption(),
+		semaphore: make(map[string]chan struct{}),
 	}
 
 	for _, opt := range opts {
 		opt(&worker.opt)
 	}
+	worker.opt.locker = candiutils.NewRedisLocker(service.GetDependency().GetRedisPool().WritePool())
 
-	shutdown, semaphore = make(chan struct{}, 1), make(chan struct{}, worker.opt.maxGoroutines)
+	shutdown = make(chan struct{}, 1)
 	startWorkerCh, releaseWorkerCh = make(chan struct{}), make(chan struct{})
 
 	worker.handlers = make(map[string]types.WorkerHandler)
 	db, listener := getListener(worker.opt.postgresDSN)
 	execCreateFunctionEventQuery(db)
 
+	worker.opt.locker.Reset(fmt.Sprintf("%s:postgres-worker-lock:*", service.Name()))
 	for _, m := range service.GetModules() {
 		if h := m.WorkerHandler(types.PostgresListener); h != nil {
 			var handlerGroup types.WorkerHandlerGroup
@@ -64,6 +69,7 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 			for _, handler := range handlerGroup.Handlers {
 				logger.LogYellow(fmt.Sprintf(`[POSTGRES-LISTENER] (table): %-15s  --> (module): "%s"`, `"`+handler.Pattern+`"`, m.Name()))
 				worker.handlers[handler.Pattern] = handler
+				worker.semaphore[handler.Pattern] = make(chan struct{}, worker.opt.maxGoroutines)
 				execTriggerQuery(db, handler.Pattern)
 			}
 		}
@@ -93,10 +99,13 @@ START:
 		select {
 		case e := <-p.listener.Notify:
 
-			semaphore <- struct{}{}
+			var payload EventPayload
+			json.Unmarshal([]byte(e.Extra), &payload)
+
+			p.semaphore[payload.Table] <- struct{}{}
 			p.wg.Add(1)
-			go func(event *pq.Notification) {
-				defer func() { p.wg.Done(); <-semaphore }()
+			go func(data EventPayload) {
+				defer func() { p.wg.Done(); <-p.semaphore[payload.Table] }()
 
 				if p.ctx.Err() != nil {
 					logger.LogRed("postgres_listener > ctx root err: " + p.ctx.Err().Error())
@@ -104,20 +113,14 @@ START:
 				}
 
 				ctx := p.ctx
-				message := []byte(event.Extra)
 
-				var eventPayload EventPayload
-				json.Unmarshal(message, &eventPayload)
-
-				isLocked, releaseLock := p.opt.locker.IsLocked(
-					fmt.Sprintf("%s:postgres-worker-lock:%s-%s", p.service.Name(), eventPayload.Table, eventPayload.Action),
-				)
-				if isLocked {
+				// lock for multiple worker (if running on multiple pods/instance)
+				if p.opt.locker.IsLocked(p.getLockKey(data)) {
 					return
 				}
-				defer releaseLock()
+				defer p.opt.locker.Unlock(p.getLockKey(data))
 
-				handler := p.handlers[eventPayload.Table]
+				handler := p.handlers[data.Table]
 				if handler.DisableTrace {
 					ctx = tracer.SkipTraceContext(ctx)
 				}
@@ -130,17 +133,22 @@ START:
 					trace.Finish()
 				}()
 
+				if p.opt.debugMode {
+					log.Printf("\x1b[35;3mPostgres Event Listener: executing event from table: '%s' and action: '%s'\x1b[0m", data.Table, data.Action)
+				}
+
 				trace.SetTag("database", candihelper.MaskingPasswordURL(p.opt.postgresDSN))
-				trace.SetTag("table_name", eventPayload.Table)
-				trace.SetTag("action", eventPayload.Action)
-				trace.Log("payload", event.Extra)
+				trace.SetTag("table_name", data.Table)
+				trace.SetTag("action", data.Action)
+				trace.Log("payload", data)
+				message, _ := json.Marshal(data)
 				if err := handler.HandlerFunc(ctx, message); err != nil {
 					if handler.ErrorHandler != nil {
-						handler.ErrorHandler(ctx, types.Kafka, eventPayload.Table, message, err)
+						handler.ErrorHandler(ctx, types.Kafka, data.Table, message, err)
 					}
 					trace.SetError(err)
 				}
-			}(e)
+			}(payload)
 
 			// rebalance worker if run in multiple instance and using consul
 			if p.opt.consul != nil {
@@ -179,7 +187,10 @@ func (p *postgresWorker) Shutdown(ctx context.Context) {
 	}
 
 	shutdown <- struct{}{}
-	runningJob := len(semaphore)
+	runningJob := 0
+	for _, sem := range p.semaphore {
+		runningJob += len(sem)
+	}
 	if runningJob != 0 {
 		fmt.Printf("\x1b[34;1mPostgres Event Listener:\x1b[0m waiting %d job until done...\n", runningJob)
 	}
@@ -205,4 +216,8 @@ func (p *postgresWorker) createConsulSession() {
 		"hostname": hostname,
 	}
 	go p.opt.consul.RetryLockAcquire(value, startWorkerCh, releaseWorkerCh)
+}
+
+func (p *postgresWorker) getLockKey(eventPayload EventPayload) string {
+	return fmt.Sprintf("%s:postgres-worker-lock:%s-%s-%s", p.service.Name(), eventPayload.Table, eventPayload.Action, eventPayload.EventID)
 }

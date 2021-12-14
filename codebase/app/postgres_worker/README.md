@@ -85,11 +85,12 @@ Received on `messages` (`[]byte` data type) in handler param.
 
 ```
 {
-  "table": "<table-name>",
-  "action": "<operation-name>", // INSERT, UPDATE, or DELETE
-  "data": {
-    "old": <old-column-values-object>,
-    "new": <new-column-values-object>
-  }
+	"event_id": "<md5-hash-unique-event-id>",
+	"table": "<table-name>",
+	"action": "<operation-name>", // INSERT, UPDATE, or DELETE
+	"data": {
+		"old": <old-column-values-object>,
+		"new": <new-column-values-object>
+	}
 }
 ```

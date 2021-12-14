@@ -135,3 +135,25 @@ func registerJobToWorker(job *Job, workerIndex int) {
 	}
 	workers[workerIndex].Chan = reflect.ValueOf(taskIndex.activeInterval.C)
 }
+
+func stopAllJob() {
+	for _, job := range workerIndexTask {
+		if job != nil && job.activeInterval != nil {
+			job.activeInterval.Stop()
+		}
+	}
+}
+
+func stopAllJobInTask(taskName string) {
+	jobs, ok := registeredTask[taskName]
+	if ok {
+		if job := workerIndexTask[jobs.workerIndex]; job != nil {
+			if job.activeInterval != nil {
+				job.activeInterval.Stop()
+			}
+			if job.cancel != nil {
+				job.cancel()
+			}
+		}
+	}
+}

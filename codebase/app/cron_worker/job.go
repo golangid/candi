@@ -23,10 +23,14 @@ type Job struct {
 }
 
 var (
-	activeJobs                                                              []*Job
-	workers                                                                 []reflect.SelectCase
-	refreshWorkerNotif, shutdown, semaphore, startWorkerCh, releaseWorkerCh chan struct{}
-	mutex                                                                   sync.Mutex
+	activeJobs                                                   []*Job
+	workers                                                      []reflect.SelectCase
+	refreshWorkerNotif, shutdown, startWorkerCh, releaseWorkerCh chan struct{}
+	mutex                                                        sync.Mutex
+)
+
+const (
+	lockPattern = "%s:cron-worker-lock:%s"
 )
 
 // GetActiveJobs get registered jobs

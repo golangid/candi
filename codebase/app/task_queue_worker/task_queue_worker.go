@@ -33,6 +33,7 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, perst Pe
 		service: service,
 	}
 	workerInstance.ctx, workerInstance.ctxCancelFunc = context.WithCancel(context.Background())
+	defaultOption.locker.Reset(fmt.Sprintf("%s:task-queue-worker-lock:*", service.Name()))
 
 	for _, m := range service.GetModules() {
 		if h := m.WorkerHandler(types.TaskQueue); h != nil {
@@ -50,10 +51,7 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, perst Pe
 				}{
 					handler: handler, workerIndex: workerIndex,
 				}
-				workerIndexTask[workerIndex] = &struct {
-					taskName       string
-					activeInterval *time.Ticker
-				}{
+				workerIndexTask[workerIndex] = &Task{
 					taskName: handler.Pattern,
 				}
 				tasks = append(tasks, handler.Pattern)
@@ -124,26 +122,7 @@ func (t *taskQueueWorker) Serve() {
 			continue
 		}
 
-		semaphore[chosen-1] <- struct{}{}
-		if t.isShutdown {
-			return
-		}
-
-		t.wg.Add(1)
-		go func(chosen int) {
-			defer func() {
-				recover()
-				t.wg.Done()
-				<-semaphore[chosen-1]
-				refreshWorkerNotif <- struct{}{}
-			}()
-
-			if t.ctx.Err() != nil {
-				logger.LogRed("task_queue_worker > ctx root err: " + t.ctx.Err().Error())
-				return
-			}
-			t.execJob(chosen)
-		}(chosen)
+		go t.triggerTask(chosen)
 	}
 }
 
@@ -154,6 +133,7 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 		return
 	}
 
+	stopAllJob()
 	shutdown <- struct{}{}
 	t.isShutdown = true
 	var runningJob int
@@ -185,40 +165,69 @@ func (t *taskQueueWorker) Name() string {
 	return string(types.TaskQueue)
 }
 
-func (t *taskQueueWorker) execJob(workerIndex int) {
-	taskIndex, ok := workerIndexTask[workerIndex]
-	if !ok {
+func (t *taskQueueWorker) triggerTask(workerIndex int) {
+	semaphore[workerIndex-1] <- struct{}{}
+	if t.isShutdown {
 		return
 	}
 
-	taskIndex.activeInterval.Stop()
-	jobID := queue.PopJob(taskIndex.taskName)
+	t.wg.Add(1)
+	go func(workerIndex int) {
+		defer func() {
+			recover()
+			t.wg.Done()
+			<-semaphore[workerIndex-1]
+			refreshWorkerNotif <- struct{}{}
+		}()
+
+		if t.ctx.Err() != nil {
+			logger.LogRed("task_queue_worker > ctx root err: " + t.ctx.Err().Error())
+			return
+		}
+
+		runningTask, ok := workerIndexTask[workerIndex]
+		if !ok {
+			return
+		}
+		runningTask.ctx, runningTask.cancel = context.WithCancel(t.ctx)
+		runningTask.activeInterval.Stop()
+		t.execJob(runningTask)
+
+	}(workerIndex)
+
+	refreshWorkerNotif <- struct{}{}
+}
+
+func (t *taskQueueWorker) execJob(runningTask *Task) {
+	jobID := queue.PopJob(runningTask.taskName)
 	if jobID == "" {
 		return
 	}
 
-	isLocked, releaseLock := defaultOption.locker.IsLocked(fmt.Sprintf("%s:task-queue-worker-lock:%s", t.service.Name(), jobID))
-	if isLocked {
+	// lock for multiple worker (if running on multiple pods/instance)
+	if defaultOption.locker.IsLocked(t.getLockKey(jobID)) {
 		return
 	}
-	defer releaseLock()
+	defer defaultOption.locker.Unlock(t.getLockKey(jobID))
+
+	selectedTask := registeredTask[runningTask.taskName]
 
 	job, err := persistent.FindJobByID(t.ctx, jobID)
 	if err != nil {
 		return
 	}
 	if job.Status == string(statusStopped) {
-		nextJobID := queue.NextJob(taskIndex.taskName)
+		nextJobID := queue.NextJob(runningTask.taskName)
 		if nextJobID != "" {
 			if nextJob, err := persistent.FindJobByID(t.ctx, nextJobID); err == nil {
-				registerJobToWorker(nextJob, workerIndex)
+				registerJobToWorker(nextJob, selectedTask.workerIndex)
 			}
 		}
 		return
 	}
 
-	ctx := t.ctx
-	selectedHandler := registeredTask[job.TaskName].handler
+	ctx := runningTask.ctx
+	selectedHandler := selectedTask.handler
 	if selectedHandler.DisableTrace {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
@@ -227,6 +236,7 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 	defer func() {
 		if r := recover(); r != nil {
 			trace.SetError(fmt.Errorf("%v", r))
+			job.Status = string(statusFailure)
 		}
 		job.FinishedAt = time.Now()
 		persistent.SaveJob(t.ctx, job)
@@ -250,16 +260,25 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 	tags["job_id"], tags["task_name"], tags["retries"], tags["max_retry"] = job.ID, job.TaskName, job.Retries, job.MaxRetry
 	tracer.Log(ctx, "job_args", job.Arguments)
 
-	nextJobID := queue.NextJob(taskIndex.taskName)
+	nextJobID := queue.NextJob(runningTask.taskName)
 	if nextJobID != "" {
 		if nextJob, err := persistent.FindJobByID(t.ctx, nextJobID); err == nil {
-			registerJobToWorker(nextJob, workerIndex)
+			registerJobToWorker(nextJob, selectedTask.workerIndex)
 		}
 	}
 
 	message := []byte(job.Arguments)
 	ctx = context.WithValue(ctx, candishared.ContextKeyTaskQueueRetry, job.Retries)
-	if err := selectedHandler.HandlerFunc(ctx, message); err != nil {
+	err = selectedHandler.HandlerFunc(ctx, message)
+	if ctx.Err() != nil {
+		job.Error = "Job has been stopped when running."
+		if ctx.Err() != nil {
+			job.Error += " Error: " + ctx.Err().Error()
+		}
+		job.Status = string(statusStopped)
+		return
+	}
+	if err != nil {
 		job.Error = err.Error()
 		job.Status = string(statusFailure)
 		trace.SetError(err)
@@ -273,12 +292,12 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 				}
 				return
 			}
-			tags["is_retry"] = true
+			trace.SetTag("is_retry", true)
 
 			job.Status = string(statusQueueing)
 			job.Interval = e.Delay.String()
 
-			registerJobToWorker(job, workerIndex)
+			registerJobToWorker(job, selectedTask.workerIndex)
 			queue.PushJob(job)
 
 		default:
@@ -289,4 +308,8 @@ func (t *taskQueueWorker) execJob(workerIndex int) {
 	} else {
 		job.Status = string(statusSuccess)
 	}
+}
+
+func (t *taskQueueWorker) getLockKey(jobID string) string {
+	return fmt.Sprintf("%s:task-queue-worker-lock:%s", t.service.Name(), jobID)
 }

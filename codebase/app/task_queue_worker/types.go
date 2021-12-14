@@ -1,6 +1,7 @@
 package taskqueueworker
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"sync"
@@ -11,6 +12,14 @@ import (
 )
 
 type (
+	// Task model
+	Task struct {
+		ctx            context.Context
+		cancel         context.CancelFunc
+		taskName       string
+		activeInterval *time.Ticker
+	}
+
 	// TaglineResolver resolver
 	TaglineResolver struct {
 		Banner                    string
@@ -102,10 +111,7 @@ var (
 	}
 
 	workers         []reflect.SelectCase
-	workerIndexTask map[int]*struct {
-		taskName       string
-		activeInterval *time.Ticker
-	}
+	workerIndexTask map[int]*Task
 
 	queue                                             QueueStorage
 	persistent                                        Persistent
@@ -154,10 +160,7 @@ func makeAllGlobalVars(q QueueStorage, perst Persistent, opts ...OptionFunc) {
 		handler     types.WorkerHandler
 		workerIndex int
 	})
-	workerIndexTask = make(map[int]*struct {
-		taskName       string
-		activeInterval *time.Ticker
-	})
+	workerIndexTask = make(map[int]*Task)
 
 	// add refresh worker channel to first index
 	workers = append(workers, reflect.SelectCase{

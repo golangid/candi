@@ -5,7 +5,6 @@ import "github.com/golangid/candi/candiutils"
 type (
 	option struct {
 		maxGoroutines int
-		consul        *candiutils.Consul
 		locker        candiutils.Locker
 		debugMode     bool
 	}
@@ -28,23 +27,9 @@ func SetMaxGoroutines(maxGoroutines int) OptionFunc {
 	}
 }
 
-// SetConsul option func
-func SetConsul(consul *candiutils.Consul) OptionFunc {
-	return func(o *option) {
-		o.consul = consul
-	}
-}
-
 // SetDebugMode option func
 func SetDebugMode(debugMode bool) OptionFunc {
 	return func(o *option) {
 		o.debugMode = debugMode
-	}
-}
-
-// SetLocker option func
-func SetLocker(locker candiutils.Locker) OptionFunc {
-	return func(o *option) {
-		o.locker = locker
 	}
 }
