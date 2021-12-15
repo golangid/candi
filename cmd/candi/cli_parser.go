@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/golangid/candi"
+	"github.com/golangid/candi/candihelper"
 )
 
 func parseInput(flagParam *flagParameter) (srvConfig serviceConfig) {
@@ -59,7 +60,7 @@ func parseInput(flagParam *flagParameter) (srvConfig serviceConfig) {
 		}
 
 	stageReadInputModule:
-		flagParam.moduleName = readInput("Please input existing module name to be added delivery handler(s):")
+		flagParam.moduleName = candihelper.ToDelimited(readInput("Please input existing module name to be added delivery handler(s):"), '-')
 		moduleDir := flagParam.getFullModuleChildDir()
 		if err := validateDir(moduleDir); err != nil {
 			fmt.Print(err.Error())
@@ -79,7 +80,7 @@ stageInputModules:
 			goto stageInputModules
 		}
 		srvConfig.Modules = append(srvConfig.Modules, moduleConfig{
-			ModuleName: strings.TrimSpace(moduleName), Skip: false,
+			ModuleName: strings.TrimSpace(candihelper.ToDelimited(moduleName, '-')), Skip: false,
 		})
 		flagParam.modules = append(flagParam.modules, strings.TrimSpace(moduleName))
 	}

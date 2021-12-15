@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	moduleName types.Module = "{{clean (upper .ModuleName)}}"
+	moduleName types.Module = "{{upper (camel .ModuleName)}}"
 )
 
 // Module model

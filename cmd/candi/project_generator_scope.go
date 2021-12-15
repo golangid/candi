@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"strings"
+
+	"github.com/golangid/candi/candihelper"
 )
 
 func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers, workerHandler map[string]bool) {
@@ -269,7 +271,7 @@ func updateGraphQLRoot(flagParam flagParameter, cfg serviceConfig) {
 		return
 	}
 	for _, moduleName := range flagParam.modules {
-		cleanMod, cleanUpperMod := cleanSpecialChar.Replace(moduleName), cleanSpecialChar.Replace(strings.Title(moduleName))
+		cleanMod, cleanUpperMod := candihelper.ToCamelCase(moduleName), strings.Title(candihelper.ToCamelCase(moduleName))
 		b = bytes.Replace(b, []byte("@candi:queryRoot"), []byte(fmt.Sprintf("@candi:queryRoot\n	%s: %sQueryResolver", cleanMod, cleanUpperMod)), -1)
 		b = bytes.Replace(b, []byte("@candi:mutationRoot"), []byte(fmt.Sprintf("@candi:mutationRoot\n	%s: %sMutationResolver", cleanMod, cleanUpperMod)), -1)
 		b = bytes.Replace(b, []byte("@candi:subscriptionRoot"), []byte(fmt.Sprintf("@candi:subscriptionRoot\n	%s: %sSubscriptionResolver", cleanMod, cleanUpperMod)), -1)
@@ -288,8 +290,8 @@ func updateSharedUsecase(flagParam flagParameter, cfg serviceConfig) {
 	}
 
 	for _, moduleName := range flagParam.modules {
-		cleanMod, cleanPathMod := cleanSpecialChar.Replace(moduleName), modulePathReplacer.Replace(moduleName)
-		cleanUpperMod := cleanSpecialChar.Replace(strings.Title(moduleName))
+		cleanMod, cleanPathMod := strings.ToLower(candihelper.ToCamelCase(moduleName)), strings.ToLower(candihelper.ToDelimited(moduleName, '-'))
+		cleanUpperMod := strings.Title(candihelper.ToCamelCase(moduleName))
 		b = bytes.Replace(b, []byte("@candi:usecaseImport"),
 			[]byte(fmt.Sprintf("@candi:usecaseImport\n	%susecase \"%s/internal/modules/%s/usecase\"", cleanMod, cfg.PackagePrefix, cleanPathMod)), -1)
 		b = bytes.Replace(b, []byte("@candi:usecaseMethod"),
@@ -321,8 +323,8 @@ func updateSharedRepository(flagParam flagParameter, cfg serviceConfig) {
 		}
 
 		for _, moduleName := range flagParam.modules {
-			cleanMod, cleanPathMod := cleanSpecialChar.Replace(moduleName), modulePathReplacer.Replace(moduleName)
-			cleanUpperMod := cleanSpecialChar.Replace(strings.Title(moduleName))
+			cleanMod, cleanPathMod := strings.ToLower(candihelper.ToCamelCase(moduleName)), strings.ToLower(candihelper.ToDelimited(moduleName, '-'))
+			cleanUpperMod := strings.Title(candihelper.ToCamelCase(moduleName))
 			b = bytes.Replace(b, []byte("@candi:repositoryImport"),
 				[]byte(fmt.Sprintf("@candi:repositoryImport\n	%srepo \"%s/internal/modules/%s/repository\"", cleanMod, cfg.PackagePrefix, cleanPathMod)), -1)
 			b = bytes.Replace(b, []byte("@candi:repositoryMethod"),

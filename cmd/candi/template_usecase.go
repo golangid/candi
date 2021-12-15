@@ -88,13 +88,13 @@ import (
 	"{{.LibraryName}}/candishared"
 )
 
-// {{clean (upper .ModuleName)}}Usecase abstraction
-type {{clean (upper .ModuleName)}}Usecase interface {
-	GetAll{{clean (upper .ModuleName)}}(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) (data []shareddomain.{{clean (upper .ModuleName)}}, meta candishared.Meta, err error)
-	GetDetail{{clean (upper .ModuleName)}}(ctx context.Context, id string) (data shareddomain.{{clean (upper .ModuleName)}}, err error)
-	Create{{clean (upper .ModuleName)}}(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error)
-	Update{{clean (upper .ModuleName)}}(ctx context.Context, id string, data *shareddomain.{{clean (upper .ModuleName)}}) (err error)
-	Delete{{clean (upper .ModuleName)}}(ctx context.Context, id string) (err error)
+// {{upper (camel .ModuleName)}}Usecase abstraction
+type {{upper (camel .ModuleName)}}Usecase interface {
+	GetAll{{upper (camel .ModuleName)}}(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (data []shareddomain.{{upper (camel .ModuleName)}}, meta candishared.Meta, err error)
+	GetDetail{{upper (camel .ModuleName)}}(ctx context.Context, id string) (data shareddomain.{{upper (camel .ModuleName)}}, err error)
+	Create{{upper (camel .ModuleName)}}(ctx context.Context, data *shareddomain.{{upper (camel .ModuleName)}}) (err error)
+	Update{{upper (camel .ModuleName)}}(ctx context.Context, id string, data *shareddomain.{{upper (camel .ModuleName)}}) (err error)
+	Delete{{upper (camel .ModuleName)}}(ctx context.Context, id string) (err error)
 }
 `
 	templateUsecaseImpl = `// {{.Header}}
@@ -116,7 +116,7 @@ import (
 	"{{.LibraryName}}/tracer"
 )
 
-type {{clean .ModuleName}}UsecaseImpl struct {
+type {{camel .ModuleName}}UsecaseImpl struct {
 	sharedUsecase common.Usecase
 	cache         interfaces.Cache
 	{{if .SQLDeps}}repoSQL       repository.RepoSQL{{end}}
@@ -125,9 +125,9 @@ type {{clean .ModuleName}}UsecaseImpl struct {
 	{{if not .RabbitMQHandler}}// {{ end }}rabbitmqPub   interfaces.Publisher
 }
 
-// New{{clean (upper .ModuleName)}}Usecase usecase impl constructor
-func New{{clean (upper .ModuleName)}}Usecase(deps dependency.Dependency) ({{clean (upper .ModuleName)}}Usecase, func(sharedUsecase common.Usecase)) {
-	uc := &{{clean .ModuleName}}UsecaseImpl{
+// New{{upper (camel .ModuleName)}}Usecase usecase impl constructor
+func New{{upper (camel .ModuleName)}}Usecase(deps dependency.Dependency) ({{upper (camel .ModuleName)}}Usecase, func(sharedUsecase common.Usecase)) {
+	uc := &{{camel .ModuleName}}UsecaseImpl{
 		{{if .RedisDeps}}cache: deps.GetRedisPool().Cache(),{{end}}
 		{{if .SQLDeps}}repoSQL:   repository.GetSharedRepoSQL(),{{end}}
 		{{if .MongoDeps}}repoMongo: repository.GetSharedRepoMongo(),{{end}}
@@ -139,57 +139,56 @@ func New{{clean (upper .ModuleName)}}Usecase(deps dependency.Dependency) ({{clea
 	}
 }
 
-func (uc *{{clean .ModuleName}}UsecaseImpl) GetAll{{clean (upper .ModuleName)}}(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) (data []shareddomain.{{clean (upper .ModuleName)}}, meta candishared.Meta, err error) {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}Usecase:GetAll{{clean (upper .ModuleName)}}")
+func (uc *{{camel .ModuleName}}UsecaseImpl) GetAll{{upper (camel .ModuleName)}}(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (data []shareddomain.{{upper (camel .ModuleName)}}, meta candishared.Meta, err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}Usecase:GetAll{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	filter.CalculateOffset()
-	{{if or .SQLDeps .MongoDeps}}data, err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().FetchAll(ctx, filter)
+	{{if or .SQLDeps .MongoDeps}}data, err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{upper (camel .ModuleName)}}Repo().FetchAll(ctx, filter)
 	if err != nil {
 		return data, meta, err
 	}
-	count := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Count(ctx, filter)
+	count := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{upper (camel .ModuleName)}}Repo().Count(ctx, filter)
 	meta = candishared.NewMeta(filter.Page, filter.Limit, count){{end}}
 
 	return
 }
 
-func (uc *{{clean .ModuleName}}UsecaseImpl) GetDetail{{clean (upper .ModuleName)}}(ctx context.Context, id string) (data shareddomain.{{clean (upper .ModuleName)}}, err error) {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}Usecase:GetDetail{{clean (upper .ModuleName)}}")
+func (uc *{{camel .ModuleName}}UsecaseImpl) GetDetail{{upper (camel .ModuleName)}}(ctx context.Context, id string) (data shareddomain.{{upper (camel .ModuleName)}}, err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}Usecase:GetDetail{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	{{if or .SQLDeps .MongoDeps}}repoFilter := domain.Filter{{clean (upper .ModuleName)}}{ID: id}
-	data, err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Find(ctx, &repoFilter){{end}}
+	{{if or .SQLDeps .MongoDeps}}repoFilter := domain.Filter{{upper (camel .ModuleName)}}{ID: id}
+	data, err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{upper (camel .ModuleName)}}Repo().Find(ctx, &repoFilter){{end}}
 	return
 }
 
-func (uc *{{clean .ModuleName}}UsecaseImpl) Create{{clean (upper .ModuleName)}}(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}Usecase:Create{{clean (upper .ModuleName)}}")
+func (uc *{{camel .ModuleName}}UsecaseImpl) Create{{upper (camel .ModuleName)}}(ctx context.Context, data *shareddomain.{{upper (camel .ModuleName)}}) (err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}Usecase:Create{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	return{{if or .SQLDeps .MongoDeps}} uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Save(ctx, data){{end}}
+	return{{if or .SQLDeps .MongoDeps}} uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{upper (camel .ModuleName)}}Repo().Save(ctx, data){{end}}
 }
 
-func (uc *{{clean .ModuleName}}UsecaseImpl) Update{{clean (upper .ModuleName)}}(ctx context.Context, id string, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}Usecase:Update{{clean (upper .ModuleName)}}")
+func (uc *{{camel .ModuleName}}UsecaseImpl) Update{{upper (camel .ModuleName)}}(ctx context.Context, id string, data *shareddomain.{{upper (camel .ModuleName)}}) (err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}Usecase:Update{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	{{if or .SQLDeps .MongoDeps}}repoFilter := domain.Filter{{clean (upper .ModuleName)}}{ID: id}
-	existing, err := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Find(ctx, &repoFilter)
+	{{if or .SQLDeps .MongoDeps}}repoFilter := domain.Filter{{upper (camel .ModuleName)}}{ID: id}
+	existing, err := uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{upper (camel .ModuleName)}}Repo().Find(ctx, &repoFilter)
 	if err != nil {
 		return err
 	}
 	data.ID = existing.ID
 	data.CreatedAt = existing.CreatedAt
-	err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Save(ctx, data){{end}}
+	err = uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{upper (camel .ModuleName)}}Repo().Save(ctx, data){{end}}
 	return
 }
 
-func (uc *{{clean .ModuleName}}UsecaseImpl) Delete{{clean (upper .ModuleName)}}(ctx context.Context, id string) (err error) {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}Usecase:Delete{{clean (upper .ModuleName)}}")
+func (uc *{{camel .ModuleName}}UsecaseImpl) Delete{{upper (camel .ModuleName)}}(ctx context.Context, id string) (err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}Usecase:Delete{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	return {{if or .SQLDeps .MongoDeps}}uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{clean (upper .ModuleName)}}Repo().Delete(ctx, id){{end}}
+	return {{if or .SQLDeps .MongoDeps}}uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{upper (camel .ModuleName)}}Repo().Delete(ctx, id){{end}}
 }
 `
 
@@ -214,7 +213,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestNew{{clean (upper .ModuleName)}}Usecase(t *testing.T) {
+func TestNew{{upper (camel .ModuleName)}}Usecase(t *testing.T) {
 {{if not (or .KafkaHandler .RabbitMQHandler)}}/*{{end}}
 	mockPublisher := &mockinterfaces.Publisher{}
 	mockBroker := &mockinterfaces.Broker{}
@@ -228,136 +227,136 @@ func TestNew{{clean (upper .ModuleName)}}Usecase(t *testing.T) {
 	mockDeps.On("GetRedisPool").Return(mockRedisPool)
 	{{if not (or .KafkaHandler .RabbitMQHandler)}}// {{end}}mockDeps.On("GetBroker", mock.Anything).Return(mockBroker)
 
-	uc, setFunc := New{{clean (upper .ModuleName)}}Usecase(mockDeps)
+	uc, setFunc := New{{upper (camel .ModuleName)}}Usecase(mockDeps)
 	setFunc(nil)
 	assert.NotNil(t, uc)
 }
 
-func Test_{{clean .ModuleName}}UsecaseImpl_GetAll{{clean (upper .ModuleName)}}(t *testing.T) {
+func Test_{{camel .ModuleName}}UsecaseImpl_GetAll{{upper (camel .ModuleName)}}(t *testing.T) {
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
 
-		{{clean .ModuleName}}Repo := &mockrepo.{{clean (upper .ModuleName)}}Repository{}
-		{{clean .ModuleName}}Repo.On("FetchAll", mock.Anything, mock.Anything, mock.Anything).Return([]shareddomain.{{clean (upper .ModuleName)}}{}, nil)
-		{{clean .ModuleName}}Repo.On("Count", mock.Anything, mock.Anything).Return(10)
+		{{camel .ModuleName}}Repo := &mockrepo.{{upper (camel .ModuleName)}}Repository{}
+		{{camel .ModuleName}}Repo.On("FetchAll", mock.Anything, mock.Anything, mock.Anything).Return([]shareddomain.{{upper (camel .ModuleName)}}{}, nil)
+		{{camel .ModuleName}}Repo.On("Count", mock.Anything, mock.Anything).Return(10)
 
 		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}} := &mocksharedrepo.Repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}{}
-		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{clean (upper .ModuleName)}}Repo").Return({{clean .ModuleName}}Repo)
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{upper (camel .ModuleName)}}Repo").Return({{camel .ModuleName}}Repo)
 
-		uc := {{clean .ModuleName}}UsecaseImpl{
+		uc := {{camel .ModuleName}}UsecaseImpl{
 			repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}: repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}},
 		}
 
-		_, _, err := uc.GetAll{{clean (upper .ModuleName)}}(context.Background(), &domain.Filter{{clean (upper .ModuleName)}}{})
+		_, _, err := uc.GetAll{{upper (camel .ModuleName)}}(context.Background(), &domain.Filter{{upper (camel .ModuleName)}}{})
 		assert.NoError(t, err)
 	})
 
 	t.Run("Testcase #2: Negative", func(t *testing.T) {
 
-		{{clean .ModuleName}}Repo := &mockrepo.{{clean (upper .ModuleName)}}Repository{}
-		{{clean .ModuleName}}Repo.On("FetchAll", mock.Anything, mock.Anything, mock.Anything).Return([]shareddomain.{{clean (upper .ModuleName)}}{}, errors.New("Error"))
-		{{clean .ModuleName}}Repo.On("Count", mock.Anything, mock.Anything).Return(10)
+		{{camel .ModuleName}}Repo := &mockrepo.{{upper (camel .ModuleName)}}Repository{}
+		{{camel .ModuleName}}Repo.On("FetchAll", mock.Anything, mock.Anything, mock.Anything).Return([]shareddomain.{{upper (camel .ModuleName)}}{}, errors.New("Error"))
+		{{camel .ModuleName}}Repo.On("Count", mock.Anything, mock.Anything).Return(10)
 
 		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}} := &mocksharedrepo.Repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}{}
-		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{clean (upper .ModuleName)}}Repo").Return({{clean .ModuleName}}Repo)
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{upper (camel .ModuleName)}}Repo").Return({{camel .ModuleName}}Repo)
 
-		uc := {{clean .ModuleName}}UsecaseImpl{
+		uc := {{camel .ModuleName}}UsecaseImpl{
 			repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}: repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}},
 		}
 
-		_, _, err := uc.GetAll{{clean (upper .ModuleName)}}(context.Background(), &domain.Filter{{clean (upper .ModuleName)}}{})
+		_, _, err := uc.GetAll{{upper (camel .ModuleName)}}(context.Background(), &domain.Filter{{upper (camel .ModuleName)}}{})
 		assert.Error(t, err)
 	})
 }
 
-func Test_{{clean .ModuleName}}UsecaseImpl_GetDetail{{clean (upper .ModuleName)}}(t *testing.T) {
+func Test_{{camel .ModuleName}}UsecaseImpl_GetDetail{{upper (camel .ModuleName)}}(t *testing.T) {
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
 
-		responseData := shareddomain.{{clean (upper .ModuleName)}}{}
+		responseData := shareddomain.{{upper (camel .ModuleName)}}{}
 
-		{{clean .ModuleName}}Repo := &mockrepo.{{clean (upper .ModuleName)}}Repository{}
-		{{clean .ModuleName}}Repo.On("Find", mock.Anything, mock.Anything).Return(responseData, nil)
+		{{camel .ModuleName}}Repo := &mockrepo.{{upper (camel .ModuleName)}}Repository{}
+		{{camel .ModuleName}}Repo.On("Find", mock.Anything, mock.Anything).Return(responseData, nil)
 
 		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}} := &mocksharedrepo.Repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}{}
-		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{clean (upper .ModuleName)}}Repo").Return({{clean .ModuleName}}Repo)
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{upper (camel .ModuleName)}}Repo").Return({{camel .ModuleName}}Repo)
 
-		uc := {{clean .ModuleName}}UsecaseImpl{
+		uc := {{camel .ModuleName}}UsecaseImpl{
 			repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}: repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}},
 		}
 
-		result, err := uc.GetDetail{{clean (upper .ModuleName)}}(context.Background(), "id")
+		result, err := uc.GetDetail{{upper (camel .ModuleName)}}(context.Background(), "id")
 		assert.NoError(t, err)
 		assert.Equal(t, responseData, result)
 	})
 }
 
-func Test_{{clean .ModuleName}}UsecaseImpl_Create{{clean (upper .ModuleName)}}(t *testing.T) {
+func Test_{{camel .ModuleName}}UsecaseImpl_Create{{upper (camel .ModuleName)}}(t *testing.T) {
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
 
-		{{clean .ModuleName}}Repo := &mockrepo.{{clean (upper .ModuleName)}}Repository{}
-		{{clean .ModuleName}}Repo.On("Save", mock.Anything, mock.Anything).Return(nil)
+		{{camel .ModuleName}}Repo := &mockrepo.{{upper (camel .ModuleName)}}Repository{}
+		{{camel .ModuleName}}Repo.On("Save", mock.Anything, mock.Anything).Return(nil)
 
 		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}} := &mocksharedrepo.Repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}{}
-		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{clean (upper .ModuleName)}}Repo").Return({{clean .ModuleName}}Repo)
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{upper (camel .ModuleName)}}Repo").Return({{camel .ModuleName}}Repo)
 
-		uc := {{clean .ModuleName}}UsecaseImpl{
+		uc := {{camel .ModuleName}}UsecaseImpl{
 			repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}: repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}},
 		}
 
-		err := uc.Create{{clean (upper .ModuleName)}}(context.Background(), &shareddomain.{{clean (upper .ModuleName)}}{})
+		err := uc.Create{{upper (camel .ModuleName)}}(context.Background(), &shareddomain.{{upper (camel .ModuleName)}}{})
 		assert.NoError(t, err)
 	})
 }
 
-func Test_{{clean .ModuleName}}UsecaseImpl_Update{{clean (upper .ModuleName)}}(t *testing.T) {
+func Test_{{camel .ModuleName}}UsecaseImpl_Update{{upper (camel .ModuleName)}}(t *testing.T) {
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
 
-		{{clean .ModuleName}}Repo := &mockrepo.{{clean (upper .ModuleName)}}Repository{}
-		{{clean .ModuleName}}Repo.On("Find", mock.Anything, mock.Anything).Return(shareddomain.{{clean (upper .ModuleName)}}{}, nil)
-		{{clean .ModuleName}}Repo.On("Save", mock.Anything, mock.Anything).Return(nil)
+		{{camel .ModuleName}}Repo := &mockrepo.{{upper (camel .ModuleName)}}Repository{}
+		{{camel .ModuleName}}Repo.On("Find", mock.Anything, mock.Anything).Return(shareddomain.{{upper (camel .ModuleName)}}{}, nil)
+		{{camel .ModuleName}}Repo.On("Save", mock.Anything, mock.Anything).Return(nil)
 
 		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}} := &mocksharedrepo.Repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}{}
-		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{clean (upper .ModuleName)}}Repo").Return({{clean .ModuleName}}Repo)
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{upper (camel .ModuleName)}}Repo").Return({{camel .ModuleName}}Repo)
 
-		uc := {{clean .ModuleName}}UsecaseImpl{
+		uc := {{camel .ModuleName}}UsecaseImpl{
 			repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}: repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}},
 		}
 
-		err := uc.Update{{clean (upper .ModuleName)}}(context.Background(), "id", &shareddomain.{{clean (upper .ModuleName)}}{})
+		err := uc.Update{{upper (camel .ModuleName)}}(context.Background(), "id", &shareddomain.{{upper (camel .ModuleName)}}{})
 		assert.NoError(t, err)
 	})
 
 	t.Run("Testcase #2: Negative", func(t *testing.T) {
 
-		{{clean .ModuleName}}Repo := &mockrepo.{{clean (upper .ModuleName)}}Repository{}
-		{{clean .ModuleName}}Repo.On("Find", mock.Anything, mock.Anything).Return(shareddomain.{{clean (upper .ModuleName)}}{}, errors.New("Error"))
-		{{clean .ModuleName}}Repo.On("Save", mock.Anything, mock.Anything).Return(nil)
+		{{camel .ModuleName}}Repo := &mockrepo.{{upper (camel .ModuleName)}}Repository{}
+		{{camel .ModuleName}}Repo.On("Find", mock.Anything, mock.Anything).Return(shareddomain.{{upper (camel .ModuleName)}}{}, errors.New("Error"))
+		{{camel .ModuleName}}Repo.On("Save", mock.Anything, mock.Anything).Return(nil)
 
 		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}} := &mocksharedrepo.Repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}{}
-		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{clean (upper .ModuleName)}}Repo").Return({{clean .ModuleName}}Repo)
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{upper (camel .ModuleName)}}Repo").Return({{camel .ModuleName}}Repo)
 
-		uc := {{clean .ModuleName}}UsecaseImpl{
+		uc := {{camel .ModuleName}}UsecaseImpl{
 			repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}: repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}},
 		}
 
-		err := uc.Update{{clean (upper .ModuleName)}}(context.Background(), "id", &shareddomain.{{clean (upper .ModuleName)}}{})
+		err := uc.Update{{upper (camel .ModuleName)}}(context.Background(), "id", &shareddomain.{{upper (camel .ModuleName)}}{})
 		assert.Error(t, err)
 	})
 }
 
-func Test_{{clean .ModuleName}}UsecaseImpl_Delete{{clean (upper .ModuleName)}}(t *testing.T) {
+func Test_{{camel .ModuleName}}UsecaseImpl_Delete{{upper (camel .ModuleName)}}(t *testing.T) {
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
 
-		{{clean .ModuleName}}Repo := &mockrepo.{{clean (upper .ModuleName)}}Repository{}
-		{{clean .ModuleName}}Repo.On("Delete", mock.Anything, mock.Anything).Return(nil)
+		{{camel .ModuleName}}Repo := &mockrepo.{{upper (camel .ModuleName)}}Repository{}
+		{{camel .ModuleName}}Repo.On("Delete", mock.Anything, mock.Anything).Return(nil)
 
 		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}} := &mocksharedrepo.Repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}{}
-		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{clean (upper .ModuleName)}}Repo").Return({{clean .ModuleName}}Repo)
+		repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.On("{{upper (camel .ModuleName)}}Repo").Return({{camel .ModuleName}}Repo)
 
-		uc := {{clean .ModuleName}}UsecaseImpl{
+		uc := {{camel .ModuleName}}UsecaseImpl{
 			repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}: repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}},
 		}
 
-		err := uc.Delete{{clean (upper .ModuleName)}}(context.Background(), "id")
+		err := uc.Delete{{upper (camel .ModuleName)}}(context.Background(), "id")
 		assert.NoError(t, err)
 	})
 }

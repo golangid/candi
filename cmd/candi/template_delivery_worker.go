@@ -34,16 +34,17 @@ func NewKafkaHandler(uc usecase.Usecase, deps dependency.Dependency) *KafkaHandl
 
 // MountHandlers mount handler group
 func (h *KafkaHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	group.Add("{{.ModuleName}}", h.handle{{clean (upper .ModuleName)}}) // handling topic "{{.ModuleName}}"
+	group.Add("{{.ModuleName}}", h.handle{{upper (camel .ModuleName)}}) // handling topic "{{.ModuleName}}"
 }
 
 // ProcessMessage from kafka consumer
-func (h *KafkaHandler) handle{{clean (upper .ModuleName)}}(ctx context.Context, message []byte) error {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryKafka:Hello")
+func (h *KafkaHandler) handle{{upper (camel .ModuleName)}}(ctx context.Context, message []byte) error {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryKafka:Handle{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	key := candishared.GetValueFromContext(ctx, candishared.ContextKeyWorkerKey).([]byte)
 	fmt.Printf("message consumed by module {{.ModuleName}}. key: %s, message: %s\n", key, message)
+	// exec usecase
 	return nil
 }
 `
@@ -58,7 +59,7 @@ import (
 
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
-	"{{.LibraryName}}/candihelper"
+	cronworker "github.com/golangid/candi/codebase/app/cron_worker"
 	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
@@ -81,14 +82,15 @@ func NewCronHandler(uc usecase.Usecase, deps dependency.Dependency) *CronHandler
 
 // MountHandlers mount handler group
 func (h *CronHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	group.Add(candihelper.CronJobKeyToString("{{.ModuleName}}-scheduler", "message", "10s"), h.handle{{clean (upper .ModuleName)}})
+	group.Add(cronworker.CreateCronJobKey("{{.ModuleName}}-scheduler", "message", "10s"), h.handle{{upper (camel .ModuleName)}})
 }
 
-func (h *CronHandler) handle{{clean (upper .ModuleName)}}(ctx context.Context, message []byte) error {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryCron:Hello")
+func (h *CronHandler) handle{{upper (camel .ModuleName)}}(ctx context.Context, message []byte) error {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryCron:Handle{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	fmt.Println("cron: execute in module {{.ModuleName}}, message:", string(message))
+	// exec usecase
 	return nil
 }
 `
@@ -125,14 +127,15 @@ func NewRedisHandler(uc usecase.Usecase, deps dependency.Dependency) *RedisHandl
 
 // MountHandlers mount handler group
 func (h *RedisHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	group.Add("{{.ModuleName}}-sample", h.handle{{clean (upper .ModuleName)}})
+	group.Add("{{.ModuleName}}-sample", h.handle{{upper (camel .ModuleName)}})
 }
 
-func (h *RedisHandler) handle{{clean (upper .ModuleName)}}(ctx context.Context, message []byte) error {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryRedis:Hello")
+func (h *RedisHandler) handle{{upper (camel .ModuleName)}}(ctx context.Context, message []byte) error {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryRedis:Handle{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	fmt.Println("redis subs: execute sample")
+	// exec usecase
 	return nil
 }
 `
@@ -171,31 +174,19 @@ func NewTaskQueueHandler(uc usecase.Usecase, deps dependency.Dependency) *TaskQu
 
 // MountHandlers mount handler group
 func (h *TaskQueueHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	group.Add("{{.ModuleName}}-task-one", h.taskOne)
-	group.Add("{{.ModuleName}}-task-two", h.taskTwo)
+	group.Add("{{.ModuleName}}-task", h.handleTask{{upper (camel .ModuleName)}})
 }
 
-func (h *TaskQueueHandler) taskOne(ctx context.Context, message []byte) error {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryTaskQueue:TaskOne")
+func (h *TaskQueueHandler) handleTask{{upper (camel .ModuleName)}}(ctx context.Context, message []byte) error {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryTaskQueue:HandleTask{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	retried := candishared.GetValueFromContext(ctx, candishared.ContextKeyTaskQueueRetry).(int)
-	fmt.Printf("executing task '{{.ModuleName}}-task-one' has been %d retry\n", retried)
+	fmt.Printf("executing task '{{.ModuleName}}-task' has been %d retry\n", retried)
+	// exec usecase
 	return &candishared.ErrorRetrier{
 		Delay:   10 * time.Second,
-		Message: "Error one",
-	}
-}
-
-func (h *TaskQueueHandler) taskTwo(ctx context.Context, message []byte) error {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryTaskQueue:TaskTwo")
-	defer trace.Finish()
-
-	retried := candishared.GetValueFromContext(ctx, candishared.ContextKeyTaskQueueRetry).(int)
-	fmt.Printf("executing task '{{.ModuleName}}-task-two' has been %d retry\n", retried)
-	return &candishared.ErrorRetrier{
-		Delay:   3 * time.Second,
-		Message: "Error two",
+		Message: "Error retry",
 	}
 }
 `
@@ -206,10 +197,13 @@ package workerhandler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
+	"{{.LibraryName}}/candihelper"
+	postgresworker "{{.LibraryName}}/codebase/app/postgres_worker"
 	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
@@ -232,14 +226,18 @@ func NewPostgresListenerHandler(uc usecase.Usecase, deps dependency.Dependency) 
 
 // MountHandlers mount handler group
 func (h *PostgresListenerHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	group.Add("{{.ModuleName}}s", h.handleDataChangeOn{{clean (upper .ModuleName)}}) // listen data change on table "{{.ModuleName}}s"
+	group.Add("{{snake .ModuleName}}s", h.handleDataChangeOn{{upper (camel .ModuleName)}}) // listen data change on table "{{.ModuleName}}s"
 }
 
-func (h *PostgresListenerHandler) handleDataChangeOn{{clean (upper .ModuleName)}}(ctx context.Context, message []byte) error {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryPostgresListener:HandleDataChange{{clean (upper .ModuleName)}}")
+func (h *PostgresListenerHandler) handleDataChangeOn{{upper (camel .ModuleName)}}(ctx context.Context, message []byte) error {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryPostgresListener:HandleDataChange{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	fmt.Printf("data change on table {{.ModuleName}}s detected: %s\n", message)
+	var payload postgresworker.EventPayload
+	json.Unmarshal(message, &payload)
+	fmt.Printf("data change on table '%s' with action '%s' detected. \nOld values: %s\nNew Values: %s\n",
+		payload.Table, payload.Action, candihelper.ToBytes(payload.Data.Old), candihelper.ToBytes(payload.Data.New))
+	// exec usecase
 	return nil
 }
 `
@@ -276,14 +274,15 @@ func NewRabbitMQHandler(uc usecase.Usecase, deps dependency.Dependency) *RabbitM
 
 // MountHandlers mount handler group
 func (h *RabbitMQHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	group.Add("{{.ModuleName}}", h.handleQueue{{clean (upper .ModuleName)}}) // consume queue "{{.ModuleName}}"
+	group.Add("{{.ModuleName}}", h.handleQueue{{upper (camel .ModuleName)}}) // consume queue "{{.ModuleName}}"
 }
 
-func (h *RabbitMQHandler) handleQueue{{clean (upper .ModuleName)}}(ctx context.Context, message []byte) error {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}DeliveryRabbitMQ:HandleQueue{{clean (upper .ModuleName)}}")
+func (h *RabbitMQHandler) handleQueue{{upper (camel .ModuleName)}}(ctx context.Context, message []byte) error {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryRabbitMQ:HandleQueue{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	fmt.Printf("message consumed by module {{.ModuleName}}. message: %s\n", message)
+	// exec usecase
 	return nil
 }
 `

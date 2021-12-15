@@ -2,6 +2,10 @@ package candihelper
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha1"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -375,4 +379,106 @@ func PrintJSON(data interface{}) {
 	var prettyJSON bytes.Buffer
 	json.Indent(&prettyJSON, buff, "", "     ")
 	fmt.Println(prettyJSON.String())
+}
+
+// GenerateHMAC generate random string
+func GenerateHMAC(salt, str string) string {
+	key := []byte(salt)
+	h := hmac.New(sha256.New, key)
+	h.Write([]byte(str))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// GenerateSHA1 generate SHA1
+func GenerateSHA1(input []byte) string {
+	h := sha1.New()
+	h.Write(input)
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// ToCamelCase helper
+func ToCamelCase(str string) string {
+	str = strings.TrimSpace(str)
+	if str == "" {
+		return str
+	}
+
+	var n strings.Builder
+	n.Grow(len(str))
+	capNext := false
+	for i, v := range str {
+		vIsCap := v >= 'A' && v <= 'Z'
+		vIsLow := v >= 'a' && v <= 'z'
+		if capNext {
+			if vIsLow {
+				v += 'A'
+				v -= 'a'
+			}
+		} else if i == 0 {
+			if vIsCap {
+				v += 'a'
+				v -= 'A'
+			}
+		}
+		if vIsCap || vIsLow {
+			n.WriteByte(byte(v))
+			capNext = false
+		} else if vIsNum := v >= '0' && v <= '9'; vIsNum {
+			n.WriteByte(byte(v))
+			capNext = true
+		} else {
+			capNext = v == '_' || v == ' ' || v == '-' || v == '.'
+		}
+	}
+	return n.String()
+}
+
+// ToDelimited helper, can use to snake_case or kebab-case
+func ToDelimited(s string, delimiter uint8) string {
+	s = strings.TrimSpace(s)
+	n := strings.Builder{}
+	screaming, ignore := false, ""
+	n.Grow(len(s) + 2)
+	for i, v := range []byte(s) {
+		vIsCap := v >= 'A' && v <= 'Z'
+		vIsLow := v >= 'a' && v <= 'z'
+		if vIsLow && screaming {
+			v += 'A'
+			v -= 'a'
+		} else if vIsCap && !screaming {
+			v += 'a'
+			v -= 'A'
+		}
+
+		if i+1 < len(s) {
+			next := s[i+1]
+			vIsNum := v >= '0' && v <= '9'
+			nextIsCap := next >= 'A' && next <= 'Z'
+			nextIsLow := next >= 'a' && next <= 'z'
+			nextIsNum := next >= '0' && next <= '9'
+			if (vIsCap && (nextIsLow || nextIsNum)) || (vIsLow && (nextIsCap || nextIsNum)) || (vIsNum && (nextIsCap || nextIsLow)) {
+				prevIgnore := ignore != "" && i > 0 && strings.ContainsAny(string(s[i-1]), ignore)
+				if !prevIgnore {
+					if vIsCap && nextIsLow {
+						if prevIsCap := i > 0 && s[i-1] >= 'A' && s[i-1] <= 'Z'; prevIsCap {
+							n.WriteByte(delimiter)
+						}
+					}
+					n.WriteByte(v)
+					if vIsLow || vIsNum || nextIsNum {
+						n.WriteByte(delimiter)
+					}
+					continue
+				}
+			}
+		}
+
+		if (v == ' ' || v == '_' || v == '-' || v == '.') && !strings.ContainsAny(string(v), ignore) {
+			n.WriteByte(delimiter)
+		} else {
+			n.WriteByte(v)
+		}
+	}
+
+	return n.String()
 }

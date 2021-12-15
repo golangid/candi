@@ -122,28 +122,19 @@ func GetMigrateTables() []interface{} {
 }
 `
 
-	templateCmdMigrationInitModule = `package migrations
+	templateCmdMigrationInitModule = `-- +goose Up
+-- +goose StatementBegin
+CREATE TABLE IF NOT EXISTS {{snake .ModuleName}}s (
+	"id" varchar(255) NOT NULL PRIMARY KEY,
+	"field" varchar(255),
+	"created_at" timestamptz(6),
+	"modified_at" timestamptz(6)
+);
+-- +goose StatementEnd
 
-import (
-	"database/sql"
-	"{{$.PackagePrefix}}/pkg/shared/domain"
-
-	"github.com/pressly/goose/v3"
-)
-
-func init() {
-	goose.AddMigration(upAlterTable{{clean (upper .ModuleName)}}s, downAlterTable{{clean (upper .ModuleName)}}s)
-}
-
-func upAlterTable{{clean (upper .ModuleName)}}s(tx *sql.Tx) error {
-	// This code is executed when the migration is applied.
-	migrateTables = append(migrateTables, &domain.{{clean (upper .ModuleName)}}{})
-	return nil
-}
-
-func downAlterTable{{clean (upper .ModuleName)}}s(tx *sql.Tx) error {
-	// This code is executed when the migration is rolled back.
-	return nil
-}	
+-- +goose Down
+-- +goose StatementBegin
+DROP TABLE IF EXISTS {{snake .ModuleName}}s;
+-- +goose StatementEnd
 `
 )

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/golangid/candi"
+	"github.com/golangid/candi/candihelper"
 )
 
 func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceConfig) {
@@ -147,7 +148,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 		})
 		migrationFiles = append(migrationFiles, FileStructure{
 			FromTemplate: true, DataSource: mod, Source: templateCmdMigrationInitModule,
-			FileName: time.Now().Format("20060102150405") + "_init_" + cleanSpecialChar.Replace(mod.ModuleName) + ".go",
+			FileName: time.Now().Format("20060102150405") + "_create_table_" + candihelper.ToDelimited(mod.ModuleName, '_') + "s.sql",
 		})
 	}
 

@@ -13,6 +13,7 @@ import (
 	"text/template"
 
 	"github.com/golangid/candi"
+	"github.com/golangid/candi/candihelper"
 )
 
 func parseSharedRepository(data serviceConfig) (repos []FileStructure) {
@@ -59,8 +60,17 @@ func formatTemplate() template.FuncMap {
 		"clean": func(v string) string {
 			return cleanSpecialChar.Replace(v)
 		},
+		"camel": func(v string) string {
+			return candihelper.ToCamelCase(v)
+		},
+		"snake": func(v string) string {
+			return candihelper.ToDelimited(v, '_')
+		},
+		"kebab": func(v string) string {
+			return candihelper.ToDelimited(v, '-')
+		},
 		"cleanPathModule": func(v string) string {
-			return modulePathReplacer.Replace(v)
+			return strings.ToLower(candihelper.ToDelimited(v, '-'))
 		},
 		"upper": func(str string) string {
 			return strings.Title(str)

@@ -200,12 +200,12 @@ import (
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 )
 
-// {{clean (upper .ModuleName)}}Repository abstract interface
-type {{clean (upper .ModuleName)}}Repository interface {
-	FetchAll(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) ([]shareddomain.{{clean (upper .ModuleName)}}, error)
-	Count(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) int
-	Find(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) (shareddomain.{{clean (upper .ModuleName)}}, error)
-	Save(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) error
+// {{upper (camel .ModuleName)}}Repository abstract interface
+type {{upper (camel .ModuleName)}}Repository interface {
+	FetchAll(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) ([]shareddomain.{{upper (camel .ModuleName)}}, error)
+	Count(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) int
+	Find(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (shareddomain.{{upper (camel .ModuleName)}}, error)
+	Save(ctx context.Context, data *shareddomain.{{upper (camel .ModuleName)}}) error
 	Delete(ctx context.Context, id string) (err error)
 }
 `
@@ -230,22 +230,22 @@ import (
 	"{{.LibraryName}}/tracer"
 )
 
-type {{clean .ModuleName}}RepoMongo struct {
+type {{camel .ModuleName}}RepoMongo struct {
 	readDB, writeDB *mongo.Database
 	collection      string
 }
 
-// New{{clean (upper .ModuleName)}}RepoMongo mongo repo constructor
-func New{{clean (upper .ModuleName)}}RepoMongo(readDB, writeDB *mongo.Database) {{clean (upper .ModuleName)}}Repository {
-	return &{{clean .ModuleName}}RepoMongo{
+// New{{upper (camel .ModuleName)}}RepoMongo mongo repo constructor
+func New{{upper (camel .ModuleName)}}RepoMongo(readDB, writeDB *mongo.Database) {{upper (camel .ModuleName)}}Repository {
+	return &{{camel .ModuleName}}RepoMongo{
 		readDB: 	readDB, 
 		writeDB: 	writeDB, 
-		collection: shareddomain.{{clean (upper .ModuleName)}}{}.CollectionName(),
+		collection: shareddomain.{{upper (camel .ModuleName)}}{}.CollectionName(),
 	}
 }
 
-func (r *{{clean .ModuleName}}RepoMongo) FetchAll(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) (data []shareddomain.{{clean (upper .ModuleName)}}, err error) {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoMongo:FetchAll")
+func (r *{{camel .ModuleName}}RepoMongo) FetchAll(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (data []shareddomain.{{upper (camel .ModuleName)}}, err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoMongo:FetchAll")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
 	where := bson.M{}
@@ -258,7 +258,7 @@ func (r *{{clean .ModuleName}}RepoMongo) FetchAll(ctx context.Context, filter *d
 
 	if !filter.ShowAll {
 		findOptions.SetLimit(int64(filter.Limit))
-		findOptions.SetSkip(int64(filter.Offset))
+		findOptions.SetSkip(int64(filter.CalculateOffset()))
 	}
 	cur, err := r.readDB.Collection(r.collection).Find(ctx, where, findOptions)
 	if err != nil {
@@ -270,8 +270,8 @@ func (r *{{clean .ModuleName}}RepoMongo) FetchAll(ctx context.Context, filter *d
 	return
 }
 
-func (r *{{clean .ModuleName}}RepoMongo) Find(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) (result shareddomain.{{clean (upper .ModuleName)}}, err error) {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Find")
+func (r *{{camel .ModuleName}}RepoMongo) Find(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (result shareddomain.{{upper (camel .ModuleName)}}, err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoMongo:Find")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
 	bsonWhere := make(bson.M)
@@ -284,8 +284,8 @@ func (r *{{clean .ModuleName}}RepoMongo) Find(ctx context.Context, filter *domai
 	return
 }
 
-func (r *{{clean .ModuleName}}RepoMongo) Count(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) int {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Count")
+func (r *{{camel .ModuleName}}RepoMongo) Count(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) int {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoMongo:Count")
 	defer trace.Finish()
 
 	where := bson.M{}
@@ -294,8 +294,8 @@ func (r *{{clean .ModuleName}}RepoMongo) Count(ctx context.Context, filter *doma
 	return int(count)
 }
 
-func (r *{{clean .ModuleName}}RepoMongo) Save(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Save")
+func (r *{{camel .ModuleName}}RepoMongo) Save(ctx context.Context, data *shareddomain.{{upper (camel .ModuleName)}}) (err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoMongo:Save")
 	defer func() { trace.SetError(err); trace.Finish() }()
 	tracer.Log(ctx, "data", data)
 
@@ -320,8 +320,8 @@ func (r *{{clean .ModuleName}}RepoMongo) Save(ctx context.Context, data *sharedd
 	return
 }
 
-func (r *{{clean .ModuleName}}RepoMongo) Delete(ctx context.Context, id string) (err error) {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoMongo:Delete")
+func (r *{{camel .ModuleName}}RepoMongo) Delete(ctx context.Context, id string) (err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoMongo:Delete")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
 	{{if and .MongoDeps (not .SQLDeps)}}objectID, _ := primitive.ObjectIDFromHex(id){{else}}objectID := id{{end}}
@@ -353,19 +353,19 @@ import (
 	"gorm.io/gorm"{{end}}` + `
 )
 
-type {{clean .ModuleName}}RepoSQL struct {
+type {{camel .ModuleName}}RepoSQL struct {
 	readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB
 }
 
-// New{{clean (upper .ModuleName)}}RepoSQL mongo repo constructor
-func New{{clean (upper .ModuleName)}}RepoSQL(readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB) {{clean (upper .ModuleName)}}Repository {
-	return &{{clean .ModuleName}}RepoSQL{
+// New{{upper (camel .ModuleName)}}RepoSQL mongo repo constructor
+func New{{upper (camel .ModuleName)}}RepoSQL(readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB) {{upper (camel .ModuleName)}}Repository {
+	return &{{camel .ModuleName}}RepoSQL{
 		readDB, writeDB,
 	}
 }
 
-func (r *{{clean .ModuleName}}RepoSQL) FetchAll(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) (data []shareddomain.{{clean (upper .ModuleName)}}, err error) {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:FetchAll")
+func (r *{{camel .ModuleName}}RepoSQL) FetchAll(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (data []shareddomain.{{upper (camel .ModuleName)}}, err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoSQL:FetchAll")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
 	if filter.OrderBy == "" {
@@ -375,10 +375,10 @@ func (r *{{clean .ModuleName}}RepoSQL) FetchAll(ctx context.Context, filter *dom
 	{{if .SQLUseGORM}}db := {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, r.readDB)
 	
 	err = db.Order(filter.OrderBy + " " + filter.Sort).
-		Limit(filter.Limit).Offset(filter.Offset).
+		Limit(filter.Limit).Offset(filter.CalculateOffset()).
 		Find(&data).Error
-	{{else}}query := fmt.Sprintf("SELECT id, field, created_at, modified_at FROM {{clean .ModuleName}}s ORDER BY %s %s LIMIT %d OFFSET %d",
-		filter.OrderBy, filter.Sort, filter.Limit, filter.Offset)
+	{{else}}query := fmt.Sprintf("SELECT id, field, created_at, modified_at FROM {{snake .ModuleName}}s ORDER BY %s %s LIMIT %d OFFSET %d",
+		filter.OrderBy, filter.Sort, filter.Limit, filter.CalculateOffset())
 	trace.Log("query", query)
 	rows, err := r.readDB.Query(query)
 	if err != nil {
@@ -386,7 +386,7 @@ func (r *{{clean .ModuleName}}RepoSQL) FetchAll(ctx context.Context, filter *dom
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var res shareddomain.{{clean (upper .ModuleName)}}
+		var res shareddomain.{{upper (camel .ModuleName)}}
 		if err := rows.Scan(&res.ID, &res.Field, &res.CreatedAt, &res.ModifiedAt); err != nil {
 			return nil, err
 		}
@@ -395,21 +395,21 @@ func (r *{{clean .ModuleName}}RepoSQL) FetchAll(ctx context.Context, filter *dom
 	{{end}}return
 }
 
-func (r *{{clean .ModuleName}}RepoSQL) Count(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) (count int) {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Count")
+func (r *{{camel .ModuleName}}RepoSQL) Count(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (count int) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoSQL:Count")
 	defer trace.Finish()
 
 	{{if .SQLUseGORM}}db := {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, r.readDB)
 	
 	var total int64
-	db.Model(&shareddomain.{{clean (upper .ModuleName)}}{}).Count(&total)
+	db.Model(&shareddomain.{{upper (camel .ModuleName)}}{}).Count(&total)
 	count = int(total)
-	{{else}}r.readDB.QueryRow("SELECT COUNT(*) FROM {{clean .ModuleName}}s").Scan(&count){{end}}
+	{{else}}r.readDB.QueryRow("SELECT COUNT(*) FROM {{snake .ModuleName}}s").Scan(&count){{end}}
 	return
 }
 
-func (r *{{clean .ModuleName}}RepoSQL) Find(ctx context.Context, filter *domain.Filter{{clean (upper .ModuleName)}}) (result shareddomain.{{clean (upper .ModuleName)}}, err error) {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Find")
+func (r *{{camel .ModuleName}}RepoSQL) Find(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (result shareddomain.{{upper (camel .ModuleName)}}, err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoSQL:Find")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
 	{{if .SQLUseGORM}}db := {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, r.readDB)
@@ -418,13 +418,13 @@ func (r *{{clean .ModuleName}}RepoSQL) Find(ctx context.Context, filter *domain.
 	}
 
 	err = db.First(&result).Error
-	{{else}}err = r.readDB.QueryRow("SELECT id, field, created_at, modified_at FROM {{clean .ModuleName}}s WHERE id={{if eq .SQLDriver "postgres"}}$1{{else}}?{{end}}", filter.ID).
+	{{else}}err = r.readDB.QueryRow("SELECT id, field, created_at, modified_at FROM {{snake .ModuleName}}s WHERE id={{if eq .SQLDriver "postgres"}}$1{{else}}?{{end}}", filter.ID).
 		Scan(&result.ID, &result.Field, &result.CreatedAt, &result.ModifiedAt)
 	{{end}}return
 }
 
-func (r *{{clean .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddomain.{{clean (upper .ModuleName)}}) (err error) {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Save")
+func (r *{{camel .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddomain.{{upper (camel .ModuleName)}}) (err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoSQL:Save")
 	defer func() { trace.SetError(err); trace.Finish() }()
 	tracer.Log(ctx, "data", data)
 
@@ -451,10 +451,10 @@ func (r *{{clean .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddom
 	}
 	if data.ID == "" {
 		data.ID = uuid.NewString()
-		query = "INSERT INTO {{clean .ModuleName}}s (id, field, created_at, modified_at) VALUES ({{if eq .SQLDriver "postgres"}}$1,$2,$3,$4{{else}}?,?,?,?{{end}})"
+		query = "INSERT INTO {{snake .ModuleName}}s (id, field, created_at, modified_at) VALUES ({{if eq .SQLDriver "postgres"}}$1,$2,$3,$4{{else}}?,?,?,?{{end}})"
 		args = []interface{}{data.ID, data.Field, data.CreatedAt, data.ModifiedAt}
 	} else {
-		query = "UPDATE {{clean .ModuleName}}s SET field={{if eq .SQLDriver "postgres"}}$1{{else}}?{{end}} created_at={{if eq .SQLDriver "postgres"}}$2{{else}}?{{end}} modified_at={{if eq .SQLDriver "postgres"}}$3{{else}}?{{end}} WHERE id={{if eq .SQLDriver "postgres"}}$4{{else}}?{{end}}"
+		query = "UPDATE {{snake .ModuleName}}s SET field={{if eq .SQLDriver "postgres"}}$1{{else}}?{{end}} created_at={{if eq .SQLDriver "postgres"}}$2{{else}}?{{end}} modified_at={{if eq .SQLDriver "postgres"}}$3{{else}}?{{end}} WHERE id={{if eq .SQLDriver "postgres"}}$4{{else}}?{{end}}"
 		args = []interface{}{data.Field, data.CreatedAt, data.ModifiedAt, data.ID}
 	}
 
@@ -472,20 +472,20 @@ func (r *{{clean .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddom
 	{{end}}return
 }
 
-func (r *{{clean .ModuleName}}RepoSQL) Delete(ctx context.Context, id string) (err error) {
-	trace, ctx := tracer.StartTraceWithContext(ctx, "{{clean (upper .ModuleName)}}RepoSQL:Delete")
+func (r *{{camel .ModuleName}}RepoSQL) Delete(ctx context.Context, id string) (err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoSQL:Delete")
 	defer func() { trace.SetError(err); trace.Finish() }()
 
 	{{if .SQLUseGORM}}db := r.writeDB
 	if tx, ok := candishared.GetValueFromContext(ctx, candishared.ContextKeySQLTransaction).(*gorm.DB); ok {
 		db = tx
 	}
-	err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, db).Delete(&shareddomain.{{clean (upper .ModuleName)}}{ID: id}).Error
+	err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, db).Delete(&shareddomain.{{upper (camel .ModuleName)}}{ID: id}).Error
 	{{else}}var stmt *sql.Stmt
 	if tx, ok := candishared.GetValueFromContext(ctx, candishared.ContextKeySQLTransaction).(*sql.Tx); ok {
-		stmt, err = tx.PrepareContext(ctx, "DELETE FROM {{clean .ModuleName}}s WHERE id={{if eq .SQLDriver "postgres"}}$1{{else}}?{{end}}")
+		stmt, err = tx.PrepareContext(ctx, "DELETE FROM {{snake .ModuleName}}s WHERE id={{if eq .SQLDriver "postgres"}}$1{{else}}?{{end}}")
 	} else {
-		stmt, err = r.writeDB.PrepareContext(ctx, "DELETE FROM {{clean .ModuleName}}s WHERE id={{if eq .SQLDriver "postgres"}}$1{{else}}?{{end}}")
+		stmt, err = r.writeDB.PrepareContext(ctx, "DELETE FROM {{snake .ModuleName}}s WHERE id={{if eq .SQLDriver "postgres"}}$1{{else}}?{{end}}")
 	}
 
 	if err != nil {

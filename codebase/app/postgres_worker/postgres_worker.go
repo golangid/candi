@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/golangid/candi/candihelper"
-	"github.com/golangid/candi/candiutils"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
@@ -52,7 +51,6 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 	for _, opt := range opts {
 		opt(&worker.opt)
 	}
-	worker.opt.locker = candiutils.NewRedisLocker(service.GetDependency().GetRedisPool().WritePool())
 
 	shutdown = make(chan struct{}, 1)
 	startWorkerCh, releaseWorkerCh = make(chan struct{}), make(chan struct{})

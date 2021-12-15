@@ -99,6 +99,16 @@ func SetExtended(ext map[string]interface{}) Option {
 	}
 }
 
+// AddExtended option function for add extended
+func AddExtended(key string, value interface{}) Option {
+	return func(d *deps) {
+		if d.extended == nil {
+			d.extended = make(map[string]interface{})
+		}
+		d.extended[key] = value
+	}
+}
+
 // InitDependency constructor
 func InitDependency(opts ...Option) Dependency {
 	for _, o := range opts {
@@ -192,12 +202,4 @@ func GetValidator() interfaces.Validator {
 // GetExtended free function for get extended
 func GetExtended(key string) interface{} {
 	return stdDeps.extended[key]
-}
-
-// AddExtended free function for add extended
-func AddExtended(key string, value interface{}) {
-	if stdDeps.extended == nil {
-		stdDeps.extended = make(map[string]interface{})
-	}
-	stdDeps.extended[key] = value
 }

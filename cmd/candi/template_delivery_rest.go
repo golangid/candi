@@ -41,26 +41,26 @@ func NewRestHandler(uc usecase.Usecase, deps dependency.Dependency) *RestHandler
 func (h *RestHandler) Mount(root *echo.Group) {
 	v1Root := root.Group(candihelper.V1)
 
-	{{clean .ModuleName}} := v1Root.Group("/{{clean .ModuleName}}", echo.WrapMiddleware(h.mw.HTTPBearerAuth))
-	{{clean .ModuleName}}.GET("", h.getAll{{clean (upper .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
-	{{clean .ModuleName}}.GET("/:id", h.getDetail{{clean (upper .ModuleName)}}ByID, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
-	{{clean .ModuleName}}.POST("", h.create{{clean (upper .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
-	{{clean .ModuleName}}.PUT("/:id", h.update{{clean (upper .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
-	{{clean .ModuleName}}.DELETE("/:id", h.delete{{clean (upper .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
+	{{camel .ModuleName}} := v1Root.Group("/{{kebab .ModuleName}}", echo.WrapMiddleware(h.mw.HTTPBearerAuth))
+	{{camel .ModuleName}}.GET("", h.getAll{{upper (camel .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
+	{{camel .ModuleName}}.GET("/:id", h.getDetail{{upper (camel .ModuleName)}}ByID, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
+	{{camel .ModuleName}}.POST("", h.create{{upper (camel .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
+	{{camel .ModuleName}}.PUT("/:id", h.update{{upper (camel .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
+	{{camel .ModuleName}}.DELETE("/:id", h.delete{{upper (camel .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
 }
 
-func (h *RestHandler) getAll{{clean (upper .ModuleName)}}(c echo.Context) error {
-	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:GetAll{{clean (upper .ModuleName)}}")
+func (h *RestHandler) getAll{{upper (camel .ModuleName)}}(c echo.Context) error {
+	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{upper (camel .ModuleName)}}DeliveryREST:GetAll{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using HTTPBearerAuth in middleware for this handler
 
-	var filter domain.Filter{{clean (upper .ModuleName)}}
+	var filter domain.Filter{{upper (camel .ModuleName)}}
 	if err := candihelper.ParseFromQueryParam(c.Request().URL.Query(), &filter); err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
 
-	data, meta, err := h.uc.{{clean (upper .ModuleName)}}().GetAll{{clean (upper .ModuleName)}}(ctx, &filter)
+	data, meta, err := h.uc.{{upper (camel .ModuleName)}}().GetAll{{upper (camel .ModuleName)}}(ctx, &filter)
 	if err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
@@ -69,11 +69,11 @@ func (h *RestHandler) getAll{{clean (upper .ModuleName)}}(c echo.Context) error 
 	return wrapper.NewHTTPResponse(http.StatusOK, message, meta, data).JSON(c.Response())
 }
 
-func (h *RestHandler) getDetail{{clean (upper .ModuleName)}}ByID(c echo.Context) error {
-	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:GetDetail{{clean (upper .ModuleName)}}ByID")
+func (h *RestHandler) getDetail{{upper (camel .ModuleName)}}ByID(c echo.Context) error {
+	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{upper (camel .ModuleName)}}DeliveryREST:GetDetail{{upper (camel .ModuleName)}}ByID")
 	defer trace.Finish()
 
-	data, err := h.uc.{{clean (upper .ModuleName)}}().GetDetail{{clean (upper .ModuleName)}}(ctx, c.Param("id"))
+	data, err := h.uc.{{upper (camel .ModuleName)}}().GetDetail{{upper (camel .ModuleName)}}(ctx, c.Param("id"))
 	if err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
@@ -81,16 +81,16 @@ func (h *RestHandler) getDetail{{clean (upper .ModuleName)}}ByID(c echo.Context)
 	return wrapper.NewHTTPResponse(http.StatusOK, "Success", data).JSON(c.Response())
 }
 
-func (h *RestHandler) create{{clean (upper .ModuleName)}}(c echo.Context) error {
-	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:Create{{clean (upper .ModuleName)}}")
+func (h *RestHandler) create{{upper (camel .ModuleName)}}(c echo.Context) error {
+	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{upper (camel .ModuleName)}}DeliveryREST:Create{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	var payload shareddomain.{{clean (upper .ModuleName)}}
+	var payload shareddomain.{{upper (camel .ModuleName)}}
 	if err := c.Bind(&payload); err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
 
-	err := h.uc.{{clean (upper .ModuleName)}}().Create{{clean (upper .ModuleName)}}(ctx, &payload)
+	err := h.uc.{{upper (camel .ModuleName)}}().Create{{upper (camel .ModuleName)}}(ctx, &payload)
 	if err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
@@ -98,16 +98,16 @@ func (h *RestHandler) create{{clean (upper .ModuleName)}}(c echo.Context) error 
 	return wrapper.NewHTTPResponse(http.StatusOK, "Success").JSON(c.Response())
 }
 
-func (h *RestHandler) update{{clean (upper .ModuleName)}}(c echo.Context) error {
-	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:Update{{clean (upper .ModuleName)}}")
+func (h *RestHandler) update{{upper (camel .ModuleName)}}(c echo.Context) error {
+	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{upper (camel .ModuleName)}}DeliveryREST:Update{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	var payload shareddomain.{{clean (upper .ModuleName)}}
+	var payload shareddomain.{{upper (camel .ModuleName)}}
 	if err := c.Bind(&payload); err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
 
-	err := h.uc.{{clean (upper .ModuleName)}}().Update{{clean (upper .ModuleName)}}(ctx, c.Param("id"), &payload)
+	err := h.uc.{{upper (camel .ModuleName)}}().Update{{upper (camel .ModuleName)}}(ctx, c.Param("id"), &payload)
 	if err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
@@ -115,11 +115,11 @@ func (h *RestHandler) update{{clean (upper .ModuleName)}}(c echo.Context) error 
 	return wrapper.NewHTTPResponse(http.StatusOK, "Success").JSON(c.Response())
 }
 
-func (h *RestHandler) delete{{clean (upper .ModuleName)}}(c echo.Context) error {
-	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{clean (upper .ModuleName)}}DeliveryREST:Delete{{clean (upper .ModuleName)}}")
+func (h *RestHandler) delete{{upper (camel .ModuleName)}}(c echo.Context) error {
+	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{upper (camel .ModuleName)}}DeliveryREST:Delete{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	if err := h.uc.{{clean (upper .ModuleName)}}().Delete{{clean (upper .ModuleName)}}(ctx, c.Param("id")); err != nil {
+	if err := h.uc.{{upper (camel .ModuleName)}}().Delete{{upper (camel .ModuleName)}}(ctx, c.Param("id")); err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
 
@@ -176,7 +176,7 @@ func TestNewRestHandler(t *testing.T) {
 	handler.Mount(e.Group("/"))
 }
 
-func TestRestHandler_getAll{{clean (upper .ModuleName)}}(t *testing.T) {
+func TestRestHandler_getAll{{upper (camel .ModuleName)}}(t *testing.T) {
 	tests := []testCase{
 		{
 			name: "Testcase #1: Positive", wantUsecaseError: nil, wantRespCode: 200,
@@ -191,14 +191,14 @@ func TestRestHandler_getAll{{clean (upper .ModuleName)}}(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			{{cleanPathModule .ModuleName}}Usecase := &mockusecase.{{clean (upper .ModuleName)}}Usecase{}
-			{{cleanPathModule .ModuleName}}Usecase.On("GetAll{{clean (upper .ModuleName)}}", mock.Anything, mock.Anything).Return(
-				[]shareddomain.{{clean (upper .ModuleName)}}{}, candishared.Meta{}, tt.wantUsecaseError)
+			{{camel .ModuleName}}Usecase := &mockusecase.{{upper (camel .ModuleName)}}Usecase{}
+			{{camel .ModuleName}}Usecase.On("GetAll{{upper (camel .ModuleName)}}", mock.Anything, mock.Anything).Return(
+				[]shareddomain.{{upper (camel .ModuleName)}}{}, candishared.Meta{}, tt.wantUsecaseError)
 			mockValidator := &mockinterfaces.Validator{}
 			mockValidator.On("ValidateDocument", mock.Anything, mock.Anything).Return(tt.wantValidateError)
 
 			uc := &mocksharedusecase.Usecase{}
-			uc.On("{{clean (upper .ModuleName)}}").Return({{cleanPathModule .ModuleName}}Usecase)
+			uc.On("{{upper (camel .ModuleName)}}").Return({{camel .ModuleName}}Usecase)
 
 			handler := RestHandler{uc: uc, validator: mockValidator}
 
@@ -207,14 +207,14 @@ func TestRestHandler_getAll{{clean (upper .ModuleName)}}(t *testing.T) {
 			req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
 			res := httptest.NewRecorder()
 			echoContext := echo.New().NewContext(req, res)
-			err := handler.getAll{{clean (upper .ModuleName)}}(echoContext)
+			err := handler.getAll{{upper (camel .ModuleName)}}(echoContext)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantRespCode, res.Code)
 		})
 	}
 }
 
-func TestRestHandler_getDetail{{clean (upper .ModuleName)}}ByID(t *testing.T) {
+func TestRestHandler_getDetail{{upper (camel .ModuleName)}}ByID(t *testing.T) {
 	tests := []testCase{
 		{
 			name: "Testcase #1: Positive", wantUsecaseError: nil, wantRespCode: 200,
@@ -226,13 +226,13 @@ func TestRestHandler_getDetail{{clean (upper .ModuleName)}}ByID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			{{cleanPathModule .ModuleName}}Usecase := &mockusecase.{{clean (upper .ModuleName)}}Usecase{}
-			{{cleanPathModule .ModuleName}}Usecase.On("GetDetail{{clean (upper .ModuleName)}}", mock.Anything, mock.Anything).Return(shareddomain.{{clean (upper .ModuleName)}}{}, tt.wantUsecaseError)
+			{{camel .ModuleName}}Usecase := &mockusecase.{{upper (camel .ModuleName)}}Usecase{}
+			{{camel .ModuleName}}Usecase.On("GetDetail{{upper (camel .ModuleName)}}", mock.Anything, mock.Anything).Return(shareddomain.{{upper (camel .ModuleName)}}{}, tt.wantUsecaseError)
 			mockValidator := &mockinterfaces.Validator{}
 			mockValidator.On("ValidateDocument", mock.Anything, mock.Anything).Return(tt.wantValidateError)
 
 			uc := &mocksharedusecase.Usecase{}
-			uc.On("{{clean (upper .ModuleName)}}").Return({{cleanPathModule .ModuleName}}Usecase)
+			uc.On("{{upper (camel .ModuleName)}}").Return({{camel .ModuleName}}Usecase)
 
 			handler := RestHandler{uc: uc, validator: mockValidator}
 
@@ -241,14 +241,14 @@ func TestRestHandler_getDetail{{clean (upper .ModuleName)}}ByID(t *testing.T) {
 			req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
 			res := httptest.NewRecorder()
 			echoContext := echo.New().NewContext(req, res)
-			err := handler.getDetail{{clean (upper .ModuleName)}}ByID(echoContext)
+			err := handler.getDetail{{upper (camel .ModuleName)}}ByID(echoContext)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantRespCode, res.Code)
 		})
 	}
 }
 
-func TestRestHandler_create{{clean (upper .ModuleName)}}(t *testing.T) {
+func TestRestHandler_create{{upper (camel .ModuleName)}}(t *testing.T) {
 	tests := []testCase{
 		{
 			name: "Testcase #1: Positive", reqBody: ` + "`" + `{"email": "test@test.com"}` + "`" + `, wantUsecaseError: nil, wantRespCode: 200,
@@ -263,13 +263,13 @@ func TestRestHandler_create{{clean (upper .ModuleName)}}(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			{{cleanPathModule .ModuleName}}Usecase := &mockusecase.{{clean (upper .ModuleName)}}Usecase{}
-			{{cleanPathModule .ModuleName}}Usecase.On("Create{{clean (upper .ModuleName)}}", mock.Anything, mock.Anything).Return(tt.wantUsecaseError)
+			{{camel .ModuleName}}Usecase := &mockusecase.{{upper (camel .ModuleName)}}Usecase{}
+			{{camel .ModuleName}}Usecase.On("Create{{upper (camel .ModuleName)}}", mock.Anything, mock.Anything).Return(tt.wantUsecaseError)
 			mockValidator := &mockinterfaces.Validator{}
 			mockValidator.On("ValidateDocument", mock.Anything, mock.Anything).Return(tt.wantValidateError)
 
 			uc := &mocksharedusecase.Usecase{}
-			uc.On("{{clean (upper .ModuleName)}}").Return({{cleanPathModule .ModuleName}}Usecase)
+			uc.On("{{upper (camel .ModuleName)}}").Return({{camel .ModuleName}}Usecase)
 
 			handler := RestHandler{uc: uc, validator: mockValidator}
 
@@ -279,14 +279,14 @@ func TestRestHandler_create{{clean (upper .ModuleName)}}(t *testing.T) {
 			echoContext := echo.New().NewContext(req, res)
 			echoContext.SetParamNames("id")
 			echoContext.SetParamValues("001")
-			err := handler.create{{clean (upper .ModuleName)}}(echoContext)
+			err := handler.create{{upper (camel .ModuleName)}}(echoContext)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantRespCode, res.Code)
 		})
 	}
 }
 
-func TestRestHandler_update{{clean (upper .ModuleName)}}(t *testing.T) {
+func TestRestHandler_update{{upper (camel .ModuleName)}}(t *testing.T) {
 	tests := []testCase{
 		{
 			name: "Testcase #1: Positive", reqBody: ` + "`" + `{"email": "test@test.com"}` + "`" + `, wantUsecaseError: nil, wantRespCode: 200,
@@ -304,13 +304,13 @@ func TestRestHandler_update{{clean (upper .ModuleName)}}(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			{{cleanPathModule .ModuleName}}Usecase := &mockusecase.{{clean (upper .ModuleName)}}Usecase{}
-			{{cleanPathModule .ModuleName}}Usecase.On("Update{{clean (upper .ModuleName)}}", mock.Anything, mock.Anything, mock.Anything).Return(tt.wantUsecaseError)
+			{{camel .ModuleName}}Usecase := &mockusecase.{{upper (camel .ModuleName)}}Usecase{}
+			{{camel .ModuleName}}Usecase.On("Update{{upper (camel .ModuleName)}}", mock.Anything, mock.Anything, mock.Anything).Return(tt.wantUsecaseError)
 			mockValidator := &mockinterfaces.Validator{}
 			mockValidator.On("ValidateDocument", mock.Anything, mock.Anything).Return(tt.wantValidateError)
 
 			uc := &mocksharedusecase.Usecase{}
-			uc.On("{{clean (upper .ModuleName)}}").Return({{cleanPathModule .ModuleName}}Usecase)
+			uc.On("{{upper (camel .ModuleName)}}").Return({{camel .ModuleName}}Usecase)
 
 			handler := RestHandler{uc: uc, validator: mockValidator}
 
@@ -319,14 +319,14 @@ func TestRestHandler_update{{clean (upper .ModuleName)}}(t *testing.T) {
 			req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
 			res := httptest.NewRecorder()
 			echoContext := echo.New().NewContext(req, res)
-			err := handler.update{{clean (upper .ModuleName)}}(echoContext)
+			err := handler.update{{upper (camel .ModuleName)}}(echoContext)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantRespCode, res.Code)
 		})
 	}
 }
 
-func TestRestHandler_delete{{clean (upper .ModuleName)}}(t *testing.T) {
+func TestRestHandler_delete{{upper (camel .ModuleName)}}(t *testing.T) {
 	tests := []testCase{
 		{
 			name: "Testcase #1: Positive", wantUsecaseError: nil, wantRespCode: 200,
@@ -338,13 +338,13 @@ func TestRestHandler_delete{{clean (upper .ModuleName)}}(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			{{cleanPathModule .ModuleName}}Usecase := &mockusecase.{{clean (upper .ModuleName)}}Usecase{}
-			{{cleanPathModule .ModuleName}}Usecase.On("Delete{{clean (upper .ModuleName)}}", mock.Anything, mock.Anything).Return(tt.wantUsecaseError)
+			{{camel .ModuleName}}Usecase := &mockusecase.{{upper (camel .ModuleName)}}Usecase{}
+			{{camel .ModuleName}}Usecase.On("Delete{{upper (camel .ModuleName)}}", mock.Anything, mock.Anything).Return(tt.wantUsecaseError)
 			mockValidator := &mockinterfaces.Validator{}
 			mockValidator.On("ValidateDocument", mock.Anything, mock.Anything).Return(tt.wantValidateError)
 
 			uc := &mocksharedusecase.Usecase{}
-			uc.On("{{clean (upper .ModuleName)}}").Return({{cleanPathModule .ModuleName}}Usecase)
+			uc.On("{{upper (camel .ModuleName)}}").Return({{camel .ModuleName}}Usecase)
 
 			handler := RestHandler{uc: uc, validator: mockValidator}
 
@@ -352,7 +352,7 @@ func TestRestHandler_delete{{clean (upper .ModuleName)}}(t *testing.T) {
 			req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
 			res := httptest.NewRecorder()
 			echoContext := echo.New().NewContext(req, res)
-			err := handler.delete{{clean (upper .ModuleName)}}(echoContext)
+			err := handler.delete{{upper (camel .ModuleName)}}(echoContext)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantRespCode, res.Code)
 		})
