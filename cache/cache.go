@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golangid/candi/tracer"
@@ -103,7 +104,7 @@ func (r RedisCache) Exists(ctx context.Context, key string) (exist bool, err err
 	return redis.Bool(cl.Do("EXISTS", key))
 }
 
-// Delete method
+// Delete method with pattern
 func (r *RedisCache) Delete(ctx context.Context, key string) (err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "redis:delete")
 	defer func() { trace.SetError(err); trace.Finish() }()
@@ -114,6 +115,19 @@ func (r *RedisCache) Delete(ctx context.Context, key string) (err error) {
 	cl := r.write.Get()
 	defer cl.Close()
 
-	_, err = cl.Do("DEL", key)
+	var keys []string
+	if strings.HasSuffix(key, "*") {
+		keys, _ = redis.Strings(cl.Do("KEYS", key))
+	}
+
+	if len(keys) == 0 {
+		keys = []string{key}
+	}
+
+	for _, k := range keys {
+		if _, err = cl.Do("DEL", k); err != nil {
+			return err
+		}
+	}
 	return nil
 }
