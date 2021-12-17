@@ -18,10 +18,21 @@ const (
 	BEGIN
 		
 		-- Convert the old or new row to JSON, based on the kind of action.
-		data = json_build_object(
-			'old', row_to_json(OLD),
-			'new', row_to_json(NEW)
-		);
+		CASE TG_OP
+		WHEN 'INSERT' THEN
+			data = json_build_object(
+				'new', row_to_json(NEW)
+			);
+		WHEN 'DELETE' THEN
+			data = json_build_object(
+				'old', row_to_json(OLD)
+			);
+		ELSE
+			data = json_build_object(
+				'old', row_to_json(OLD),
+				'new', row_to_json(NEW)
+			);
+		END CASE;
 
 		-- Construct the notification as a JSON string.
 		notification = json_build_object(
