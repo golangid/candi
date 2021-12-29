@@ -1,76 +1,81 @@
 package logger
 
 import (
+	"io"
+	"os"
 	"runtime"
 
-	"github.com/golangid/candi/config/env"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 var logger *zap.SugaredLogger
 
-// InitZap logger
-func InitZap() {
-	var (
-		logg *zap.Logger
-		err  error
-	)
+// InitZap logger with default writer to stdout
+func InitZap(opts ...OptionFunc) {
+	opt := Option{
+		MultiWriter: []io.Writer{os.Stdout},
+	}
 
-	cfg := zap.Config{
-		Encoding:         "json",
-		OutputPaths:      []string{"stderr"},
-		ErrorOutputPaths: []string{"stderr"},
-		EncoderConfig: zapcore.EncoderConfig{
-			MessageKey: "message",
+	for _, o := range opts {
+		o(&opt)
+	}
 
-			LevelKey:    "level",
-			EncodeLevel: zapcore.CapitalLevelEncoder,
+	encCfg := zapcore.NewJSONEncoder(zapcore.EncoderConfig{
+		MessageKey: "message",
 
-			TimeKey:    "time",
-			EncodeTime: zapcore.ISO8601TimeEncoder,
+		LevelKey:    "level",
+		EncodeLevel: zapcore.CapitalLevelEncoder,
 
-			CallerKey: "caller",
-			EncodeCaller: func(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
-				_, caller.File, caller.Line, _ = runtime.Caller(7)
-				enc.AppendString(caller.FullPath())
-			},
+		TimeKey:    "time",
+		EncodeTime: zapcore.ISO8601TimeEncoder,
+
+		CallerKey: "caller",
+		EncodeCaller: func(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
+			caller.PC, caller.File, caller.Line, _ = runtime.Caller(7)
+			enc.AppendString(caller.FullPath())
 		},
-		Level:       zap.NewAtomicLevelAt(zapcore.DebugLevel),
-		Development: env.BaseEnv().Environment != "production",
-	}
+	})
 
-	logg, err = cfg.Build()
-	if err != nil {
-		panic(err)
+	var coreOpt []zapcore.Core
+	for _, w := range opt.MultiWriter {
+		coreOpt = append(coreOpt, zapcore.NewCore(encCfg, zapcore.AddSync(w), zapcore.DebugLevel))
 	}
-	defer logg.Sync()
+	core := zapcore.NewTee(coreOpt...)
 
-	// define logger
-	logger = logg.Sugar()
+	logger = zap.New(core, zap.AddCaller()).Sugar()
 }
 
 // Log func
 func Log(level zapcore.Level, message string, context string, scope string) {
+	if logger == nil {
+		return
+	}
 	entry := logger.With(
 		zap.String("context", context),
 		zap.String("scope", scope),
 	)
 
-	switch level {
-	case zapcore.DebugLevel:
-		entry.Debug(message)
-	case zapcore.InfoLevel:
-		entry.Info(message)
-	case zapcore.WarnLevel:
-		entry.Warn(message)
-	case zapcore.ErrorLevel:
-		entry.Error(message)
-	case zapcore.FatalLevel:
-		entry.Fatal(message)
-	case zapcore.PanicLevel:
-		entry.Panic(message)
+	setEntryType(level, entry, message)
+}
+
+// LogWithField func
+func LogWithField(level zapcore.Level, fields map[string]interface{}) {
+	if logger == nil {
+		return
 	}
+
+	var message interface{}
+	var args []interface{}
+	for k, v := range fields {
+		if k == "message" {
+			message = v
+			continue
+		}
+		args = append(args, []interface{}{k, v}...)
+	}
+	entry := logger.With(args...)
+	setEntryType(level, entry, message)
 }
 
 // LogE error
@@ -91,4 +96,22 @@ func LogI(message string) {
 // LogIf info with format
 func LogIf(format string, i ...interface{}) {
 	logger.Infof(format, i...)
+}
+
+func setEntryType(level zapcore.Level, entry *zap.SugaredLogger, msg interface{}) {
+
+	switch level {
+	case zapcore.DebugLevel:
+		entry.Debug(msg)
+	case zapcore.InfoLevel:
+		entry.Info(msg)
+	case zapcore.WarnLevel:
+		entry.Warn(msg)
+	case zapcore.ErrorLevel:
+		entry.Error(msg)
+	case zapcore.FatalLevel:
+		entry.Fatal(msg)
+	case zapcore.PanicLevel:
+		entry.Panic(msg)
+	}
 }
