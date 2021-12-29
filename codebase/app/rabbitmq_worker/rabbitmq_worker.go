@@ -140,8 +140,13 @@ func (r *rabbitmqWorker) processMessage(message amqp.Delivery) {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
 
+	header := map[string]string{}
+	for key, val := range message.Headers {
+		header[key] = string(candihelper.ToBytes(val))
+	}
+
 	var err error
-	trace, ctx := tracer.StartTraceWithContext(ctx, "RabbitMQConsumer")
+	trace, ctx := tracer.StartTraceFromHeader(ctx, "RabbitMQConsumer", header)
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)

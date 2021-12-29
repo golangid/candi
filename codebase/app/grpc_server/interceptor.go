@@ -11,8 +11,6 @@ import (
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -59,17 +57,14 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 		}
 	}
 
-	globalTracer := opentracing.GlobalTracer()
-	opName := fmt.Sprintf("GRPC: %s", info.FullMethod)
-
-	var span opentracing.Span
-	if spanCtx, err := globalTracer.Extract(opentracing.HTTPHeaders, tracer.GRPCMetadataReaderWriter(meta)); err != nil {
-		span, ctx = opentracing.StartSpanFromContext(ctx, opName)
-		ext.SpanKindRPCServer.Set(span)
-	} else {
-		span = globalTracer.StartSpan(opName, opentracing.ChildOf(spanCtx), ext.SpanKindRPCClient)
-		ctx = opentracing.ContextWithSpan(ctx, span)
+	header := map[string]string{}
+	for key, values := range meta {
+		for _, value := range values {
+			header[key] = value
+		}
 	}
+
+	trace, ctx := tracer.StartTraceFromHeader(ctx, fmt.Sprintf("GRPC: %s", info.FullMethod), header)
 	defer func() {
 		if r := recover(); r != nil {
 			err = grpc.Errorf(codes.Aborted, "%v", r)
@@ -78,21 +73,18 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 		i.logInterceptor(start, err, info.FullMethod, "GRPC")
 		logger.LogGreen("grpc > trace_url: " + tracer.GetTraceURL(ctx))
 		if respBody := candihelper.ToBytes(resp); len(respBody) < i.opt.jaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
-			span.LogKV("response.body", string(respBody))
+			trace.Log("response.body", respBody)
 		} else {
-			span.LogKV("response.body.size", len(respBody))
+			trace.Log("response.body.size", len(respBody))
 		}
-		span.Finish()
+		trace.Finish()
 	}()
 
-	if meta, ok := metadata.FromIncomingContext(ctx); ok {
-		span.SetTag("metadata", string(candihelper.ToBytes(meta)))
-	}
-
+	trace.SetTag("metadata", meta)
 	if reqBody := candihelper.ToBytes(req); len(reqBody) < i.opt.jaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
-		span.LogKV("request.body", string(reqBody))
+		trace.Log("request.body", reqBody)
 	} else {
-		span.LogKV("request.body.size", len(reqBody))
+		trace.Log("request.body.size", len(reqBody))
 	}
 
 	resp, err = handler(ctx, req)
@@ -148,34 +140,28 @@ func (i *interceptor) streamTracerInterceptor(srv interface{}, stream grpc.Serve
 		}
 	}
 
-	globalTracer := opentracing.GlobalTracer()
-	opName := fmt.Sprintf("GRPC-STREAM: %s", info.FullMethod)
-
-	var span opentracing.Span
-	if spanCtx, err := globalTracer.Extract(opentracing.HTTPHeaders, tracer.GRPCMetadataReaderWriter(meta)); err != nil {
-		span, ctx = opentracing.StartSpanFromContext(ctx, opName)
-		ext.SpanKindRPCServer.Set(span)
-	} else {
-		span = globalTracer.StartSpan(opName, opentracing.ChildOf(spanCtx), ext.SpanKindRPCClient)
-		ctx = opentracing.ContextWithSpan(ctx, span)
+	header := map[string]string{}
+	for key, values := range meta {
+		for _, value := range values {
+			header[key] = value
+		}
 	}
+
+	trace, ctx := tracer.StartTraceFromHeader(ctx, fmt.Sprintf("GRPC-STREAM: %s", info.FullMethod), header)
 	defer func() {
 		if r := recover(); r != nil {
 			err = grpc.Errorf(codes.Aborted, "%v", r)
-			tracer.SetError(ctx, err)
+			trace.SetError(err)
 		}
 		i.logInterceptor(start, err, info.FullMethod, "GRPC-STREAM")
 		logger.LogGreen("grpc_stream > trace_url: " + tracer.GetTraceURL(ctx))
-		span.Finish()
+		trace.Finish()
 	}()
 
-	if meta, ok := metadata.FromIncomingContext(ctx); ok {
-		span.SetTag("metadata", string(candihelper.ToBytes(meta)))
-	}
-
+	trace.SetTag("metadata", meta)
 	err = handler(srv, &wrappedServerStream{ServerStream: stream, wrappedContext: ctx})
 	if err != nil {
-		tracer.SetError(ctx, err)
+		trace.SetError(err)
 	}
 	return
 }

@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"runtime"
 	"runtime/debug"
-	"strconv"
 	"strings"
 	"time"
 
@@ -75,21 +74,13 @@ func InitOpenTracing(serviceName string, opts ...OptionFunc) error {
 		return err
 	}
 	opentracing.SetGlobalTracer(tracer)
+	SetTracerPlatformType(&jaegerPlatform{})
 	return nil
 }
 
-type jaegerImpl struct {
-	ctx  context.Context
-	span opentracing.Span
-	tags map[string]interface{}
-}
+type jaegerPlatform struct{}
 
-// StartTrace starting trace child span from parent span
-func StartTrace(ctx context.Context, operationName string) interfaces.Tracer {
-	if candishared.GetValueFromContext(ctx, skipTracer) != nil {
-		return &jaegerImpl{ctx: ctx}
-	}
-
+func (j *jaegerPlatform) StartSpan(ctx context.Context, operationName string) interfaces.Tracer {
 	span := opentracing.SpanFromContext(ctx)
 	if span == nil {
 		// init new span
@@ -103,11 +94,27 @@ func StartTrace(ctx context.Context, operationName string) interfaces.Tracer {
 		span: span,
 	}
 }
+func (j *jaegerPlatform) StartRootSpan(ctx context.Context, operationName string, header map[string]string) interfaces.Tracer {
 
-// StartTraceWithContext starting trace child span from parent span, returning tracer and context
-func StartTraceWithContext(ctx context.Context, operationName string) (interfaces.Tracer, context.Context) {
-	t := StartTrace(ctx, operationName)
-	return t, t.Context()
+	var span opentracing.Span
+	globalTracer := opentracing.GlobalTracer()
+	if spanCtx, err := globalTracer.Extract(opentracing.TextMap, opentracing.TextMapCarrier(header)); err != nil {
+		span, ctx = opentracing.StartSpanFromContext(ctx, operationName)
+		ext.SpanKindRPCServer.Set(span)
+	} else {
+		span = globalTracer.StartSpan(operationName, opentracing.ChildOf(spanCtx), ext.SpanKindRPCClient)
+		ctx = opentracing.ContextWithSpan(ctx, span)
+	}
+	return &jaegerImpl{
+		ctx:  ctx,
+		span: span,
+	}
+}
+
+type jaegerImpl struct {
+	ctx  context.Context
+	span opentracing.Span
+	tags map[string]interface{}
 }
 
 // Context get active context
@@ -133,7 +140,7 @@ func (t *jaegerImpl) SetTag(key string, value interface{}) {
 	t.tags[key] = value
 }
 
-// InjectHTTPHeader to continue tracer to http request host
+// InjectHTTPHeader DEPRECATED : use InjectRequestHeader
 func (t *jaegerImpl) InjectHTTPHeader(req *http.Request) {
 	if t.span == nil {
 		return
@@ -146,8 +153,16 @@ func (t *jaegerImpl) InjectHTTPHeader(req *http.Request) {
 	)
 }
 
-// InjectGRPCMetaData to continue tracer to grpc metadata context
+// InjectGRPCMetadata DEPRECATED : use InjectRequestHeader
 func (t *jaegerImpl) InjectGRPCMetadata(md metadata.MD) {
+	if t.span == nil {
+		return
+	}
+
+}
+
+// InjectRequestHeader to continue tracer with custom header carrier
+func (t *jaegerImpl) InjectRequestHeader(header map[string]string) {
 	if t.span == nil {
 		return
 	}
@@ -156,7 +171,7 @@ func (t *jaegerImpl) InjectGRPCMetadata(md metadata.MD) {
 	t.span.Tracer().Inject(
 		t.span.Context(),
 		opentracing.HTTPHeaders,
-		GRPCMetadataReaderWriter(md),
+		opentracing.TextMapCarrier(header),
 	)
 }
 
@@ -188,7 +203,7 @@ func (t *jaegerImpl) Finish(additionalTags ...map[string]interface{}) {
 	}
 
 	for k, v := range t.tags {
-		t.span.SetTag(k, toString(v))
+		t.span.SetTag(k, toValue(v))
 	}
 }
 
@@ -199,7 +214,7 @@ func Log(ctx context.Context, key string, value interface{}) {
 		return
 	}
 
-	span.LogKV(key, toString(value))
+	span.LogKV(key, toValue(value))
 }
 
 // LogEvent trace
@@ -214,7 +229,7 @@ func LogEvent(ctx context.Context, event string, payload ...interface{}) {
 			if e, ok := p.(error); ok && e != nil {
 				ext.Error.Set(span, true)
 			}
-			span.LogEventWithPayload(event, toString(p))
+			span.LogEventWithPayload(event, toValue(p))
 		}
 	} else {
 		span.LogEvent(event)
@@ -237,27 +252,34 @@ func WithTraceFuncTracer(ctx context.Context, operationName string, fn func(t in
 	fn(t)
 }
 
-func toString(v interface{}) (s string) {
+func toValue(v interface{}) (s interface{}) {
+
+	var str string
 	switch val := v.(type) {
+
+	case uint, uint64, int, int64, float32, float64:
+		return v
+
 	case error:
 		if val != nil {
-			s = val.Error()
+			str = val.Error()
 		}
 	case string:
-		s = val
-	case int:
-		s = strconv.Itoa(val)
+		str = val
 	case []byte:
-		s = string(val)
+		str = string(val)
 	default:
 		b, _ := json.Marshal(val)
-		s = string(b)
+		str = string(b)
 	}
 
-	if len(s) >= int(env.BaseEnv().JaegerMaxPacketSize) {
-		return fmt.Sprintf("<<Overflow, cannot show data. Size is = %d bytes, JAEGER_MAX_PACKET_SIZE = %d bytes>>", len(s), env.BaseEnv().JaegerMaxPacketSize)
+	if len(str) >= int(env.BaseEnv().JaegerMaxPacketSize) {
+		return fmt.Sprintf("<<Overflow, cannot show data. Size is = %d bytes, JAEGER_MAX_PACKET_SIZE = %d bytes>>",
+			len(str),
+			env.BaseEnv().JaegerMaxPacketSize)
 	}
-	return
+
+	return str
 }
 
 // GetTraceID func
@@ -300,33 +322,6 @@ func GetTraceURL(ctx context.Context) (u string) {
 		u = fmt.Sprintf("http://%s:16686/trace/%s", urlAgent.Hostname(), traceID)
 	}
 	return
-}
-
-// GRPCMetadataReaderWriter grpc metadata
-type GRPCMetadataReaderWriter metadata.MD
-
-// ForeachKey method
-func (mrw GRPCMetadataReaderWriter) ForeachKey(handler func(string, string) error) error {
-	for key, values := range mrw {
-		for _, value := range values {
-			dk, dv, err := metadata.DecodeKeyValue(key, value)
-			if err != nil {
-				return err
-			}
-
-			if err := handler(dk, dv); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-// Set method
-func (mrw GRPCMetadataReaderWriter) Set(key, value string) {
-	// headers should be lowercase
-	k := strings.ToLower(key)
-	mrw[k] = append(mrw[k], value)
 }
 
 var skipTracer candishared.ContextKey = "nooptracer"

@@ -2,7 +2,6 @@ package restserver
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -21,8 +20,6 @@ import (
 	"github.com/golangid/candi/wrapper"
 	"github.com/labstack/echo"
 	"github.com/labstack/gommon/color"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
 	"github.com/valyala/fasttemplate"
 )
 
@@ -37,36 +34,31 @@ func (h *restServer) echoRestTracerMiddleware(next echo.HandlerFunc) echo.Handle
 			return next(c)
 		}
 
-		globalTracer := opentracing.GlobalTracer()
 		operationName := fmt.Sprintf("%s %s", req.Method, req.Host)
 
-		var span opentracing.Span
-		var ctx context.Context
-		if spanCtx, err := globalTracer.Extract(opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(req.Header)); err != nil {
-			span, ctx = opentracing.StartSpanFromContext(req.Context(), operationName)
-			ext.SpanKindRPCServer.Set(span)
-		} else {
-			span = globalTracer.StartSpan(operationName, opentracing.ChildOf(spanCtx), ext.SpanKindRPCClient)
-			ctx = opentracing.ContextWithSpan(req.Context(), span)
+		header := map[string]string{}
+		for key := range c.Request().Header {
+			header[key] = c.Request().Header.Get(key)
 		}
+
+		trace, ctx := tracer.StartTraceFromHeader(req.Context(), operationName, header)
+		defer func() {
+			trace.Finish()
+			logger.LogGreen("rest_api > trace_url: " + tracer.GetTraceURL(ctx))
+		}()
 
 		body, _ := ioutil.ReadAll(req.Body)
 		if len(body) < h.opt.jaegerMaxPacketSize { // limit request body size to 65000 bytes (if higher tracer cannot show root span)
-			span.LogKV("request.body", string(body))
+			trace.Log("request.body", body)
 		} else {
-			span.LogKV("request.body.size", len(body))
+			trace.Log("request.body.size", len(body))
 		}
 		req.Body = ioutil.NopCloser(bytes.NewBuffer(body)) // reuse body
 
 		httpDump, _ := httputil.DumpRequest(req, false)
-		span.SetTag("http.request", string(httpDump))
-		span.SetTag("http.url_path", req.URL.Path)
-		ext.HTTPMethod.Set(span, req.Method)
-
-		defer func() {
-			span.Finish()
-			logger.LogGreen("rest_api > trace_url: " + tracer.GetTraceURL(ctx))
-		}()
+		trace.SetTag("http.request", string(httpDump))
+		trace.SetTag("http.url_path", req.URL.Path)
+		trace.SetTag("http.method", req.Method)
 
 		resBody := new(bytes.Buffer)
 		mw := io.MultiWriter(c.Response().Writer, resBody)
@@ -75,15 +67,15 @@ func (h *restServer) echoRestTracerMiddleware(next echo.HandlerFunc) echo.Handle
 
 		err := next(c)
 		statusCode := c.Response().Status
-		ext.HTTPStatusCode.Set(span, uint16(statusCode))
+		trace.SetTag("http.status_code", c.Response().Status)
 		if statusCode >= http.StatusBadRequest {
-			ext.Error.Set(span, true)
+			trace.SetError(fmt.Errorf("resp.code:%d", statusCode))
 		}
 
 		if resBody.Len() < h.opt.jaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
-			span.LogKV("response.body", resBody.String())
+			trace.Log("response.body", resBody.String())
 		} else {
-			span.LogKV("response.body.size", resBody.Len())
+			trace.Log("response.body.size", resBody.Len())
 		}
 		return err
 	}

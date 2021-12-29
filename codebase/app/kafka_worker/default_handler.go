@@ -52,7 +52,13 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 	if handler.DisableTrace {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
-	trace, ctx := tracer.StartTraceWithContext(ctx, "KafkaConsumer")
+
+	header := map[string]string{}
+	for _, val := range message.Headers {
+		header[string(val.Key)] = string(val.Value)
+	}
+
+	trace, ctx := tracer.StartTraceFromHeader(ctx, "KafkaConsumer", header)
 	defer func() {
 		if r := recover(); r != nil {
 			trace.SetError(fmt.Errorf("%v", r))
@@ -64,12 +70,14 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 		logger.LogGreen("kafka_consumer > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.Finish()
 	}()
+
 	trace.SetTag("topic", message.Topic)
-	trace.SetTag("key", string(message.Key))
+	trace.SetTag("key", message.Key)
 	trace.SetTag("partition", message.Partition)
 	trace.SetTag("offset", message.Offset)
 	trace.SetTag("consumer_group", c.opt.consumerGroup)
 	trace.Log("message", message.Value)
+	trace.Log("header", header)
 
 	if c.opt.debugMode {
 		log.Printf("\x1b[35;3mKafka Consumer: message consumed, timestamp = %v, topic = %s\x1b[0m", message.Timestamp, message.Topic)

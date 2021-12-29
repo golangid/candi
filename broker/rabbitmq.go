@@ -164,6 +164,12 @@ func (r *rabbitMQPublisher) PublishMessage(ctx context.Context, args *candishare
 		args.ContentType = candihelper.HeaderMIMEApplicationJSON
 	}
 
+	traceHeader := map[string]string{}
+	trace.InjectRequestHeader(traceHeader)
+	for k, v := range traceHeader {
+		args.Header[k] = v
+	}
+
 	trace.SetTag("topic", args.Topic)
 	trace.SetTag("key", args.Key)
 
@@ -171,8 +177,13 @@ func (r *rabbitMQPublisher) PublishMessage(ctx context.Context, args *candishare
 		DeliveryMode: amqp.Persistent,
 		Timestamp:    time.Now(),
 		ContentType:  args.ContentType,
-		Body:         candihelper.ToBytes(args.Data),
 		Headers:      amqp.Table(args.Header),
+	}
+
+	if len(args.Message) > 0 {
+		msg.Body = args.Message
+	} else {
+		msg.Body = candihelper.ToBytes(args.Data)
 	}
 
 	trace.Log("header", msg.Headers)

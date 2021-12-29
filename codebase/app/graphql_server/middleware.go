@@ -21,8 +21,6 @@ import (
 	gqlerrors "github.com/golangid/graphql-go/errors"
 	"github.com/golangid/graphql-go/introspection"
 	"github.com/golangid/graphql-go/trace"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
 )
 
 const schemaRootInstropectionField = "__schema"
@@ -46,41 +44,36 @@ func newGraphQLMiddleware(middleware types.MiddlewareGroup) *graphqlMiddleware {
 // TraceQuery method, intercept incoming query and add tracing
 func (t *graphqlMiddleware) TraceQuery(ctx context.Context, queryString string, operationName string, variables map[string]interface{}, varTypes map[string]*introspection.Type) (context.Context, trace.TraceQueryFinishFunc) {
 
-	globalTracer := opentracing.GlobalTracer()
-	traceName := strings.TrimSuffix(fmt.Sprintf("GraphQL-Root:%s", operationName), ":")
-
 	headers, _ := ctx.Value(candishared.ContextKeyHTTPHeader).(http.Header)
-	var span opentracing.Span
-	if spanCtx, err := globalTracer.Extract(opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(headers)); err != nil {
-		span, ctx = opentracing.StartSpanFromContext(ctx, traceName)
-		ext.SpanKindRPCServer.Set(span)
-	} else {
-		span = globalTracer.StartSpan(traceName, opentracing.ChildOf(spanCtx), ext.SpanKindRPCClient)
-		ctx = opentracing.ContextWithSpan(ctx, span)
+	header := map[string]string{}
+	for key := range headers {
+		header[key] = headers.Get(key)
 	}
+
+	trace, ctx := tracer.StartTraceFromHeader(ctx, strings.TrimSuffix(fmt.Sprintf("GraphQL-Root:%s", operationName), ":"), header)
 
 	if len(headers) > 0 {
-		span.SetTag("http.headers", string(candihelper.ToBytes(headers)))
+		trace.SetTag("http.headers", headers)
 	}
-	span.SetTag("graphql.query", queryString)
-	span.SetTag("graphql.operationName", operationName)
+	trace.SetTag("graphql.query", queryString)
+	trace.SetTag("graphql.operationName", operationName)
 	if len(variables) > 0 {
-		span.SetTag("graphql.variables", string(candihelper.ToBytes(variables)))
+		trace.SetTag("graphql.variables", variables)
 	}
 
 	return ctx, func(data []byte, errs []*gqlerrors.QueryError) {
-		defer span.Finish()
 
 		if len(data) < env.BaseEnv().JaegerMaxPacketSize { // limit request body size to 65000 bytes (if higher tracer cannot show root span)
-			span.LogKV("data", string(data))
+			trace.Log("data", data)
 		} else {
-			span.LogKV("data.size", len(data))
+			trace.Log("data.size", len(data))
 		}
 		if len(errs) > 0 {
-			span.LogKV("errors", string(candihelper.ToBytes(errs)))
-			ext.Error.Set(span, true)
+			trace.SetError(errs[0])
+			trace.Log("errors", errs)
 		}
 		logger.LogGreen("graphql > trace_url: " + tracer.GetTraceURL(ctx))
+		trace.Finish()
 	}
 }
 

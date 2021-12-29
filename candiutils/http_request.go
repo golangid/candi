@@ -134,14 +134,16 @@ func (request *httpRequestImpl) Do(ctx context.Context, method, url string, requ
 	trace, ctx := tracer.StartTraceWithContext(ctx, fmt.Sprintf("HTTP Request: %s %s", method, req.URL.Host))
 	defer func() { trace.SetError(err); trace.Finish() }()
 
+	if headers == nil {
+		headers = map[string]string{}
+	}
+	trace.InjectRequestHeader(headers)
+
 	// iterate optional data of headers
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}
 
-	trace.InjectHTTPHeader(req)
-	dumpRequest, _ := httputil.DumpRequest(req, false)
-	trace.SetTag("http.request", dumpRequest)
 	trace.SetTag("http.method", req.Method)
 	trace.SetTag("http.url", req.URL.String())
 	trace.SetTag("http.url_path", req.URL.Path)
@@ -150,6 +152,9 @@ func (request *httpRequestImpl) Do(ctx context.Context, method, url string, requ
 	trace.SetTag("http.sleep_between_retry", request.sleepBetweenRetry.String())
 	trace.SetTag("http.timeout", request.timeout.String())
 	trace.SetTag("http.breaker_name", request.breakerName)
+
+	dumpRequest, _ := httputil.DumpRequest(req, false)
+	trace.SetTag("http.request", dumpRequest)
 	if requestBody != nil {
 		trace.Log("request.body", requestBody)
 	}
@@ -166,7 +171,7 @@ func (request *httpRequestImpl) Do(ctx context.Context, method, url string, requ
 	respCode = resp.StatusCode
 
 	dumpResponse, _ := httputil.DumpResponse(resp, false)
-	trace.SetTag("response.header", dumpResponse)
+	trace.SetTag("http.response", dumpResponse)
 	trace.SetTag("response.code", resp.StatusCode)
 	trace.SetTag("response.status", resp.Status)
 	trace.Log("response.body", respBody)

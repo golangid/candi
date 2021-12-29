@@ -7,5 +7,7 @@ type PublisherArgument struct {
 	Key         string
 	Header      map[string]interface{}
 	ContentType string
-	Data        interface{}
+	// Deprecated : use Message
+	Data    interface{}
+	Message []byte
 }

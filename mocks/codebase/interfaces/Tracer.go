@@ -53,6 +53,11 @@ func (_m *Tracer) InjectHTTPHeader(req *http.Request) {
 	_m.Called(req)
 }
 
+// InjectRequestHeader provides a mock function with given fields: header
+func (_m *Tracer) InjectRequestHeader(header map[string]string) {
+	_m.Called(header)
+}
+
 // Log provides a mock function with given fields: key, value
 func (_m *Tracer) Log(key string, value interface{}) {
 	_m.Called(key, value)
