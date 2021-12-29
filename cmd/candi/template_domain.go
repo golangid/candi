@@ -16,7 +16,7 @@ type {{upper (camel .ModuleName)}} struct {
 	ID         {{if and .MongoDeps (not .SQLDeps)}}primitive.ObjectID{{else}}string{{end}}    ` + "`" + `{{if .SQLUseGORM}}gorm:"column:id;type:varchar(255);primary_key" {{end}}` + `{{if .MongoDeps}}bson:"_id" {{end}}` + `json:"id"` + "`" + `
 	Field      string    ` + "`" + `{{if .SQLUseGORM}}gorm:"column:field;type:varchar(255)" {{end}}` + `{{if .MongoDeps}}bson:"field" {{end}}` + `json:"field"` + "`" + `
 	CreatedAt  time.Time ` + "`" + `{{if .SQLUseGORM}}gorm:"column:created_at" {{end}}` + `{{if .MongoDeps}}bson:"created_at" {{end}}` + `json:"created_at"` + "`" + `
-	ModifiedAt time.Time ` + "`" + `{{if .SQLUseGORM}}gorm:"column:modified_at" {{end}}` + `{{if .MongoDeps}}bson:"modified_at" {{end}}` + `json:"modified_at"` + "`" + `
+	UpdatedAt  time.Time ` + "`" + `{{if .SQLUseGORM}}gorm:"column:updated_at" {{end}}` + `{{if .MongoDeps}}bson:"updated_at" {{end}}` + `json:"updated_at"` + "`" + `
 }	
 {{if .SQLUseGORM}}
 // TableName return table name of {{upper (camel .ModuleName)}} model

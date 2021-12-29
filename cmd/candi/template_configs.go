@@ -26,12 +26,12 @@ import (
 
 // LoadServiceConfigs load selected dependency configuration in this service
 func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
-	logger.InitZap()
 
 	var sharedEnv shared.Environment
 	candihelper.MustParseEnv(&sharedEnv)
 	shared.SetEnv(sharedEnv)
 
+	logger.InitZap()
 	tracer.InitOpenTracing(baseCfg.ServiceName)
 
 	baseCfg.LoadFunc(func(ctx context.Context) []interfaces.Closer {

@@ -167,6 +167,10 @@ func loadSavedConfig(flagParam *flagParameter) serviceConfig {
 	for i := range savedConfig.Modules {
 		savedConfig.Modules[i].Skip = true
 	}
+	if candi.Version < savedConfig.Version {
+		log.Fatalf("ERROR: Your cli version (%s) must greater than candi version in service (%s)", candi.Version, savedConfig.Version)
+	}
+	savedConfig.Version = candi.Version
 	return savedConfig
 }
 

@@ -149,6 +149,9 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 		migrationFiles = append(migrationFiles, FileStructure{
 			FromTemplate: true, DataSource: mod, Source: templateCmdMigrationInitModule,
 			FileName: time.Now().Format("20060102150405") + "_create_table_" + candihelper.ToDelimited(mod.ModuleName, '_') + "s.sql",
+			SkipFunc: func() bool {
+				return !srvConfig.SQLDeps
+			},
 		})
 	}
 
@@ -194,12 +197,15 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 			Childs: []FileStructure{
 				{TargetDir: srvConfig.ServiceName + "/", IsDir: true, DataSource: srvConfig},
 				{TargetDir: "migration/", IsDir: true, Childs: []FileStructure{
-					{FromTemplate: true, DataSource: srvConfig,
-						Source: templateCmdMigration, FileName: "migration.go",
-					},
-					{TargetDir: "migrations/", IsDir: true, Childs: migrationFiles},
-				}, SkipFunc: func() bool {
-					return !srvConfig.SQLDeps
+					{FileName: ".gitkeep"},
+					{FromTemplate: true, DataSource: srvConfig, Source: templateCmdMigration, FileName: "migration.go",
+						SkipFunc: func() bool {
+							return !srvConfig.SQLDeps
+						}},
+					{TargetDir: "migrations/", IsDir: true, Childs: migrationFiles,
+						SkipFunc: func() bool {
+							return !srvConfig.SQLDeps
+						}},
 				}},
 			},
 		}

@@ -58,6 +58,7 @@ import (
 )
 
 const (
+	spanContext       = "spanContext"
 	parentSpanGormKey = "opentracingParentSpan"
 	spanGormKey       = "opentracingSpan"
 )
@@ -67,7 +68,7 @@ func SetSpanToGorm(ctx context.Context, db *gorm.DB) *gorm.DB {
 	if ctx == nil {
 		return db
 	}
-	return db.WithContext(ctx)
+	return db.Set(spanContext, ctx)
 }
 
 // AddGormCallbacks adds callbacks for tracing, you should call SetSpanToGorm to make them work
@@ -100,7 +101,15 @@ func (c *callbacks) afterRowQuery(db *gorm.DB)  { c.after(db, "") }
 func (c *callbacks) beforeRawQuery(db *gorm.DB) { c.before(db) }
 func (c *callbacks) afterRawQuery(db *gorm.DB)  { c.after(db, "") }
 func (c *callbacks) before(db *gorm.DB) {
-	trace := tracer.StartTrace(db.Statement.Context, "gorm.sql")
+	spanCtx, ok := db.Get(spanContext)
+	if !ok {
+		return
+	}
+	ctx, ok := spanCtx.(context.Context)
+	if !ok {
+		return
+	}
+	trace := tracer.StartTrace(ctx, "gorm.sql")
 	d, _ := db.DB()
 	tracer.Log(trace.Context(), "db.stats.before", d.Stats())
 	db.Set(spanGormKey, trace)
@@ -129,14 +138,14 @@ func (c *callbacks) after(db *gorm.DB, operation string) {
 	trace.SetTag("db.vars", db.Statement.Vars)
 	trace.SetTag("db.table", db.Statement.Table)
 	trace.SetTag("db.method", operation)
-	trace.SetTag("db.rows_affected", db.RowsAffected)
+	trace.SetTag("db.count", db.RowsAffected)
 	trace.SetTag("db.err", db.Statement.Error)
 	if db.Statement.Error != nil && db.Statement.Error != gorm.ErrRecordNotFound {
 		trace.SetError(db.Statement.Error)
 	}
 
 	d, _ := db.DB()
-	trace.Log("db.stats.after", d.Stats())
+	tracer.Log(trace.Context(), "db.stats.after", d.Stats())
 }
 
 func registerCallbacks(db *gorm.DB, name string, c *callbacks) {
@@ -161,8 +170,8 @@ func registerCallbacks(db *gorm.DB, name string, c *callbacks) {
 		db.Callback().Row().Before(gormCallbackName).Register(beforeName, c.beforeRowQuery)
 		db.Callback().Row().After(gormCallbackName).Register(afterName, c.afterRowQuery)
 	case "raw":
-		db.Callback().Raw().Before(gormCallbackName).Register(beforeName, c.beforeRowQuery)
-		db.Callback().Raw().After(gormCallbackName).Register(afterName, c.afterRowQuery)
+		db.Callback().Raw().Before(gormCallbackName).Register(beforeName, c.beforeRawQuery)
+		db.Callback().Raw().After(gormCallbackName).Register(afterName, c.afterRawQuery)
 	}
 }
 `

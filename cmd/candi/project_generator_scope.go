@@ -240,7 +240,7 @@ func Set{{upper (clean $.ServiceName)}}({{lower (clean $.ServiceName)}} {{lower 
 	fileStructure.Skip = true
 	fileStructure.TargetDir = "sdk/"
 	fileStructure.Childs = []FileStructure{
-		{TargetDir: srvConfig.ServiceName + "/", IsDir: true, Childs: []FileStructure{
+		{TargetDir: srvConfig.ServiceName + "/", IsDir: true, SkipIfExist: true, Childs: []FileStructure{
 			{FromTemplate: true, DataSource: srvConfig, Source: templateSDKServiceAbstraction, FileName: srvConfig.ServiceName + ".go"},
 			{FromTemplate: true, DataSource: srvConfig, Source: templateSDKServiceGRPC, FileName: srvConfig.ServiceName + "_grpc.go"},
 			{FromTemplate: true, DataSource: srvConfig, Source: templateSDKServiceREST, FileName: srvConfig.ServiceName + "_rest.go"},
