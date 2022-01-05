@@ -127,7 +127,7 @@ func (request *httpRequestImpl) Do(ctx context.Context, method, url string, requ
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(requestBody))
 	if err != nil {
 		tracer.SetError(ctx, err)
-		return nil, 0, err
+		return respBody, respCode, err
 	}
 
 	// set tracer
@@ -161,8 +161,8 @@ func (request *httpRequestImpl) Do(ctx context.Context, method, url string, requ
 
 	// client request
 	resp, err := request.client.Do(req)
-	if err != nil {
-		return nil, 0, err
+	if err != nil && resp == nil {
+		return respBody, respCode, err
 	}
 	// close response body
 	defer resp.Body.Close()
