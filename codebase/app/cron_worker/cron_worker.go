@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
@@ -224,12 +225,20 @@ func (c *cronWorker) processJob(job *Job) {
 		log.Printf("\x1b[35;3mCron Scheduler: executing task '%s' (interval: %s)\x1b[0m", job.HandlerName, job.Interval)
 	}
 
-	params := []byte(job.Params)
-	if err := job.Handler.HandlerFunc(ctx, params); err != nil {
-		if job.Handler.ErrorHandler != nil {
-			job.Handler.ErrorHandler(ctx, types.RabbitMQ, job.HandlerName, params, err)
+	var eventContext candishared.EventContext
+	eventContext.SetContext(ctx)
+	eventContext.SetWorkerType(string(types.Scheduler))
+	eventContext.SetHandlerRoute(job.HandlerName)
+	eventContext.SetHeader(map[string]string{
+		"interval": job.Interval,
+	})
+	eventContext.WriteString(job.Params)
+
+	for _, handlerFunc := range job.Handler.HandlerFuncs {
+		if err := handlerFunc(&eventContext); err != nil {
+			eventContext.SetError(err)
+			trace.SetError(err)
 		}
-		trace.SetError(err)
 	}
 }
 

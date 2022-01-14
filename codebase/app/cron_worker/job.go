@@ -76,8 +76,8 @@ func AddJob(job Job) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	if job.Handler.HandlerFunc == nil {
-		return errors.New("handler func cannot nil")
+	if len(job.Handler.HandlerFuncs) == 0 {
+		return errors.New("handler func cannot empty")
 	}
 	if job.HandlerName == "" {
 		return errors.New("handler name cannot empty")

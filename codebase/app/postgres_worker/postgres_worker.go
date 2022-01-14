@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
@@ -140,11 +141,19 @@ START:
 				trace.SetTag("action", data.Action)
 				trace.Log("payload", data)
 				message, _ := json.Marshal(data)
-				if err := handler.HandlerFunc(ctx, message); err != nil {
-					if handler.ErrorHandler != nil {
-						handler.ErrorHandler(ctx, types.Kafka, data.Table, message, err)
+
+				var eventContext candishared.EventContext
+				eventContext.SetContext(ctx)
+				eventContext.SetWorkerType(string(types.PostgresListener))
+				eventContext.SetHandlerRoute(data.Table)
+				eventContext.SetKey(data.EventID)
+				eventContext.Write(message)
+
+				for _, handlerFunc := range handler.HandlerFuncs {
+					if err := handlerFunc(&eventContext); err != nil {
+						eventContext.SetError(err)
+						trace.SetError(err)
 					}
-					trace.SetError(err)
 				}
 			}(payload)
 

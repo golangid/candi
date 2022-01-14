@@ -1,19 +1,17 @@
 package types
 
-import "context"
+import (
+	"github.com/golangid/candi/candishared"
+)
 
 type (
 	// WorkerHandlerFunc types
-	WorkerHandlerFunc func(ctx context.Context, message []byte) error
-
-	// WorkerErrorHandler types
-	WorkerErrorHandler func(ctx context.Context, workerType Worker, workerName string, message []byte, err error)
+	WorkerHandlerFunc func(ctx *candishared.EventContext) error
 
 	// WorkerHandler types
 	WorkerHandler struct {
 		Pattern      string
-		HandlerFunc  WorkerHandlerFunc
-		ErrorHandler WorkerErrorHandler
+		HandlerFuncs []WorkerHandlerFunc
 		DisableTrace bool
 		AutoACK      bool
 	}
@@ -27,10 +25,10 @@ type WorkerHandlerGroup struct {
 	Handlers []WorkerHandler
 }
 
-// Add method from WorkerHandlerGroup, pattern can contains unique topic name, key, and task name
-func (m *WorkerHandlerGroup) Add(pattern string, handlerFunc WorkerHandlerFunc, opts ...WorkerHandlerOptionFunc) {
+// Add method from WorkerHandlerGroup, patternRoute can contains unique topic name, key, and task name
+func (m *WorkerHandlerGroup) Add(patternRoute string, mainHandlerFunc WorkerHandlerFunc, opts ...WorkerHandlerOptionFunc) {
 	h := WorkerHandler{
-		Pattern: pattern, HandlerFunc: handlerFunc, AutoACK: true,
+		Pattern: patternRoute, HandlerFuncs: []WorkerHandlerFunc{mainHandlerFunc}, AutoACK: true,
 	}
 
 	for _, opt := range opts {
@@ -53,9 +51,9 @@ func WorkerHandlerOptionAutoACK(auto bool) WorkerHandlerOptionFunc {
 	}
 }
 
-// WorkerHandlerOptionAddErrorHandler add error handlers
-func WorkerHandlerOptionAddErrorHandler(errHandler WorkerErrorHandler) WorkerHandlerOptionFunc {
+// WorkerHandlerOptionAddHandlers add after handlers execute after main handler
+func WorkerHandlerOptionAddHandlers(handlerFuncs ...WorkerHandlerFunc) WorkerHandlerOptionFunc {
 	return func(wh *WorkerHandler) {
-		wh.ErrorHandler = errHandler
+		wh.HandlerFuncs = append(wh.HandlerFuncs, handlerFuncs...)
 	}
 }

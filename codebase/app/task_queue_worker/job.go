@@ -22,23 +22,27 @@ const (
 type (
 	// Job model
 	Job struct {
-		ID          string    `bson:"_id" json:"_id"`
-		TaskName    string    `bson:"task_name" json:"task_name"`
-		Arguments   string    `bson:"arguments" json:"arguments"`
-		Retries     int       `bson:"retries" json:"retries"`
-		MaxRetry    int       `bson:"max_retry" json:"max_retry"`
-		Interval    string    `bson:"interval" json:"interval"`
-		CreatedAt   time.Time `bson:"created_at" json:"created_at"`
-		FinishedAt  time.Time `bson:"finished_at" json:"finished_at"`
-		Status      string    `bson:"status" json:"status"`
-		Error       string    `bson:"error" json:"error"`
-		TraceID     string    `bson:"traceId" json:"traceId"`
-		NextRetryAt string    `bson:"-" json:"-"`
+		ID             string         `bson:"_id" json:"_id"`
+		TaskName       string         `bson:"task_name" json:"task_name"`
+		Arguments      string         `bson:"arguments" json:"arguments"`
+		Retries        int            `bson:"retries" json:"retries"`
+		MaxRetry       int            `bson:"max_retry" json:"max_retry"`
+		Interval       string         `bson:"interval" json:"interval"`
+		CreatedAt      time.Time      `bson:"created_at" json:"created_at"`
+		FinishedAt     time.Time      `bson:"finished_at" json:"finished_at"`
+		Status         string         `bson:"status" json:"status"`
+		Error          string         `bson:"error" json:"error"`
+		TraceID        string         `bson:"traceId" json:"traceId"`
+		RetryHistories []RetryHistory `bson:"retryHistories" json:"retryHistories"`
+		NextRetryAt    string         `bson:"-" json:"-"`
 	}
 
-	errorHistory struct {
-		Error   string `json:"error"`
-		TraceID string `json:"traceID"`
+	// RetryHistory model
+	RetryHistory struct {
+		Status    string    `bson:"status" json:"status"`
+		Error     string    `bson:"error" json:"error"`
+		TraceID   string    `bson:"traceId" json:"traceId"`
+		Timestamp time.Time `bson:"timestamp" json:"timestamp"`
 	}
 )
 

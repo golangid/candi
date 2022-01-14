@@ -83,11 +83,18 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 		log.Printf("\x1b[35;3mKafka Consumer: message consumed, timestamp = %v, topic = %s\x1b[0m", message.Timestamp, message.Topic)
 	}
 
-	ctx = candishared.SetToContext(ctx, candishared.ContextKeyWorkerKey, message.Key)
-	if err := handler.HandlerFunc(ctx, message.Value); err != nil {
-		if handler.ErrorHandler != nil {
-			handler.ErrorHandler(ctx, types.Kafka, message.Topic, message.Value, err)
+	var eventContext candishared.EventContext
+	eventContext.SetContext(ctx)
+	eventContext.SetWorkerType(string(types.Kafka))
+	eventContext.SetHandlerRoute(message.Topic)
+	eventContext.SetHeader(header)
+	eventContext.SetKey(string(message.Key))
+	eventContext.Write(message.Value)
+
+	for _, handlerFunc := range handler.HandlerFuncs {
+		if err := handlerFunc(&eventContext); err != nil {
+			eventContext.SetError(err)
+			trace.SetError(err)
 		}
-		trace.SetError(err)
 	}
 }

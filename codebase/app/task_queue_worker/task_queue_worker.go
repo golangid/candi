@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"reflect"
+	"strconv"
 	"sync"
 	"time"
 
@@ -239,6 +240,9 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 			job.Status = string(statusFailure)
 		}
 		job.FinishedAt = time.Now()
+		job.RetryHistories = append(job.RetryHistories, RetryHistory{
+			Status: job.Status, Error: job.Error, TraceID: job.TraceID, Timestamp: job.FinishedAt,
+		})
 		persistent.SaveJob(t.ctx, job)
 		broadcastAllToSubscribers(t.ctx)
 		logger.LogGreen("task_queue > trace_url: " + tracer.GetTraceURL(ctx))
@@ -267,9 +271,27 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 		}
 	}
 
-	message := []byte(job.Arguments)
-	ctx = context.WithValue(ctx, candishared.ContextKeyTaskQueueRetry, job.Retries)
-	err = selectedHandler.HandlerFunc(ctx, message)
+	var eventContext candishared.EventContext
+	eventContext.SetContext(ctx)
+	eventContext.SetWorkerType(string(types.TaskQueue))
+	eventContext.SetHandlerRoute(job.TaskName)
+	eventContext.SetHeader(map[string]string{
+		"retries":  strconv.Itoa(job.Retries),
+		"maxRetry": strconv.Itoa(job.MaxRetry),
+		"interval": job.Interval,
+	})
+	eventContext.SetKey(job.ID)
+	eventContext.WriteString(job.Arguments)
+
+	if len(selectedHandler.HandlerFuncs) == 0 {
+		job.Error = "No handler found for exec this job"
+		job.Status = string(statusFailure)
+		return
+	}
+
+	mainHandler := selectedHandler.HandlerFuncs[0]
+	err = mainHandler(&eventContext)
+
 	if ctx.Err() != nil {
 		job.Error = "Job has been stopped when running."
 		if ctx.Err() != nil {
@@ -278,35 +300,42 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 		job.Status = string(statusStopped)
 		return
 	}
+
 	if err != nil {
+		eventContext.SetError(err)
+		trace.SetError(err)
+
 		job.Error = err.Error()
 		job.Status = string(statusFailure)
-		trace.SetError(err)
 
 		switch e := err.(type) {
 		case *candishared.ErrorRetrier:
 			if job.Retries >= job.MaxRetry {
 				logger.LogRed("TaskQueueWorker: GIVE UP: " + job.TaskName)
-				if selectedHandler.ErrorHandler != nil {
-					selectedHandler.ErrorHandler(ctx, types.TaskQueue, job.TaskName, message, err)
-				}
-				return
+				goto nextHandler
 			}
-			trace.SetTag("is_retry", true)
 
+			trace.SetTag("is_retry", true)
 			job.Status = string(statusQueueing)
 			job.Interval = e.Delay.String()
 
+			// update job arguments if in error retry contains payload
+			if len(e.Payload) > 0 {
+				job.Arguments = string(e.Payload)
+			}
+
 			registerJobToWorker(job, selectedTask.workerIndex)
 			queue.PushJob(job)
-
-		default:
-			if selectedHandler.ErrorHandler != nil {
-				selectedHandler.ErrorHandler(ctx, types.TaskQueue, job.TaskName, []byte(job.Arguments), err)
-			}
+			return
 		}
+
 	} else {
 		job.Status = string(statusSuccess)
+	}
+
+nextHandler:
+	for _, h := range selectedHandler.HandlerFuncs[1:] {
+		h(&eventContext)
 	}
 }
 

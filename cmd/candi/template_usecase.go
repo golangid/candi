@@ -192,7 +192,7 @@ func (uc *{{camel .ModuleName}}UsecaseImpl) Delete{{upper (camel .ModuleName)}}(
 	{{if .MongoDeps}}
 	objID, _ := primitive.ObjectIDFromHex(id){{end}}
 	return {{if or .SQLDeps .MongoDeps}}uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{upper (camel .ModuleName)}}Repo().Delete(ctx, &shareddomain.{{upper (camel .ModuleName)}}{
-		ID: {{if .MongoDeps}}objID{{else}}id{{end}},
+		ID: {{if .MongoDeps}}objID.Hex(){{else}}id{{end}},
 	}){{end}}
 }
 `

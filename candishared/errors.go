@@ -34,6 +34,7 @@ type ErrorRetrier struct {
 	Delay   time.Duration
 	Retry   int
 	Message string
+	Payload []byte
 }
 
 // Error implement error

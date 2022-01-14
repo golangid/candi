@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
@@ -170,10 +171,18 @@ func (r *rabbitmqWorker) processMessage(message amqp.Delivery) {
 		log.Printf("\x1b[35;3mRabbitMQ Consumer: message consumed, topic = %s\x1b[0m", message.RoutingKey)
 	}
 
-	err = selectedHandler.HandlerFunc(ctx, message.Body)
-	if err != nil {
-		if selectedHandler.ErrorHandler != nil {
-			selectedHandler.ErrorHandler(ctx, types.RabbitMQ, message.RoutingKey, message.Body, err)
+	var eventContext candishared.EventContext
+	eventContext.SetContext(ctx)
+	eventContext.SetWorkerType(string(types.RabbitMQ))
+	eventContext.SetHandlerRoute(message.RoutingKey)
+	eventContext.SetHeader(header)
+	eventContext.SetKey(message.Exchange)
+	eventContext.Write(message.Body)
+
+	for _, handlerFunc := range selectedHandler.HandlerFuncs {
+		if err := handlerFunc(&eventContext); err != nil {
+			eventContext.SetError(err)
+			trace.SetError(err)
 		}
 	}
 }

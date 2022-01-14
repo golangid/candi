@@ -8,6 +8,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/candiutils"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
@@ -166,16 +167,15 @@ func (r *redisWorker) getPubSubConn() *redis.PubSubConn {
 }
 
 func (r *redisWorker) processMessage(param RedisMessage) {
-	handlerName, message := param.HandlerName, []byte(param.Message)
 
 	// lock for multiple worker (if running on multiple pods/instance)
-	if r.opt.locker.IsLocked(r.getLockKey(handlerName, param.EventID)) {
+	if r.opt.locker.IsLocked(r.getLockKey(param.HandlerName, param.EventID)) {
 		return
 	}
-	defer r.opt.locker.Unlock(r.getLockKey(handlerName, param.EventID))
+	defer r.opt.locker.Unlock(r.getLockKey(param.HandlerName, param.EventID))
 
 	ctx := r.ctx
-	selectedHandler := r.handlers[handlerName]
+	selectedHandler := r.handlers[param.HandlerName]
 	if selectedHandler.DisableTrace {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
@@ -190,18 +190,25 @@ func (r *redisWorker) processMessage(param RedisMessage) {
 	}()
 
 	if r.opt.debugMode {
-		log.Printf("\x1b[35;3mRedis Key Expired Subscriber: executing event key '%s'\x1b[0m", handlerName)
+		log.Printf("\x1b[35;3mRedis Key Expired Subscriber: executing event key '%s'\x1b[0m", param.HandlerName)
 	}
 
-	trace.SetTag("handler_name", handlerName)
+	trace.SetTag("handler_name", param.HandlerName)
 	trace.SetTag("event_id", param.EventID)
-	trace.Log("message", string(message))
+	trace.Log("message", param.Message)
 
-	if err := selectedHandler.HandlerFunc(ctx, message); err != nil {
-		if selectedHandler.ErrorHandler != nil {
-			selectedHandler.ErrorHandler(ctx, types.RedisSubscriber, handlerName, message, err)
+	var eventContext candishared.EventContext
+	eventContext.SetContext(ctx)
+	eventContext.SetWorkerType(string(types.RedisSubscriber))
+	eventContext.SetHandlerRoute(param.HandlerName)
+	eventContext.SetKey(param.EventID)
+	eventContext.WriteString(param.Message)
+
+	for _, handlerFunc := range selectedHandler.HandlerFuncs {
+		if err := handlerFunc(&eventContext); err != nil {
+			eventContext.SetError(err)
+			trace.SetError(err)
 		}
-		tracer.SetError(ctx, err)
 	}
 }
 
