@@ -8,6 +8,7 @@ const schema = `schema {
 
 type Query {
 	tagline(): TaglineType!
+	get_job_detail(job_id: String!): JobResolver
 }
 
 type Mutation {
@@ -18,6 +19,7 @@ type Mutation {
 	clean_job(task_name: String!): String!
 	retry_all_job(task_name: String!): String!
 	clear_all_client_subscriber(): String!
+	delete_job(job_id: String!): String!
 }
 
 type Subscription {
@@ -92,8 +94,17 @@ type JobResolver {
 	interval: String!
 	error: String!
 	trace_id: String!
+	retry_histories: [JobRetryHistory!]!
 	status: String!
 	created_at: String!
 	finished_at: String!
 	next_retry_at: String!
-}`
+}
+
+type JobRetryHistory {
+	status: String!
+	error: String!
+	trace_id: String!
+	timestamp: String!
+}
+`

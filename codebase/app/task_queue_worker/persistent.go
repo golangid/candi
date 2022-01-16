@@ -11,4 +11,5 @@ type Persistent interface {
 	SaveJob(ctx context.Context, job *Job)
 	UpdateAllStatus(ctx context.Context, taskName string, currentStatus []JobStatusEnum, updatedStatus JobStatusEnum)
 	CleanJob(ctx context.Context, taskName string)
+	DeleteJob(ctx context.Context, id string) error
 }

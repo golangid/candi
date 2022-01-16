@@ -214,10 +214,7 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 	selectedTask := registeredTask[runningTask.taskName]
 
 	job, err := persistent.FindJobByID(t.ctx, jobID)
-	if err != nil {
-		return
-	}
-	if job.Status == string(statusStopped) {
+	if err != nil || job.Status == string(statusStopped) {
 		nextJobID := queue.NextJob(runningTask.taskName)
 		if nextJobID != "" {
 			if nextJob, err := persistent.FindJobByID(t.ctx, nextJobID); err == nil {
@@ -233,16 +230,25 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
 
+	isRetry := false
+
 	trace, ctx := tracer.StartTraceWithContext(ctx, "TaskQueueWorker")
 	defer func() {
 		if r := recover(); r != nil {
 			trace.SetError(fmt.Errorf("%v", r))
 			job.Status = string(statusFailure)
 		}
+
 		job.FinishedAt = time.Now()
 		job.RetryHistories = append(job.RetryHistories, RetryHistory{
 			Status: job.Status, Error: job.Error, TraceID: job.TraceID, Timestamp: job.FinishedAt,
 		})
+
+		trace.SetTag("is_retry", isRetry)
+		if isRetry {
+			job.Status = string(statusQueueing)
+		}
+
 		persistent.SaveJob(t.ctx, job)
 		broadcastAllToSubscribers(t.ctx)
 		logger.LogGreen("task_queue > trace_url: " + tracer.GetTraceURL(ctx))
@@ -315,8 +321,7 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 				goto nextHandler
 			}
 
-			trace.SetTag("is_retry", true)
-			job.Status = string(statusQueueing)
+			isRetry = true
 			job.Interval = e.Delay.String()
 
 			// update job arguments if in error retry contains payload
@@ -331,6 +336,7 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 
 	} else {
 		job.Status = string(statusSuccess)
+		job.Error = ""
 	}
 
 nextHandler:

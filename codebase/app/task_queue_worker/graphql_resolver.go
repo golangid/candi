@@ -6,10 +6,11 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
-	"github.com/agungdwiprasetyo/task-queue-worker-dashboard/external"
+	dashboard "github.com/golangid/candi-plugin/task-queue-worker/dashboard"
 	"github.com/golangid/graphql-go"
 	"github.com/golangid/graphql-go/relay"
 
@@ -29,10 +30,11 @@ func serveGraphQLAPI(wrk *taskQueueWorker) {
 	schema := graphql.MustParseSchema(schema, &rootResolver{worker: wrk}, schemaOpts...)
 
 	mux := http.NewServeMux()
-	mux.Handle("/", http.StripPrefix("/", http.FileServer(external.Dashboard)))
-	mux.Handle("/task", http.StripPrefix("/task", http.FileServer(external.Dashboard)))
+	mux.Handle("/", http.StripPrefix("/", http.FileServer(dashboard.Dashboard)))
+	mux.Handle("/task", http.StripPrefix("/task", http.FileServer(dashboard.Dashboard)))
 	mux.HandleFunc("/graphql", ws.NewHandlerFunc(schema, &relay.Handler{Schema: schema}))
 	mux.HandleFunc("/voyager", func(rw http.ResponseWriter, r *http.Request) { rw.Write([]byte(static.VoyagerAsset)) })
+	mux.HandleFunc("/playground", func(rw http.ResponseWriter, r *http.Request) { rw.Write([]byte(static.PlaygroundAsset)) })
 
 	httpEngine := new(http.Server)
 	httpEngine.Addr = fmt.Sprintf(":%d", defaultOption.dashboardPort)
@@ -61,6 +63,30 @@ func (r *rootResolver) Tagline(ctx context.Context) (res TaglineResolver) {
 	res.Tagline = "Task Queue Worker Dashboard"
 	res.Version = candi.Version
 	res.MemoryStatistics = getMemstats()
+	return
+}
+
+func (r *rootResolver) GetJobDetail(ctx context.Context, input struct{ JobID string }) (res *Job, err error) {
+
+	res, err = persistent.FindJobByID(ctx, input.JobID)
+	res.TraceID = fmt.Sprintf("%s/trace/%s", defaultOption.jaegerTracingDashboard, res.TraceID)
+	res.CreatedAt = res.CreatedAt.In(candihelper.AsiaJakartaLocalTime)
+	if delay, err := time.ParseDuration(res.Interval); err == nil && res.Status == string(statusQueueing) {
+		res.NextRetryAt = time.Now().Add(delay).In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
+	}
+	sort.Slice(res.RetryHistories, func(i, j int) bool {
+		return res.RetryHistories[i].Timestamp.After(res.RetryHistories[j].Timestamp)
+	})
+	for i := range res.RetryHistories {
+		res.RetryHistories[i].Timestamp = res.RetryHistories[i].Timestamp.In(candihelper.AsiaJakartaLocalTime)
+		res.RetryHistories[i].TraceID = fmt.Sprintf("%s/trace/%s", defaultOption.jaegerTracingDashboard, res.RetryHistories[i].TraceID)
+	}
+	return
+}
+
+func (r *rootResolver) DeleteJob(ctx context.Context, input struct{ JobID string }) (ok string, err error) {
+	err = persistent.DeleteJob(ctx, input.JobID)
+	broadcastAllToSubscribers(r.worker.ctx)
 	return
 }
 

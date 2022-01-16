@@ -75,6 +75,7 @@ func (s *mongoPersistent) FindAllJob(ctx context.Context, filter Filter) (jobs [
 		findOptions.SetLimit(int64(filter.Limit))
 		findOptions.SetSkip(int64((filter.Page - 1) * filter.Limit))
 	}
+	findOptions.SetProjection(bson.M{"retryHistories": 0})
 
 	cur, err := s.db.Collection(mongoColl).Find(ctx, s.toBsonFilter(filter), findOptions)
 	if err != nil {
@@ -279,4 +280,9 @@ func (s *mongoPersistent) toBsonFilter(f Filter) bson.M {
 	return bson.M{
 		"$and": pipeQuery,
 	}
+}
+
+func (s *mongoPersistent) DeleteJob(ctx context.Context, id string) (err error) {
+	_, err = s.db.Collection(mongoColl).DeleteOne(ctx, bson.M{"_id": id})
+	return
 }
