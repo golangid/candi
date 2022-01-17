@@ -10,7 +10,7 @@ require (
 	github.com/go-playground/validator/v10 v10.6.0
 	github.com/gojektech/heimdall/v6 v6.1.0
 	github.com/golang-jwt/jwt v3.2.1+incompatible
-	github.com/golangid/candi-plugin/task-queue-worker v0.0.0-20220116124804-cf3694278088
+	github.com/golangid/candi-plugin/task-queue-worker v0.0.0-20220117043024-91c497871f6f
 	github.com/golangid/gojsonschema v0.0.1
 	github.com/golangid/graphql-go v0.0.7
 	github.com/gomodule/redigo v1.8.4
