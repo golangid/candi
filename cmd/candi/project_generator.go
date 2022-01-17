@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -167,7 +168,9 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 		FromTemplate: true, DataSource: srvConfig, Source: serviceMainTemplate, FileName: "service.go",
 	})
 
-	configJSON, _ := json.Marshal(srvConfig)
+	jsonSrvConfig, _ := json.Marshal(srvConfig)
+	var configJSON bytes.Buffer
+	json.Indent(&configJSON, jsonSrvConfig, "", "     ")
 
 	var baseDirectoryFile FileStructure
 	baseDirectoryFile.TargetDir = flagParam.outputFlag + srvConfig.ServiceName + "/"
@@ -247,7 +250,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 			{FromTemplate: true, DataSource: srvConfig, Source: cmdMainTemplate, FileName: "main.go"},
 			{FromTemplate: true, DataSource: srvConfig, Source: envTemplate, FileName: ".env"},
 			{FromTemplate: true, DataSource: srvConfig, Source: envTemplate, FileName: ".env.sample"},
-			{Source: string(configJSON), FileName: "candi.json"},
+			{Source: configJSON.String(), FileName: "candi.json"},
 			{FromTemplate: true, DataSource: srvConfig, Source: readmeTemplate, FileName: "README.md"},
 		}
 		if flagParam.withGoModFlag {
@@ -291,7 +294,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 			apiStructure, cmdStructure, internalServiceStructure, pkgServiceStructure,
 		}...)
 		baseDirectoryFile.Childs = append(baseDirectoryFile.Childs, FileStructure{
-			Source: string(configJSON), FileName: "candi.json",
+			Source: configJSON.String(), FileName: "candi.json",
 		})
 		baseDirectoryFile.Skip = true
 		baseDirectoryFile.TargetDir = ""

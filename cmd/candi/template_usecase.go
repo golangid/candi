@@ -108,7 +108,7 @@ import (
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 	{{ if not (or .SQLDeps .MongoDeps) }}// {{end}}"{{.PackagePrefix}}/pkg/shared/repository"
 	"{{$.PackagePrefix}}/pkg/shared/usecase/common"
-	{{if .MongoDeps}}
+	{{if and .MongoDeps (not .SQLDeps)}}
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	{{end}}
 	"{{.LibraryName}}/candishared"
@@ -189,10 +189,10 @@ func (uc *{{camel .ModuleName}}UsecaseImpl) Update{{upper (camel .ModuleName)}}(
 func (uc *{{camel .ModuleName}}UsecaseImpl) Delete{{upper (camel .ModuleName)}}(ctx context.Context, id string) (err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}Usecase:Delete{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
-	{{if .MongoDeps}}
+	{{if and .MongoDeps (not .SQLDeps)}}
 	objID, _ := primitive.ObjectIDFromHex(id){{end}}
 	return {{if or .SQLDeps .MongoDeps}}uc.repo{{if .SQLDeps}}SQL{{else}}Mongo{{end}}.{{upper (camel .ModuleName)}}Repo().Delete(ctx, &shareddomain.{{upper (camel .ModuleName)}}{
-		ID: {{if .MongoDeps}}objID.Hex(){{else}}id{{end}},
+		ID: {{if and .MongoDeps (not .SQLDeps)}}objID{{else}}id{{end}},
 	}){{end}}
 }
 `

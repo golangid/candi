@@ -6,7 +6,6 @@ const (
 package workerhandler
 
 import (
-	"context"
 	"fmt"
 
 	"{{.PackagePrefix}}/pkg/shared/usecase"
@@ -55,7 +54,6 @@ func (h *KafkaHandler) handle{{upper (camel .ModuleName)}}(eventContext *candish
 package workerhandler
 
 import (
-	"context"
 	"fmt"
 
 	"{{.PackagePrefix}}/pkg/shared/usecase"
@@ -104,7 +102,6 @@ func (h *CronHandler) handle{{upper (camel .ModuleName)}}(eventContext *candisha
 package workerhandler
 
 import (
-	"context"
 	"fmt"
 
 	"{{.PackagePrefix}}/pkg/shared/usecase"
@@ -152,7 +149,6 @@ func (h *RedisHandler) handle{{upper (camel .ModuleName)}}(eventContext *candish
 package workerhandler
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -208,7 +204,6 @@ func (h *TaskQueueHandler) handleTask{{upper (camel .ModuleName)}}(eventContext 
 package workerhandler
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 
@@ -262,7 +257,6 @@ func (h *PostgresListenerHandler) handleDataChangeOn{{upper (camel .ModuleName)}
 package workerhandler
 
 import (
-	"context"
 	"fmt"
 
 	"{{.PackagePrefix}}/pkg/shared/usecase"

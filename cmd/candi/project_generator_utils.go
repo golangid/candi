@@ -167,8 +167,8 @@ func loadSavedConfig(flagParam *flagParameter) serviceConfig {
 	for i := range savedConfig.Modules {
 		savedConfig.Modules[i].Skip = true
 	}
-	if candi.Version < savedConfig.Version {
-		log.Fatalf("ERROR: Your cli version (%s) must greater than candi version in service (%s)", candi.Version, savedConfig.Version)
+	if err := checkVersion(candi.Version, savedConfig.Version); err != nil {
+		log.Fatal(err)
 	}
 	savedConfig.Version = candi.Version
 	return savedConfig
@@ -254,4 +254,28 @@ func getGoVersion() (version string) {
 		version = strings.Join(versionDetails[:len(versionDetails)-1], ".")
 	}
 	return
+}
+
+func checkVersion(cli, project string) error {
+	cli, project = strings.Trim(cli, "v"), strings.Trim(project, "v")
+
+	cliSplit := strings.Split(cli, ".")
+	projectSplit := make([]int, len(cliSplit))
+
+	for i, p := range strings.Split(project, ".") {
+		if i >= len(projectSplit) {
+			break
+		}
+		projectSplit[i], _ = strconv.Atoi(p)
+	}
+
+	for i, s := range cliSplit {
+		c, _ := strconv.Atoi(s)
+		if c < projectSplit[i] {
+			return fmt.Errorf("ERROR: Your cli version (%s) must greater than candi version in service (%s), please upgrade your CLI", cli, project)
+		} else if c > projectSplit[i] {
+			return nil
+		}
+	}
+	return nil
 }

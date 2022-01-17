@@ -82,7 +82,7 @@ func (f *flagParameter) getFullModuleChildDir(paths ...string) string {
 type configHeader struct {
 	GoVersion     string
 	Version       string
-	Header        string
+	Header        string `json:"-"`
 	LibraryName   string
 	ServiceName   string
 	PackagePrefix string
