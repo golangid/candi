@@ -6,12 +6,11 @@
 package workerhandler
 
 import (
-	"context"
 	"time"
 
+	"github.com/golangid/candi/candishared"
 	taskqueueworker "github.com/golangid/candi/codebase/app/task_queue_worker"
 	"github.com/golangid/candi/codebase/factory/types"
-	"github.com/golangid/candi/logger"
 )
 
 // TaskQueueHandler struct
@@ -30,16 +29,28 @@ func (h *TaskQueueHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 	group.Add("task-two", h.taskTwo)
 }
 
-func (h *TaskQueueHandler) taskOne(ctx context.Context, message []byte) error {
-	logger.LogRed("task-one: " + string(message))
+func (h *TaskQueueHandler) taskOne(eventContext *candishared.EventContext) error {
+
+	fmt.Printf("executing task '%s' has been %s retry, with message: %s\n",
+		eventContext.HandlerRoute(),
+		eventContext.Header()["retries"],
+		eventContext.Message(),
+	)
+
 	return &taskqueueworker.ErrorRetrier{
 		Delay:   10 * time.Second,
 		Message: "Error",
 	}
 }
 
-func (h *TaskQueueHandler) taskTwo(ctx context.Context, message []byte) error {
-	logger.LogYellow("task-two: " + string(message))
+func (h *TaskQueueHandler) taskTwo(eventContext *candishared.EventContext) error {
+
+	fmt.Printf("executing task '%s' has been %s retry, with message: %s\n",
+		eventContext.HandlerRoute(),
+		eventContext.Header()["retries"],
+		eventContext.Message(),
+	)
+
 	return &taskqueueworker.ErrorRetrier{
 		Delay:   3 * time.Second,
 		Message: "Error",

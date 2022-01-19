@@ -7,7 +7,6 @@ import (
 	"runtime"
 
 	"github.com/golangid/candi/candihelper"
-	"github.com/golangid/candi/logger"
 )
 
 func registerNewTaskListSubscriber(clientID string, clientChannel chan TaskListResolver) error {
@@ -61,7 +60,6 @@ func broadcastAllToSubscribers(ctx context.Context) {
 
 func broadcastTaskList(ctx context.Context) {
 	if ctx.Err() != nil {
-		logger.LogI(ctx.Err().Error())
 		return
 	}
 
@@ -74,16 +72,13 @@ func broadcastTaskList(ctx context.Context) {
 			Try: func() {
 				subscriber <- taskRes
 			},
-			Catch: func(e error) {
-				logger.LogE(e.Error())
-			},
+			Catch: func(error) {},
 		}.Do()
 	}
 }
 
 func broadcastJobList(ctx context.Context) {
 	if ctx.Err() != nil {
-		logger.LogI(ctx.Err().Error())
 		return
 	}
 	for _, subscriber := range clientJobTaskSubscribers {
@@ -110,9 +105,7 @@ func broadcastJobList(ctx context.Context) {
 					Data: jobs,
 				}
 			},
-			Catch: func(e error) {
-				logger.LogE(e.Error())
-			},
+			Catch: func(error) {},
 		}.Do()
 	}
 }

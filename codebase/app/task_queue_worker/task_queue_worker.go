@@ -268,9 +268,10 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 
 	tags := trace.Tags()
 	tags["job_id"], tags["task_name"], tags["retries"], tags["max_retry"] = job.ID, job.TaskName, job.Retries, job.MaxRetry
-	tracer.Log(ctx, "job_args", job.Arguments)
+	trace.Log("job_args", job.Arguments)
 
 	nextJobID := queue.NextJob(runningTask.taskName)
+	trace.Log("next_job_id", nextJobID)
 	if nextJobID != "" {
 		if nextJob, err := persistent.FindJobByID(t.ctx, nextJobID); err == nil {
 			registerJobToWorker(nextJob, selectedTask.workerIndex)
@@ -295,8 +296,7 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 		return
 	}
 
-	mainHandler := selectedHandler.HandlerFuncs[0]
-	err = mainHandler(&eventContext)
+	err = selectedHandler.HandlerFuncs[0](&eventContext)
 
 	if ctx.Err() != nil {
 		job.Error = "Job has been stopped when running."
@@ -324,9 +324,9 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 			isRetry = true
 			job.Interval = e.Delay.String()
 
-			// update job arguments if in error retry contains payload
-			if len(e.Payload) > 0 {
-				job.Arguments = string(e.Payload)
+			// update job arguments if in error retry contains new args payload
+			if len(e.NewArgsPayload) > 0 {
+				job.Arguments = string(e.NewArgsPayload)
 			}
 
 			registerJobToWorker(job, selectedTask.workerIndex)

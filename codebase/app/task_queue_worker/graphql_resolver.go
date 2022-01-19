@@ -19,7 +19,6 @@ import (
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/app/graphql_server/static"
 	"github.com/golangid/candi/codebase/app/graphql_server/ws"
-	"github.com/golangid/candi/logger"
 )
 
 func serveGraphQLAPI(wrk *taskQueueWorker) {
@@ -31,7 +30,9 @@ func serveGraphQLAPI(wrk *taskQueueWorker) {
 
 	mux := http.NewServeMux()
 	mux.Handle("/", http.StripPrefix("/", http.FileServer(dashboard.Dashboard)))
-	mux.Handle("/task", http.StripPrefix("/task", http.FileServer(dashboard.Dashboard)))
+	mux.HandleFunc("/task", func(rw http.ResponseWriter, r *http.Request) {
+		http.Redirect(rw, r, "/", http.StatusSeeOther)
+	})
 	mux.HandleFunc("/graphql", ws.NewHandlerFunc(schema, &relay.Handler{Schema: schema}))
 	mux.HandleFunc("/voyager", func(rw http.ResponseWriter, r *http.Request) { rw.Write([]byte(static.VoyagerAsset)) })
 	mux.HandleFunc("/playground", func(rw http.ResponseWriter, r *http.Request) { rw.Write([]byte(static.PlaygroundAsset)) })
@@ -300,9 +301,7 @@ func (r *rootResolver) ListenTaskJobDetail(ctx context.Context, input struct {
 					Meta: meta, Data: jobs,
 				}
 			},
-			Catch: func(e error) {
-				logger.LogE(e.Error())
-			},
+			Catch: func(error) {},
 		}.Do()
 	}()
 

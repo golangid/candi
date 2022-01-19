@@ -7,6 +7,7 @@ import (
 
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/logger"
+	"github.com/golangid/candi/tracer"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -79,7 +80,6 @@ func (s *mongoPersistent) FindAllJob(ctx context.Context, filter Filter) (jobs [
 
 	cur, err := s.db.Collection(mongoColl).Find(ctx, s.toBsonFilter(filter), findOptions)
 	if err != nil {
-		logger.LogE(err.Error())
 		return
 	}
 	for cur.Next(ctx) {
@@ -149,7 +149,6 @@ func (s *mongoPersistent) AggregateAllTaskJob(ctx context.Context, filter Filter
 	findOptions.AllowDiskUse = candihelper.ToBoolPtr(true)
 	csr, err := s.db.Collection(mongoColl).Aggregate(ctx, pipeQuery, findOptions)
 	if err != nil {
-		logger.LogE(err.Error())
 		return
 	}
 	defer csr.Close(ctx)
@@ -235,6 +234,7 @@ func (s *mongoPersistent) FindJobByID(ctx context.Context, id string) (job *Job,
 
 	job = &Job{}
 	err = s.db.Collection(mongoColl).FindOne(ctx, bson.M{"_id": id}).Decode(job)
+	tracer.Log(ctx, "persistent.find_job_by_id", id)
 	return
 }
 
