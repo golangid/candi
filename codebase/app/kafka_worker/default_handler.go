@@ -3,6 +3,8 @@ package kafkaworker
 import (
 	"fmt"
 	"log"
+	"strconv"
+	"time"
 
 	"github.com/Shopify/sarama"
 	"github.com/golangid/candi/candishared"
@@ -53,7 +55,11 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 		ctx = tracer.SkipTraceContext(ctx)
 	}
 
-	header := map[string]string{}
+	header := map[string]string{
+		"offset":    strconv.Itoa(int(message.Offset)),
+		"partition": strconv.Itoa(int(message.Partition)),
+		"timestamp": message.Timestamp.Format(time.RFC3339),
+	}
 	for _, val := range message.Headers {
 		header[string(val.Key)] = string(val.Value)
 	}
@@ -73,11 +79,9 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 
 	trace.SetTag("topic", message.Topic)
 	trace.SetTag("key", message.Key)
-	trace.SetTag("partition", message.Partition)
-	trace.SetTag("offset", message.Offset)
 	trace.SetTag("consumer_group", c.opt.consumerGroup)
-	trace.Log("message", message.Value)
 	trace.Log("header", header)
+	trace.Log("message", message.Value)
 
 	if c.opt.debugMode {
 		log.Printf("\x1b[35;3mKafka Consumer: message consumed, timestamp = %v, topic = %s\x1b[0m", message.Timestamp, message.Topic)
