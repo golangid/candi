@@ -1,6 +1,7 @@
 package taskqueueworker
 
 import (
+	"context"
 	"sync"
 
 	"github.com/golangid/candi/candishared"
@@ -18,7 +19,7 @@ func NewInMemQueue() QueueStorage {
 	return q
 }
 
-func (i *inMemQueue) PushJob(job *Job) {
+func (i *inMemQueue) PushJob(ctx context.Context, job *Job) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 
@@ -27,7 +28,7 @@ func (i *inMemQueue) PushJob(job *Job) {
 	}
 	i.queue[job.TaskName].Push(job.ID)
 }
-func (i *inMemQueue) PopJob(taskName string) string {
+func (i *inMemQueue) PopJob(ctx context.Context, taskName string) string {
 	el, err := i.queue[taskName].Pop()
 	if err != nil {
 		return ""
@@ -39,8 +40,7 @@ func (i *inMemQueue) PopJob(taskName string) string {
 	}
 	return id
 }
-func (i *inMemQueue) NextJob(taskName string) string {
-
+func (i *inMemQueue) NextJob(ctx context.Context, taskName string) string {
 	el, err := i.queue[taskName].Peek()
 	if err != nil {
 		return ""
@@ -51,7 +51,7 @@ func (i *inMemQueue) NextJob(taskName string) string {
 	}
 	return id
 }
-func (i *inMemQueue) Clear(taskName string) {
+func (i *inMemQueue) Clear(ctx context.Context, taskName string) {
 
 	i.queue[taskName] = nil
 }

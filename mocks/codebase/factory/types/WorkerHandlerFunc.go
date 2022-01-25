@@ -3,8 +3,7 @@
 package mocks
 
 import (
-	context "context"
-
+	candishared "github.com/golangid/candi/candishared"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -13,13 +12,13 @@ type WorkerHandlerFunc struct {
 	mock.Mock
 }
 
-// Execute provides a mock function with given fields: ctx, message
-func (_m *WorkerHandlerFunc) Execute(ctx context.Context, message []byte) error {
-	ret := _m.Called(ctx, message)
+// Execute provides a mock function with given fields: ctx
+func (_m *WorkerHandlerFunc) Execute(ctx *candishared.EventContext) error {
+	ret := _m.Called(ctx)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []byte) error); ok {
-		r0 = rf(ctx, message)
+	if rf, ok := ret.Get(0).(func(*candishared.EventContext) error); ok {
+		r0 = rf(ctx)
 	} else {
 		r0 = ret.Error(0)
 	}

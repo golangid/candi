@@ -32,17 +32,19 @@ type (
 		FinishedAt     time.Time      `bson:"finished_at" json:"finished_at"`
 		Status         string         `bson:"status" json:"status"`
 		Error          string         `bson:"error" json:"error"`
-		TraceID        string         `bson:"traceId" json:"traceId"`
-		RetryHistories []RetryHistory `bson:"retryHistories" json:"retryHistories"`
+		ErrorStack     string         `bson:"-" json:"error_stack"`
+		TraceID        string         `bson:"trace_id" json:"trace_id"`
+		RetryHistories []RetryHistory `bson:"retry_histories" json:"retry_histories"`
 		NextRetryAt    string         `bson:"-" json:"-"`
 	}
 
 	// RetryHistory model
 	RetryHistory struct {
-		Status    string    `bson:"status" json:"status"`
-		Error     string    `bson:"error" json:"error"`
-		TraceID   string    `bson:"traceId" json:"traceId"`
-		Timestamp time.Time `bson:"timestamp" json:"timestamp"`
+		ErrorStack string    `bson:"error_stack" json:"error_stack"`
+		Status     string    `bson:"status" json:"status"`
+		Error      string    `bson:"error" json:"error"`
+		TraceID    string    `bson:"trace_id" json:"trace_id"`
+		Timestamp  time.Time `bson:"timestamp" json:"timestamp"`
 	}
 )
 
@@ -78,7 +80,7 @@ func AddJob(taskName string, maxRetry int, args []byte) (err error) {
 
 	go func(job *Job, workerIndex int) {
 		ctx := context.Background()
-		queue.PushJob(job)
+		queue.PushJob(ctx, job)
 		persistent.SaveJob(ctx, job)
 		broadcastAllToSubscribers(ctx)
 		registerJobToWorker(job, workerIndex)

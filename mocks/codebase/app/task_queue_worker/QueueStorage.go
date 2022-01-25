@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	context "context"
+
 	taskqueueworker "github.com/golangid/candi/codebase/app/task_queue_worker"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -12,18 +14,18 @@ type QueueStorage struct {
 	mock.Mock
 }
 
-// Clear provides a mock function with given fields: taskName
-func (_m *QueueStorage) Clear(taskName string) {
-	_m.Called(taskName)
+// Clear provides a mock function with given fields: ctx, taskName
+func (_m *QueueStorage) Clear(ctx context.Context, taskName string) {
+	_m.Called(ctx, taskName)
 }
 
-// NextJob provides a mock function with given fields: taskName
-func (_m *QueueStorage) NextJob(taskName string) string {
-	ret := _m.Called(taskName)
+// NextJob provides a mock function with given fields: ctx, taskName
+func (_m *QueueStorage) NextJob(ctx context.Context, taskName string) string {
+	ret := _m.Called(ctx, taskName)
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(string) string); ok {
-		r0 = rf(taskName)
+	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
+		r0 = rf(ctx, taskName)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
@@ -31,13 +33,13 @@ func (_m *QueueStorage) NextJob(taskName string) string {
 	return r0
 }
 
-// PopJob provides a mock function with given fields: taskName
-func (_m *QueueStorage) PopJob(taskName string) string {
-	ret := _m.Called(taskName)
+// PopJob provides a mock function with given fields: ctx, taskName
+func (_m *QueueStorage) PopJob(ctx context.Context, taskName string) string {
+	ret := _m.Called(ctx, taskName)
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(string) string); ok {
-		r0 = rf(taskName)
+	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
+		r0 = rf(ctx, taskName)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
@@ -45,7 +47,7 @@ func (_m *QueueStorage) PopJob(taskName string) string {
 	return r0
 }
 
-// PushJob provides a mock function with given fields: job
-func (_m *QueueStorage) PushJob(job *taskqueueworker.Job) {
-	_m.Called(job)
+// PushJob provides a mock function with given fields: ctx, job
+func (_m *QueueStorage) PushJob(ctx context.Context, job *taskqueueworker.Job) {
+	_m.Called(ctx, job)
 }

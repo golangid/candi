@@ -13,18 +13,21 @@ import (
 	dashboard "github.com/golangid/candi-plugin/task-queue-worker/dashboard"
 	"github.com/golangid/graphql-go"
 	"github.com/golangid/graphql-go/relay"
+	"github.com/golangid/graphql-go/trace"
 
 	"github.com/golangid/candi"
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/app/graphql_server/static"
 	"github.com/golangid/candi/codebase/app/graphql_server/ws"
+	"github.com/golangid/candi/config/env"
 )
 
 func serveGraphQLAPI(wrk *taskQueueWorker) {
 	schemaOpts := []graphql.SchemaOpt{
 		graphql.UseStringDescriptions(),
 		graphql.UseFieldResolvers(),
+		graphql.Tracer(trace.NoopTracer{}),
 	}
 	schema := graphql.MustParseSchema(schema, &rootResolver{worker: wrk}, schemaOpts...)
 
@@ -63,6 +66,8 @@ func (r *rootResolver) Tagline(ctx context.Context) (res TaglineResolver) {
 	res.Banner = defaultOption.dashboardBanner
 	res.Tagline = "Task Queue Worker Dashboard"
 	res.Version = candi.Version
+	res.StartAt = startAt
+	res.BuildNumber = env.BaseEnv().BuildNumber
 	res.MemoryStatistics = getMemstats()
 	return
 }
@@ -70,7 +75,9 @@ func (r *rootResolver) Tagline(ctx context.Context) (res TaglineResolver) {
 func (r *rootResolver) GetJobDetail(ctx context.Context, input struct{ JobID string }) (res *Job, err error) {
 
 	res, err = persistent.FindJobByID(ctx, input.JobID)
-	res.TraceID = fmt.Sprintf("%s/trace/%s", defaultOption.jaegerTracingDashboard, res.TraceID)
+	if res.TraceID != "" && defaultOption.jaegerTracingDashboard != "" {
+		res.TraceID = fmt.Sprintf("%s/trace/%s", defaultOption.jaegerTracingDashboard, res.TraceID)
+	}
 	res.CreatedAt = res.CreatedAt.In(candihelper.AsiaJakartaLocalTime)
 	if delay, err := time.ParseDuration(res.Interval); err == nil && res.Status == string(statusQueueing) {
 		res.NextRetryAt = time.Now().Add(delay).In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
@@ -80,7 +87,10 @@ func (r *rootResolver) GetJobDetail(ctx context.Context, input struct{ JobID str
 	})
 	for i := range res.RetryHistories {
 		res.RetryHistories[i].Timestamp = res.RetryHistories[i].Timestamp.In(candihelper.AsiaJakartaLocalTime)
-		res.RetryHistories[i].TraceID = fmt.Sprintf("%s/trace/%s", defaultOption.jaegerTracingDashboard, res.RetryHistories[i].TraceID)
+
+		if res.RetryHistories[i].TraceID != "" && defaultOption.jaegerTracingDashboard != "" {
+			res.RetryHistories[i].TraceID = fmt.Sprintf("%s/trace/%s", defaultOption.jaegerTracingDashboard, res.RetryHistories[i].TraceID)
+		}
 	}
 	return
 }
@@ -124,7 +134,7 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 	}
 
 	stopAllJobInTask(input.TaskName)
-	queue.Clear(input.TaskName)
+	queue.Clear(ctx, input.TaskName)
 	persistent.UpdateAllStatus(ctx, input.TaskName, []JobStatusEnum{statusQueueing, statusRetrying}, statusStopped)
 	broadcastAllToSubscribers(r.worker.ctx)
 
@@ -146,7 +156,7 @@ func (r *rootResolver) RetryJob(ctx context.Context, input struct {
 			job.Retries = 0
 		}
 		job.Status = string(statusQueueing)
-		queue.PushJob(job)
+		queue.PushJob(ctx, job)
 		persistent.SaveJob(r.worker.ctx, job)
 		broadcastAllToSubscribers(r.worker.ctx)
 		registerJobToWorker(job, task.workerIndex)
@@ -182,7 +192,7 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 			job.Retries = 0
 			task := registeredTask[job.TaskName]
 			job.Status = string(statusQueueing)
-			queue.PushJob(&job)
+			queue.PushJob(ctx, &job)
 			registerJobToWorker(&job, task.workerIndex)
 		}
 		pageNumber++

@@ -31,10 +31,17 @@ func NewGraphQLErrorResolver(errMesage string, extensions map[string]interface{}
 
 // ErrorRetrier task queue worker for retry error with retry count and delay between retry
 type ErrorRetrier struct {
-	Delay          time.Duration
-	Retry          int
-	Message        string
+	// Delay run retry, skip retry if delay <= 0
+	Delay    time.Duration
+	NewRetry int
+
+	// Message for error value
+	Message string
+
+	// NewArgsPayload overide args message payload
 	NewArgsPayload []byte
+
+	StackTrace string
 }
 
 // Error implement error

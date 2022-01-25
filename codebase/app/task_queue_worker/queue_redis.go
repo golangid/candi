@@ -1,8 +1,10 @@
 package taskqueueworker
 
 import (
+	"context"
 	"encoding/json"
 
+	"github.com/golangid/candi/tracer"
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -19,7 +21,7 @@ func NewRedisQueue(redisPool *redis.Pool) QueueStorage {
 	return &redisQueue{pool: redisPool}
 }
 
-func (r *redisQueue) GetAllJobs(taskName string) (jobs []*Job) {
+func (r *redisQueue) GetAllJobs(ctx context.Context, taskName string) (jobs []*Job) {
 	conn := r.pool.Get()
 	defer conn.Close()
 
@@ -33,20 +35,24 @@ func (r *redisQueue) GetAllJobs(taskName string) (jobs []*Job) {
 	}
 	return
 }
-func (r *redisQueue) PushJob(job *Job) {
+func (r *redisQueue) PushJob(ctx context.Context, job *Job) {
+	tracer.Log(ctx, "redis.queue:push_job", job.ID)
+
 	conn := r.pool.Get()
 	defer conn.Close()
 
 	conn.Do("RPUSH", job.TaskName, job.ID)
 }
-func (r *redisQueue) PopJob(taskName string) string {
+func (r *redisQueue) PopJob(ctx context.Context, taskName string) string {
 	conn := r.pool.Get()
 	defer conn.Close()
 
 	id, _ := redis.String(conn.Do("LPOP", taskName))
 	return id
 }
-func (r *redisQueue) NextJob(taskName string) string {
+func (r *redisQueue) NextJob(ctx context.Context, taskName string) string {
+	tracer.Log(ctx, "redis.queue:next_job", taskName)
+
 	conn := r.pool.Get()
 	defer conn.Close()
 
@@ -60,7 +66,7 @@ func (r *redisQueue) NextJob(taskName string) string {
 	}
 	return id
 }
-func (r *redisQueue) Clear(taskName string) {
+func (r *redisQueue) Clear(ctx context.Context, taskName string) {
 	conn := r.pool.Get()
 	defer conn.Close()
 

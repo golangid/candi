@@ -3,6 +3,7 @@ package taskqueueworker
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/golangid/candi/candihelper"
@@ -76,7 +77,7 @@ func (s *mongoPersistent) FindAllJob(ctx context.Context, filter Filter) (jobs [
 		findOptions.SetLimit(int64(filter.Limit))
 		findOptions.SetSkip(int64((filter.Page - 1) * filter.Limit))
 	}
-	findOptions.SetProjection(bson.M{"retryHistories": 0})
+	findOptions.SetProjection(bson.M{"retry_histories": 0})
 
 	cur, err := s.db.Collection(mongoColl).Find(ctx, s.toBsonFilter(filter), findOptions)
 	if err != nil {
@@ -157,8 +158,13 @@ func (s *mongoPersistent) AggregateAllTaskJob(ctx context.Context, filter Filter
 	mapper := make(map[string]int, len(filter.TaskNameList))
 	for i, task := range filter.TaskNameList {
 		result[i].Name = task
+		result[i].ModuleName = registeredTask[task].moduleName
 		mapper[task] = i
 	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ModuleName < result[i].ModuleName
+	})
 
 	for csr.Next(ctx) {
 		var obj struct {
@@ -173,8 +179,9 @@ func (s *mongoPersistent) AggregateAllTaskJob(ctx context.Context, filter Filter
 
 		if idx, ok := mapper[obj.TaskName]; ok {
 			res := TaskResolver{
-				Name:      obj.TaskName,
-				TotalJobs: obj.Success + obj.Queueing + obj.Retrying + obj.Failure + obj.Stopped,
+				Name:       obj.TaskName,
+				ModuleName: registeredTask[obj.TaskName].moduleName,
+				TotalJobs:  obj.Success + obj.Queueing + obj.Retrying + obj.Failure + obj.Stopped,
 			}
 			res.Detail.Success = obj.Success
 			res.Detail.Queueing = obj.Queueing
@@ -188,13 +195,41 @@ func (s *mongoPersistent) AggregateAllTaskJob(ctx context.Context, filter Filter
 	return
 }
 
-func (s *mongoPersistent) SaveJob(ctx context.Context, job *Job) {
+func (s *mongoPersistent) SaveJob(ctx context.Context, job *Job, retryHistories ...RetryHistory) {
+	tracer.Log(ctx, "persistent.mongo:save_job", job.ID)
 	var err error
 
 	if job.ID == "" {
 		job.ID = primitive.NewObjectID().Hex()
+		if len(job.RetryHistories) == 0 {
+			job.RetryHistories = make([]RetryHistory, 0)
+		}
 		_, err = s.db.Collection(mongoColl).InsertOne(ctx, job)
 	} else {
+
+		updateQuery := bson.M{
+			"$set": bson.M{
+				"task_name":   job.TaskName,
+				"arguments":   job.Arguments,
+				"retries":     job.Retries,
+				"max_retry":   job.MaxRetry,
+				"interval":    job.Interval,
+				"created_at":  job.CreatedAt,
+				"finished_at": job.FinishedAt,
+				"status":      job.Status,
+				"error":       job.Error,
+				"error_stack": job.ErrorStack,
+				"trace_id":    job.TraceID,
+			},
+		}
+		if len(retryHistories) > 0 {
+			updateQuery["$push"] = bson.M{
+				"retry_histories": bson.M{
+					"$each": retryHistories,
+				},
+			}
+		}
+
 		opt := options.UpdateOptions{
 			Upsert: candihelper.ToBoolPtr(true),
 		}
@@ -202,9 +237,8 @@ func (s *mongoPersistent) SaveJob(ctx context.Context, job *Job) {
 			bson.M{
 				"_id": job.ID,
 			},
-			bson.M{
-				"$set": job,
-			}, &opt)
+			updateQuery,
+			&opt)
 	}
 
 	if err != nil {
@@ -230,10 +264,28 @@ func (s *mongoPersistent) UpdateAllStatus(ctx context.Context, taskName string, 
 	}
 }
 
-func (s *mongoPersistent) FindJobByID(ctx context.Context, id string) (job *Job, err error) {
+func (s *mongoPersistent) FindJobByID(ctx context.Context, id string, excludeFields ...string) (job *Job, err error) {
+	tracer.Log(ctx, "persistent.mongo:find_job", id)
+
+	var opts []*options.FindOneOptions
+
+	if len(excludeFields) > 0 {
+		exclude := bson.M{}
+		for _, exc := range excludeFields {
+			exclude[exc] = 0
+		}
+		opts = append(opts, &options.FindOneOptions{
+			Projection: exclude,
+		})
+	}
 
 	job = &Job{}
-	err = s.db.Collection(mongoColl).FindOne(ctx, bson.M{"_id": id}).Decode(job)
+	err = s.db.Collection(mongoColl).FindOne(ctx, bson.M{"_id": id}, opts...).Decode(job)
+
+	if len(job.RetryHistories) == 0 {
+		job.RetryHistories = make([]RetryHistory, 0)
+	}
+
 	tracer.Log(ctx, "persistent.find_job_by_id", id)
 	return
 }

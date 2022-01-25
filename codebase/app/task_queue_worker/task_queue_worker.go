@@ -49,8 +49,9 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, perst Pe
 				registeredTask[handler.Pattern] = struct {
 					handler     types.WorkerHandler
 					workerIndex int
+					moduleName  string
 				}{
-					handler: handler, workerIndex: workerIndex,
+					handler: handler, workerIndex: workerIndex, moduleName: string(m.Name()),
 				}
 				workerIndexTask[workerIndex] = &Task{
 					taskName: handler.Pattern,
@@ -71,7 +72,7 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, perst Pe
 
 		go func() {
 			for _, taskName := range tasks {
-				queue.Clear(taskName)
+				queue.Clear(workerInstance.ctx, taskName)
 			}
 			// get current pending jobs
 			pageNumber := 1
@@ -86,7 +87,7 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, perst Pe
 				filter.Page = pageNumber
 				pendingJobs := persistent.FindAllJob(workerInstance.ctx, filter)
 				for _, job := range pendingJobs {
-					queue.PushJob(&job)
+					queue.PushJob(workerInstance.ctx, &job)
 					registerJobToWorker(&job, registeredTask[job.TaskName].workerIndex)
 				}
 				pageNumber++
@@ -200,7 +201,7 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 }
 
 func (t *taskQueueWorker) execJob(runningTask *Task) {
-	jobID := queue.PopJob(runningTask.taskName)
+	jobID := queue.PopJob(t.ctx, runningTask.taskName)
 	if jobID == "" {
 		return
 	}
@@ -213,9 +214,9 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 
 	selectedTask := registeredTask[runningTask.taskName]
 
-	job, err := persistent.FindJobByID(t.ctx, jobID)
+	job, err := persistent.FindJobByID(t.ctx, jobID, "retry_histories")
 	if err != nil || job.Status == string(statusStopped) {
-		nextJobID := queue.NextJob(runningTask.taskName)
+		nextJobID := queue.NextJob(t.ctx, runningTask.taskName)
 		if nextJobID != "" {
 			if nextJob, err := persistent.FindJobByID(t.ctx, nextJobID); err == nil {
 				registerJobToWorker(nextJob, selectedTask.workerIndex)
@@ -240,16 +241,17 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 		}
 
 		job.FinishedAt = time.Now()
-		job.RetryHistories = append(job.RetryHistories, RetryHistory{
-			Status: job.Status, Error: job.Error, TraceID: job.TraceID, Timestamp: job.FinishedAt,
-		})
+		retryHistory := RetryHistory{
+			Status: job.Status, Error: job.Error, TraceID: job.TraceID,
+			Timestamp: job.FinishedAt, ErrorStack: job.ErrorStack,
+		}
 
 		trace.SetTag("is_retry", isRetry)
 		if isRetry {
 			job.Status = string(statusQueueing)
 		}
 
-		persistent.SaveJob(t.ctx, job)
+		persistent.SaveJob(ctx, job, retryHistory)
 		broadcastAllToSubscribers(t.ctx)
 		logger.LogGreen("task_queue > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.Finish()
@@ -270,7 +272,7 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 	tags["job_id"], tags["task_name"], tags["retries"], tags["max_retry"] = job.ID, job.TaskName, job.Retries, job.MaxRetry
 	trace.Log("job_args", job.Arguments)
 
-	nextJobID := queue.NextJob(runningTask.taskName)
+	nextJobID := queue.NextJob(ctx, runningTask.taskName)
 	trace.Log("next_job_id", nextJobID)
 	if nextJobID != "" {
 		if nextJob, err := persistent.FindJobByID(t.ctx, nextJobID); err == nil {
@@ -316,22 +318,24 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 
 		switch e := err.(type) {
 		case *candishared.ErrorRetrier:
-			if job.Retries >= job.MaxRetry {
-				logger.LogRed("TaskQueueWorker: GIVE UP: " + job.TaskName)
-				goto nextHandler
+			job.ErrorStack = e.StackTrace
+
+			if job.Retries < job.MaxRetry && e.Delay > 0 {
+
+				isRetry = true
+				job.Interval = e.Delay.String()
+
+				// update job arguments if in error retry contains new args payload
+				if len(e.NewArgsPayload) > 0 {
+					job.Arguments = string(e.NewArgsPayload)
+				}
+
+				registerJobToWorker(job, selectedTask.workerIndex)
+				queue.PushJob(ctx, job)
+				return
 			}
 
-			isRetry = true
-			job.Interval = e.Delay.String()
-
-			// update job arguments if in error retry contains new args payload
-			if len(e.NewArgsPayload) > 0 {
-				job.Arguments = string(e.NewArgsPayload)
-			}
-
-			registerJobToWorker(job, selectedTask.workerIndex)
-			queue.PushJob(job)
-			return
+			logger.LogRed("TaskQueueWorker: GIVE UP: " + job.TaskName)
 		}
 
 	} else {
@@ -339,7 +343,6 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 		job.Error = ""
 	}
 
-nextHandler:
 	for _, h := range selectedHandler.HandlerFuncs[1:] {
 		h(&eventContext)
 	}

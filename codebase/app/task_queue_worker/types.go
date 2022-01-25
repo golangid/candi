@@ -25,6 +25,8 @@ type (
 		Banner                    string
 		Tagline                   string
 		Version                   string
+		StartAt                   string
+		BuildNumber               string
 		TaskListClientSubscribers []string
 		JobListClientSubscribers  []string
 		MemoryStatistics          MemstatsResolver
@@ -47,9 +49,10 @@ type (
 	}
 	// TaskResolver resolver
 	TaskResolver struct {
-		Name      string
-		TotalJobs int
-		Detail    struct {
+		Name       string
+		ModuleName string
+		TotalJobs  int
+		Detail     struct {
 			Failure, Retrying, Success, Queueing, Stopped int
 		}
 	}
@@ -109,6 +112,7 @@ var (
 	registeredTask map[string]struct {
 		handler     types.WorkerHandler
 		workerIndex int
+		moduleName  string
 	}
 
 	workers         []reflect.SelectCase
@@ -127,6 +131,7 @@ var (
 	errClientLimitExceeded = errors.New("client limit exceeded, please try again later")
 
 	defaultOption option
+	startAt       = time.Now().Format(time.RFC3339)
 )
 
 func makeAllGlobalVars(q QueueStorage, perst Persistent, opts ...OptionFunc) {
@@ -160,6 +165,7 @@ func makeAllGlobalVars(q QueueStorage, perst Persistent, opts ...OptionFunc) {
 	registeredTask = make(map[string]struct {
 		handler     types.WorkerHandler
 		workerIndex int
+		moduleName  string
 	})
 	workerIndexTask = make(map[int]*Task)
 

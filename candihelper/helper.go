@@ -482,3 +482,26 @@ func ToDelimited(s string, delimiter uint8) string {
 
 	return n.String()
 }
+
+// GetRuntimeStackLine helper
+func GetRuntimeStackLine() string {
+
+	var name, file string
+	var line int
+	var pc [16]uintptr
+
+	n := runtime.Callers(2, pc[:])
+	for _, pc := range pc[:n] {
+		fn := runtime.FuncForPC(pc)
+		if fn == nil {
+			continue
+		}
+		file, line = fn.FileLine(pc)
+		name = fn.Name()
+		if !strings.HasPrefix(name, "runtime.") {
+			break
+		}
+	}
+
+	return fmt.Sprintf("%s:%d", file, line)
+}

@@ -49,6 +49,20 @@ func (_m *Persistent) CountAllJob(ctx context.Context, filter taskqueueworker.Fi
 	return r0
 }
 
+// DeleteJob provides a mock function with given fields: ctx, id
+func (_m *Persistent) DeleteJob(ctx context.Context, id string) error {
+	ret := _m.Called(ctx, id)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // FindAllJob provides a mock function with given fields: ctx, filter
 func (_m *Persistent) FindAllJob(ctx context.Context, filter taskqueueworker.Filter) []taskqueueworker.Job {
 	ret := _m.Called(ctx, filter)
@@ -65,13 +79,20 @@ func (_m *Persistent) FindAllJob(ctx context.Context, filter taskqueueworker.Fil
 	return r0
 }
 
-// FindJobByID provides a mock function with given fields: ctx, id
-func (_m *Persistent) FindJobByID(ctx context.Context, id string) (*taskqueueworker.Job, error) {
-	ret := _m.Called(ctx, id)
+// FindJobByID provides a mock function with given fields: ctx, id, excludeFields
+func (_m *Persistent) FindJobByID(ctx context.Context, id string, excludeFields ...string) (*taskqueueworker.Job, error) {
+	_va := make([]interface{}, len(excludeFields))
+	for _i := range excludeFields {
+		_va[_i] = excludeFields[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, id)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	var r0 *taskqueueworker.Job
-	if rf, ok := ret.Get(0).(func(context.Context, string) *taskqueueworker.Job); ok {
-		r0 = rf(ctx, id)
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...string) *taskqueueworker.Job); ok {
+		r0 = rf(ctx, id, excludeFields...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*taskqueueworker.Job)
@@ -79,8 +100,8 @@ func (_m *Persistent) FindJobByID(ctx context.Context, id string) (*taskqueuewor
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, id)
+	if rf, ok := ret.Get(1).(func(context.Context, string, ...string) error); ok {
+		r1 = rf(ctx, id, excludeFields...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -88,9 +109,16 @@ func (_m *Persistent) FindJobByID(ctx context.Context, id string) (*taskqueuewor
 	return r0, r1
 }
 
-// SaveJob provides a mock function with given fields: ctx, job
-func (_m *Persistent) SaveJob(ctx context.Context, job *taskqueueworker.Job) {
-	_m.Called(ctx, job)
+// SaveJob provides a mock function with given fields: ctx, job, retryHistories
+func (_m *Persistent) SaveJob(ctx context.Context, job *taskqueueworker.Job, retryHistories ...taskqueueworker.RetryHistory) {
+	_va := make([]interface{}, len(retryHistories))
+	for _i := range retryHistories {
+		_va[_i] = retryHistories[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, job)
+	_ca = append(_ca, _va...)
+	_m.Called(_ca...)
 }
 
 // UpdateAllStatus provides a mock function with given fields: ctx, taskName, currentStatus, updatedStatus

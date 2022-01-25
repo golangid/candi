@@ -31,6 +31,8 @@ type TaglineType {
 	version: String!
 	banner: String!
 	tagline: String!
+	start_at: String!
+	build_number: String!
 	task_list_client_subscribers: [String!]!
 	job_list_client_subscribers: [String!]!
 	memory_statistics: MemstatsResolver!
@@ -63,6 +65,7 @@ type MemstatsResolver {
 
 type TaskResolver {
 	name: String!
+	module_name: String!
 	total_jobs: Int!
 	detail: TaskDetailResolver!
 }
@@ -102,6 +105,7 @@ type JobResolver {
 }
 
 type JobRetryHistory {
+	error_stack: String!
 	status: String!
 	error: String!
 	trace_id: String!
