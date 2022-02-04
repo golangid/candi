@@ -10,16 +10,22 @@ import (
 )
 
 func TestCommon(t *testing.T) {
+	time := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
+
 	StringGreen("green")
 	StringYellow("yellow")
 	assert.NotNil(t, ToBoolPtr(true))
 	assert.NotNil(t, ToStringPtr("str"))
 	assert.NotNil(t, ToIntPtr(1))
 	assert.NotNil(t, ToFloatPtr(1.3))
+	assert.NotNil(t, ToFloat32Ptr(1.3))
+	assert.NotNil(t, ToTimePtr(time))
 	assert.Equal(t, "str", PtrToString(ToStringPtr("str")))
 	assert.Equal(t, true, PtrToBool(ToBoolPtr(true)))
 	assert.Equal(t, 1, PtrToInt(ToIntPtr(1)))
 	assert.Equal(t, 1.3, PtrToFloat(ToFloatPtr(1.3)))
+	assert.Equal(t, float32(1.2), PtrToFloat32(ToFloat32Ptr(1.2)))
+	assert.Equal(t, time, PtrToTime(ToTimePtr(time)))
 	assert.Equal(t, true, StringInSlice("a", []string{"a", "b", "c"}))
 	assert.Equal(t, false, StringInSlice("z", []string{"a", "b", "c"}))
 	assert.Equal(t, []byte("a"), ToBytes([]byte("a")))
