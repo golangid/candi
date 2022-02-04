@@ -200,6 +200,16 @@ func ToFloatPtr(f float64) *float64 {
 	return &f
 }
 
+// ToFloat32Ptr helper
+func ToFloat32Ptr(f float32) *float32 {
+	return &f
+}
+
+// ToTimePtr helper
+func ToTimePtr(t time.Time) *time.Time {
+	return &t
+}
+
 // PtrToString helper
 func PtrToString(ptr *string) (s string) {
 	if ptr != nil {
@@ -228,6 +238,22 @@ func PtrToInt(ptr *int) (i int) {
 func PtrToFloat(ptr *float64) (f float64) {
 	if ptr != nil {
 		f = *ptr
+	}
+	return
+}
+
+// PtrToFloat32 helper
+func PtrToFloat32(ptr *float32) (f float32) {
+	if ptr != nil {
+		f = *ptr
+	}
+	return
+}
+
+// PtrToTime helper
+func PtrToTime(ptr *time.Time) (t time.Time) {
+	if ptr != nil {
+		return *ptr
 	}
 	return
 }
