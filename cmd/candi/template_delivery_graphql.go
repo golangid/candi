@@ -189,7 +189,7 @@ func (s *subscriptionResolver) ListenData(ctx context.Context) <-chan shareddoma
 			case <-tick.C:
 				data := shareddomain.{{upper (camel .ModuleName)}}{
 					CreatedAt:  time.Now(),
-					ModifiedAt: time.Now(),
+					UpdatedAt: time.Now(),
 				}
 				data.ID = {{if and .MongoDeps (not .SQLDeps)}}primitive.NewObjectID(){{else}}uuid.NewString(){{end}}
 				output <- data
@@ -300,7 +300,7 @@ type {{upper (camel .ModuleName)}}Resolver {
 	id: String!
 	field: String!
 	createdAt: String!
-	modifiedAt: String!
+	updatedAt: String!
 }
 
 input {{upper (camel .ModuleName)}}InputResolver {

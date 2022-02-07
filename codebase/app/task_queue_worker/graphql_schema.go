@@ -109,6 +109,7 @@ type JobRetryHistory {
 	status: String!
 	error: String!
 	trace_id: String!
-	timestamp: String!
+	start_at: String!
+	end_at: String!
 }
 `

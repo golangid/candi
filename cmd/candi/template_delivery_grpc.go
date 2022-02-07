@@ -78,7 +78,7 @@ func (h *GRPCHandler) GetAll{{upper (camel .ModuleName)}}(ctx context.Context, r
 
 	for _, d := range data {
 		data := &proto.{{upper (camel .ModuleName)}}Model{
-			CreatedAt: d.CreatedAt.Format(time.RFC3339), ModifiedAt: d.ModifiedAt.Format(time.RFC3339),
+			CreatedAt: d.CreatedAt.Format(time.RFC3339), UpdatedAt: d.UpdatedAt.Format(time.RFC3339),
 		}
 		data.ID = d.ID{{if and .MongoDeps (not .SQLDeps)}}.Hex(){{end}}
 		resp.Data = append(resp.Data, data)
@@ -100,7 +100,7 @@ func (h *GRPCHandler) GetDetail{{upper (camel .ModuleName)}}(ctx context.Context
 	}
 
 	resp := &proto.{{upper (camel .ModuleName)}}Model{
-		CreatedAt: data.CreatedAt.Format(time.RFC3339), ModifiedAt: data.ModifiedAt.Format(time.RFC3339),
+		CreatedAt: data.CreatedAt.Format(time.RFC3339), UpdatedAt: data.UpdatedAt.Format(time.RFC3339),
 	}
 	resp.ID = data.ID{{if and .MongoDeps (not .SQLDeps)}}.Hex(){{end}}
 	return resp, nil
@@ -121,7 +121,7 @@ func (h *GRPCHandler) Create{{upper (camel .ModuleName)}}(ctx context.Context, r
 
 	payload.CreatedAt, err = time.Parse(time.RFC3339, req.CreatedAt)
 	mErr.Append("createdAt", err)
-	payload.ModifiedAt, err = time.Parse(time.RFC3339, req.ModifiedAt)
+	payload.UpdatedAt, err = time.Parse(time.RFC3339, req.UpdatedAt)
 	mErr.Append("modifiedAt", err)
 	if mErr.HasError() {
 		return nil, mErr
@@ -215,7 +215,7 @@ message {{upper (camel .ModuleName)}}Model {
 	string ID=1;
 	string Field=2;
 	string CreatedAt=3;
-	string ModifiedAt=4;
+	string UpdatedAt=4;
 }
 
 message Response {

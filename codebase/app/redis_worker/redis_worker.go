@@ -180,12 +180,13 @@ func (r *redisWorker) processMessage(param RedisMessage) {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
 
-	trace, ctx := tracer.StartTraceWithContext(ctx, "RedisSubscriber")
+	trace, ctx := tracer.StartTraceFromHeader(ctx, "RedisSubscriber", map[string]string{})
 	defer func() {
 		if r := recover(); r != nil {
-			tracer.SetError(ctx, fmt.Errorf("%v", r))
+			trace.SetError(fmt.Errorf("%v", r))
 		}
 		logger.LogGreen("redis_subscriber > trace_url: " + tracer.GetTraceURL(ctx))
+		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish()
 	}()
 

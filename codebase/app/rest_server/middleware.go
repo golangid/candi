@@ -43,6 +43,7 @@ func (h *restServer) echoRestTracerMiddleware(next echo.HandlerFunc) echo.Handle
 
 		trace, ctx := tracer.StartTraceFromHeader(req.Context(), operationName, header)
 		defer func() {
+			trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 			trace.Finish()
 			logger.LogGreen("rest_api > trace_url: " + tracer.GetTraceURL(ctx))
 		}()

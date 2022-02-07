@@ -210,12 +210,13 @@ func (c *cronWorker) processJob(job *Job) {
 	}
 	defer c.opt.locker.Unlock(c.getLockKey(job.HandlerName))
 
-	trace, ctx := tracer.StartTraceWithContext(ctx, "CronScheduler")
+	trace, ctx := tracer.StartTraceFromHeader(ctx, "CronScheduler", map[string]string{})
 	defer func() {
 		if r := recover(); r != nil {
 			trace.SetError(fmt.Errorf("%v", r))
 		}
 		logger.LogGreen("cron scheduler > trace_url: " + tracer.GetTraceURL(ctx))
+		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish()
 	}()
 	trace.SetTag("job_name", job.HandlerName)

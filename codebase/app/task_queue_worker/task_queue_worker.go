@@ -231,19 +231,38 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
 
-	isRetry := false
+	isRetry, startAt := false, time.Now()
 
-	trace, ctx := tracer.StartTraceWithContext(ctx, "TaskQueueWorker")
+	job.Retries++
+	job.Status = string(statusRetrying)
+	persistent.SaveJob(ctx, job)
+	broadcastAllToSubscribers(ctx)
+
+	if defaultOption.debugMode {
+		log.Printf("\x1b[35;3mTask Queue Worker: executing task '%s'\x1b[0m", job.TaskName)
+	}
+
+	nextJobID := queue.NextJob(ctx, runningTask.taskName)
+	if nextJobID != "" {
+		if nextJob, err := persistent.FindJobByID(t.ctx, nextJobID); err == nil {
+			registerJobToWorker(nextJob, selectedTask.workerIndex)
+		}
+	}
+
+	trace, ctx := tracer.StartTraceFromHeader(ctx, "TaskQueueWorker", map[string]string{})
 	defer func() {
 		if r := recover(); r != nil {
-			trace.SetError(fmt.Errorf("%v", r))
+			err = fmt.Errorf("panic: %v", r)
+			trace.SetError(err)
+			job.Error = err.Error()
 			job.Status = string(statusFailure)
 		}
 
 		job.FinishedAt = time.Now()
 		retryHistory := RetryHistory{
 			Status: job.Status, Error: job.Error, TraceID: job.TraceID,
-			Timestamp: job.FinishedAt, ErrorStack: job.ErrorStack,
+			StartAt: startAt, EndAt: job.FinishedAt,
+			ErrorStack: job.ErrorStack,
 		}
 
 		trace.SetTag("is_retry", isRetry)
@@ -251,43 +270,28 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 			job.Status = string(statusQueueing)
 		}
 
+		logger.LogGreen("task_queue > trace_url: " + tracer.GetTraceURL(ctx))
+		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
+		trace.Finish()
+
 		persistent.SaveJob(ctx, job, retryHistory)
 		broadcastAllToSubscribers(t.ctx)
-		logger.LogGreen("task_queue > trace_url: " + tracer.GetTraceURL(ctx))
-		trace.Finish()
 	}()
-
-	job.Retries++
-	job.Status = string(statusRetrying)
-	persistent.SaveJob(t.ctx, job)
-	broadcastAllToSubscribers(t.ctx)
-
-	job.TraceID = tracer.GetTraceID(ctx)
-
-	if defaultOption.debugMode {
-		log.Printf("\x1b[35;3mTask Queue Worker: executing task '%s'\x1b[0m", job.TaskName)
-	}
 
 	tags := trace.Tags()
 	tags["job_id"], tags["task_name"], tags["retries"], tags["max_retry"] = job.ID, job.TaskName, job.Retries, job.MaxRetry
 	trace.Log("job_args", job.Arguments)
 
-	nextJobID := queue.NextJob(ctx, runningTask.taskName)
-	trace.Log("next_job_id", nextJobID)
-	if nextJobID != "" {
-		if nextJob, err := persistent.FindJobByID(t.ctx, nextJobID); err == nil {
-			registerJobToWorker(nextJob, selectedTask.workerIndex)
-		}
-	}
+	job.TraceID = tracer.GetTraceID(ctx)
 
 	var eventContext candishared.EventContext
 	eventContext.SetContext(ctx)
 	eventContext.SetWorkerType(string(types.TaskQueue))
 	eventContext.SetHandlerRoute(job.TaskName)
 	eventContext.SetHeader(map[string]string{
-		"retries":  strconv.Itoa(job.Retries),
-		"maxRetry": strconv.Itoa(job.MaxRetry),
-		"interval": job.Interval,
+		"retries":   strconv.Itoa(job.Retries),
+		"max_retry": strconv.Itoa(job.MaxRetry),
+		"interval":  job.Interval,
 	})
 	eventContext.SetKey(job.ID)
 	eventContext.WriteString(job.Arguments)

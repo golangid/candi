@@ -158,6 +158,7 @@ func (r *rabbitmqWorker) processMessage(message amqp.Delivery) {
 		}
 		trace.SetError(err)
 		logger.LogGreen("rabbitmq_consumer > trace_url: " + tracer.GetTraceURL(ctx))
+		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish()
 	}()
 

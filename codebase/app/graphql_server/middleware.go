@@ -73,6 +73,7 @@ func (t *graphqlMiddleware) TraceQuery(ctx context.Context, queryString string, 
 			trace.Log("errors", errs)
 		}
 		logger.LogGreen("graphql > trace_url: " + tracer.GetTraceURL(ctx))
+		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish()
 	}
 }

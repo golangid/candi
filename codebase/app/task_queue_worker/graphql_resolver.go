@@ -83,10 +83,11 @@ func (r *rootResolver) GetJobDetail(ctx context.Context, input struct{ JobID str
 		res.NextRetryAt = time.Now().Add(delay).In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 	}
 	sort.Slice(res.RetryHistories, func(i, j int) bool {
-		return res.RetryHistories[i].Timestamp.After(res.RetryHistories[j].Timestamp)
+		return res.RetryHistories[i].EndAt.After(res.RetryHistories[j].EndAt)
 	})
 	for i := range res.RetryHistories {
-		res.RetryHistories[i].Timestamp = res.RetryHistories[i].Timestamp.In(candihelper.AsiaJakartaLocalTime)
+		res.RetryHistories[i].StartAt = res.RetryHistories[i].StartAt.In(candihelper.AsiaJakartaLocalTime)
+		res.RetryHistories[i].EndAt = res.RetryHistories[i].EndAt.In(candihelper.AsiaJakartaLocalTime)
 
 		if res.RetryHistories[i].TraceID != "" && defaultOption.jaegerTracingDashboard != "" {
 			res.RetryHistories[i].TraceID = fmt.Sprintf("%s/trace/%s", defaultOption.jaegerTracingDashboard, res.RetryHistories[i].TraceID)
@@ -171,7 +172,7 @@ func (r *rootResolver) CleanJob(ctx context.Context, input struct {
 }) (string, error) {
 
 	persistent.CleanJob(ctx, input.TaskName)
-	go broadcastAllToSubscribers(ctx)
+	broadcastAllToSubscribers(ctx)
 
 	return "Success clean all job in task " + input.TaskName, nil
 }

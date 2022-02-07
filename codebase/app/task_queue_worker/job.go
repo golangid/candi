@@ -44,7 +44,8 @@ type (
 		Status     string    `bson:"status" json:"status"`
 		Error      string    `bson:"error" json:"error"`
 		TraceID    string    `bson:"trace_id" json:"trace_id"`
-		Timestamp  time.Time `bson:"timestamp" json:"timestamp"`
+		StartAt    time.Time `bson:"start_at" json:"start_at"`
+		EndAt      time.Time `bson:"end_at" json:"end_at"`
 	}
 )
 

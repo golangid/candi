@@ -74,6 +74,7 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 			session.MarkMessage(message, "")
 		}
 		logger.LogGreen("kafka_consumer > trace_url: " + tracer.GetTraceURL(ctx))
+		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish()
 	}()
 

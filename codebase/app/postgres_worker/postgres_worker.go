@@ -123,12 +123,13 @@ START:
 				if handler.DisableTrace {
 					ctx = tracer.SkipTraceContext(ctx)
 				}
-				trace, ctx := tracer.StartTraceWithContext(ctx, "PostgresEventListener")
+				trace, ctx := tracer.StartTraceFromHeader(ctx, "PostgresEventListener", map[string]string{})
 				defer func() {
 					if r := recover(); r != nil {
-						tracer.SetError(ctx, fmt.Errorf("panic: %v", r))
+						trace.SetError(fmt.Errorf("panic: %v", r))
 					}
 					logger.LogGreen("postgres_listener > trace_url: " + tracer.GetTraceURL(ctx))
+					trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 					trace.Finish()
 				}()
 

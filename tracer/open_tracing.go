@@ -2,26 +2,20 @@ package tracer
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"math"
-	"net/http"
 	"net/url"
 	"runtime"
-	"runtime/debug"
 	"strings"
 	"time"
 
 	"github.com/golangid/candi"
-	"github.com/golangid/candi/candishared"
-	"github.com/golangid/candi/codebase/interfaces"
 	"github.com/golangid/candi/config/env"
 	opentracing "github.com/opentracing/opentracing-go"
 	ext "github.com/opentracing/opentracing-go/ext"
 	otlog "github.com/opentracing/opentracing-go/log"
 	config "github.com/uber/jaeger-client-go/config"
-	"google.golang.org/grpc/metadata"
 )
 
 // InitOpenTracing init jaeger tracing
@@ -80,7 +74,7 @@ func InitOpenTracing(serviceName string, opts ...OptionFunc) error {
 
 type jaegerPlatform struct{}
 
-func (j *jaegerPlatform) StartSpan(ctx context.Context, operationName string) interfaces.Tracer {
+func (j *jaegerPlatform) StartSpan(ctx context.Context, operationName string) Tracer {
 	span := opentracing.SpanFromContext(ctx)
 	if span == nil {
 		// init new span
@@ -89,12 +83,16 @@ func (j *jaegerPlatform) StartSpan(ctx context.Context, operationName string) in
 		span = opentracing.GlobalTracer().StartSpan(operationName, opentracing.ChildOf(span.Context()))
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
-	return &jaegerImpl{
+	return &jaegerTraceImpl{
 		ctx:  ctx,
 		span: span,
 	}
 }
-func (j *jaegerPlatform) StartRootSpan(ctx context.Context, operationName string, header map[string]string) interfaces.Tracer {
+func (j *jaegerPlatform) StartRootSpan(ctx context.Context, operationName string, header map[string]string) Tracer {
+
+	if header == nil {
+		header = map[string]string{}
+	}
 
 	var span opentracing.Span
 	globalTracer := opentracing.GlobalTracer()
@@ -105,31 +103,59 @@ func (j *jaegerPlatform) StartRootSpan(ctx context.Context, operationName string
 		span = globalTracer.StartSpan(operationName, opentracing.ChildOf(spanCtx), ext.SpanKindRPCClient)
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
-	return &jaegerImpl{
+	return &jaegerTraceImpl{
 		ctx:  ctx,
 		span: span,
 	}
 }
+func (j *jaegerPlatform) GetTraceID(ctx context.Context) string {
+	span := opentracing.SpanFromContext(ctx)
+	if span == nil {
+		return ""
+	}
 
-type jaegerImpl struct {
+	traceID := fmt.Sprintf("%+v", span)
+	splits := strings.Split(traceID, ":")
+	if len(splits) > 0 {
+		return splits[0]
+	}
+
+	return traceID
+}
+func (j *jaegerPlatform) GetTraceURL(ctx context.Context) (u string) {
+	traceID := j.GetTraceID(ctx)
+	if traceID == "" {
+		return
+	}
+
+	urlAgent, err := url.Parse("//" + env.BaseEnv().JaegerTracingHost)
+	if urlAgent != nil && err == nil {
+		u = fmt.Sprintf("http://%s:16686/trace/%s", urlAgent.Hostname(), traceID)
+	}
+	return
+}
+
+type jaegerTraceImpl struct {
 	ctx  context.Context
 	span opentracing.Span
 	tags map[string]interface{}
 }
 
 // Context get active context
-func (t *jaegerImpl) Context() context.Context {
+func (t *jaegerTraceImpl) Context() context.Context {
 	return t.ctx
 }
 
 // Tags create tags in tracer span
-func (t *jaegerImpl) Tags() map[string]interface{} {
-	t.tags = make(map[string]interface{})
+func (t *jaegerTraceImpl) Tags() map[string]interface{} {
+	if t.tags == nil {
+		t.tags = make(map[string]interface{})
+	}
 	return t.tags
 }
 
 // SetTag set tags in tracer span
-func (t *jaegerImpl) SetTag(key string, value interface{}) {
+func (t *jaegerTraceImpl) SetTag(key string, value interface{}) {
 	if t.span == nil {
 		return
 	}
@@ -140,29 +166,8 @@ func (t *jaegerImpl) SetTag(key string, value interface{}) {
 	t.tags[key] = value
 }
 
-// InjectHTTPHeader DEPRECATED : use InjectRequestHeader
-func (t *jaegerImpl) InjectHTTPHeader(req *http.Request) {
-	if t.span == nil {
-		return
-	}
-	ext.SpanKindRPCClient.Set(t.span)
-	t.span.Tracer().Inject(
-		t.span.Context(),
-		opentracing.HTTPHeaders,
-		opentracing.HTTPHeadersCarrier(req.Header),
-	)
-}
-
-// InjectGRPCMetadata DEPRECATED : use InjectRequestHeader
-func (t *jaegerImpl) InjectGRPCMetadata(md metadata.MD) {
-	if t.span == nil {
-		return
-	}
-
-}
-
 // InjectRequestHeader to continue tracer with custom header carrier
-func (t *jaegerImpl) InjectRequestHeader(header map[string]string) {
+func (t *jaegerTraceImpl) InjectRequestHeader(header map[string]string) {
 	if t.span == nil {
 		return
 	}
@@ -176,35 +181,56 @@ func (t *jaegerImpl) InjectRequestHeader(header map[string]string) {
 }
 
 // SetError set error in span
-func (t *jaegerImpl) SetError(err error) {
-	SetError(t.ctx, err)
+func (t *jaegerTraceImpl) SetError(err error) {
+	if t.span == nil || err == nil {
+		return
+	}
+
+	ext.Error.Set(t.span, true)
+	t.span.SetTag("error.message", err.Error())
+
+	stackTrace := make([]byte, 1024)
+	for {
+		n := runtime.Stack(stackTrace, false)
+		if n < len(stackTrace) {
+			stackTrace = stackTrace[:n]
+			break
+		}
+		stackTrace = make([]byte, 2*len(stackTrace))
+	}
+	t.span.LogFields(otlog.String("stacktrace", string(stackTrace)))
 }
 
 // SetError log data
-func (t *jaegerImpl) Log(key string, value interface{}) {
+func (t *jaegerTraceImpl) Log(key string, value interface{}) {
 	Log(t.ctx, key, value)
 }
 
 // Finish trace with additional tags data, must in deferred function
-func (t *jaegerImpl) Finish(additionalTags ...map[string]interface{}) {
+func (t *jaegerTraceImpl) Finish(opts ...FinishOptionFunc) {
 	if t.span == nil {
 		return
 	}
 
-	defer t.span.Finish()
-	if additionalTags != nil && t.tags == nil {
+	var finishOpt FinishOption
+	for _, opt := range opts {
+		opt(&finishOpt)
+	}
+
+	if finishOpt.Tags != nil && t.tags == nil {
 		t.tags = make(map[string]interface{})
 	}
 
-	for _, tag := range additionalTags {
-		for k, v := range tag {
-			t.tags[k] = v
-		}
+	for k, v := range finishOpt.Tags {
+		t.tags[k] = v
 	}
 
 	for k, v := range t.tags {
 		t.span.SetTag(k, toValue(v))
 	}
+
+	t.SetError(finishOpt.Error)
+	t.span.Finish()
 }
 
 // Log trace
@@ -234,99 +260,4 @@ func LogEvent(ctx context.Context, event string, payload ...interface{}) {
 	} else {
 		span.LogEvent(event)
 	}
-}
-
-// WithTraceFunc functional with context and tags in function params
-func WithTraceFunc(ctx context.Context, operationName string, fn func(context.Context, map[string]interface{})) {
-	t := StartTrace(ctx, operationName)
-	defer t.Finish()
-
-	fn(t.Context(), t.Tags())
-}
-
-// WithTraceFuncTracer functional with Tracer instance in function params
-func WithTraceFuncTracer(ctx context.Context, operationName string, fn func(t interfaces.Tracer)) {
-	t := StartTrace(ctx, operationName)
-	defer t.Finish()
-
-	fn(t)
-}
-
-func toValue(v interface{}) (s interface{}) {
-
-	var str string
-	switch val := v.(type) {
-
-	case uint, uint64, int, int64, float32, float64:
-		return v
-
-	case error:
-		if val != nil {
-			str = val.Error()
-		}
-	case string:
-		str = val
-	case []byte:
-		str = string(val)
-	default:
-		b, _ := json.Marshal(val)
-		str = string(b)
-	}
-
-	if len(str) >= int(env.BaseEnv().JaegerMaxPacketSize) {
-		return fmt.Sprintf("<<Overflow, cannot show data. Size is = %d bytes, JAEGER_MAX_PACKET_SIZE = %d bytes>>",
-			len(str),
-			env.BaseEnv().JaegerMaxPacketSize)
-	}
-
-	return str
-}
-
-// GetTraceID func
-func GetTraceID(ctx context.Context) string {
-	span := opentracing.SpanFromContext(ctx)
-	if span == nil {
-		return ""
-	}
-
-	traceID := fmt.Sprintf("%+v", span)
-	splits := strings.Split(traceID, ":")
-	if len(splits) > 0 {
-		return splits[0]
-	}
-
-	return traceID
-}
-
-// SetError func
-func SetError(ctx context.Context, err error) {
-	span := opentracing.SpanFromContext(ctx)
-	if span == nil || err == nil {
-		return
-	}
-
-	ext.Error.Set(span, true)
-	span.SetTag("error.message", err.Error())
-	span.LogFields(otlog.String("stacktrace", string(debug.Stack())))
-}
-
-// GetTraceURL log trace url
-func GetTraceURL(ctx context.Context) (u string) {
-	traceID := GetTraceID(ctx)
-	if traceID == "" {
-		return
-	}
-
-	urlAgent, err := url.Parse("//" + env.BaseEnv().JaegerTracingHost)
-	if urlAgent != nil && err == nil {
-		u = fmt.Sprintf("http://%s:16686/trace/%s", urlAgent.Hostname(), traceID)
-	}
-	return
-}
-
-var skipTracer candishared.ContextKey = "nooptracer"
-
-// SkipTraceContext inject to context for skip span tracer
-func SkipTraceContext(ctx context.Context) context.Context {
-	return candishared.SetToContext(ctx, skipTracer, struct{}{})
 }
