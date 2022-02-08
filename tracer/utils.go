@@ -12,12 +12,20 @@ import (
 	otlog "github.com/opentracing/opentracing-go/log"
 )
 
-// WithTraceFunc functional with Tracer instance in function params
-func WithTraceFunc(ctx context.Context, operationName string, fn func(t Tracer)) {
+// WithTraceFunc functional with context and tags in function params (DEPRECATED, use WithTracerFunc)
+func WithTraceFunc(ctx context.Context, operationName string, fn func(context.Context, map[string]interface{})) {
 	t := StartTrace(ctx, operationName)
 	defer t.Finish()
 
-	fn(t)
+	fn(t.Context(), t.Tags())
+}
+
+// WithTracerFunc functional with Tracer instance in function params
+func WithTracerFunc(ctx context.Context, operationName string, fn func(context.Context, Tracer)) {
+	t, ctx := StartTraceWithContext(ctx, operationName)
+	defer t.Finish()
+
+	fn(ctx, t)
 }
 
 func toValue(v interface{}) (s interface{}) {

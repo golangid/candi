@@ -106,6 +106,7 @@ func TestMustParseEnv(t *testing.T) {
 		Float    float64       `env:"FLOAT"`
 		Now      time.Time     `env:"NOW"`
 		Duration time.Duration `env:"DURATION"`
+		Multi    []string      `env:"MULTI"`
 	}
 	type SubField struct {
 		SubString string `env:"SUBSTRING"`
@@ -121,6 +122,7 @@ func TestMustParseEnv(t *testing.T) {
 		os.Setenv("DURATION", "10m")
 		os.Setenv("UNEXPORTED", "none")
 		os.Setenv("SUBSTRING", "substring")
+		os.Setenv("MULTI", "a,b,c,d")
 		var env struct {
 			Host       string `env:"HOST"`
 			Port       int    `env:"PORT"`
@@ -137,6 +139,7 @@ func TestMustParseEnv(t *testing.T) {
 		assert.Equal(t, time.Duration(10)*time.Minute, env.Duration)
 		assert.Equal(t, "substring", env.SubField.SubString)
 		assert.Equal(t, "", env.unexported)
+		assert.Equal(t, []string{"a", "b", "c", "d"}, env.Multi)
 		os.Clearenv()
 	})
 	t.Run("Testcase #2: Negative", func(t *testing.T) {

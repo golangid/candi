@@ -354,6 +354,7 @@ func MustParseEnv(target interface{}) {
 				continue
 			}
 			field.Set(reflect.ValueOf(dur))
+
 		case time.Time:
 			t, err := time.Parse(time.RFC3339, val)
 			if err != nil {
@@ -361,6 +362,7 @@ func MustParseEnv(target interface{}) {
 				continue
 			}
 			field.Set(reflect.ValueOf(t))
+
 		case int32, int, int64:
 			vInt, err := strconv.Atoi(val)
 			if err != nil {
@@ -368,6 +370,7 @@ func MustParseEnv(target interface{}) {
 				continue
 			}
 			field.SetInt(int64(vInt))
+
 		case float32, float64:
 			vFloat, err := strconv.ParseFloat(val, 64)
 			if err != nil {
@@ -375,6 +378,7 @@ func MustParseEnv(target interface{}) {
 				continue
 			}
 			field.SetFloat(vFloat)
+
 		case bool:
 			vBool, err := strconv.ParseBool(val)
 			if err != nil {
@@ -382,8 +386,17 @@ func MustParseEnv(target interface{}) {
 				continue
 			}
 			field.SetBool(vBool)
+
 		case string:
 			field.SetString(val)
+
+		case []string:
+			separator := typ.Tag.Get("separator")
+			if separator == "" {
+				separator = ","
+			}
+			field.Set(reflect.ValueOf(strings.Split(val, separator)))
+
 		}
 	}
 
