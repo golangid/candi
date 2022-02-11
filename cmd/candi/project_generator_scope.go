@@ -312,7 +312,7 @@ func updateSharedUsecase(flagParam flagParameter, cfg serviceConfig) {
 }
 
 func updateSharedRepository(flagParam flagParameter, cfg serviceConfig) {
-	for repoType, repo := range map[string]string{"SQL": "repository_sql.go", "Mongo": "repository_mongo.go"} {
+	for repoType, repo := range map[string]string{"SQL": "repository_sql.go", "Mongo": "repository_mongo.go", "Arango": "repository_arango.go"} {
 		path := "pkg/shared/repository/" + repo
 		if flagParam.serviceName != "" {
 			path = flagParam.outputFlag + flagParam.serviceName + "/" + path
@@ -340,6 +340,9 @@ func updateSharedRepository(flagParam flagParameter, cfg serviceConfig) {
 			} else if repoType == "Mongo" && cfg.MongoDeps {
 				b = bytes.Replace(b, []byte("@candi:repositoryConstructor"),
 					[]byte(fmt.Sprintf("@candi:repositoryConstructor\n		%sRepo: %srepo.New%sRepoMongo(readDB, writeDB),", cleanMod, cleanMod, cleanUpperMod)), -1)
+			} else if repoType == "Arango" && cfg.ArangoDeps{
+				b = bytes.Replace(b, []byte("@candi:repositoryConstructor"),
+					[]byte(fmt.Sprintf("@candi:repositoryConstructor\n		%sRepo: %srepo.New%sRepoArango(readDB, writeDB),", cleanMod, cleanMod, cleanUpperMod)), -1)
 			}
 			b = bytes.Replace(b, []byte("@candi:repositoryImplementation"),
 				[]byte(fmt.Sprintf("@candi:repositoryImplementation\n"+`func (r *repo%sImpl) %sRepo() %srepo.%sRepository {

@@ -1,6 +1,7 @@
 package dependency
 
 import (
+	arango "github.com/golangid/candi-plugin/arangodb-adapter"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/codebase/interfaces"
 )
@@ -16,6 +17,7 @@ type Dependency interface {
 	GetSQLDatabase() interfaces.SQLDatabase
 	GetMongoDatabase() interfaces.MongoDatabase
 	GetRedisPool() interfaces.RedisPool
+	GetArangoDatabase() arango.ArangoDatabase
 
 	GetKey() interfaces.RSAKey
 	SetKey(i interfaces.RSAKey)
@@ -36,6 +38,7 @@ type deps struct {
 	sqlDB     interfaces.SQLDatabase
 	mongoDB   interfaces.MongoDatabase
 	redisPool interfaces.RedisPool
+	arangoDB  arango.ArangoDatabase
 	key       interfaces.RSAKey
 	validator interfaces.Validator
 	extended  map[string]interface{}
@@ -68,6 +71,13 @@ func SetSQLDatabase(db interfaces.SQLDatabase) Option {
 func SetMongoDatabase(db interfaces.MongoDatabase) Option {
 	return func(d *deps) {
 		d.mongoDB = db
+	}
+}
+
+// SetArangoDatabase option func
+func SetArangoDatabase(db arango.ArangoDatabase) Option {
+	return func(d *deps) {
+		d.arangoDB = db
 	}
 }
 
@@ -142,6 +152,9 @@ func (d *deps) GetMongoDatabase() interfaces.MongoDatabase {
 func (d *deps) GetRedisPool() interfaces.RedisPool {
 	return d.redisPool
 }
+func (d *deps) GetArangoDatabase() arango.ArangoDatabase {
+	return d.arangoDB
+}
 func (d *deps) GetKey() interfaces.RSAKey {
 	return d.key
 }
@@ -182,6 +195,11 @@ func GetSQLDatabase() interfaces.SQLDatabase {
 // GetMongoDatabase free function for get mongo database
 func GetMongoDatabase() interfaces.MongoDatabase {
 	return stdDeps.mongoDB
+}
+
+// GetArangoDatabase free function for get mongo database
+func GetArangoDatabase() arango.ArangoDatabase {
+	return stdDeps.arangoDB
 }
 
 // GetRedisPool free function for get redis pool
