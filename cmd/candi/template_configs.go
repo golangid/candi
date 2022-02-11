@@ -67,7 +67,7 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 			{{if not .RedisDeps}}// {{end}}dependency.SetRedisPool(redisDeps),
 			{{if not .SQLDeps}}// {{end}}dependency.SetSQLDatabase(sqlDeps),
 			{{if not .MongoDeps}}// {{end}}dependency.SetMongoDatabase(mongoDeps),
-			{{if not .ArangoDeps}}// {{end}}dependency.SetArangoDatabase(arangoDeps),
+			{{if not .ArangoDeps}}// {{end}}dependency.AddExtended("arangodb", arangoDeps),
 			// ... add more dependencies
 		)
 		return []interfaces.Closer{ // throw back to base config for close connection when application shutdown
