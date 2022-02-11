@@ -20,7 +20,7 @@ func SetSharedRepository(deps dependency.Dependency) {
 	once.Do(func() {
 		{{if not .SQLDeps}}// {{end}}setSharedRepoSQL(deps.GetSQLDatabase().ReadDB(), deps.GetSQLDatabase().WriteDB())
 		{{if not .MongoDeps}}// {{end}}setSharedRepoMongo(deps.GetMongoDatabase().ReadDB(), deps.GetMongoDatabase().WriteDB())
-		{{if not .ArangoDeps}}// {{end}}setSharedRepoArango(deps.GetArangoDatabase().ReadDB(), deps.GetArangoDatabase().WriteDB())
+		{{if not .ArangoDeps}}// {{end}}setSharedRepoArango(deps.GetExtended("arangodb").(arango.ArangoDatabase).ReadDB(), deps.GetExtended("arangodb").(arango.ArangoDatabase).WriteDB())
 	})
 }
 `
