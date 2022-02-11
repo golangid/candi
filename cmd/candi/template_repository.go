@@ -7,6 +7,8 @@ package repository
 
 import (
 	"sync"
+	
+	{{ if .ArangoDeps}} arango "github.com/golangid/candi-plugin/arangodb-adapter" {{ end }}
 
 	"{{.LibraryName}}/codebase/factory/dependency"
 )
