@@ -10,7 +10,6 @@ require (
 	github.com/go-playground/validator/v10 v10.6.0
 	github.com/gojektech/heimdall/v6 v6.1.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/golangid/candi-plugin/arangodb-adapter v0.0.0-20220211031100-392a7173be71
 	github.com/golangid/candi-plugin/task-queue-worker v0.0.0-20220211031100-392a7173be71
 	github.com/golangid/gojsonschema v0.0.1
 	github.com/golangid/graphql-go v0.0.7
