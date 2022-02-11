@@ -17,18 +17,13 @@ type {{upper (camel .ModuleName)}} struct {
 	Field      string    ` + "`" + `{{if .SQLUseGORM}}gorm:"column:field;type:varchar(255)" {{end}}` + `{{if .MongoDeps}}bson:"field" {{end}}` + `json:"field"` + "`" + `
 	CreatedAt  time.Time ` + "`" + `{{if .SQLUseGORM}}gorm:"column:created_at" {{end}}` + `{{if .MongoDeps}}bson:"created_at" {{end}}` + `json:"created_at"` + "`" + `
 	UpdatedAt  time.Time ` + "`" + `{{if .SQLUseGORM}}gorm:"column:updated_at" {{end}}` + `{{if .MongoDeps}}bson:"updated_at" {{end}}` + `json:"updated_at"` + "`" + `
-}	
+}
 {{if .SQLUseGORM}}
 // TableName return table name of {{upper (camel .ModuleName)}} model
 func ({{upper (camel .ModuleName)}}) TableName() string {
 	return "{{snake .ModuleName}}s"
 }{{end}}
-{{if .MongoDeps}}
-// CollectionName return collection name of {{upper (camel .ModuleName)}} model
-func ({{upper (camel .ModuleName)}}) CollectionName() string {
-	return "{{snake .ModuleName}}s"
-}{{end}}
-{{if .ArangoDeps}}
+{{if or .MongoDeps .ArangoDeps}}
 // CollectionName return collection name of {{upper (camel .ModuleName)}} model
 func ({{upper (camel .ModuleName)}}) CollectionName() string {
 	return "{{snake .ModuleName}}s"

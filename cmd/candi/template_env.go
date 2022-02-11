@@ -50,10 +50,8 @@ SQL_DB_WRITE_DSN={{ if .SQLDeps }}{{.SQLDriver}}://` +
 	"root:pass@tcp(127.0.0.1:3306)/db_name{{end}}" +
 	`{{ end }}
 
-{{if .ArangoDeps}}
-ARANGODB_HOST_WRITE=http://user:pass@localhost:8529/{{.ServiceName}}
-ARANGODB_HOST_READ=http://user:pass@localhost:8529/{{.ServiceName}}
-{{end}}
+{{if .ArangoDeps}}ARANGODB_HOST_WRITE=http://user:pass@localhost:8529/{{.ServiceName}}
+ARANGODB_HOST_READ=http://user:pass@localhost:8529/{{.ServiceName}}{{end}}
 
 REDIS_READ_DSN=redis://:pass@localhost:6379/0
 REDIS_WRITE_DSN=redis://:pass@localhost:6379/0

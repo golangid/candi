@@ -189,7 +189,7 @@ stageSelectDependencies:
 		"1) Redis\n" +
 		"2) SQL Database\n" +
 		"3) Mongo Database\n" +
-		"4) Arango Database")
+		"4) Arango Database (plugin)")
 	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
 		str = strings.TrimSpace(str)
 		if depsName, ok := dependencyMap[str]; ok {

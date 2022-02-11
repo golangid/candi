@@ -50,7 +50,6 @@ import (
 	"strings"
 
 	"{{.LibraryName}}/candihelper"
-	"{{.LibraryName}}/codebase/interfaces"
 	"{{.LibraryName}}/config/env"
 	"{{.LibraryName}}/tracer"
 
@@ -120,7 +119,7 @@ func (c *callbacks) after(db *gorm.DB, operation string) {
 	if !ok {
 		return
 	}
-	trace, ok := val.(interfaces.Tracer)
+	trace, ok := val.(tracer.Tracer)
 	if !ok {
 		return
 	}
