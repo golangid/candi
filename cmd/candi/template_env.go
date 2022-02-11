@@ -41,17 +41,6 @@ BASIC_AUTH_PASS=pass
 MONGODB_HOST_WRITE=mongodb://user:pass@localhost:27017/{{.ServiceName}}?authSource=admin
 MONGODB_HOST_READ=mongodb://user:pass@localhost:27017/{{.ServiceName}}?authSource=admin
 
-{{if .ArangoDeps}}
-ARANGODB_HOST_READ=http://localhost:8529
-ARANGODB_USER_READ=user
-ARANGODB_PASSWORD_READ=password
-ARANGODB_DATABASE_READ={{.ServiceName}}
-ARANGODB_HOST_WRITE=http://localhost:8529
-ARANGODB_USER_WRITE=user
-ARANGODB_PASSWORD_WRITE=password
-ARANGODB_DATABASE_WRITE={{.ServiceName}}
-{{end}}
-
 SQL_DB_READ_DSN={{ if .SQLDeps }}{{.SQLDriver}}://` +
 	"{{if eq .SQLDriver \"postgres\"}}user:pass@localhost:5432/db_name?sslmode=disable{{else if eq .SQLDriver \"mysql\"}}" +
 	"root:pass@tcp(127.0.0.1:3306)/db_name{{end}}" +
@@ -60,6 +49,11 @@ SQL_DB_WRITE_DSN={{ if .SQLDeps }}{{.SQLDriver}}://` +
 	"{{if eq .SQLDriver \"postgres\"}}user:pass@localhost:5432/db_name?sslmode=disable{{else if eq .SQLDriver \"mysql\"}}" +
 	"root:pass@tcp(127.0.0.1:3306)/db_name{{end}}" +
 	`{{ end }}
+
+{{if .ArangoDeps}}
+ARANGODB_HOST_WRITE=http://user:pass@localhost:8529/{{.ServiceName}}
+ARANGODB_HOST_READ=http://user:pass@localhost:8529/{{.ServiceName}}
+{{end}}
 
 REDIS_READ_DSN=redis://:pass@localhost:6379/0
 REDIS_WRITE_DSN=redis://:pass@localhost:6379/0

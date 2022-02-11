@@ -43,16 +43,7 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 		{{if not .RedisDeps}}// {{end}}redisDeps := database.InitRedis()
 		{{if not .SQLDeps}}// {{end}}sqlDeps := database.InitSQLDatabase()
 		{{if not .MongoDeps}}// {{end}}mongoDeps := database.InitMongoDB(ctx)
-		{{if .ArangoDeps}}arangoDeps := arango.InitArangoDB(ctx, arango.ArangoDBEnv{
-			DbArangoReadHost:      sharedEnv.DbArangoReadHost,
-			DbArangoReadUser:      sharedEnv.DbArangoReadUser,
-			DbArangoReadPassword:  sharedEnv.DbArangoReadPassword,
-			DbArangoReadDatabase:  sharedEnv.DbArangoReadDatabase,
-			DbArangoWriteHost:     sharedEnv.DbArangoWriteHost,
-			DbArangoWriteUser:     sharedEnv.DbArangoWriteUser,
-			DbArangoWritePassword: sharedEnv.DbArangoWritePassword,
-			DbArangoWriteDatabase: sharedEnv.DbArangoWriteDatabase,
-		}){{end}}
+		{{if .ArangoDeps}}arangoDeps := arango.InitArangoDB(ctx, sharedEnv.DbArangoReadHost, sharedEnv.DbArangoWriteHost){{end}}
 
 ` + "{{ if .IsMonorepo }}\n		sdk.SetGlobalSDK(\n			// init service client sdk\n		)\n{{end}}" + `
 		// inject all service dependencies
@@ -96,13 +87,7 @@ type Environment struct {
 	// ExampleHost string ` + "`env:\"EXAMPLE_HOST\"`" + `
 	{{if .ArangoDeps}}
 	DbArangoReadHost     	string	`+"`env:\"ARANGODB_HOST_READ\"`"+`
-	DbArangoReadUser      	string	`+"`env:\"ARANGODB_USER_READ\"`"+`
-	DbArangoReadPassword  	string	`+"`env:\"ARANGODB_PASSWORD_READ\"`"+`
-	DbArangoReadDatabase  	string	`+"`env:\"ARANGODB_DATABASE_READ\"`"+`
-	DbArangoWriteHost     	string	`+"`env:\"ARANGODB_HOST_WRITE\"`"+`
-	DbArangoWriteUser     	string	`+"`env:\"ARANGODB_USER_WRITE\"`"+`
-	DbArangoWritePassword 	string	`+"`env:\"ARANGODB_PASSWORD_WRITE\"`"+`
-	DbArangoWriteDatabase 	string	`+"`env:\"ARANGODB_DATABASE_WRITE\"`"+`
+	DbArangoWriteHost      	string	`+"`env:\"ARANGODB_HOST_WRITE\"`"+`
 	{{end}}
 }
 
