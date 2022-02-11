@@ -20,6 +20,7 @@ func SetSharedRepository(deps dependency.Dependency) {
 	once.Do(func() {
 		{{if not .SQLDeps}}// {{end}}setSharedRepoSQL(deps.GetSQLDatabase().ReadDB(), deps.GetSQLDatabase().WriteDB())
 		{{if not .MongoDeps}}// {{end}}setSharedRepoMongo(deps.GetMongoDatabase().ReadDB(), deps.GetMongoDatabase().WriteDB())
+		{{if not .ArangoDeps}}// {{end}}setSharedRepoArango(deps.GetArangoDatabase().ReadDB(), deps.GetArangoDatabase().WriteDB())
 	})
 }
 `
@@ -189,6 +190,49 @@ func GetSharedRepoMongo() RepoMongo {
 // @candi:repositoryImplementation
 `
 
+	templateRepositoryUOWArango = `// {{.Header}} DO NOT EDIT.
+
+package repository
+
+import (
+	"github.com/arangodb/go-driver"
+
+	// @candi:repositoryImport
+)
+
+type (
+	// RepoArango abstraction
+	RepoArango interface {
+		// @candi:repositoryMethod
+	}
+
+	repoArangoImpl struct {
+		readDB, writeDB driver.Database
+
+		// register all repository from modules
+		// @candi:repositoryField
+	}
+)
+
+var globalRepoArango RepoArango
+
+// setSharedRepoArango set the global singleton "RepoArango" implementation
+func setSharedRepoArango(readDB, writeDB driver.Database) {
+	globalRepoArango = &repoArangoImpl{
+		readDB: readDB, writeDB: writeDB,
+
+		// @candi:repositoryConstructor
+	}
+}
+
+// GetSharedRepoArango returns the global singleton "RepoArango" implementation
+func GetSharedRepoArango() RepoArango{
+	return globalRepoArango
+}
+
+// @candi:repositoryImplementation
+`
+
 	templateRepositoryAbstraction = `// {{.Header}}
 
 package repository
@@ -325,6 +369,74 @@ func (r *{{camel .ModuleName}}RepoMongo) Delete(ctx context.Context, data *share
 	defer func() { trace.SetError(err); trace.Finish() }()
 
 	_, err = r.writeDB.Collection(r.collection).DeleteOne(ctx, bson.M{"_id": data.ID})
+	return
+}
+`
+
+	templateRepositoryArangoImpl = `// {{.Header}}
+
+package repository
+
+import (
+	"context"
+
+	"github.com/arangodb/go-driver"
+
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
+	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
+
+	"{{.LibraryName}}/tracer"
+)
+
+type {{camel .ModuleName}}RepoArango struct {
+	readDB, writeDB driver.Database
+	collection      string
+}
+
+// New{{upper (camel .ModuleName)}}RepoArango arango repo constructor
+func New{{upper (camel .ModuleName)}}RepoArango(readDB, writeDB driver.Database) {{upper (camel .ModuleName)}}Repository {
+	return &{{camel .ModuleName}}RepoArango{
+		readDB: 	readDB, 
+		writeDB: 	writeDB, 
+		collection: shareddomain.{{upper (camel .ModuleName)}}{}.CollectionName(),
+	}
+}
+
+func (r *{{camel .ModuleName}}RepoArango) FetchAll(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (data []shareddomain.{{upper (camel .ModuleName)}}, err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoArango:FetchAll")
+	defer func() { trace.SetError(err); trace.Finish() }()
+
+	return
+}
+
+func (r *{{camel .ModuleName}}RepoArango) Find(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (result shareddomain.{{upper (camel .ModuleName)}}, err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoArango:Find")
+	defer func() { trace.SetError(err); trace.Finish() }()
+
+	return
+}
+
+func (r *{{camel .ModuleName}}RepoArango) Count(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) int {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoArango:Count")
+	defer trace.Finish()
+	
+	var total int
+
+	return total
+}
+
+func (r *{{camel .ModuleName}}RepoArango) Save(ctx context.Context, data *shareddomain.{{upper (camel .ModuleName)}}) (err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoArango:Save")
+	defer func() { trace.SetError(err); trace.Finish() }()
+	tracer.Log(ctx, "data", data)
+
+	return
+}
+
+func (r *{{camel .ModuleName}}RepoArango) Delete(ctx context.Context, data *shareddomain.{{upper (camel .ModuleName)}}) (err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoArango:Delete")
+	defer func() { trace.SetError(err); trace.Finish() }()
+
 	return
 }
 `

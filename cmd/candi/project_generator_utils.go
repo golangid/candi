@@ -24,6 +24,7 @@ func parseSharedRepository(data serviceConfig) (repos []FileStructure) {
 		{FromTemplate: true, DataSource: data, Source: templateRepository, FileName: "repository.go"},
 		{FromTemplate: true, Skip: !data.SQLDeps, DataSource: data, Source: templateRepositoryUOWSQL, FileName: "repository_sql.go"},
 		{FromTemplate: true, Skip: !data.MongoDeps, DataSource: data, Source: templateRepositoryUOWMongo, FileName: "repository_mongo.go"},
+		{FromTemplate: true, Skip: !data.ArangoDeps, DataSource: data, Source: templateRepositoryUOWArango, FileName: "repository_arango.go"},
 	}...)
 	return
 }
@@ -34,6 +35,8 @@ func parseRepositoryModule(data moduleConfig) (repos []FileStructure) {
 			FileName: "repository_" + cleanSpecialChar.Replace(strings.ToLower(data.ModuleName)) + "_sql.go"},
 		{FromTemplate: true, Skip: !data.MongoDeps, DataSource: data, Source: templateRepositoryMongoImpl,
 			FileName: "repository_" + cleanSpecialChar.Replace(strings.ToLower(data.ModuleName)) + "_mongo.go"},
+		{FromTemplate: true, Skip: !data.ArangoDeps, DataSource: data, Source: templateRepositoryArangoImpl,
+			FileName: "repository_" + cleanSpecialChar.Replace(strings.ToLower(data.ModuleName)) + "_arango.go"},
 	}...)
 	return
 }

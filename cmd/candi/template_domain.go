@@ -28,6 +28,11 @@ func ({{upper (camel .ModuleName)}}) TableName() string {
 func ({{upper (camel .ModuleName)}}) CollectionName() string {
 	return "{{snake .ModuleName}}s"
 }{{end}}
+{{if .ArangoDeps}}
+// CollectionName return collection name of {{upper (camel .ModuleName)}} model
+func ({{upper (camel .ModuleName)}}) CollectionName() string {
+	return "{{snake .ModuleName}}s"
+}{{end}}
 `
 	templateModuleDomain = `// {{.Header}}
 

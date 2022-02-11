@@ -188,7 +188,8 @@ stageSelectDependencies:
 	cmdInput = readInput("Please select dependencies (separated by comma, enter for skip)\n" +
 		"1) Redis\n" +
 		"2) SQL Database\n" +
-		"3) Mongo Database")
+		"3) Mongo Database\n" +
+		"4) Arango Database")
 	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
 		str = strings.TrimSpace(str)
 		if depsName, ok := dependencyMap[str]; ok {
@@ -276,7 +277,7 @@ stageSelectDependencies:
 	srvConfig.PostgresListenerHandler = workerHandlers[postgresListenerHandler]
 	srvConfig.RabbitMQHandler = workerHandlers[rabbitmqHandler]
 	srvConfig.RedisDeps = dependencies[redisDeps]
-	srvConfig.SQLDeps, srvConfig.MongoDeps = dependencies[sqldbDeps], dependencies[mongodbDeps]
+	srvConfig.SQLDeps, srvConfig.MongoDeps, srvConfig.ArangoDeps = dependencies[sqldbDeps], dependencies[mongodbDeps], dependencies[arangodbDeps]
 	srvConfig.checkWorkerActive()
 
 	return

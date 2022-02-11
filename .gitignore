@@ -9,3 +9,4 @@ main_service.go
 coverage.txt
 example/
 .vscode
+.idea

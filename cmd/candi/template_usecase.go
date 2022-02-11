@@ -106,7 +106,7 @@ import (
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
-	{{ if not (or .SQLDeps .MongoDeps) }}// {{end}}"{{.PackagePrefix}}/pkg/shared/repository"
+	{{ if not (or .SQLDeps .MongoDeps .ArangoDeps) }}// {{end}}"{{.PackagePrefix}}/pkg/shared/repository"
 	"{{$.PackagePrefix}}/pkg/shared/usecase/common"
 	{{if and .MongoDeps (not .SQLDeps)}}
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -123,6 +123,7 @@ type {{camel .ModuleName}}UsecaseImpl struct {
 	cache         interfaces.Cache
 	{{if .SQLDeps}}repoSQL       repository.RepoSQL{{end}}
 	{{if .MongoDeps}}repoMongo     repository.RepoMongo{{end}}
+	{{if .ArangoDeps}}repoArango     repository.RepoArango{{end}}
 	{{if not .KafkaHandler}}// {{ end }}kafkaPub      interfaces.Publisher
 	{{if not .RabbitMQHandler}}// {{ end }}rabbitmqPub   interfaces.Publisher
 }
@@ -133,6 +134,7 @@ func New{{upper (camel .ModuleName)}}Usecase(deps dependency.Dependency) ({{uppe
 		{{if .RedisDeps}}cache: deps.GetRedisPool().Cache(),{{end}}
 		{{if .SQLDeps}}repoSQL:   repository.GetSharedRepoSQL(),{{end}}
 		{{if .MongoDeps}}repoMongo: repository.GetSharedRepoMongo(),{{end}}
+		{{if .ArangoDeps}}repoArango: repository.GetSharedRepoArango(),{{end}}
 		{{if not .KafkaHandler}}// {{ end }}kafkaPub: deps.GetBroker(types.Kafka).GetPublisher(),
 		{{if not .RabbitMQHandler}}// {{ end }}rabbitmqPub: deps.GetBroker(types.RabbitMQ).GetPublisher(),
 	}

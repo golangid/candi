@@ -20,7 +20,7 @@ var (
 		"1": kafkaHandler, "2": schedulerHandler, "3": redissubsHandler, "4": taskqueueHandler, "5": postgresListenerHandler, "6": rabbitmqHandler,
 	}
 	dependencyMap = map[string]string{
-		"1": redisDeps, "2": sqldbDeps, "3": mongodbDeps,
+		"1": redisDeps, "2": sqldbDeps, "3": mongodbDeps, "4": arangodbDeps,
 	}
 	sqlDrivers = map[string]string{
 		"1": "postgres", "2": "mysql",
@@ -95,7 +95,7 @@ type config struct {
 	RestHandler, GRPCHandler, GraphQLHandler                           bool
 	KafkaHandler, SchedulerHandler, RedisSubsHandler, TaskQueueHandler bool
 	PostgresListenerHandler, RabbitMQHandler, IsWorkerActive           bool
-	RedisDeps, SQLDeps, MongoDeps, SQLUseGORM                          bool
+	RedisDeps, SQLDeps, MongoDeps, SQLUseGORM, ArangoDeps              bool
 	SQLDriver                                                          string
 }
 

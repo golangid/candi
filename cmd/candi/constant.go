@@ -23,6 +23,7 @@ const (
 	redisDeps               = "redisDeps"
 	sqldbDeps               = "sqldbDeps"
 	mongodbDeps             = "mongodbDeps"
+	arangodbDeps			= "arangodbDeps"
 
 	defaultPackageName = "github.com/golangid/candi"
 	candiPackagesEnv   = "CANDI_CLI_PACKAGES"
