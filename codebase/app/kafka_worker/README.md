@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	
+	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/tracer"
 )
@@ -25,11 +26,11 @@ func NewKafkaHandler() *KafkaHandler {
 // MountHandlers return group map topic to handler func
 func (h *KafkaHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 
-	group.Add("push-notif", h.handlePushNotif) // handling consume topic "push-notif"
+	group.Add("example-topic", h.handleExampleTopic) // handling consume topic "example-topic"
 }
 
-func (h *KafkaHandler) handlePushNotif(ctx context.Context, message []byte) error {
-	trace := tracer.StartTrace(ctx, "KafkaDelivery-HandlePushNotif")
+func (h *KafkaHandler) handleExampleTopic(eventContext *candishared.EventContext) error {
+	trace := tracer.StartTrace(eventContext.Context(), "DeliveryKafkaConsumer:HandleExampleTopic")
 	defer trace.Finish()
 
 	// process usecase

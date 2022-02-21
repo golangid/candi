@@ -15,6 +15,7 @@ import (
 	
 	"example.service/internal/modules/examplemodule/delivery/workerhandler"
 
+	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/tracer"
 )
@@ -38,12 +39,11 @@ func (h *RabbitMQHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 	group.Add("example-queue", h.handleQueue) // consume queue "example-queue"
 }
 
-func (h *RabbitMQHandler) handleQueue(ctx context.Context, message []byte) error {
-	trace := tracer.StartTrace(ctx, "DeliveryRabbitMQ:HandleQueue")
+func (h *RabbitMQHandler) handleQueue(eventContext *candishared.EventContext) error {
+	trace := tracer.StartTrace(eventContext.Context(), "DeliveryRabbitMQ:HandleQueue")
 	defer trace.Finish()
-	ctx = trace.Context()
 
-	log.Printf("message consumed. message: %s\n", message)
+	log.Printf("message consumed. message: %s\n", eventContext.Message())
 	// call usecase
 	return nil
 }

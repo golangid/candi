@@ -9,6 +9,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
 )
@@ -24,21 +25,15 @@ func NewRedisHandler() *RedisHandler {
 
 // MountHandlers return group map topic key to handler func
 func (h *RedisHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	
-	group.Add("scheduled-push-notif", h.handleScheduledPushNotif)
-	group.Add("heavy-push", h.handleHeavyPush)
+	group.Add("scheduled-job", h.handleScheduledJob)
 }
 
-func (h *RedisHandler) handleScheduledPushNotif(ctx context.Context, message []byte) error {
-	// process usecase
-	logger.LogIf("success handling message: %s", string(message))
-	return err
-}
+func (h *RedisHandler) handleScheduledJob(eventContext *candishared.EventContext) error {
+	trace := tracer.StartTrace(eventContext.Context(), "DeliveryRedisWorker:HandleScheduledJob")
+	defer trace.Finish()
 
-func (h *RedisHandler) handleHeavyPush(ctx context.Context, message []byte) error {
-	logger.LogI("start heavy push")
-	time.Sleep(30 * time.Second)
-	logger.LogI("heavy push done")
+	log.Printf("message received. message: %s\n", eventContext.Message())
+	// call usecase
 	return nil
 }
 ```

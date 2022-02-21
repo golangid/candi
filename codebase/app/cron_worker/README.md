@@ -10,8 +10,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golangid/candi/candishared"
+	cronworker "github.com/golangid/candi/codebase/app/cron_worker"
 	"github.com/golangid/candi/codebase/factory/types"
-	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
 )
@@ -28,21 +29,20 @@ func NewCronHandler() *CronHandler {
 // MountHandlers return group map topic key to handler func
 func (h *CronHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 
-	group.Add(candihelper.CronJobKeyToString("push-notif", "message", "30s"), h.handlePushNotif)
-	group.Add(candihelper.CronJobKeyToString("heavy-push-notif", "message", "22:43:07"), h.handleHeavyPush)
+	group.Add(cronworker.CreateCronJobKey("push-notif", "message", "30s"), h.handleJob1)
+	group.Add(cronworker.CreateCronJobKey("heavy-push-notif", "message", "22:43:07"), h.handleJob2)
 }
 
-func (h *CronHandler) handlePushNotif(ctx context.Context, message []byte) error {
-	trace := tracer.StartTrace(ctx, "CronDelivery-HandlePushNotif")
+func (h *CronHandler) handleJob1(eventContext *candishared.EventContext) error {
+	trace := tracer.StartTrace(eventContext.Context(), "DeliveryCronWorker:HandleJob1")
 	defer trace.Finish()
 
-	logger.LogI("processing")
-	logger.LogI("done")
+	logger.LogI("running...")
 	return nil
 }
 
-func (h *CronHandler) handleHeavyPush(ctx context.Context, message []byte) error {
-	trace := tracer.StartTrace(ctx, "CronDelivery-HandleHeavyPush")
+func (h *CronHandler) handleJob2(eventContext *candishared.EventContext) error {
+	trace := tracer.StartTrace(eventContext.Context(), "DeliveryCronWorker:HandleJob2")
 	defer trace.Finish()
 
 	fmt.Println("processing")

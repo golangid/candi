@@ -1,6 +1,6 @@
 # Example
 
-This is example for create Postgres Event Listener, inspired by [**Hasura Event Triggers**](https://hasura.io/docs/latest/graphql/core/event-triggers/index.html)
+This is example for create Postgres Event Listener (CDC), inspired by [**Hasura Event Triggers**](https://hasura.io/docs/latest/graphql/core/event-triggers/index.html)
 
 ## Create delivery handler
 
@@ -13,6 +13,7 @@ import (
 	
 	"example.service/internal/modules/examplemodule/delivery/workerhandler"
 
+	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/tracer"
 )
@@ -33,15 +34,14 @@ func NewPostgresListenerHandler(uc usecase.Usecase, validator interfaces.Validat
 
 // MountHandlers mount handler group
 func (h *PostgresListenerHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	group.Add("table-names", h.handleDataChange) // listen data change on table "table-names"
+	group.Add("table-names", h.handleDataChange) // listen change data capture on table "table-names"
 }
 
-func (h *PostgresListenerHandler) handleDataChange(ctx context.Context, message []byte) error {
-	trace := tracer.StartTrace(ctx, "DeliveryPostgresListener:HandleDataChange")
+func (h *PostgresListenerHandler) handleDataChange(eventContext *candishared.EventContext) error {
+	trace := tracer.StartTrace(eventContext.Context(), "DeliveryPostgresListener:HandleDataChange")
 	defer trace.Finish()
-	ctx = trace.Context()
 
-	fmt.Printf("data change on table 'table-names' detected: %s\n", message)
+	fmt.Printf("data change on table 'table-names' detected: %s\n", eventContext.Message())
 	// call usecase
 	return nil
 }
@@ -80,8 +80,7 @@ func NewModules(deps dependency.Dependency) *Module {
 // ...another method
 ```
 
-## JSON Payload
-Received on `messages` (`[]byte` data type) in handler param.
+## Message in JSON Payload
 
 ```
 {
