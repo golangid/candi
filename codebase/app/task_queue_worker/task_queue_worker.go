@@ -191,7 +191,6 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 		if !ok {
 			return
 		}
-		runningTask.ctx, runningTask.cancel = context.WithCancel(t.ctx)
 		runningTask.activeInterval.Stop()
 		t.execJob(runningTask)
 
@@ -212,20 +211,23 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 	}
 	defer defaultOption.locker.Unlock(t.getLockKey(jobID))
 
+	var ctx context.Context
+	ctx, runningTask.cancel = context.WithCancel(t.ctx)
+	defer runningTask.cancel()
+
 	selectedTask := registeredTask[runningTask.taskName]
 
-	job, err := persistent.FindJobByID(t.ctx, jobID, "retry_histories")
+	job, err := persistent.FindJobByID(ctx, jobID, "retry_histories")
 	if err != nil || job.Status == string(statusStopped) {
-		nextJobID := queue.NextJob(t.ctx, runningTask.taskName)
+		nextJobID := queue.NextJob(ctx, runningTask.taskName)
 		if nextJobID != "" {
-			if nextJob, err := persistent.FindJobByID(t.ctx, nextJobID); err == nil {
+			if nextJob, err := persistent.FindJobByID(ctx, nextJobID); err == nil {
 				registerJobToWorker(nextJob, selectedTask.workerIndex)
 			}
 		}
 		return
 	}
 
-	ctx := runningTask.ctx
 	selectedHandler := selectedTask.handler
 	if selectedHandler.DisableTrace {
 		ctx = tracer.SkipTraceContext(ctx)
@@ -244,7 +246,7 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 
 	nextJobID := queue.NextJob(ctx, runningTask.taskName)
 	if nextJobID != "" {
-		if nextJob, err := persistent.FindJobByID(t.ctx, nextJobID); err == nil {
+		if nextJob, err := persistent.FindJobByID(ctx, nextJobID); err == nil {
 			registerJobToWorker(nextJob, selectedTask.workerIndex)
 		}
 	}

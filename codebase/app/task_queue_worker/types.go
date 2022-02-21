@@ -14,7 +14,6 @@ import (
 type (
 	// Task model
 	Task struct {
-		ctx            context.Context
 		cancel         context.CancelFunc
 		taskName       string
 		activeInterval *time.Ticker

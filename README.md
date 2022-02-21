@@ -130,3 +130,11 @@ If include GRPC handler, run `$ make proto` for generate rpc files from proto (m
 
 ## Pronunciation
 `/can·di/` lihat! beliau membangun seribu candi dalam satu malam.
+
+## Contributing
+
+A big thank you to all contributors!
+
+<a href="https://github.com/golangid/candi/graphs/contributors">
+  <img src="https://contributors-img.web.app/image?repo=golangid/candi" />
+</a>
