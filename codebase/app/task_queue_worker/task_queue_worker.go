@@ -238,7 +238,7 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 	job.Retries++
 	job.Status = string(statusRetrying)
 	persistent.SaveJob(ctx, job)
-	broadcastAllToSubscribers(ctx)
+	broadcastAllToSubscribers(t.ctx)
 
 	if defaultOption.debugMode {
 		log.Printf("\x1b[35;3mTask Queue Worker: executing task '%s'\x1b[0m", job.TaskName)

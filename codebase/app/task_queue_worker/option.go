@@ -8,7 +8,7 @@ import (
 
 type (
 	option struct {
-		jaegerTracingDashboard   string
+		tracingDashboard         string
 		maxClientSubscriber      int
 		autoRemoveClientInterval time.Duration
 		dashboardBanner          string
@@ -21,10 +21,10 @@ type (
 	OptionFunc func(*option)
 )
 
-// SetJaegerTracingDashboard option func
-func SetJaegerTracingDashboard(host string) OptionFunc {
+// SetTracingDashboard option func
+func SetTracingDashboard(host string) OptionFunc {
 	return func(o *option) {
-		o.jaegerTracingDashboard = host
+		o.tracingDashboard = host
 	}
 }
 

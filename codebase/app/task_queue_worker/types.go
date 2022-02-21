@@ -139,7 +139,7 @@ func makeAllGlobalVars(q QueueStorage, perst Persistent, opts ...OptionFunc) {
 	persistent = perst
 
 	// set default value
-	defaultOption.jaegerTracingDashboard = "http://127.0.0.1:16686"
+	defaultOption.tracingDashboard = "http://127.0.0.1:16686"
 	defaultOption.maxClientSubscriber = 5
 	defaultOption.autoRemoveClientInterval = 30 * time.Minute
 	defaultOption.dashboardPort = 8080

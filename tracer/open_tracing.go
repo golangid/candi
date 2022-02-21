@@ -214,7 +214,9 @@ func (t *jaegerTraceImpl) Finish(opts ...FinishOptionFunc) {
 
 	var finishOpt FinishOption
 	for _, opt := range opts {
-		opt(&finishOpt)
+		if opt != nil {
+			opt(&finishOpt)
+		}
 	}
 
 	if finishOpt.Tags != nil && t.tags == nil {

@@ -28,7 +28,7 @@ func SetupTaskQueueWorker(service factory.ServiceFactory) factory.AppServerFacto
 		queue, persistent,
 		taskqueueworker.SetDashboardHTTPPort(env.BaseEnv().TaskQueueDashboardPort),
 		taskqueueworker.SetMaxClientSubscriber(env.BaseEnv().TaskQueueDashboardMaxClientSubscribers),
-		taskqueueworker.SetJaegerTracingDashboard(tracingDashboard),
+		taskqueueworker.SetTracingDashboard(tracingDashboard+"/trace"),
 		taskqueueworker.SetDebugMode(env.BaseEnv().DebugMode),
 	)
 }

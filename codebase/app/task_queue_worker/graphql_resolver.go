@@ -75,8 +75,8 @@ func (r *rootResolver) Tagline(ctx context.Context) (res TaglineResolver) {
 func (r *rootResolver) GetJobDetail(ctx context.Context, input struct{ JobID string }) (res *Job, err error) {
 
 	res, err = persistent.FindJobByID(ctx, input.JobID)
-	if res.TraceID != "" && defaultOption.jaegerTracingDashboard != "" {
-		res.TraceID = fmt.Sprintf("%s/trace/%s", defaultOption.jaegerTracingDashboard, res.TraceID)
+	if res.TraceID != "" && defaultOption.tracingDashboard != "" {
+		res.TraceID = fmt.Sprintf("%s/%s", defaultOption.tracingDashboard, res.TraceID)
 	}
 	res.CreatedAt = res.CreatedAt.In(candihelper.AsiaJakartaLocalTime)
 	if delay, err := time.ParseDuration(res.Interval); err == nil && res.Status == string(statusQueueing) {
@@ -89,8 +89,8 @@ func (r *rootResolver) GetJobDetail(ctx context.Context, input struct{ JobID str
 		res.RetryHistories[i].StartAt = res.RetryHistories[i].StartAt.In(candihelper.AsiaJakartaLocalTime)
 		res.RetryHistories[i].EndAt = res.RetryHistories[i].EndAt.In(candihelper.AsiaJakartaLocalTime)
 
-		if res.RetryHistories[i].TraceID != "" && defaultOption.jaegerTracingDashboard != "" {
-			res.RetryHistories[i].TraceID = fmt.Sprintf("%s/trace/%s", defaultOption.jaegerTracingDashboard, res.RetryHistories[i].TraceID)
+		if res.RetryHistories[i].TraceID != "" && defaultOption.tracingDashboard != "" {
+			res.RetryHistories[i].TraceID = fmt.Sprintf("%s/%s", defaultOption.tracingDashboard, res.RetryHistories[i].TraceID)
 		}
 	}
 	return
