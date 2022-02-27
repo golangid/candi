@@ -24,7 +24,15 @@ type Mutation {
 
 type Subscription {
 	listen_task(): TaskListResolver!
-	listen_task_job_detail(task_name: String!, page: Int!, limit: Int!, search: String, status: [String!]!): JobListResolver!
+	listen_task_job_detail(
+		task_name: String!, 
+		page: Int!, 
+		limit: Int!, 
+		search: String, 
+		status: [String!]!,
+		startDate: String,
+		endDate: String
+	): JobListResolver!
 }
 
 type TaglineType {

@@ -81,13 +81,14 @@ type (
 
 	// Filter type
 	Filter struct {
-		Page, Limit   int
-		TaskName      string
-		TaskNameList  []string
-		Search        *string
-		Status        []string
-		ShowAll       bool
-		ShowHistories *bool
+		Page, Limit        int
+		TaskName           string
+		TaskNameList       []string
+		Search             *string
+		Status             []string
+		ShowAll            bool
+		ShowHistories      *bool
+		StartDate, EndDate time.Time
 	}
 
 	clientJobTaskSubscriber struct {

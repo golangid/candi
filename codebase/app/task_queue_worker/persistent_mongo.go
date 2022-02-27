@@ -49,6 +49,12 @@ func NewMongoPersistent(db *mongo.Database) Persistent {
 		},
 		{
 			Keys: bson.M{
+				"created_at": 1,
+			},
+			Options: &options.IndexOptions{},
+		},
+		{
+			Keys: bson.M{
 				"arguments": "text",
 			},
 			Options: &options.IndexOptions{},
@@ -57,6 +63,13 @@ func NewMongoPersistent(db *mongo.Database) Persistent {
 			Keys: bson.D{
 				{Key: "task_name", Value: 1},
 				{Key: "status", Value: 1},
+			},
+		},
+		{
+			Keys: bson.D{
+				{Key: "task_name", Value: 1},
+				{Key: "status", Value: 1},
+				{Key: "created_at", Value: 1},
 			},
 		},
 	}
@@ -325,6 +338,13 @@ func (s *mongoPersistent) toBsonFilter(f Filter) bson.M {
 		pipeQuery = append(pipeQuery, bson.M{
 			"status": bson.M{
 				"$in": f.Status,
+			},
+		})
+	}
+	if !f.StartDate.IsZero() && !f.EndDate.IsZero() {
+		pipeQuery = append(pipeQuery, bson.M{
+			"created_at": bson.M{
+				"$gte": f.StartDate, "$lte": f.EndDate,
 			},
 		})
 	}

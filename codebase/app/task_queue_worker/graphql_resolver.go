@@ -119,6 +119,7 @@ func (r *rootResolver) StopJob(ctx context.Context, input struct {
 		return "Failed", err
 	}
 
+	stopAllJobInTask(job.TaskName)
 	job.Status = string(statusStopped)
 	persistent.SaveJob(ctx, job)
 	broadcastAllToSubscribers(r.worker.ctx)
@@ -263,10 +264,11 @@ func (r *rootResolver) ListenTask(ctx context.Context) (<-chan TaskListResolver,
 }
 
 func (r *rootResolver) ListenTaskJobDetail(ctx context.Context, input struct {
-	TaskName    string
-	Page, Limit int32
-	Search      *string
-	Status      []string
+	TaskName           string
+	Page, Limit        int32
+	Search             *string
+	Status             []string
+	StartDate, EndDate *string
 }) (<-chan JobListResolver, error) {
 
 	output := make(chan JobListResolver)
@@ -284,6 +286,9 @@ func (r *rootResolver) ListenTaskJobDetail(ctx context.Context, input struct {
 	filter := Filter{
 		Page: int(input.Page), Limit: int(input.Limit), Search: input.Search, Status: input.Status, TaskName: input.TaskName,
 	}
+
+	filter.StartDate, _ = time.Parse(time.RFC3339, candihelper.PtrToString(input.StartDate))
+	filter.EndDate, _ = time.Parse(time.RFC3339, candihelper.PtrToString(input.EndDate))
 
 	if err := registerNewJobListSubscriber(input.TaskName, clientID, filter, output); err != nil {
 		return nil, err
