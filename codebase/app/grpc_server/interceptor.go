@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
@@ -53,7 +54,8 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 	if metaDisableTrace := meta.Get(candihelper.HeaderDisableTrace); len(metaDisableTrace) > 0 {
 		isDisableTrace, _ := strconv.ParseBool(metaDisableTrace[0])
 		if isDisableTrace {
-			return handler(tracer.SkipTraceContext(ctx), req)
+			ctx = candishared.SetToContext(tracer.SkipTraceContext(ctx), candishared.ContextKey(candihelper.HeaderDisableTrace), true)
+			return handler(ctx, req)
 		}
 	}
 
