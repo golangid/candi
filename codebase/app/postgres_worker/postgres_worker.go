@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
@@ -103,8 +102,8 @@ START:
 
 			p.semaphore[payload.Table] <- struct{}{}
 			p.wg.Add(1)
-			go func(data EventPayload) {
-				defer func() { p.wg.Done(); <-p.semaphore[payload.Table] }()
+			go func(data *EventPayload) {
+				defer func() { p.wg.Done(); <-p.semaphore[data.Table] }()
 
 				if p.ctx.Err() != nil {
 					logger.LogRed("postgres_listener > ctx root err: " + p.ctx.Err().Error())
@@ -156,7 +155,7 @@ START:
 						trace.SetError(err)
 					}
 				}
-			}(payload)
+			}(&payload)
 
 			// rebalance worker if run in multiple instance and using consul
 			if p.opt.consul != nil {
@@ -170,9 +169,6 @@ START:
 					goto START
 				}
 			}
-
-		case <-time.After(2 * time.Minute):
-			p.listener.Ping()
 
 		case <-shutdown:
 			return
@@ -226,6 +222,6 @@ func (p *postgresWorker) createConsulSession() {
 	go p.opt.consul.RetryLockAcquire(value, startWorkerCh, releaseWorkerCh)
 }
 
-func (p *postgresWorker) getLockKey(eventPayload EventPayload) string {
+func (p *postgresWorker) getLockKey(eventPayload *EventPayload) string {
 	return fmt.Sprintf("%s:postgres-worker-lock:%s-%s-%s", p.service.Name(), eventPayload.Table, eventPayload.Action, eventPayload.EventID)
 }
