@@ -33,9 +33,8 @@ func serveGraphQLAPI(wrk *taskQueueWorker) {
 
 	mux := http.NewServeMux()
 	mux.Handle("/", http.StripPrefix("/", http.FileServer(dashboard.Dashboard)))
-	mux.HandleFunc("/task", func(rw http.ResponseWriter, r *http.Request) {
-		http.Redirect(rw, r, "/", http.StatusSeeOther)
-	})
+	mux.Handle("/task", http.FileServer(dashboard.Dashboard))
+
 	mux.HandleFunc("/graphql", ws.NewHandlerFunc(schema, &relay.Handler{Schema: schema}))
 	mux.HandleFunc("/voyager", func(rw http.ResponseWriter, r *http.Request) { rw.Write([]byte(static.VoyagerAsset)) })
 	mux.HandleFunc("/playground", func(rw http.ResponseWriter, r *http.Request) { rw.Write([]byte(static.PlaygroundAsset)) })
