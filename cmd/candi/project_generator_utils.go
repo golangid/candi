@@ -126,8 +126,22 @@ func inputServiceName() (serviceName string) {
 		errMessage = "Folder already exists"
 	}
 	if errMessage != "" {
-		fmt.Printf(redFormat, errMessage+", try again")
+		fmt.Printf(RedFormat, errMessage+", try again")
 		serviceName = inputServiceName()
+	}
+	return
+}
+
+func inputOwnerName() (ownerName string) {
+	ownerName = readInput("Please input owner name:")
+	var errMessage string
+	if strings.TrimSpace(ownerName) == "" {
+		errMessage = "Owner name cannot empty"
+	}
+
+	if errMessage != "" {
+		fmt.Printf(RedFormat, errMessage+", try again")
+		ownerName = inputOwnerName()
 	}
 	return
 }
@@ -142,7 +156,7 @@ func readInput(cmd string) string {
 func validateDir(dir string) error {
 	_, err := os.Stat(dir)
 	if os.IsNotExist(err) {
-		return fmt.Errorf(redFormat, fmt.Sprintf(`Directory "%s" is not exist`, dir))
+		return fmt.Errorf(RedFormat, fmt.Sprintf(`Directory "%s" is not exist`, dir))
 	}
 	return nil
 }
@@ -182,15 +196,15 @@ func filterServerHandler(cfg serviceConfig, flagParam *flagParameter) (wording s
 	var options []string
 	if !cfg.RestHandler || (flagParam.addHandler && validateDir(flagParam.getFullModuleChildDir("delivery", "resthandler")) != nil) {
 		options = append(options, fmt.Sprintf("%d) REST API", len(options)+1))
-		handlers[strconv.Itoa(len(options))] = restHandler
+		handlers[strconv.Itoa(len(options))] = RestHandler
 	}
 	if !cfg.GRPCHandler || (flagParam.addHandler && validateDir(flagParam.getFullModuleChildDir("delivery", "grpchandler")) != nil) {
 		options = append(options, fmt.Sprintf("%d) GRPC", len(options)+1))
-		handlers[strconv.Itoa(len(options))] = grpcHandler
+		handlers[strconv.Itoa(len(options))] = GrpcHandler
 	}
 	if !cfg.GraphQLHandler || (flagParam.addHandler && validateDir(flagParam.getFullModuleChildDir("delivery", "graphqlhandler")) != nil) {
 		options = append(options, fmt.Sprintf("%d) GraphQL", len(options)+1))
-		handlers[strconv.Itoa(len(options))] = graphqlHandler
+		handlers[strconv.Itoa(len(options))] = GraphqlHandler
 	}
 
 	wording = strings.Join(options, "\n")
@@ -203,32 +217,32 @@ func filterWorkerHandler(cfg serviceConfig, flagParam *flagParameter) (wording s
 	if !cfg.KafkaHandler || (flagParam.addHandler &&
 		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "kafka_handler.go")) != nil) {
 		options = append(options, fmt.Sprintf("%d) Kafka Consumer", len(options)+1))
-		handlers[strconv.Itoa(len(options))] = kafkaHandler
+		handlers[strconv.Itoa(len(options))] = KafkaHandler
 	}
 	if !cfg.SchedulerHandler || (flagParam.addHandler &&
 		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "cron_handler.go")) != nil) {
 		options = append(options, fmt.Sprintf("%d) Scheduler", len(options)+1))
-		handlers[strconv.Itoa(len(options))] = schedulerHandler
+		handlers[strconv.Itoa(len(options))] = SchedulerHandler
 	}
 	if !cfg.RedisSubsHandler || (flagParam.addHandler &&
 		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "redis_handler.go")) != nil) {
 		options = append(options, fmt.Sprintf("%d) Redis Subscriber", len(options)+1))
-		handlers[strconv.Itoa(len(options))] = redissubsHandler
+		handlers[strconv.Itoa(len(options))] = RedissubsHandler
 	}
 	if !cfg.TaskQueueHandler || (flagParam.addHandler &&
 		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "taskqueue_handler.go")) != nil) {
 		options = append(options, fmt.Sprintf("%d) Task Queue Worker", len(options)+1))
-		handlers[strconv.Itoa(len(options))] = taskqueueHandler
+		handlers[strconv.Itoa(len(options))] = TaskqueueHandler
 	}
 	if !cfg.PostgresListenerHandler || (flagParam.addHandler &&
 		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "postgres_listener_handler.go")) != nil) {
 		options = append(options, fmt.Sprintf("%d) Postgres Event Listener Worker", len(options)+1))
-		handlers[strconv.Itoa(len(options))] = postgresListenerHandler
+		handlers[strconv.Itoa(len(options))] = PostgresListenerHandler
 	}
 	if !cfg.RabbitMQHandler || (flagParam.addHandler &&
 		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "rabbitmq_handler.go")) != nil) {
 		options = append(options, fmt.Sprintf("%d) RabbitMQ Consumer", len(options)+1))
-		handlers[strconv.Itoa(len(options))] = rabbitmqHandler
+		handlers[strconv.Itoa(len(options))] = RabbitmqHandler
 	}
 
 	wording = strings.Join(options, "\n")
@@ -244,11 +258,11 @@ func readFileAndApply(filepath string, oldContent, newContent string) {
 }
 
 func getDefaultPackageName() (packageName string) {
-	packageOptions := strings.Split(os.Getenv(candiPackagesEnv), ",")
+	packageOptions := strings.Split(os.Getenv(CandiPackagesEnv), ",")
 	if len(packageOptions) == 1 && packageOptions[0] != "" {
 		return packageOptions[0]
 	}
-	return defaultPackageName
+	return DefaultPackageName
 }
 
 func getGoVersion() (version string) {

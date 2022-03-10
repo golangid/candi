@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/golangid/candi"
 	"github.com/golangid/candi/candihelper"
@@ -22,10 +23,10 @@ func parseInput(flagParam *flagParameter) (srvConfig serviceConfig) {
 
 	scope, ok := scopeMap[flagParam.scopeFlag]
 	switch scope {
-	case initService:
+	case InitService:
 		srvConfig.ServiceName = inputServiceName()
 
-	case addModule:
+	case AddModule:
 		if flagParam.serviceName != "" {
 			srvConfig.ServiceName = flagParam.serviceName
 		} else if flagParam.isMonorepo {
@@ -40,12 +41,12 @@ func parseInput(flagParam *flagParameter) (srvConfig serviceConfig) {
 				errMessage = fmt.Sprintf(`Service "%s" is not exist in "%s" directory`, srvConfig.ServiceName, flagParam.outputFlag)
 			}
 			if errMessage != "" {
-				fmt.Printf(redFormat, errMessage+", try again")
+				fmt.Printf(RedFormat, errMessage+", try again")
 				goto stageInputServiceNameModule
 			}
 		}
 
-	case addHandler:
+	case AddHandler:
 		flagParam.addHandler = true
 		if flagParam.serviceName != "" {
 			srvConfig.ServiceName = flagParam.serviceName
@@ -72,11 +73,24 @@ func parseInput(flagParam *flagParameter) (srvConfig serviceConfig) {
 
 	flagParam.serviceName = srvConfig.ServiceName
 
+	srvConfig.Owner = inputOwnerName()
+
+stageSelectLicense:
+	cmdInput = readInput("Please select your Product License (choose one)\n" +
+		"1) MIT License\n" +
+		"2) Apache License\n" +
+		"3) Private License (if your product repository is private)")
+	srvConfig.License, ok = licenseMap[cmdInput]
+	if !ok {
+		fmt.Printf(RedFormat, "Invalid option, try again")
+		goto stageSelectLicense
+	}
+
 stageInputModules:
 	cmdInput = readInput("Please input new module names (if more than one, separated by comma):")
 	for _, moduleName := range strings.Split(cmdInput, ",") {
-		if err := validateDir(flagParam.outputFlag + flagParam.serviceName + "/internal/modules/" + moduleName); scope != initService && err == nil {
-			fmt.Printf(redFormat, "module '"+moduleName+"' is exist")
+		if err := validateDir(flagParam.outputFlag + flagParam.serviceName + "/internal/modules/" + moduleName); scope != InitService && err == nil {
+			fmt.Printf(RedFormat, "module '"+moduleName+"' is exist")
 			goto stageInputModules
 		}
 		srvConfig.Modules = append(srvConfig.Modules, moduleConfig{
@@ -85,12 +99,12 @@ stageInputModules:
 		flagParam.modules = append(flagParam.modules, strings.TrimSpace(moduleName))
 	}
 	if len(srvConfig.Modules) == 0 {
-		fmt.Printf(redFormat, "Modules cannot empty")
+		fmt.Printf(RedFormat, "Modules cannot empty")
 		goto stageInputModules
 	}
 	sort.Strings(flagParam.modules)
 
-	if scope == addModule {
+	if scope == AddModule {
 		savedConfig := loadSavedConfig(flagParam)
 		savedConfig.Modules = append(savedConfig.Modules, srvConfig.Modules...)
 		srvConfig = savedConfig
@@ -104,7 +118,7 @@ stageInputModules:
 		customConfig := readInput(fmt.Sprintf("Use custom server/worker handler (y/n)? \ncurrent handler config is: %s", currentConfig))
 		yes, ok := optionYesNo[customConfig]
 		if !ok {
-			fmt.Printf(redFormat, "Invalid option, try again")
+			fmt.Printf(RedFormat, "Invalid option, try again")
 			goto stageChooseCustomConfig
 		}
 
@@ -125,7 +139,7 @@ stageSelectServerHandler:
 		if serverName, ok := deliveryHandlerMap[strings.TrimSpace(str)]; ok {
 			serviceHandlers[serverName] = true
 		} else if str != "" {
-			fmt.Printf(redFormat, "Invalid option, try again")
+			fmt.Printf(RedFormat, "Invalid option, try again")
 			goto stageSelectServerHandler
 		}
 	}
@@ -137,48 +151,48 @@ stageSelectWorkerHandlers:
 		if workerName, ok := deliveryHandlerMap[strings.TrimSpace(str)]; ok {
 			workerHandlers[workerName] = true
 		} else if str != "" {
-			fmt.Printf(redFormat, "Invalid option, try again")
+			fmt.Printf(RedFormat, "Invalid option, try again")
 			goto stageSelectWorkerHandlers
 		}
 	}
 
 	if len(serviceHandlers) == 0 && len(workerHandlers) == 0 {
-		fmt.Printf(redFormat, "No server/worker handler selected, try again")
+		fmt.Printf(RedFormat, "No server/worker handler selected, try again")
 		goto stageSelectServerHandler
 	}
 
-	if scope == addModule || scope == addHandler {
-		if b, ok := serviceHandlers[restHandler]; ok {
+	if scope == AddModule || scope == AddHandler {
+		if b, ok := serviceHandlers[RestHandler]; ok {
 			srvConfig.RestHandler = b
 		}
-		if b, ok := serviceHandlers[grpcHandler]; ok {
+		if b, ok := serviceHandlers[GrpcHandler]; ok {
 			srvConfig.GRPCHandler = b
 		}
-		if b, ok := serviceHandlers[graphqlHandler]; ok {
+		if b, ok := serviceHandlers[GraphqlHandler]; ok {
 			srvConfig.GraphQLHandler = b
 		}
-		if b, ok := workerHandlers[kafkaHandler]; ok {
+		if b, ok := workerHandlers[KafkaHandler]; ok {
 			srvConfig.KafkaHandler = b
 		}
-		if b, ok := workerHandlers[schedulerHandler]; ok {
+		if b, ok := workerHandlers[SchedulerHandler]; ok {
 			srvConfig.SchedulerHandler = b
 		}
-		if b, ok := workerHandlers[redissubsHandler]; ok {
+		if b, ok := workerHandlers[RedissubsHandler]; ok {
 			srvConfig.RedisSubsHandler = b
 		}
-		if b, ok := workerHandlers[taskqueueHandler]; ok {
+		if b, ok := workerHandlers[TaskqueueHandler]; ok {
 			srvConfig.TaskQueueHandler = b
 		}
-		if b, ok := workerHandlers[postgresListenerHandler]; ok {
+		if b, ok := workerHandlers[PostgresListenerHandler]; ok {
 			srvConfig.PostgresListenerHandler = b
 		}
-		if b, ok := workerHandlers[rabbitmqHandler]; ok {
+		if b, ok := workerHandlers[RabbitmqHandler]; ok {
 			srvConfig.RabbitMQHandler = b
 		}
 		srvConfig.checkWorkerActive()
 
 		srvConfig.OutputDir = flagParam.outputFlag
-		if scope == addHandler {
+		if scope == AddHandler {
 			scopeAddHandler(flagParam, srvConfig, serviceHandlers, workerHandlers)
 		}
 		return
@@ -195,50 +209,51 @@ stageSelectDependencies:
 		if depsName, ok := dependencyMap[str]; ok {
 			dependencies[depsName] = true
 		} else if str != "" {
-			fmt.Printf(redFormat, "Invalid option, try again")
+			fmt.Printf(RedFormat, "Invalid option, try again")
 			goto stageSelectDependencies
 		}
 	}
-	if workerHandlers[redissubsHandler] && !dependencies[redisDeps] {
-		fmt.Printf(redFormat, "Redis Subscriber need redis, try again")
+	if workerHandlers[RedissubsHandler] && !dependencies[RedisDeps] {
+		fmt.Printf(RedFormat, "Redis Subscriber need redis, try again")
 		goto stageSelectDependencies
 	}
-	if workerHandlers[taskqueueHandler] && !(dependencies[redisDeps] && dependencies[mongodbDeps]) {
-		fmt.Printf(redFormat, "Task Queue Worker need redis (for queue) and mongo (for log storage), try again")
+	if workerHandlers[TaskqueueHandler] && !(dependencies[RedisDeps] && dependencies[MongodbDeps]) {
+		fmt.Printf(RedFormat, "Task Queue Worker need redis (for queue) and mongo (for log storage), try again")
 		goto stageSelectDependencies
 	}
 
-	if dependencies[sqldbDeps] {
+	if dependencies[SqldbDeps] {
 	stageSelectSQLDriver:
 		cmdInput = readInput("Please select SQL database driver (choose one)\n" +
 			"1) Postgres\n" +
 			"2) MySQL")
 		srvConfig.SQLDriver, ok = sqlDrivers[cmdInput]
 		if !ok {
-			fmt.Printf(redFormat, "Invalid option, try again")
+			fmt.Printf(RedFormat, "Invalid option, try again")
 			goto stageSelectSQLDriver
 		}
 
 	stageUseGORMLabel:
 		cmdInput = readInput("Use GORM? (y/n)")
 		if srvConfig.SQLUseGORM, ok = optionYesNo[cmdInput]; !ok {
-			fmt.Printf(redFormat, "Invalid option, try again")
+			fmt.Printf(RedFormat, "Invalid option, try again")
 			goto stageUseGORMLabel
 		}
 	}
 
-	if workerHandlers[postgresListenerHandler] && (!dependencies[sqldbDeps] || srvConfig.SQLDriver != "postgres") {
-		fmt.Printf(redFormat, "Postgres Event Listener Worker need Postgres config, try again")
+	if workerHandlers[PostgresListenerHandler] && (!dependencies[SqldbDeps] || srvConfig.SQLDriver != "postgres") {
+		fmt.Printf(RedFormat, "Postgres Event Listener Worker need Postgres config, try again")
 		goto stageSelectDependencies
 	}
 
 	srvConfig.Header = fmt.Sprintf("Code generated by candi %s.", candi.Version)
 	srvConfig.Version = candi.Version
+	srvConfig.Year = time.Now().Year()
 	srvConfig.GoVersion = getGoVersion()
 	srvConfig.LibraryName = flagParam.libraryNameFlag
 
 	// custom package name
-	if packageOptions := strings.Split(os.Getenv(candiPackagesEnv), ","); len(packageOptions) > 1 {
+	if packageOptions := strings.Split(os.Getenv(CandiPackagesEnv), ","); len(packageOptions) > 1 {
 	stageSelectPackageName:
 		cliWording := "Please select package name (choose one)\n"
 		inputPackageName := make(map[string]string, len(packageOptions))
@@ -249,7 +264,7 @@ stageSelectDependencies:
 		cmdInput = readInput(strings.TrimSpace(cliWording))
 		srvConfig.LibraryName, ok = inputPackageName[cmdInput]
 		if !ok {
-			fmt.Printf(redFormat, "Invalid option, try again")
+			fmt.Printf(RedFormat, "Invalid option, try again")
 			goto stageSelectPackageName
 		}
 	}
@@ -267,17 +282,17 @@ stageSelectDependencies:
 	}
 
 	srvConfig.IsMonorepo = flagParam.isMonorepo
-	srvConfig.RestHandler = serviceHandlers[restHandler]
-	srvConfig.GRPCHandler = serviceHandlers[grpcHandler]
-	srvConfig.GraphQLHandler = serviceHandlers[graphqlHandler]
-	srvConfig.KafkaHandler = workerHandlers[kafkaHandler]
-	srvConfig.SchedulerHandler = workerHandlers[schedulerHandler]
-	srvConfig.RedisSubsHandler = workerHandlers[redissubsHandler]
-	srvConfig.TaskQueueHandler = workerHandlers[taskqueueHandler]
-	srvConfig.PostgresListenerHandler = workerHandlers[postgresListenerHandler]
-	srvConfig.RabbitMQHandler = workerHandlers[rabbitmqHandler]
-	srvConfig.RedisDeps = dependencies[redisDeps]
-	srvConfig.SQLDeps, srvConfig.MongoDeps, srvConfig.ArangoDeps = dependencies[sqldbDeps], dependencies[mongodbDeps], dependencies[arangodbDeps]
+	srvConfig.RestHandler = serviceHandlers[RestHandler]
+	srvConfig.GRPCHandler = serviceHandlers[GrpcHandler]
+	srvConfig.GraphQLHandler = serviceHandlers[GraphqlHandler]
+	srvConfig.KafkaHandler = workerHandlers[KafkaHandler]
+	srvConfig.SchedulerHandler = workerHandlers[SchedulerHandler]
+	srvConfig.RedisSubsHandler = workerHandlers[RedissubsHandler]
+	srvConfig.TaskQueueHandler = workerHandlers[TaskqueueHandler]
+	srvConfig.PostgresListenerHandler = workerHandlers[PostgresListenerHandler]
+	srvConfig.RabbitMQHandler = workerHandlers[RabbitmqHandler]
+	srvConfig.RedisDeps = dependencies[RedisDeps]
+	srvConfig.SQLDeps, srvConfig.MongoDeps, srvConfig.ArangoDeps = dependencies[SqldbDeps], dependencies[MongodbDeps], dependencies[ArangodbDeps]
 	srvConfig.checkWorkerActive()
 
 	return

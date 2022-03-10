@@ -11,21 +11,27 @@ import (
 
 var (
 	scopeMap = map[string]string{
-		"1": initService, "2": addModule, "3": addHandler, "4": initMonorepo, "5": runServiceMonorepo,
+		"1": InitService, "2": AddModule, "3": AddHandler, "4": InitMonorepo, "5": RunServiceMonorepo,
 	}
 	serviceHandlersMap = map[string]string{
-		"1": restHandler, "2": grpcHandler, "3": graphqlHandler,
+		"1": RestHandler, "2": GrpcHandler, "3": GraphqlHandler,
 	}
 	workerHandlersMap = map[string]string{
-		"1": kafkaHandler, "2": schedulerHandler, "3": redissubsHandler, "4": taskqueueHandler, "5": postgresListenerHandler, "6": rabbitmqHandler,
+		"1": KafkaHandler, "2": SchedulerHandler, "3": RedissubsHandler, "4": TaskqueueHandler, "5": PostgresListenerHandler, "6": RabbitmqHandler,
 	}
 	dependencyMap = map[string]string{
-		"1": redisDeps, "2": sqldbDeps, "3": mongodbDeps, "4": arangodbDeps,
+		"1": RedisDeps, "2": SqldbDeps, "3": MongodbDeps, "4": ArangodbDeps,
 	}
 	sqlDrivers = map[string]string{
 		"1": "postgres", "2": "mysql",
 	}
 	optionYesNo = map[string]bool{"y": true, "n": false}
+	licenseMap  = map[string]string{
+		"1": MitLicense, "2": ApacheLicense, "3": PrivateLicense,
+	}
+	licenseMapTemplate = map[string]string{
+		MitLicense: mitLicenseTemplate, ApacheLicense: apacheLicenseTemplate, PrivateLicense: privateLicenseTemplate,
+	}
 
 	tpl    *template.Template
 	logger *log.Logger
@@ -52,7 +58,7 @@ func (f *flagParameter) parseMonorepoFlag() error {
 	f.outputFlag = "services/"
 
 	if (f.scopeFlag == "2" || f.scopeFlag == "3") && f.serviceName == "" {
-		return fmt.Errorf(redFormat, "missing service name, make sure to include '-service' flag")
+		return fmt.Errorf(RedFormat, "missing service name, make sure to include '-service' flag")
 	}
 	return nil
 }
@@ -60,7 +66,7 @@ func (f *flagParameter) parseMonorepoFlag() error {
 func (f *flagParameter) validateServiceName() error {
 	_, err := os.Stat(f.outputFlag + f.serviceName)
 	if os.IsNotExist(err) {
-		return fmt.Errorf(redFormat, fmt.Sprintf(`Service "%s" is not exist in "%s" directory`, f.serviceName, f.outputFlag))
+		return fmt.Errorf(RedFormat, fmt.Sprintf(`Service "%s" is not exist in "%s" directory`, f.serviceName, f.outputFlag))
 	}
 	return nil
 }
@@ -68,7 +74,7 @@ func (f *flagParameter) validateServiceName() error {
 func (f *flagParameter) validateModuleName(moduleName string) (err error) {
 	_, err = os.Stat(f.outputFlag + f.serviceName + "/internal/modules/" + moduleName)
 	if os.IsNotExist(err) {
-		fmt.Printf(redFormat, fmt.Sprintf(`Module "%s" is not exist in service "%s"`, moduleName, f.serviceName))
+		fmt.Printf(RedFormat, fmt.Sprintf(`Module "%s" is not exist in service "%s"`, moduleName, f.serviceName))
 		os.Exit(1)
 	}
 	return
@@ -88,6 +94,9 @@ type configHeader struct {
 	PackagePrefix string
 	ProtoSource   string
 	OutputDir     string `json:"-"`
+	Owner         string
+	License       string
+	Year          int
 }
 
 type config struct {

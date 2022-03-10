@@ -177,7 +177,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 	baseDirectoryFile.DataSource = srvConfig
 	baseDirectoryFile.IsDir = true
 	switch scope {
-	case initService:
+	case InitService:
 		apiGraphQLStructure.Childs = append(apiGraphQLStructure.Childs, []FileStructure{
 			apiGraphQLSchemaStructure,
 			{FromTemplate: true, DataSource: srvConfig, Source: templateGraphqlCommon, FileName: "_common.graphql",
@@ -252,6 +252,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 			{FromTemplate: true, DataSource: srvConfig, Source: envTemplate, FileName: ".env.sample"},
 			{Source: configJSON.String(), FileName: "candi.json"},
 			{FromTemplate: true, DataSource: srvConfig, Source: readmeTemplate, FileName: "README.md"},
+			{FromTemplate: true, DataSource: srvConfig, Source: licenseMapTemplate[srvConfig.License], FileName: "LICENSE"},
 		}
 		if flagParam.withGoModFlag {
 			baseDirectoryFile.Childs = append(baseDirectoryFile.Childs, FileStructure{
@@ -263,7 +264,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 			generateServiceSDK(srvConfig)
 		}
 
-	case addModule:
+	case AddModule:
 		cmdStructure := FileStructure{
 			TargetDir: "cmd/", IsDir: true, Skip: true, Childs: []FileStructure{
 				{TargetDir: "migration/", IsDir: true, Skip: true, Childs: []FileStructure{
