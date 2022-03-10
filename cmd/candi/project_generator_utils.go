@@ -127,7 +127,7 @@ func inputServiceName() (serviceName string) {
 	}
 	if errMessage != "" {
 		fmt.Printf(redFormat, errMessage+", try again")
-		inputServiceName()
+		serviceName = inputServiceName()
 	}
 	return
 }
