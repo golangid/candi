@@ -19,7 +19,7 @@ func serviceRunner(serviceName string) {
 		services := strings.Split(serviceName, ",")
 		for _, s := range services {
 			if _, err := os.Stat("services/" + s); os.IsNotExist(err) {
-				log.Fatalf(redFormat, `ERROR: service "`+s+`" is not exist`)
+				log.Fatalf(RedFormat, `ERROR: service "`+s+`" is not exist`)
 			}
 		}
 		commandList = append(commandList, services...)
@@ -27,7 +27,7 @@ func serviceRunner(serviceName string) {
 		logger.Printf("\x1b[34;1mRUNNING ALL SERVICE in \"services/\" directory\x1b[0m\n")
 		files, err := ioutil.ReadDir("services")
 		if err != nil {
-			logger.Fatalf(redFormat, "ERROR: "+err.Error()+" (must in monorepo root)")
+			logger.Fatalf(RedFormat, "ERROR: "+err.Error()+" (must in monorepo root)")
 		}
 		for _, f := range files {
 			if f.IsDir() {

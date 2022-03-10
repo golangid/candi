@@ -54,7 +54,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 	deliveryPackageDir := fmt.Sprintf(`"%s/internal/modules/%s/delivery`, mod.PackagePrefix, mod.ModuleName)
 	for handler := range serverHandlers {
 		switch handler {
-		case restHandler:
+		case RestHandler:
 			deliveryStructure.Childs = append(deliveryStructure.Childs, FileStructure{
 				TargetDir: "resthandler/", IsDir: true,
 				Childs: []FileStructure{
@@ -64,7 +64,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 			replaceEnv["USE_REST=false"] = "USE_REST=true"
 			replaceMainModule["// mod.restHandler"] = "mod.restHandler"
 			replaceMainModule["// "+deliveryPackageDir+"/resthandler"] = deliveryPackageDir + "/resthandler"
-		case grpcHandler:
+		case GrpcHandler:
 			apiProtoStructure.Childs = append(apiProtoStructure.Childs, FileStructure{
 				TargetDir: mod.ModuleName + "/", IsDir: true,
 				Childs: []FileStructure{
@@ -79,7 +79,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 			replaceEnv["USE_GRPC=false"] = "USE_GRPC=true"
 			replaceMainModule["// mod.grpcHandler"] = "mod.grpcHandler"
 			replaceMainModule["// "+deliveryPackageDir+"/grpchandler"] = deliveryPackageDir + "/grpchandler"
-		case graphqlHandler:
+		case GraphqlHandler:
 			apiGraphQLStructure.Childs = append(apiGraphQLStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: defaultGraphqlSchema, FileName: mod.ModuleName + ".graphql",
 			})
@@ -118,7 +118,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 	mod.RabbitMQHandler = isDirExist(strings.TrimPrefix(flagParam.outputFlag+flagParam.serviceName+"/internal/modules/"+mod.ModuleName+"/delivery/workerhandler/rabbitmq_handler.go", "/"))
 	for handler := range workerHandler {
 		switch handler {
-		case kafkaHandler:
+		case KafkaHandler:
 			mod.KafkaHandler = true
 			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: deliveryKafkaTemplate, FileName: "kafka_handler.go",
@@ -127,7 +127,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 			replaceConfigs["// broker.SetKafka(broker.NewKafkaBroker())"] = "	broker.SetKafka(broker.NewKafkaBroker())"
 			replaceMainModule["// types.Kafka"] = "types.Kafka"
 			replaceMainModule["// "+deliveryPackageDir+"/workerhandler"] = deliveryPackageDir + "/workerhandler"
-		case schedulerHandler:
+		case SchedulerHandler:
 			mod.SchedulerHandler = true
 			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: deliveryCronTemplate, FileName: "cron_handler.go",
@@ -135,14 +135,14 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 			replaceEnv["USE_CRON_SCHEDULER=false"] = "USE_CRON_SCHEDULER=true"
 			replaceMainModule["// types.Scheduler"] = "types.Scheduler"
 			replaceMainModule["// "+deliveryPackageDir+"/workerhandler"] = deliveryPackageDir + "/workerhandler"
-		case redissubsHandler:
+		case RedissubsHandler:
 			mod.RedisSubsHandler = true
 			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: deliveryRedisTemplate, FileName: "redis_handler.go",
 			})
 			replaceEnv["USE_REDIS_SUBSCRIBER=false"] = "USE_REDIS_SUBSCRIBER=true"
 			replaceMainModule["// types.RedisSubscriber"] = "types.RedisSubscriber"
-		case taskqueueHandler:
+		case TaskqueueHandler:
 			mod.TaskQueueHandler = true
 			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: deliveryTaskQueueTemplate, FileName: "taskqueue_handler.go",
@@ -150,7 +150,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 			replaceEnv["USE_TASK_QUEUE_WORKER=false"] = "USE_TASK_QUEUE_WORKER=true"
 			replaceMainModule["// types.TaskQueue"] = "types.TaskQueue"
 			replaceMainModule["// "+deliveryPackageDir+"/workerhandler"] = deliveryPackageDir + "/workerhandler"
-		case postgresListenerHandler:
+		case PostgresListenerHandler:
 			mod.PostgresListenerHandler = true
 			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: deliveryPostgresListenerTemplate, FileName: "postgres_listener_handler.go",
@@ -158,7 +158,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 			replaceEnv["USE_POSTGRES_LISTENER_WORKER=false"] = "USE_POSTGRES_LISTENER_WORKER=true"
 			replaceMainModule["// types.PostgresListener"] = "types.PostgresListener"
 			replaceMainModule["// "+deliveryPackageDir+"/workerhandler"] = deliveryPackageDir + "/workerhandler"
-		case rabbitmqHandler:
+		case RabbitmqHandler:
 			mod.RabbitMQHandler = true
 			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: deliveryRabbitMQTemplate, FileName: "rabbitmq_handler.go",
@@ -211,7 +211,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 	for old, new := range replaceMainModule {
 		readFileAndApply(root.TargetDir+"internal/modules/"+mod.ModuleName+"/module.go", old, new)
 	}
-	if serverHandlers[graphqlHandler] {
+	if serverHandlers[GraphqlHandler] {
 		updateGraphQLRoot(*flagParam, gqlCfg)
 	}
 }
@@ -340,7 +340,7 @@ func updateSharedRepository(flagParam flagParameter, cfg serviceConfig) {
 			} else if repoType == "Mongo" && cfg.MongoDeps {
 				b = bytes.Replace(b, []byte("@candi:repositoryConstructor"),
 					[]byte(fmt.Sprintf("@candi:repositoryConstructor\n		%sRepo: %srepo.New%sRepoMongo(readDB, writeDB),", cleanMod, cleanMod, cleanUpperMod)), -1)
-			} else if repoType == "Arango" && cfg.ArangoDeps{
+			} else if repoType == "Arango" && cfg.ArangoDeps {
 				b = bytes.Replace(b, []byte("@candi:repositoryConstructor"),
 					[]byte(fmt.Sprintf("@candi:repositoryConstructor\n		%sRepo: %srepo.New%sRepoArango(readDB, writeDB),", cleanMod, cleanMod, cleanUpperMod)), -1)
 			}

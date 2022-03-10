@@ -53,7 +53,7 @@ func main() {
 		if flagParam.isMonorepo {
 			flagParam.parseMonorepoFlag()
 		}
-		projectGenerator(flagParam, initService, parseInput(&flagParam))
+		projectGenerator(flagParam, InitService, parseInput(&flagParam))
 
 	case flagParam.addModule:
 		flagParam.scopeFlag = "2"
@@ -63,7 +63,7 @@ func main() {
 				return
 			}
 		}
-		projectGenerator(flagParam, addModule, parseInput(&flagParam))
+		projectGenerator(flagParam, AddModule, parseInput(&flagParam))
 
 	case flagParam.addHandler:
 		flagParam.scopeFlag = "3"
@@ -73,7 +73,7 @@ func main() {
 				return
 			}
 		}
-		projectGenerator(flagParam, addModule, parseInput(&flagParam))
+		projectGenerator(flagParam, AddModule, parseInput(&flagParam))
 
 	default:
 	selectScope:
@@ -91,7 +91,7 @@ func main() {
 
 		scope, ok := scopeMap[flagParam.scopeFlag]
 		if !ok {
-			fmt.Printf(redFormat, "Invalid scope option, please input valid scope below and try again")
+			fmt.Printf(RedFormat, "Invalid scope option, please input valid scope below and try again")
 			flagParam.scopeFlag = ""
 			goto selectScope
 		}
@@ -103,7 +103,7 @@ func main() {
 
 func selectScope(flagParam flagParameter, scope string) {
 	switch scope {
-	case initMonorepo: // 4
+	case InitMonorepoService: // 4
 		logger.Printf("\033[1mPlease input monorepo project name (enter for default):\033[0m")
 		fmt.Printf(">> ")
 		if cmdInput, _ := reader.ReadString('\n'); strings.TrimRight(cmdInput, "\n") != "" {
@@ -111,7 +111,7 @@ func selectScope(flagParam flagParameter, scope string) {
 		}
 		monorepoGenerator(flagParam)
 		return
-	case runServiceMonorepo: // 5
+	case RunServiceMonorepo: // 5
 		serviceRunner(flagParam.serviceName)
 		return
 	}
