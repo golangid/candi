@@ -145,13 +145,13 @@ limitations under the License.`
 NOTICE:
 
 All Information contained herein is, and remains the property of
-PT Telekomunikasi Indonesia Tbk and its suppliers, if any. The intellectual
-and technical concepts contained herein are proprietary to PT Telekomunikasi
-Indonesia Tbk and its suppliers and maybe covered by Republic of
+{{.Owner}} and its suppliers, if any. The intellectual
+and technical concepts contained herein are proprietary to 
+{{.Owner}} and its suppliers and maybe covered by Republic of
 Indonesia and Foreign Patents, patents in process, and are protected by
 trade secret or copyright law. Dissemination of this information or
 reproduction of this material is strictly forbidden unless prior written
-permission is obtained from PT Telekomunikasi Indonesia Tbk
+permission is obtained from {{.Owner}}
 `
 
 	readmeTemplate = `# {{upper .ServiceName}}
