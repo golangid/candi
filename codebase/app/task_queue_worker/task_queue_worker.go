@@ -79,7 +79,7 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, perst Pe
 			filter := Filter{
 				TaskNameList: tasks,
 				Status:       []string{string(statusRetrying), string(statusQueueing)},
-				Limit:        100,
+				Limit:        50,
 			}
 			count := persistent.CountAllJob(workerInstance.ctx, filter)
 			totalPages := int(math.Ceil(float64(count) / float64(filter.Limit)))

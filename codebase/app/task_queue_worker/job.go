@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"sort"
 	"strings"
 	"time"
 
@@ -48,6 +49,27 @@ type (
 		EndAt      time.Time `bson:"end_at" json:"end_at"`
 	}
 )
+
+func (job *Job) updateValue() {
+	if job.TraceID != "" && defaultOption.tracingDashboard != "" {
+		job.TraceID = fmt.Sprintf("%s/%s", defaultOption.tracingDashboard, job.TraceID)
+	}
+	job.CreatedAt = job.CreatedAt.In(candihelper.AsiaJakartaLocalTime)
+	if delay, err := time.ParseDuration(job.Interval); err == nil && job.Status == string(statusQueueing) {
+		job.NextRetryAt = time.Now().Add(delay).In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
+	}
+	sort.Slice(job.RetryHistories, func(i, j int) bool {
+		return job.RetryHistories[i].EndAt.After(job.RetryHistories[j].EndAt)
+	})
+	for i := range job.RetryHistories {
+		job.RetryHistories[i].StartAt = job.RetryHistories[i].StartAt.In(candihelper.AsiaJakartaLocalTime)
+		job.RetryHistories[i].EndAt = job.RetryHistories[i].EndAt.In(candihelper.AsiaJakartaLocalTime)
+
+		if job.RetryHistories[i].TraceID != "" && defaultOption.tracingDashboard != "" {
+			job.RetryHistories[i].TraceID = fmt.Sprintf("%s/%s", defaultOption.tracingDashboard, job.RetryHistories[i].TraceID)
+		}
+	}
+}
 
 // AddJob public function for add new job in same runtime
 func AddJob(taskName string, maxRetry int, args []byte) (err error) {

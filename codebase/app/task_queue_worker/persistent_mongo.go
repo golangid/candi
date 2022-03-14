@@ -110,6 +110,9 @@ func (s *mongoPersistent) FindAllJob(ctx context.Context, filter Filter) (jobs [
 		}
 		job.CreatedAt = job.CreatedAt.In(candihelper.AsiaJakartaLocalTime)
 		job.FinishedAt = job.FinishedAt.In(candihelper.AsiaJakartaLocalTime)
+		if job.Retries > job.MaxRetry {
+			job.Retries = job.MaxRetry
+		}
 		jobs = append(jobs, job)
 	}
 
@@ -329,6 +332,11 @@ func (s *mongoPersistent) toBsonFilter(f Filter) bson.M {
 		})
 	}
 
+	if f.JobID != nil && *f.JobID != "" {
+		pipeQuery = append(pipeQuery, bson.M{
+			"_id": *f.JobID,
+		})
+	}
 	if f.Search != nil && *f.Search != "" {
 		pipeQuery = append(pipeQuery, bson.M{
 			"arguments": primitive.Regex{Pattern: *f.Search, Options: "i"},

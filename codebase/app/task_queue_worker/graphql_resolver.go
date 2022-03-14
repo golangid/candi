@@ -2,6 +2,7 @@ package taskqueueworker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -33,7 +34,8 @@ func serveGraphQLAPI(wrk *taskQueueWorker) {
 
 	mux := http.NewServeMux()
 	mux.Handle("/", http.StripPrefix("/", http.FileServer(dashboard.Dashboard)))
-	mux.Handle("/task", http.FileServer(dashboard.Dashboard))
+	mux.Handle("/task", http.StripPrefix("/", http.FileServer(dashboard.Dashboard)))
+	mux.Handle("/job", http.StripPrefix("/", http.FileServer(dashboard.Dashboard)))
 
 	mux.HandleFunc("/graphql", ws.NewHandlerFunc(schema, &relay.Handler{Schema: schema}))
 	mux.HandleFunc("/voyager", func(rw http.ResponseWriter, r *http.Request) { rw.Write([]byte(static.VoyagerAsset)) })
@@ -59,13 +61,13 @@ func (r *rootResolver) Tagline(ctx context.Context) (res TaglineResolver) {
 	for taskClient := range clientTaskSubscribers {
 		res.TaskListClientSubscribers = append(res.TaskListClientSubscribers, taskClient)
 	}
-	for client := range clientJobTaskSubscribers {
+	for client := range clientTaskJobListSubscribers {
 		res.JobListClientSubscribers = append(res.JobListClientSubscribers, client)
 	}
 	res.Banner = defaultOption.dashboardBanner
 	res.Tagline = "Task Queue Worker Dashboard"
 	res.Version = candi.Version
-	res.StartAt = startAt
+	res.StartAt = env.BaseEnv().StartAt
 	res.BuildNumber = env.BaseEnv().BuildNumber
 	res.MemoryStatistics = getMemstats()
 	return
@@ -213,14 +215,55 @@ func (r *rootResolver) ClearAllClientSubscriber(ctx context.Context) (string, er
 	for range clientTaskSubscribers {
 		closeAllSubscribers <- struct{}{}
 	}
-	for range clientJobTaskSubscribers {
+	for range clientTaskJobListSubscribers {
+		closeAllSubscribers <- struct{}{}
+	}
+	for range clientJobDetailSubscribers {
 		closeAllSubscribers <- struct{}{}
 	}
 
 	return "Success clear all client subscriber", nil
 }
 
-func (r *rootResolver) ListenTask(ctx context.Context) (<-chan TaskListResolver, error) {
+func (r *rootResolver) GetAllActiveSubscriber(ctx context.Context) (cs []*ClientSubscriber, err error) {
+
+	mapper := make(map[string]*ClientSubscriber)
+	for k := range clientTaskSubscribers {
+		_, ok := mapper[k]
+		if !ok {
+			mapper[k] = &ClientSubscriber{}
+		}
+		mapper[k].ClientID = k
+		mapper[k].SubscribeList.TaskDashboard = true
+	}
+	for k, v := range clientTaskJobListSubscribers {
+		_, ok := mapper[k]
+		if !ok {
+			mapper[k] = &ClientSubscriber{}
+		}
+		mapper[k].ClientID = k
+		mapper[k].SubscribeList.JobList = v.filter
+	}
+	for k, v := range clientJobDetailSubscribers {
+		_, ok := mapper[k]
+		if !ok {
+			mapper[k] = &ClientSubscriber{}
+		}
+		mapper[k].ClientID = k
+		mapper[k].SubscribeList.JobDetailID = v.jobID
+	}
+
+	for _, v := range mapper {
+		cs = append(cs, v)
+	}
+
+	sort.Slice(cs, func(i, j int) bool {
+		return cs[i].ClientID < cs[j].ClientID
+	})
+	return cs, nil
+}
+
+func (r *rootResolver) ListenTaskDashboard(ctx context.Context) (<-chan TaskListResolver, error) {
 	output := make(chan TaskListResolver)
 
 	httpHeader := candishared.GetValueFromContext(ctx, candishared.ContextKeyHTTPHeader).(http.Header)
@@ -262,10 +305,10 @@ func (r *rootResolver) ListenTask(ctx context.Context) (<-chan TaskListResolver,
 	return output, nil
 }
 
-func (r *rootResolver) ListenTaskJobDetail(ctx context.Context, input struct {
+func (r *rootResolver) ListenTaskJobList(ctx context.Context, input struct {
 	TaskName           string
 	Page, Limit        int32
-	Search             *string
+	Search, JobID      *string
 	Status             []string
 	StartDate, EndDate *string
 }) (<-chan JobListResolver, error) {
@@ -284,6 +327,7 @@ func (r *rootResolver) ListenTaskJobDetail(ctx context.Context, input struct {
 
 	filter := Filter{
 		Page: int(input.Page), Limit: int(input.Limit), Search: input.Search, Status: input.Status, TaskName: input.TaskName,
+		JobID: input.JobID,
 	}
 
 	filter.StartDate, _ = time.Parse(time.RFC3339, candihelper.PtrToString(input.StartDate))
@@ -325,12 +369,12 @@ func (r *rootResolver) ListenTaskJobDetail(ctx context.Context, input struct {
 
 		select {
 		case <-ctx.Done():
-			removeJobListSubscriber(input.TaskName, clientID)
+			removeJobListSubscriber(clientID)
 			return
 
 		case <-closeAllSubscribers:
 			output <- JobListResolver{Meta: MetaJobList{IsCloseSession: true}}
-			removeJobListSubscriber(input.TaskName, clientID)
+			removeJobListSubscriber(clientID)
 			return
 
 		case <-autoRemoveClient.C:
@@ -339,7 +383,55 @@ func (r *rootResolver) ListenTaskJobDetail(ctx context.Context, input struct {
 					IsCloseSession: true,
 				},
 			}
-			removeJobListSubscriber(input.TaskName, clientID)
+			removeJobListSubscriber(clientID)
+			return
+
+		}
+	}()
+
+	return output, nil
+}
+
+func (r *rootResolver) ListenJobDetail(ctx context.Context, input struct {
+	JobID string
+}) (<-chan Job, error) {
+
+	output := make(chan Job)
+
+	httpHeader := candishared.GetValueFromContext(ctx, candishared.ContextKeyHTTPHeader).(http.Header)
+	clientID := httpHeader.Get("Sec-WebSocket-Key")
+
+	if input.JobID == "" {
+		return output, errors.New("Job ID cannot empty")
+	}
+
+	_, err := persistent.FindJobByID(ctx, input.JobID, "retry_histories")
+	if err != nil {
+		return output, errors.New("Job not found")
+	}
+
+	if err := registerNewJobDetailSubscriber(clientID, input.JobID, output); err != nil {
+		return nil, err
+	}
+
+	autoRemoveClient := time.NewTicker(defaultOption.autoRemoveClientInterval)
+
+	go func() {
+		defer func() { close(output); autoRemoveClient.Stop() }()
+
+		broadcastJobDetail(ctx)
+
+		select {
+		case <-ctx.Done():
+			removeJobDetailSubscriber(clientID)
+			return
+
+		case <-closeAllSubscribers:
+			removeJobDetailSubscriber(clientID)
+			return
+
+		case <-autoRemoveClient.C:
+			removeJobDetailSubscriber(clientID)
 			return
 
 		}

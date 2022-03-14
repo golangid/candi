@@ -9,6 +9,7 @@ const schema = `schema {
 type Query {
 	tagline(): TaglineType!
 	get_job_detail(job_id: String!): JobResolver
+	get_all_active_subscriber(): [ClientSubscriber!]!
 }
 
 type Mutation {
@@ -23,16 +24,18 @@ type Mutation {
 }
 
 type Subscription {
-	listen_task(): TaskListResolver!
-	listen_task_job_detail(
+	listen_task_dashboard(): TaskListResolver!
+	listen_task_job_list(
 		task_name: String!, 
 		page: Int!, 
 		limit: Int!, 
 		search: String, 
 		status: [String!]!,
-		startDate: String,
-		endDate: String
+		start_date: String,
+		end_date: String,
+		job_id: String
 	): JobListResolver!
+	listen_job_detail(job_id: String!): JobResolver!
 }
 
 type TaglineType {
@@ -119,5 +122,26 @@ type JobRetryHistory {
 	trace_id: String!
 	start_at: String!
 	end_at: String!
+}
+
+type FilterJobList {
+	task_name: String!
+	page: Int!
+	limit: Int!
+	search: String
+	status: [String!]!
+	startDate: String!
+	endDate: String!
+}
+
+type ClientSubscriber {
+	client_id: String!
+	subscribe_list: ClientSubscriberListDetail!
+}
+
+type ClientSubscriberListDetail {
+	job_detail_id: String!
+	job_list: FilterJobList!
+	task_dashboard: Boolean!
 }
 `

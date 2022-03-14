@@ -29,32 +29,56 @@ func removeTaskListSubscriber(clientID string) {
 }
 
 func registerNewJobListSubscriber(taskName, clientID string, filter Filter, clientChannel chan JobListResolver) error {
-	if len(clientJobTaskSubscribers) >= defaultOption.maxClientSubscriber {
+	if len(clientTaskJobListSubscribers) >= defaultOption.maxClientSubscriber {
 		return errClientLimitExceeded
 	}
 
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	clientJobTaskSubscribers[clientID] = clientJobTaskSubscriber{
+	clientTaskJobListSubscribers[clientID] = clientTaskJobListSubscriber{
 		c: clientChannel, filter: filter,
 	}
 	return nil
 }
 
-func removeJobListSubscriber(taskName, clientID string) {
+func removeJobListSubscriber(clientID string) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	delete(clientJobTaskSubscribers, clientID)
+	delete(clientTaskJobListSubscribers, clientID)
+}
+
+func registerNewJobDetailSubscriber(clientID, jobID string, clientChannel chan Job) error {
+	if len(clientJobDetailSubscribers) >= defaultOption.maxClientSubscriber {
+		return errClientLimitExceeded
+	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	clientJobDetailSubscribers[clientID] = clientJobDetailSubscriber{
+		c: clientChannel, jobID: jobID,
+	}
+	return nil
+}
+
+func removeJobDetailSubscriber(clientID string) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	delete(clientJobDetailSubscribers, clientID)
 }
 
 func broadcastAllToSubscribers(ctx context.Context) {
 	if len(clientTaskSubscribers) > 0 {
 		go broadcastTaskList(ctx)
 	}
-	if len(clientJobTaskSubscribers) > 0 {
+	if len(clientTaskJobListSubscribers) > 0 {
 		go broadcastJobList(ctx)
+	}
+	if len(clientJobDetailSubscribers) > 0 {
+		go broadcastJobDetail(ctx)
 	}
 }
 
@@ -65,7 +89,7 @@ func broadcastTaskList(ctx context.Context) {
 
 	var taskRes TaskListResolver
 	taskRes.Data = persistent.AggregateAllTaskJob(ctx, Filter{TaskNameList: tasks})
-	taskRes.Meta.TotalClientSubscriber = len(clientTaskSubscribers) + len(clientJobTaskSubscribers)
+	taskRes.Meta.TotalClientSubscriber = len(clientTaskSubscribers) + len(clientTaskJobListSubscribers) + len(clientJobDetailSubscribers)
 
 	for _, subscriber := range clientTaskSubscribers {
 		candihelper.TryCatch{
@@ -81,7 +105,7 @@ func broadcastJobList(ctx context.Context) {
 	if ctx.Err() != nil {
 		return
 	}
-	for _, subscriber := range clientJobTaskSubscribers {
+	for _, subscriber := range clientTaskJobListSubscribers {
 		jobs := persistent.FindAllJob(ctx, subscriber.filter)
 
 		var meta MetaJobList
@@ -104,6 +128,28 @@ func broadcastJobList(ctx context.Context) {
 					Meta: meta,
 					Data: jobs,
 				}
+			},
+			Catch: func(error) {},
+		}.Do()
+	}
+}
+
+func broadcastJobDetail(ctx context.Context) {
+	if ctx.Err() != nil {
+		return
+	}
+
+	for clientID, subscriber := range clientJobDetailSubscribers {
+		detail, err := persistent.FindJobByID(ctx, subscriber.jobID)
+		if err != nil || detail == nil {
+			removeJobDetailSubscriber(clientID)
+			continue
+		}
+
+		detail.updateValue()
+		candihelper.TryCatch{
+			Try: func() {
+				subscriber.c <- *detail
 			},
 			Catch: func(error) {},
 		}.Do()

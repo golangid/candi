@@ -84,16 +84,30 @@ type (
 		Page, Limit        int
 		TaskName           string
 		TaskNameList       []string
-		Search             *string
+		Search, JobID      *string
 		Status             []string
 		ShowAll            bool
 		ShowHistories      *bool
 		StartDate, EndDate time.Time
 	}
 
-	clientJobTaskSubscriber struct {
+	// ClientSubscriber model
+	ClientSubscriber struct {
+		ClientID      string
+		SubscribeList struct {
+			TaskDashboard bool
+			JobDetailID   string
+			JobList       Filter
+		}
+	}
+
+	clientTaskJobListSubscriber struct {
 		c      chan JobListResolver
 		filter Filter
+	}
+	clientJobDetailSubscriber struct {
+		c     chan Job
+		jobID string
 	}
 
 	// JobStatusEnum enum status
@@ -125,13 +139,13 @@ var (
 	mutex                                             sync.Mutex
 	tasks                                             []string
 
-	clientTaskSubscribers    map[string]chan TaskListResolver
-	clientJobTaskSubscribers map[string]clientJobTaskSubscriber
+	clientTaskSubscribers        map[string]chan TaskListResolver
+	clientTaskJobListSubscribers map[string]clientTaskJobListSubscriber
+	clientJobDetailSubscribers   map[string]clientJobDetailSubscriber
 
 	errClientLimitExceeded = errors.New("client limit exceeded, please try again later")
 
 	defaultOption option
-	startAt       = time.Now().Format(time.RFC3339)
 )
 
 func makeAllGlobalVars(q QueueStorage, perst Persistent, opts ...OptionFunc) {
@@ -160,7 +174,8 @@ func makeAllGlobalVars(q QueueStorage, perst Persistent, opts ...OptionFunc) {
 
 	refreshWorkerNotif, shutdown, closeAllSubscribers = make(chan struct{}), make(chan struct{}, 1), make(chan struct{})
 	clientTaskSubscribers = make(map[string]chan TaskListResolver, defaultOption.maxClientSubscriber)
-	clientJobTaskSubscribers = make(map[string]clientJobTaskSubscriber, defaultOption.maxClientSubscriber)
+	clientTaskJobListSubscribers = make(map[string]clientTaskJobListSubscriber, defaultOption.maxClientSubscriber)
+	clientJobDetailSubscribers = make(map[string]clientJobDetailSubscriber, defaultOption.maxClientSubscriber)
 
 	registeredTask = make(map[string]struct {
 		handler     types.WorkerHandler
