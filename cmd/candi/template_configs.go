@@ -8,7 +8,7 @@ package configs
 import (
 	"context"
 
-	` + "{{ if .IsMonorepo }}\"monorepo/sdk\"\n{{end}}" + `"{{.PackagePrefix}}/pkg/shared"
+	` + "{{ if .IsMonorepo }}\"monorepo/sdk\"\n	{{end}}" + `"{{.PackagePrefix}}/pkg/shared"
 	"{{.PackagePrefix}}/pkg/shared/repository"
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
@@ -42,9 +42,8 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 		)
 		{{if not .RedisDeps}}// {{end}}redisDeps := database.InitRedis()
 		{{if not .SQLDeps}}// {{end}}sqlDeps := database.InitSQLDatabase()
-		{{if not .MongoDeps}}// {{end}}mongoDeps := database.InitMongoDB(ctx)
-		{{if .ArangoDeps}}arangoDeps := arango.InitArangoDB(ctx, sharedEnv.DbArangoReadHost, sharedEnv.DbArangoWriteHost){{end}}
-
+		{{if not .MongoDeps}}// {{end}}mongoDeps := database.InitMongoDB(ctx)` +
+		"{{if .ArangoDeps}}\n		arangoDeps := arango.InitArangoDB(ctx, sharedEnv.DbArangoReadHost, sharedEnv.DbArangoWriteHost){{end}}" + `
 ` + "{{ if .IsMonorepo }}\n		sdk.SetGlobalSDK(\n			// init service client sdk\n		)\n{{end}}" + `
 		// inject all service dependencies
 		// See all option in dependency package
@@ -57,16 +56,16 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 			dependency.SetBrokers(brokerDeps.GetBrokers()),
 			{{if not .RedisDeps}}// {{end}}dependency.SetRedisPool(redisDeps),
 			{{if not .SQLDeps}}// {{end}}dependency.SetSQLDatabase(sqlDeps),
-			{{if not .MongoDeps}}// {{end}}dependency.SetMongoDatabase(mongoDeps),
-			{{if not .ArangoDeps}}// {{end}}dependency.AddExtended("arangodb", arangoDeps),
+			{{if not .MongoDeps}}// {{end}}dependency.SetMongoDatabase(mongoDeps),{{if .ArangoDeps}}
+			dependency.AddExtended("arangodb", arangoDeps),{{end}}
 			// ... add more dependencies
 		)
 		return []interfaces.Closer{ // throw back to base config for close connection when application shutdown
 			brokerDeps,
 			{{if not .RedisDeps}}// {{end}}redisDeps,
 			{{if not .SQLDeps}}// {{end}}sqlDeps,
-			{{if not .MongoDeps}}// {{end}}mongoDeps,
-			{{if not .ArangoDeps}}// {{end}}arangoDeps,
+			{{if not .MongoDeps}}// {{end}}mongoDeps,{{if .ArangoDeps}}
+			arangoDeps,{{end}}
 		}
 	})
 
@@ -85,10 +84,8 @@ package shared
 type Environment struct {
 	// more additional environment with struct tag is environment key example:
 	// ExampleHost string ` + "`env:\"EXAMPLE_HOST\"`" + `
-	{{if .ArangoDeps}}
-	DbArangoReadHost     	string	`+"`env:\"ARANGODB_HOST_READ\"`"+`
-	DbArangoWriteHost      	string	`+"`env:\"ARANGODB_HOST_WRITE\"`"+`
-	{{end}}
+	{{if .ArangoDeps}}DbArangoReadHost     	string	` + "`env:\"ARANGODB_HOST_READ\"`" + `
+	DbArangoWriteHost      	string	` + "`env:\"ARANGODB_HOST_WRITE\"`" + `{{end}}
 }
 
 var sharedEnv Environment
@@ -104,7 +101,7 @@ func SetEnv(env Environment) {
 }
 `
 
-appFactoryTemplate = `// {{.Header}}
+	appFactoryTemplate = `// {{.Header}}
 
 package configs
 

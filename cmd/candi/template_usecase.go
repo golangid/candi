@@ -84,8 +84,12 @@ import (
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
-
+	{{ if not (or .SQLDeps .MongoDeps .ArangoDeps) }}// {{end}}"{{.PackagePrefix}}/pkg/shared/repository"
+	"{{$.PackagePrefix}}/pkg/shared/usecase/common"
 	"{{.LibraryName}}/candishared"
+	"{{.LibraryName}}/codebase/factory/dependency"{{if or .KafkaHandler .RabbitMQHandler}}
+	"{{.LibraryName}}/codebase/factory/types"{{end}}
+	"{{.LibraryName}}/codebase/interfaces"
 )
 
 // {{upper (camel .ModuleName)}}Usecase abstraction
@@ -95,6 +99,31 @@ type {{upper (camel .ModuleName)}}Usecase interface {
 	Create{{upper (camel .ModuleName)}}(ctx context.Context, data *shareddomain.{{upper (camel .ModuleName)}}) (err error)
 	Update{{upper (camel .ModuleName)}}(ctx context.Context, id string, data *shareddomain.{{upper (camel .ModuleName)}}) (err error)
 	Delete{{upper (camel .ModuleName)}}(ctx context.Context, id string) (err error)
+}
+
+type {{camel .ModuleName}}UsecaseImpl struct {
+	sharedUsecase common.Usecase
+	cache         interfaces.Cache
+	{{if not .SQLDeps}}// {{end}}repoSQL       repository.RepoSQL
+	{{if not .MongoDeps}}// {{end}}repoMongo     repository.RepoMongo{{if .ArangoDeps}}
+	repoArango     repository.RepoArango{{end}}
+	{{if not .KafkaHandler}}// {{ end }}kafkaPub      interfaces.Publisher
+	{{if not .RabbitMQHandler}}// {{ end }}rabbitmqPub   interfaces.Publisher
+}
+
+// New{{upper (camel .ModuleName)}}Usecase usecase impl constructor
+func New{{upper (camel .ModuleName)}}Usecase(deps dependency.Dependency) ({{upper (camel .ModuleName)}}Usecase, func(sharedUsecase common.Usecase)) {
+	uc := &{{camel .ModuleName}}UsecaseImpl{
+		{{if not .RedisDeps}}// {{end}}cache: deps.GetRedisPool().Cache(),
+		{{if not .SQLDeps}}// {{end}}repoSQL:   repository.GetSharedRepoSQL(),
+		{{if not .MongoDeps}}// {{end}}repoMongo: repository.GetSharedRepoMongo(),{{if .ArangoDeps}}
+		repoArango: repository.GetSharedRepoArango(),{{end}}
+		{{if not .KafkaHandler}}// {{ end }}kafkaPub: deps.GetBroker(types.Kafka).GetPublisher(),
+		{{if not .RabbitMQHandler}}// {{ end }}rabbitmqPub: deps.GetBroker(types.RabbitMQ).GetPublisher(),
+	}
+	return uc, func(sharedUsecase common.Usecase) {
+		uc.sharedUsecase = sharedUsecase
+	}
 }
 `
 	templateUsecaseImpl = `// {{.Header}}
@@ -106,42 +135,12 @@ import (
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
-	{{ if not (or .SQLDeps .MongoDeps .ArangoDeps) }}// {{end}}"{{.PackagePrefix}}/pkg/shared/repository"
-	"{{$.PackagePrefix}}/pkg/shared/usecase/common"
 	{{if and .MongoDeps (not .SQLDeps)}}
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	{{end}}
 	"{{.LibraryName}}/candishared"
-	"{{.LibraryName}}/codebase/factory/dependency"{{if or .KafkaHandler .RabbitMQHandler}}
-	"{{.LibraryName}}/codebase/factory/types"{{end}}
-	"{{.LibraryName}}/codebase/interfaces"
 	"{{.LibraryName}}/tracer"
 )
-
-type {{camel .ModuleName}}UsecaseImpl struct {
-	sharedUsecase common.Usecase
-	cache         interfaces.Cache
-	{{if .SQLDeps}}repoSQL       repository.RepoSQL{{end}}
-	{{if .MongoDeps}}repoMongo     repository.RepoMongo{{end}}
-	{{if .ArangoDeps}}repoArango     repository.RepoArango{{end}}
-	{{if not .KafkaHandler}}// {{ end }}kafkaPub      interfaces.Publisher
-	{{if not .RabbitMQHandler}}// {{ end }}rabbitmqPub   interfaces.Publisher
-}
-
-// New{{upper (camel .ModuleName)}}Usecase usecase impl constructor
-func New{{upper (camel .ModuleName)}}Usecase(deps dependency.Dependency) ({{upper (camel .ModuleName)}}Usecase, func(sharedUsecase common.Usecase)) {
-	uc := &{{camel .ModuleName}}UsecaseImpl{
-		{{if .RedisDeps}}cache: deps.GetRedisPool().Cache(),{{end}}
-		{{if .SQLDeps}}repoSQL:   repository.GetSharedRepoSQL(),{{end}}
-		{{if .MongoDeps}}repoMongo: repository.GetSharedRepoMongo(),{{end}}
-		{{if .ArangoDeps}}repoArango: repository.GetSharedRepoArango(),{{end}}
-		{{if not .KafkaHandler}}// {{ end }}kafkaPub: deps.GetBroker(types.Kafka).GetPublisher(),
-		{{if not .RabbitMQHandler}}// {{ end }}rabbitmqPub: deps.GetBroker(types.RabbitMQ).GetPublisher(),
-	}
-	return uc, func(sharedUsecase common.Usecase) {
-		uc.sharedUsecase = sharedUsecase
-	}
-}
 
 func (uc *{{camel .ModuleName}}UsecaseImpl) GetAll{{upper (camel .ModuleName)}}(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (data []shareddomain.{{upper (camel .ModuleName)}}, meta candishared.Meta, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}Usecase:GetAll{{upper (camel .ModuleName)}}")

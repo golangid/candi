@@ -49,10 +49,10 @@ SQL_DB_WRITE_DSN={{ if .SQLDeps }}{{.SQLDriver}}://` +
 	"{{if eq .SQLDriver \"postgres\"}}user:pass@localhost:5432/db_name?sslmode=disable{{else if eq .SQLDriver \"mysql\"}}" +
 	"root:pass@tcp(127.0.0.1:3306)/db_name{{end}}" +
 	`{{ end }}
-
-{{if .ArangoDeps}}ARANGODB_HOST_WRITE=http://user:pass@localhost:8529/{{.ServiceName}}
-ARANGODB_HOST_READ=http://user:pass@localhost:8529/{{.ServiceName}}{{end}}
-
+{{if .ArangoDeps}}
+ARANGODB_HOST_WRITE=http://user:pass@localhost:8529/{{.ServiceName}}
+ARANGODB_HOST_READ=http://user:pass@localhost:8529/{{.ServiceName}}
+{{end}}
 REDIS_READ_DSN=redis://:pass@localhost:6379/0
 REDIS_WRITE_DSN=redis://:pass@localhost:6379/0
 
@@ -61,9 +61,9 @@ KAFKA_CLIENT_VERSION=2.0.0
 KAFKA_CLIENT_ID={{.ServiceName}}
 KAFKA_CONSUMER_GROUP={{.ServiceName}}
 
-RABBITMQ_BROKER=amqp://guest:guest@localhost:5672/test
-RABBITMQ_CONSUMER_GROUP={{.ServiceName}}
-RABBITMQ_EXCHANGE_NAME=delayed
+{{if not .RabbitMQHandler}}# {{end}}RABBITMQ_BROKER=amqp://guest:guest@localhost:5672/test
+{{if not .RabbitMQHandler}}# {{end}}RABBITMQ_CONSUMER_GROUP={{.ServiceName}}
+{{if not .RabbitMQHandler}}# {{end}}RABBITMQ_EXCHANGE_NAME=delayed
 
 JAEGER_TRACING_HOST=127.0.0.1:5775
 JAEGER_TRACING_DASHBOARD=http://127.0.0.1:16686

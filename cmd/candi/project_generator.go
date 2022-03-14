@@ -252,7 +252,8 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 			{FromTemplate: true, DataSource: srvConfig, Source: envTemplate, FileName: ".env.sample"},
 			{Source: configJSON.String(), FileName: "candi.json"},
 			{FromTemplate: true, DataSource: srvConfig, Source: readmeTemplate, FileName: "README.md"},
-			{FromTemplate: true, DataSource: srvConfig, Source: licenseMapTemplate[srvConfig.License], FileName: "LICENSE"},
+			{FromTemplate: true, DataSource: srvConfig, Source: licenseMapTemplate[srvConfig.License], FileName: "LICENSE",
+				Skip: srvConfig.License == ""},
 		}
 		if flagParam.withGoModFlag {
 			baseDirectoryFile.Childs = append(baseDirectoryFile.Childs, FileStructure{

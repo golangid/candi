@@ -101,6 +101,8 @@ type Env struct {
 	// CORS Environment
 	CORSAllowOrigins, CORSAllowMethods, CORSAllowHeaders []string
 	CORSAllowCredential                                  bool
+
+	StartAt string
 }
 
 var env Env
@@ -233,6 +235,8 @@ func Load(serviceName string) {
 
 	// Parse CORS environment
 	parseCorsEnv()
+
+	env.StartAt = time.Now().Format(time.RFC3339)
 
 	if mErrs.HasError() {
 		panic("Basic environment error: \n" + mErrs.Error())

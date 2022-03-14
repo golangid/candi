@@ -9,8 +9,6 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-var logger *zap.SugaredLogger
-
 // InitZap logger with default writer to stdout
 func InitZap(opts ...OptionFunc) {
 	opt := Option{
@@ -43,15 +41,15 @@ func InitZap(opts ...OptionFunc) {
 	}
 	core := zapcore.NewTee(coreOpt...)
 
-	logger = zap.New(core, zap.AddCaller()).Sugar()
+	zapLog := zap.New(core, zap.AddCaller())
+	zap.ReplaceGlobals(zapLog)
+	zapLog.Sync()
 }
 
 // Log func
 func Log(level zapcore.Level, message string, context string, scope string) {
-	if logger == nil {
-		return
-	}
-	entry := logger.With(
+
+	entry := zap.S().With(
 		zap.String("context", context),
 		zap.String("scope", scope),
 	)
@@ -61,9 +59,6 @@ func Log(level zapcore.Level, message string, context string, scope string) {
 
 // LogWithField func
 func LogWithField(level zapcore.Level, fields map[string]interface{}) {
-	if logger == nil {
-		return
-	}
 
 	var message interface{}
 	var args []interface{}
@@ -74,28 +69,28 @@ func LogWithField(level zapcore.Level, fields map[string]interface{}) {
 		}
 		args = append(args, []interface{}{k, v}...)
 	}
-	entry := logger.With(args...)
+	entry := zap.S().With(args...)
 	setEntryType(level, entry, message)
 }
 
 // LogE error
 func LogE(message string) {
-	logger.Error(message)
+	zap.S().Error(message)
 }
 
 // LogEf error with format
 func LogEf(format string, i ...interface{}) {
-	logger.Errorf(format, i...)
+	zap.S().Errorf(format, i...)
 }
 
 // LogI info
 func LogI(message string) {
-	logger.Info(message)
+	zap.S().Info(message)
 }
 
 // LogIf info with format
 func LogIf(format string, i ...interface{}) {
-	logger.Infof(format, i...)
+	zap.S().Infof(format, i...)
 }
 
 func setEntryType(level zapcore.Level, entry *zap.SugaredLogger, msg interface{}) {

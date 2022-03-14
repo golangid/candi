@@ -53,6 +53,9 @@ func StartTraceWithContext(ctx context.Context, operationName string) (Tracer, c
 
 // StartTraceFromHeader starting trace from root app handler based on header
 func StartTraceFromHeader(ctx context.Context, operationName string, header map[string]string) (Tracer, context.Context) {
+	if candishared.GetValueFromContext(ctx, skipTracer) != nil {
+		return &noopTracer{ctx}, ctx
+	}
 
 	tc := activeTracer.StartRootSpan(ctx, operationName, header)
 	return tc, tc.Context()

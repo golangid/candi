@@ -103,7 +103,7 @@ func main() {
 
 func selectScope(flagParam flagParameter, scope string) {
 	switch scope {
-	case InitMonorepoService: // 4
+	case InitMonorepo: // 4
 		logger.Printf("\033[1mPlease input monorepo project name (enter for default):\033[0m")
 		fmt.Printf(">> ")
 		if cmdInput, _ := reader.ReadString('\n'); strings.TrimRight(cmdInput, "\n") != "" {

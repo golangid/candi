@@ -27,6 +27,7 @@ type httpRequestImpl struct {
 	sleepBetweenRetry         time.Duration
 	tlsConfig                 *tls.Config
 	minHTTPErrorCodeThreshold int
+	hystrixOptions            []hystrix.Option
 }
 
 // HTTPRequestOption func type
@@ -74,6 +75,13 @@ func HTTPRequestSetBreakerName(breakerName string) HTTPRequestOption {
 	}
 }
 
+// HTTPRequestAddHystrixOptions option func
+func HTTPRequestAddHystrixOptions(opts ...hystrix.Option) HTTPRequestOption {
+	return func(h *httpRequestImpl) {
+		h.hystrixOptions = opts
+	}
+}
+
 // HTTPRequest interface
 type HTTPRequest interface {
 	Do(context context.Context, method, url string, reqBody []byte, headers map[string]string) ([]byte, int, error)
@@ -81,7 +89,6 @@ type HTTPRequest interface {
 
 // NewHTTPRequest function
 // Request's Constructor
-// Returns : *Request
 func NewHTTPRequest(opts ...HTTPRequestOption) HTTPRequest {
 	httpReq := new(httpRequestImpl)
 	// set default value
@@ -110,6 +117,7 @@ func NewHTTPRequest(opts ...HTTPRequestOption) HTTPRequest {
 		hystrix.WithCommandName(httpReq.breakerName),
 		hystrix.WithFallbackFunc(httpReq.fallbackErr),
 	}
+	hystrixClientOpt = append(hystrixClientOpt, httpReq.hystrixOptions...)
 	if httpReq.tlsConfig != nil {
 		hystrixClientOpt = append(hystrixClientOpt, hystrix.WithHTTPClient(&http.Client{
 			Transport: &http.Transport{TLSClientConfig: httpReq.tlsConfig},

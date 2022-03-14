@@ -44,6 +44,7 @@ func (h *KafkaHandler) handle{{upper (camel .ModuleName)}}(eventContext *candish
 	fmt.Printf("message consumed in handler %s. key: %s, message: %s\n", eventContext.HandlerRoute(), eventContext.Key(), eventContext.Message())
 
 	// exec usecase
+	// h.uc.SomethingUsecase()
 
 	return nil
 }
@@ -92,6 +93,7 @@ func (h *CronHandler) handle{{upper (camel .ModuleName)}}(eventContext *candisha
 	fmt.Printf("cron: execute in handler %s, message: %s\n", eventContext.HandlerRoute(), eventContext.Message())
 
 	// exec usecase
+	// h.uc.SomethingUsecase()
 
 	return nil
 }
@@ -139,6 +141,7 @@ func (h *RedisHandler) handle{{upper (camel .ModuleName)}}(eventContext *candish
 	fmt.Printf("redis subs: execute handler %s with message %s", eventContext.HandlerRoute(), eventContext.Message())
 
 	// exec usecase
+	// h.uc.SomethingUsecase()
 
 	return nil
 }
@@ -191,6 +194,7 @@ func (h *TaskQueueHandler) handleTask{{upper (camel .ModuleName)}}(eventContext 
 	)
 
 	// exec usecase
+	// h.uc.SomethingUsecase()
 
 	return &candishared.ErrorRetrier{
 		Delay:   10 * time.Second,
@@ -247,6 +251,7 @@ func (h *PostgresListenerHandler) handleDataChangeOn{{upper (camel .ModuleName)}
 		payload.Table, payload.Action, candihelper.ToBytes(payload.Data.Old), candihelper.ToBytes(payload.Data.New))
 
 	// exec usecase
+	// h.uc.SomethingUsecase()
 
 	return nil
 }
@@ -291,9 +296,58 @@ func (h *RabbitMQHandler) handleQueue{{upper (camel .ModuleName)}}(eventContext 
 	trace, _ := tracer.StartTraceWithContext(eventContext.Context(), "{{upper (camel .ModuleName)}}DeliveryRabbitMQ:HandleQueue{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	fmt.Printf("message consumed by module {{.ModuleName}}. message: %s\n", message)
+	fmt.Printf("message consumed by module {{.ModuleName}}. message: %s\n", eventContext.Message())
 
 	// exec usecase
+	// h.uc.SomethingUsecase()
+
+	return nil
+}
+`
+
+	deliveryWorkerPluginTemplate = `// {{.Header}}
+
+package workerhandler
+
+import (
+	"fmt"
+
+	"{{.PackagePrefix}}/pkg/shared/usecase"
+
+	"{{.LibraryName}}/candishared"
+	"{{.LibraryName}}/codebase/factory/dependency"
+	"{{.LibraryName}}/codebase/factory/types"
+	"{{.LibraryName}}/codebase/interfaces"
+	"{{.LibraryName}}/tracer"
+)
+
+// {{.WorkerPluginName}}Handler struct
+type {{.WorkerPluginName}}Handler struct {
+	uc        usecase.Usecase
+	validator interfaces.Validator
+}
+
+// New{{.WorkerPluginName}}Handler constructor
+func New{{.WorkerPluginName}}Handler(uc usecase.Usecase, deps dependency.Dependency) *{{.WorkerPluginName}}Handler {
+	return &{{.WorkerPluginName}}Handler{
+		uc:        uc,
+		validator: deps.GetValidator(),
+	}
+}
+
+// MountHandlers mount handler group
+func (h *{{.WorkerPluginName}}Handler) MountHandlers(group *types.WorkerHandlerGroup) {
+	group.Add("{{.ModuleName}}", h.handleTopic{{upper (camel .ModuleName)}}) // consume topic "{{.ModuleName}}"
+}
+
+func (h *{{.WorkerPluginName}}Handler) handleTopic{{upper (camel .ModuleName)}}(eventContext *candishared.EventContext) error {
+	trace, _ := tracer.StartTraceWithContext(eventContext.Context(), "{{upper (camel .ModuleName)}}Delivery{{.WorkerPluginName}}:HandleTopic{{upper (camel .ModuleName)}}")
+	defer trace.Finish()
+
+	fmt.Printf("message consumed by module {{.ModuleName}}. message: %s\n", eventContext.Context())
+
+	// exec usecase
+	// h.uc.SomethingUsecase()
 
 	return nil
 }
