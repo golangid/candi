@@ -1,6 +1,9 @@
 package candiutils
 
 import (
+	"time"
+
+	"github.com/golangid/candi/config/env"
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -13,7 +16,8 @@ type (
 	}
 
 	redisLocker struct {
-		pool *redis.Pool
+		pool          *redis.Pool
+		lockerTimeout time.Duration
 	}
 
 	// NoopLocker empty locker
@@ -22,13 +26,34 @@ type (
 
 // NewRedisLocker constructor
 func NewRedisLocker(pool *redis.Pool) Locker {
-	return &redisLocker{pool: pool}
+	return &redisLocker{
+		pool:          pool,
+		lockerTimeout: env.BaseEnv().LockerTimeout,
+	}
 }
 
 func (r *redisLocker) IsLocked(key string) bool {
 	conn := r.pool.Get()
-	incr, _ := redis.Int64(conn.Do("INCR", key))
-	conn.Close()
+	defer func() { conn.Close() }()
+
+	// set atomic transaction
+	conn.Send("MULTI")
+	conn.Send("INCR", key)
+	conn.Send("EXPIRE", key, r.lockerTimeout.Seconds())
+
+	vals, err := redis.Values(conn.Do("EXEC"))
+	if err != nil {
+		return false
+	}
+
+	if len(vals) <= 0 {
+		return false
+	}
+
+	incr, ok := vals[0].(int64)
+	if !ok {
+		return false
+	}
 
 	return incr > 1
 }
@@ -43,7 +68,11 @@ func (r *redisLocker) Unlock(key string) {
 // Reset method
 func (r *redisLocker) Reset(key string) {
 	conn := r.pool.Get()
-	keys, _ := redis.Strings(conn.Do("KEYS", key))
+	keys, err := redis.Strings(conn.Do("KEYS", key))
+	if err != nil {
+		return
+	}
+
 	for _, k := range keys {
 		conn.Do("DEL", k)
 	}
