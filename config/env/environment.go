@@ -23,6 +23,8 @@ type Env struct {
 	Environment       string
 	LoadConfigTimeout time.Duration
 
+	LockerTimeout time.Duration
+
 	useSQL, useMongo, useRedis, useRSAKey bool
 	NoAuth                                bool
 	UseSharedListener                     bool
@@ -136,6 +138,12 @@ func Load(serviceName string) {
 
 	if env.LoadConfigTimeout, err = time.ParseDuration(os.Getenv("LOAD_CONFIG_TIMEOUT")); err != nil {
 		env.LoadConfigTimeout = 10 * time.Second // default value
+	}
+
+	if env.LockerTimeout, err = time.ParseDuration(os.Getenv("LOCKER_TIMEOUT")); err != nil {
+		// locker timeout value = 10
+		// assuming the maximum response time service tolerance that we make = 1-2 seconds
+		env.LockerTimeout = 10 * time.Second
 	}
 
 	// ------------------------------------

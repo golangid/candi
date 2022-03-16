@@ -5,6 +5,7 @@ ENVIRONMENT=development #development,staging,production
 DEBUG_MODE=true
 NO_AUTH=true
 LOAD_CONFIG_TIMEOUT=20s
+LOCKER_TIMEOUT=10s
 
 # Application Service Handlers
 ## Server
