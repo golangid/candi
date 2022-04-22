@@ -75,22 +75,19 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, perst Pe
 				queue.Clear(workerInstance.ctx, taskName)
 			}
 			// get current pending jobs
-			pageNumber := 1
 			filter := Filter{
+				Page: 1, Limit: 10,
 				TaskNameList: tasks,
 				Status:       []string{string(statusRetrying), string(statusQueueing)},
-				Limit:        50,
 			}
 			count := persistent.CountAllJob(workerInstance.ctx, filter)
 			totalPages := int(math.Ceil(float64(count) / float64(filter.Limit)))
-			for pageNumber <= totalPages {
-				filter.Page = pageNumber
-				pendingJobs := persistent.FindAllJob(workerInstance.ctx, filter)
-				for _, job := range pendingJobs {
+			for filter.Page <= totalPages {
+				for _, job := range persistent.FindAllJob(workerInstance.ctx, filter) {
 					queue.PushJob(workerInstance.ctx, &job)
 					registerJobToWorker(&job, registeredTask[job.TaskName].workerIndex)
 				}
-				pageNumber++
+				filter.Page++
 			}
 			refreshWorkerNotif <- struct{}{}
 		}()
@@ -135,6 +132,9 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 		return
 	}
 
+	for _, task := range tasks {
+		queue.Clear(ctx, task)
+	}
 	stopAllJob()
 	shutdown <- struct{}{}
 	t.isShutdown = true
@@ -153,12 +153,17 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 		done <- struct{}{}
 	}()
 
+	newCtx := context.Background()
 	select {
 	case <-ctx.Done():
-		persistent.UpdateAllStatus(t.ctx, "", []JobStatusEnum{statusRetrying}, statusQueueing)
-		broadcastAllToSubscribers(t.ctx)
+		persistent.UpdateJob(newCtx, Filter{
+			Status: []string{string(statusRetrying)},
+		}, map[string]interface{}{
+			"status": statusQueueing,
+		})
+		broadcastAllToSubscribers(newCtx)
 	case <-done:
-		broadcastAllToSubscribers(t.ctx)
+		broadcastAllToSubscribers(newCtx)
 		t.ctxCancelFunc()
 	}
 }
@@ -276,7 +281,7 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish()
 
-		persistent.SaveJob(ctx, job, retryHistory)
+		persistent.SaveJob(t.ctx, job, retryHistory)
 		broadcastAllToSubscribers(t.ctx)
 	}()
 
@@ -307,9 +312,9 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 	err = selectedHandler.HandlerFuncs[0](&eventContext)
 
 	if ctx.Err() != nil {
-		job.Error = "Job has been stopped when running."
-		if ctx.Err() != nil {
-			job.Error += " Error: " + ctx.Err().Error()
+		job.Error = "Job has been stopped when running (context error: " + ctx.Err().Error() + ")."
+		if err != nil {
+			job.Error += " Error: " + err.Error()
 		}
 		job.Status = string(statusStopped)
 		return
@@ -330,6 +335,9 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 
 				isRetry = true
 				job.Interval = e.Delay.String()
+				if e.NewRetryIntervalFunc != nil {
+					job.Interval = e.NewRetryIntervalFunc(job.Retries).String()
+				}
 
 				// update job arguments if in error retry contains new args payload
 				if len(e.NewArgsPayload) > 0 {

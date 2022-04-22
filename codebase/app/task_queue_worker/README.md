@@ -105,14 +105,11 @@ import (
 	taskqueueworker "github.com/golangid/candi/codebase/app/task_queue_worker"
 )
 
-func someUsecase() {
-	// add task queue for `task-one` with 5 retry
-	if err := taskqueueworker.AddJob("task-one", 5, `{"params": "test-one"}`); err != nil {
-		log.Println(err)
-	}
-
-	// add task queue for `task-two` with 5 retry
-	if err := taskqueueworker.AddJob("task-two", 5, `{"params": "test-two"}`); err != nil {
+func someUsecase(ctx context.Context) {
+	// add task queue for `{{task_name}}` with 5 retry
+	if err := taskqueueworker.AddJob(ctx, "{{task-queue-worker-host}}", &taskqueueworker.AddJobRequest{
+	TaskName: "{{task_name}}", MaxRetry: 5, Args: []byte(`{{arguments/message}}`),
+	}); err != nil {
 		log.Println(err)
 	}
 }
@@ -126,17 +123,40 @@ Via GraphQL API
 ```
 mutation addJob {
   add_job(
-    task_name: "task-one"
-    max_retry: 5
-    args: "{\"params\": \"test-one\"}"
+	  param: {
+		task_name: "{{task_name}}"
+		max_retry: 5
+		args: "{\"params\": \"test-one\"}"
+	  }
   )
 }
+```
+
+cURL:
+```
+curl --location --request GET '{{task-queue-worker-host}}/graphql' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "operationName": "addJob",
+    "variables": {
+        "param": {
+            "task_name": "{{task_name}}",
+            "max_retry": 1,
+            "args": "{{arguments/message}}"
+        }
+    },
+    "query": "mutation addJob($param: AddJobInputResolver!) {\n  add_job(param: $param)\n}\n"
+}'
 ```
 
 Direct call function
 ```go
 // add task queue for `task-one` via HTTP request
-if err := taskqueueworker.AddJobViaHTTPRequest(ctx, "{{task-queue-worker-host}}", "task-one", 5, `{"params": "test-one"}`); err != nil {
+jobID, err := taskqueueworker.AddJobViaHTTPRequest(context.Background(), "{{task-queue-worker-host}}", &taskqueueworker.AddJobRequest{
+	TaskName: "{{task_name}}", MaxRetry: 1, Args: []byte(`{{arguments/message}}`),
+})
+if err != nil {
 	log.Println(err)
 }
+fmt.Println("Queued job id is ", jobID)
 ```

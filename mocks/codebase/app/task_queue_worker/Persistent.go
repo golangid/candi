@@ -121,7 +121,16 @@ func (_m *Persistent) SaveJob(ctx context.Context, job *taskqueueworker.Job, ret
 	_m.Called(_ca...)
 }
 
-// UpdateAllStatus provides a mock function with given fields: ctx, taskName, currentStatus, updatedStatus
-func (_m *Persistent) UpdateAllStatus(ctx context.Context, taskName string, currentStatus []taskqueueworker.JobStatusEnum, updatedStatus taskqueueworker.JobStatusEnum) {
-	_m.Called(ctx, taskName, currentStatus, updatedStatus)
+// UpdateJob provides a mock function with given fields: ctx, filter, updated
+func (_m *Persistent) UpdateJob(ctx context.Context, filter taskqueueworker.Filter, updated map[string]interface{}) error {
+	ret := _m.Called(ctx, filter, updated)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, taskqueueworker.Filter, map[string]interface{}) error); ok {
+		r0 = rf(ctx, filter, updated)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }

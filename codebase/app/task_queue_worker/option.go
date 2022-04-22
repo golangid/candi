@@ -15,6 +15,7 @@ type (
 		dashboardPort            uint16
 		debugMode                bool
 		locker                   candiutils.Locker
+		autoCreateIndex          bool
 	}
 
 	// OptionFunc type
@@ -67,5 +68,12 @@ func SetDebugMode(debugMode bool) OptionFunc {
 func SetLocker(locker candiutils.Locker) OptionFunc {
 	return func(o *option) {
 		o.locker = locker
+	}
+}
+
+// SetAutoCreatePersistentIndex option func
+func SetAutoCreatePersistentIndex(autoCreateIndex bool) OptionFunc {
+	return func(o *option) {
+		o.autoCreateIndex = autoCreateIndex
 	}
 }

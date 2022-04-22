@@ -9,7 +9,7 @@ type Persistent interface {
 	CountAllJob(ctx context.Context, filter Filter) int
 	AggregateAllTaskJob(ctx context.Context, filter Filter) (result []TaskResolver)
 	SaveJob(ctx context.Context, job *Job, retryHistories ...RetryHistory)
-	UpdateAllStatus(ctx context.Context, taskName string, currentStatus []JobStatusEnum, updatedStatus JobStatusEnum)
+	UpdateJob(ctx context.Context, filter Filter, updated map[string]interface{}) error
 	CleanJob(ctx context.Context, taskName string)
 	DeleteJob(ctx context.Context, id string) error
 }

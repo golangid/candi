@@ -42,6 +42,8 @@ type ErrorRetrier struct {
 	NewArgsPayload []byte
 
 	StackTrace string
+
+	NewRetryIntervalFunc func(retries int) time.Duration
 }
 
 // Error implement error

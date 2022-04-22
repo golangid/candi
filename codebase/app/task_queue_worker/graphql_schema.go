@@ -13,7 +13,7 @@ type Query {
 }
 
 type Mutation {
-	add_job(task_name: String!, max_retry: Int!, args: String!): String!
+	add_job(param: AddJobInputResolver!): String!
 	stop_job(job_id: String!): String!
 	stop_all_job(task_name: String!): String!
 	retry_job(job_id: String!): String!
@@ -144,4 +144,19 @@ type ClientSubscriberListDetail {
 	job_list: FilterJobList!
 	task_dashboard: Boolean!
 }
+
+input AddJobInputResolver {
+	task_name: String!
+	max_retry: Int!
+	args: String!
+	retry_interval: String
+}
 `
+
+// AddJobInputResolver model
+type AddJobInputResolver struct {
+	TaskName      string
+	MaxRetry      int
+	Args          string
+	RetryInterval *string
+}

@@ -25,59 +25,64 @@ type mongoPersistent struct {
 
 // NewMongoPersistent create mongodb persistent
 func NewMongoPersistent(db *mongo.Database) Persistent {
-	uniqueOpts := &options.IndexOptions{
-		Unique: candihelper.ToBoolPtr(true),
-	}
-	indexes := []mongo.IndexModel{
-		{
-			Keys: bson.M{
-				"_id": 1,
+
+	if defaultOption.autoCreateIndex {
+		uniqueOpts := &options.IndexOptions{
+			Unique: candihelper.ToBoolPtr(true),
+		}
+		indexes := []mongo.IndexModel{
+			{
+				Keys: bson.M{
+					"_id": 1,
+				},
+				Options: uniqueOpts,
 			},
-			Options: uniqueOpts,
-		},
-		{
-			Keys: bson.M{
-				"task_name": 1,
+			{
+				Keys: bson.M{
+					"task_name": 1,
+				},
+				Options: &options.IndexOptions{},
 			},
-			Options: &options.IndexOptions{},
-		},
-		{
-			Keys: bson.M{
-				"status": 1,
+			{
+				Keys: bson.M{
+					"status": 1,
+				},
+				Options: &options.IndexOptions{},
 			},
-			Options: &options.IndexOptions{},
-		},
-		{
-			Keys: bson.M{
-				"created_at": 1,
+			{
+				Keys: bson.M{
+					"created_at": 1,
+				},
+				Options: &options.IndexOptions{},
 			},
-			Options: &options.IndexOptions{},
-		},
-		{
-			Keys: bson.M{
-				"arguments": "text",
+			{
+				Keys: bson.M{
+					"arguments": "text",
+					"error":     "text",
+				},
+				Options: &options.IndexOptions{},
 			},
-			Options: &options.IndexOptions{},
-		},
-		{
-			Keys: bson.D{
-				{Key: "task_name", Value: 1},
-				{Key: "status", Value: 1},
+			{
+				Keys: bson.D{
+					{Key: "task_name", Value: 1},
+					{Key: "status", Value: 1},
+				},
 			},
-		},
-		{
-			Keys: bson.D{
-				{Key: "task_name", Value: 1},
-				{Key: "status", Value: 1},
-				{Key: "created_at", Value: 1},
+			{
+				Keys: bson.D{
+					{Key: "task_name", Value: 1},
+					{Key: "status", Value: 1},
+					{Key: "created_at", Value: 1},
+				},
 			},
-		},
+		}
+
+		indexView := db.Collection(mongoColl).Indexes()
+		for _, idx := range indexes {
+			indexView.CreateOne(context.Background(), idx)
+		}
 	}
 
-	indexView := db.Collection(mongoColl).Indexes()
-	for _, idx := range indexes {
-		indexView.CreateOne(context.Background(), idx)
-	}
 	return &mongoPersistent{db}
 }
 
@@ -92,13 +97,20 @@ func (s *mongoPersistent) FindAllJob(ctx context.Context, filter Filter) (jobs [
 	}
 	findOptions.SetProjection(bson.M{"retry_histories": 0})
 
-	cur, err := s.db.Collection(mongoColl).Find(ctx, s.toBsonFilter(filter), findOptions)
+	query := s.toBsonFilter(filter)
+	cur, err := s.db.Collection(mongoColl).Find(ctx, query, findOptions)
 	if err != nil {
+		logger.LogE(err.Error())
 		return
 	}
+	defer cur.Close(ctx)
+
 	for cur.Next(ctx) {
 		var job Job
-		cur.Decode(&job)
+		if err := cur.Decode(&job); err != nil {
+			logger.LogE(err.Error())
+			continue
+		}
 		if job.Status == string(statusSuccess) {
 			job.Error = ""
 		}
@@ -262,22 +274,18 @@ func (s *mongoPersistent) SaveJob(ctx context.Context, job *Job, retryHistories 
 	}
 }
 
-func (s *mongoPersistent) UpdateAllStatus(ctx context.Context, taskName string, currentStatus []JobStatusEnum, updatedStatus JobStatusEnum) {
-	filter := bson.M{}
+func (s *mongoPersistent) UpdateJob(ctx context.Context, filter Filter, updated map[string]interface{}) error {
 
-	if taskName != "" {
-		filter["task_name"] = taskName
-	}
-	filter["status"] = bson.M{"$in": currentStatus}
 	_, err := s.db.Collection(mongoColl).UpdateMany(ctx,
-		filter,
+		s.toBsonFilter(filter),
 		bson.M{
-			"$set": bson.M{"status": updatedStatus, "retries": 0},
+			"$set": bson.M(updated),
 		})
 
 	if err != nil {
 		logger.LogE(err.Error())
 	}
+	return err
 }
 
 func (s *mongoPersistent) FindJobByID(ctx context.Context, id string, excludeFields ...string) (job *Job, err error) {
@@ -339,7 +347,7 @@ func (s *mongoPersistent) toBsonFilter(f Filter) bson.M {
 	}
 	if f.Search != nil && *f.Search != "" {
 		pipeQuery = append(pipeQuery, bson.M{
-			"arguments": primitive.Regex{Pattern: *f.Search, Options: "i"},
+			"$text": bson.M{"$search": fmt.Sprintf(`"%s"`, *f.Search)},
 		})
 	}
 	if len(f.Status) > 0 {

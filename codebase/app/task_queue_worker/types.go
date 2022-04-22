@@ -120,6 +120,8 @@ const (
 	statusSuccess  JobStatusEnum = "SUCCESS"
 	statusQueueing JobStatusEnum = "QUEUEING"
 	statusStopped  JobStatusEnum = "STOPPED"
+
+	defaultInterval = 500 * time.Millisecond
 )
 
 var (
@@ -160,6 +162,7 @@ func makeAllGlobalVars(q QueueStorage, perst Persistent, opts ...OptionFunc) {
 	defaultOption.dashboardPort = 8080
 	defaultOption.debugMode = true
 	defaultOption.locker = &candiutils.NoopLocker{}
+	defaultOption.autoCreateIndex = true
 	defaultOption.dashboardBanner = `
     _________    _   ______  ____
    / ____/   |  / | / / __ \/  _/

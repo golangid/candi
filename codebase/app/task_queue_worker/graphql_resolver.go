@@ -103,29 +103,28 @@ func (r *rootResolver) DeleteJob(ctx context.Context, input struct{ JobID string
 	return
 }
 
-func (r *rootResolver) AddJob(ctx context.Context, input struct {
-	TaskName string
-	MaxRetry int32
-	Args     string
-}) (string, error) {
-	return "ok", AddJob(input.TaskName, int(input.MaxRetry), []byte(input.Args))
+func (r *rootResolver) AddJob(ctx context.Context, input struct{ Param AddJobInputResolver }) (string, error) {
+
+	job := AddJobRequest{
+		TaskName: input.Param.TaskName,
+		MaxRetry: int(input.Param.MaxRetry),
+		Args:     []byte(input.Param.Args),
+	}
+	if input.Param.RetryInterval != nil {
+		interval, err := time.ParseDuration(*input.Param.RetryInterval)
+		if err != nil {
+			return "", err
+		}
+		job.RetryInterval = interval
+	}
+	return AddJob(ctx, &job)
 }
 
 func (r *rootResolver) StopJob(ctx context.Context, input struct {
 	JobID string
 }) (string, error) {
 
-	job, err := persistent.FindJobByID(ctx, input.JobID)
-	if err != nil {
-		return "Failed", err
-	}
-
-	stopAllJobInTask(job.TaskName)
-	job.Status = string(statusStopped)
-	persistent.SaveJob(ctx, job)
-	broadcastAllToSubscribers(r.worker.ctx)
-
-	return "Success stop job " + input.JobID, nil
+	return "Success stop job " + input.JobID, StopJob(r.worker.ctx, input.JobID)
 }
 
 func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
@@ -138,7 +137,14 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 
 	stopAllJobInTask(input.TaskName)
 	queue.Clear(ctx, input.TaskName)
-	persistent.UpdateAllStatus(ctx, input.TaskName, []JobStatusEnum{statusQueueing, statusRetrying}, statusStopped)
+	persistent.UpdateJob(ctx,
+		Filter{
+			TaskName: input.TaskName, Status: []string{string(statusQueueing), string(statusRetrying)},
+		},
+		map[string]interface{}{
+			"status": statusStopped,
+		},
+	)
 	broadcastAllToSubscribers(r.worker.ctx)
 
 	return "Success stop all job in task " + input.TaskName, nil
@@ -148,25 +154,44 @@ func (r *rootResolver) RetryJob(ctx context.Context, input struct {
 	JobID string
 }) (string, error) {
 
-	job, err := persistent.FindJobByID(ctx, input.JobID)
-	if err != nil {
-		return "Failed", err
-	}
-	job.Interval = defaultInterval
-	task := registeredTask[job.TaskName]
-	go func(job *Job) {
-		if (job.Status == string(statusFailure)) || (job.Retries >= job.MaxRetry) {
-			job.Retries = 0
-		}
-		job.Status = string(statusQueueing)
-		queue.PushJob(ctx, job)
-		persistent.SaveJob(r.worker.ctx, job)
-		broadcastAllToSubscribers(r.worker.ctx)
-		registerJobToWorker(job, task.workerIndex)
-		refreshWorkerNotif <- struct{}{}
-	}(job)
+	return "Success retry job " + input.JobID, RetryJob(r.worker.ctx, input.JobID)
+}
 
-	return "Success retry job " + input.JobID, nil
+func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
+	TaskName string
+}) (string, error) {
+
+	go func() {
+
+		ctx := context.Background()
+
+		filter := Filter{
+			Page: 1, Limit: 10, Status: []string{string(statusFailure), string(statusStopped)}, TaskName: input.TaskName,
+		}
+		count := persistent.CountAllJob(ctx, filter)
+		totalPages := int(math.Ceil(float64(count) / float64(filter.Limit)))
+		for filter.Page <= totalPages {
+			jobs := persistent.FindAllJob(ctx, filter)
+			for _, job := range jobs {
+				job.Interval = defaultInterval.String()
+				job.Retries = 0
+				task := registeredTask[job.TaskName]
+				job.Status = string(statusQueueing)
+				queue.PushJob(ctx, &job)
+				registerJobToWorker(&job, task.workerIndex)
+			}
+			filter.Page++
+		}
+
+		persistent.UpdateJob(ctx, filter, map[string]interface{}{
+			"status":  statusQueueing,
+			"retries": 0,
+		})
+		broadcastAllToSubscribers(r.worker.ctx)
+		refreshWorkerNotif <- struct{}{}
+	}()
+
+	return "Success retry all failure job in task " + input.TaskName, nil
 }
 
 func (r *rootResolver) CleanJob(ctx context.Context, input struct {
@@ -177,37 +202,6 @@ func (r *rootResolver) CleanJob(ctx context.Context, input struct {
 	broadcastAllToSubscribers(ctx)
 
 	return "Success clean all job in task " + input.TaskName, nil
-}
-
-func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
-	TaskName string
-}) (string, error) {
-
-	pageNumber := 1
-	filter := Filter{Limit: 10, Status: []string{string(statusFailure), string(statusStopped)}, TaskName: input.TaskName}
-	count := persistent.CountAllJob(ctx, filter)
-	totalPages := int(math.Ceil(float64(count) / float64(filter.Limit)))
-	for pageNumber <= totalPages {
-		filter.Page = pageNumber
-		jobs := persistent.FindAllJob(ctx, filter)
-		for _, job := range jobs {
-			job.Interval = defaultInterval
-			job.Retries = 0
-			task := registeredTask[job.TaskName]
-			job.Status = string(statusQueueing)
-			queue.PushJob(ctx, &job)
-			registerJobToWorker(&job, task.workerIndex)
-		}
-		pageNumber++
-	}
-
-	persistent.UpdateAllStatus(ctx, input.TaskName, []JobStatusEnum{statusFailure, statusStopped}, statusQueueing)
-	go func() {
-		broadcastAllToSubscribers(r.worker.ctx)
-		refreshWorkerNotif <- struct{}{}
-	}()
-
-	return "Success retry all failure job in task " + input.TaskName, nil
 }
 
 func (r *rootResolver) ClearAllClientSubscriber(ctx context.Context) (string, error) {
