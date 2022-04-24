@@ -17,7 +17,7 @@ jobs:
           go-version: 1.16
 
       - name: Setup GCP
-        uses: google-github-actions/setup-gcloud@master
+        uses: google-github-actions/setup-gcloud@v0
         with:
           service_account_key: ${{ secrets.GCS_SA_KEY }}
           project_id: ${{ secrets.GCS_PROJECT }}
