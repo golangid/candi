@@ -161,9 +161,7 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 	TaskName string
 }) (string, error) {
 
-	go func() {
-
-		ctx := context.Background()
+	go func(ctx context.Context) {
 
 		filter := Filter{
 			Page: 1, Limit: 10, Status: []string{string(statusFailure), string(statusStopped)}, TaskName: input.TaskName,
@@ -173,8 +171,10 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 		for filter.Page <= totalPages {
 			jobs := persistent.FindAllJob(ctx, filter)
 			for _, job := range jobs {
-				job.Interval = defaultInterval.String()
 				job.Retries = 0
+				if job.Interval == "" {
+					job.Interval = defaultInterval.String()
+				}
 				task := registeredTask[job.TaskName]
 				job.Status = string(statusQueueing)
 				queue.PushJob(ctx, &job)
@@ -189,7 +189,8 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 		})
 		broadcastAllToSubscribers(r.worker.ctx)
 		refreshWorkerNotif <- struct{}{}
-	}()
+
+	}(context.Background())
 
 	return "Success retry all failure job in task " + input.TaskName, nil
 }

@@ -36,6 +36,8 @@ func AddJob(ctx context.Context, job *AddJobRequest) (jobID string, err error) {
 		trace.Finish()
 	}()
 
+	trace.SetTag("task_name", job.TaskName)
+
 	task, ok := registeredTask[job.TaskName]
 	if !ok {
 		var tasks []string
@@ -60,6 +62,8 @@ func AddJob(ctx context.Context, job *AddJobRequest) (jobID string, err error) {
 	}
 	newJob.Status = string(statusQueueing)
 	newJob.CreatedAt = time.Now()
+
+	trace.Log("new_job_id", newJob.ID)
 
 	go func(job *Job, workerIndex int) {
 		ctx := context.Background()
@@ -122,6 +126,11 @@ func AddJobViaHTTPRequest(ctx context.Context, workerHost string, req *AddJobReq
 		return jobID, errors.New(respPayload.Errors[0].Message)
 	}
 	return respPayload.Data.AddJob, nil
+}
+
+// GetDetailJob api for get detail job by id
+func GetDetailJob(ctx context.Context, jobID string) (*Job, error) {
+	return persistent.FindJobByID(ctx, jobID)
 }
 
 // RetryJob api for retry job by id
