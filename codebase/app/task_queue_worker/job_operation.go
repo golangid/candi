@@ -25,6 +25,21 @@ type (
 	}
 )
 
+// Validate method
+func (a *AddJobRequest) Validate() error {
+
+	switch {
+	case a.TaskName == "":
+		return errors.New("Task name cannot empty")
+	case a.MaxRetry <= 0:
+		return errors.New("Max retry cannot less or equal than zero")
+	case a.RetryInterval < 0:
+		return errors.New("Retry interval cannot less or equal than zero")
+	}
+
+	return nil
+}
+
 // AddJob public function for add new job in same runtime
 func AddJob(ctx context.Context, job *AddJobRequest) (jobID string, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "TaskQueueWorker:AddJob")
@@ -37,6 +52,10 @@ func AddJob(ctx context.Context, job *AddJobRequest) (jobID string, err error) {
 	}()
 
 	trace.SetTag("task_name", job.TaskName)
+
+	if err = job.Validate(); err != nil {
+		return jobID, err
+	}
 
 	task, ok := registeredTask[job.TaskName]
 	if !ok {
@@ -81,6 +100,10 @@ func AddJob(ctx context.Context, job *AddJobRequest) (jobID string, err error) {
 func AddJobViaHTTPRequest(ctx context.Context, workerHost string, req *AddJobRequest) (jobID string, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "TaskQueueWorker:AddJobViaHTTPRequest")
 	defer trace.Finish()
+
+	if err = req.Validate(); err != nil {
+		return jobID, err
+	}
 
 	httpReq := candiutils.NewHTTPRequest(
 		candiutils.HTTPRequestSetBreakerName("task_queue_worker_add_job"),
@@ -160,6 +183,10 @@ func RetryJob(ctx context.Context, jobID string) error {
 // StopJob api for stop job by id
 func StopJob(ctx context.Context, jobID string) error {
 
+	if ctx.Err() != nil {
+		ctx = context.Background()
+	}
+
 	job, err := persistent.FindJobByID(ctx, jobID)
 	if err != nil {
 		return err
@@ -169,9 +196,6 @@ func StopJob(ctx context.Context, jobID string) error {
 		stopAllJobInTask(job.TaskName)
 	}
 
-	if ctx.Err() != nil {
-		ctx = context.Background()
-	}
 	persistent.UpdateJob(ctx, Filter{JobID: &job.ID}, map[string]interface{}{"status": statusStopped})
 	broadcastAllToSubscribers(ctx)
 

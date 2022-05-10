@@ -84,14 +84,16 @@ func stopAllJob() {
 
 func stopAllJobInTask(taskName string) {
 	jobs, ok := registeredTask[taskName]
-	if ok {
-		if job := workerIndexTask[jobs.workerIndex]; job != nil {
-			if job.activeInterval != nil {
-				job.activeInterval.Stop()
-			}
-			if job.cancel != nil {
-				job.cancel()
-			}
+	if !ok {
+		return
+	}
+
+	if job := workerIndexTask[jobs.workerIndex]; job != nil {
+		if job.activeInterval != nil {
+			job.activeInterval.Stop()
+		}
+		if job.cancel != nil {
+			job.cancel()
 		}
 	}
 }
