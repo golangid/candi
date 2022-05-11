@@ -38,6 +38,10 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 		opt(&server.opt)
 	}
 
+	if server.opt.engineOption != nil{
+		server.opt.engineOption(server.serverEngine)
+	}
+
 	if server.opt.sharedListener != nil {
 		server.listener = server.opt.sharedListener.Match(cmux.HTTP1Fast())
 	}
