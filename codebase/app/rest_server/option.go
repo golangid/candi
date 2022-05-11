@@ -20,6 +20,7 @@ type (
 		graphqlDisableIntrospection bool
 		jaegerMaxPacketSize         int
 		sharedListener              cmux.CMux
+		engineOption                func(e *echo.Echo)
 	}
 
 	// OptionFunc type
@@ -113,5 +114,12 @@ func AddRootMiddlewares(middlewares ...echo.MiddlewareFunc) OptionFunc {
 func SetErrorHandler(errorHandler echo.HTTPErrorHandler) OptionFunc {
 	return func(o *option) {
 		o.errorHandler = errorHandler
+	}
+}
+
+// SetEchoEngineOption option func
+func SetEchoEngineOption(echoFunc func(e *echo.Echo)) OptionFunc {
+	return func(o *option) {
+		o.engineOption = echoFunc
 	}
 }
