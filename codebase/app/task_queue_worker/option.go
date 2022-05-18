@@ -15,7 +15,8 @@ type (
 		dashboardPort            uint16
 		debugMode                bool
 		locker                   candiutils.Locker
-		autoCreateIndex          bool
+		maxConcurrentAddJob      int
+		maxConcurrentBroadcast   int
 	}
 
 	// OptionFunc type
@@ -71,9 +72,16 @@ func SetLocker(locker candiutils.Locker) OptionFunc {
 	}
 }
 
-// SetAutoCreatePersistentIndex option func
-func SetAutoCreatePersistentIndex(autoCreateIndex bool) OptionFunc {
+// SetMaxConcurrentAddJob option func
+func SetMaxConcurrentAddJob(max int) OptionFunc {
 	return func(o *option) {
-		o.autoCreateIndex = autoCreateIndex
+		o.maxConcurrentAddJob = max
+	}
+}
+
+// SetMaxConcurrentBroadcast option func
+func SetMaxConcurrentBroadcast(max int) OptionFunc {
+	return func(o *option) {
+		o.maxConcurrentBroadcast = max
 	}
 }

@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"math"
 	"runtime"
+	"sort"
 
 	"github.com/golangid/candi/candihelper"
 )
 
-func registerNewTaskListSubscriber(clientID string, clientChannel chan TaskListResolver) error {
+func registerNewTaskListSubscriber(clientID string, filter *Filter, clientChannel chan TaskListResolver) error {
 	if len(clientTaskSubscribers) >= defaultOption.maxClientSubscriber {
 		return errClientLimitExceeded
 	}
@@ -17,7 +18,9 @@ func registerNewTaskListSubscriber(clientID string, clientChannel chan TaskListR
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	clientTaskSubscribers[clientID] = clientChannel
+	clientTaskSubscribers[clientID] = clientTaskDashboardSubscriber{
+		c: clientChannel, filter: filter,
+	}
 	return nil
 }
 
@@ -28,7 +31,7 @@ func removeTaskListSubscriber(clientID string) {
 	delete(clientTaskSubscribers, clientID)
 }
 
-func registerNewJobListSubscriber(taskName, clientID string, filter Filter, clientChannel chan JobListResolver) error {
+func registerNewJobListSubscriber(taskName, clientID string, filter *Filter, clientChannel chan JobListResolver) error {
 	if len(clientTaskJobListSubscribers) >= defaultOption.maxClientSubscriber {
 		return errClientLimitExceeded
 	}
@@ -36,7 +39,7 @@ func registerNewJobListSubscriber(taskName, clientID string, filter Filter, clie
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	clientTaskJobListSubscribers[clientID] = clientTaskJobListSubscriber{
+	clientTaskJobListSubscribers[clientID] = &clientTaskJobListSubscriber{
 		c: clientChannel, filter: filter,
 	}
 	return nil
@@ -87,50 +90,86 @@ func broadcastTaskList(ctx context.Context) {
 		return
 	}
 
+	taskSummary := persistent.FindAllSummary(ctx, &Filter{})
+
 	var taskRes TaskListResolver
-	taskRes.Data = persistent.AggregateAllTaskJob(ctx, Filter{TaskNameList: tasks})
+	taskRes.Data = make([]TaskResolver, len(tasks))
+	mapper := make(map[string]int, len(tasks))
+	for i, task := range tasks {
+		taskRes.Data[i].Name = task
+		taskRes.Data[i].ModuleName = registeredTask[task].moduleName
+		mapper[task] = i
+	}
+
+	for _, summary := range taskSummary {
+		if idx, ok := mapper[summary.TaskName]; ok {
+			res := TaskResolver{
+				Name:       summary.TaskName,
+				ModuleName: registeredTask[summary.TaskName].moduleName,
+				TotalJobs:  summary.CountTotalJob(),
+			}
+			res.Detail.Success = summary.Success
+			res.Detail.Queueing = summary.Queueing
+			res.Detail.Retrying = summary.Retrying
+			res.Detail.Failure = summary.Failure
+			res.Detail.Stopped = summary.Stopped
+			taskRes.Data[idx] = res
+		}
+	}
+
+	sort.Slice(taskRes.Data, func(i, j int) bool {
+		return taskRes.Data[i].ModuleName < taskRes.Data[i].ModuleName
+	})
+
 	taskRes.Meta.TotalClientSubscriber = len(clientTaskSubscribers) + len(clientTaskJobListSubscribers) + len(clientJobDetailSubscribers)
 
 	for _, subscriber := range clientTaskSubscribers {
-		candihelper.TryCatch{
-			Try: func() {
-				subscriber <- taskRes
-			},
-			Catch: func(error) {},
-		}.Do()
+		subscriber.writeDataToChannel(taskRes)
 	}
 }
 
 func broadcastJobList(ctx context.Context) {
+	for clientID := range clientTaskJobListSubscribers {
+		broadcastJobListToClient(ctx, clientID)
+	}
+}
+
+func broadcastJobListToClient(ctx context.Context, clientID string) {
 	if ctx.Err() != nil {
 		return
 	}
-	for _, subscriber := range clientTaskJobListSubscribers {
+	subscriber, ok := clientTaskJobListSubscribers[clientID]
+	if ok {
+		if subscriber.SkipBroadcast {
+			return
+		}
+		subscriber.filter.Sort = "-created_at"
 		jobs := persistent.FindAllJob(ctx, subscriber.filter)
 
 		var meta MetaJobList
 		subscriber.filter.TaskNameList = []string{subscriber.filter.TaskName}
-		counterAll := persistent.AggregateAllTaskJob(ctx, subscriber.filter)
-		if len(counterAll) == 1 {
-			meta.Detail.Failure = counterAll[0].Detail.Failure
-			meta.Detail.Retrying = counterAll[0].Detail.Retrying
-			meta.Detail.Success = counterAll[0].Detail.Success
-			meta.Detail.Queueing = counterAll[0].Detail.Queueing
-			meta.Detail.Stopped = counterAll[0].Detail.Stopped
-			meta.TotalRecords = counterAll[0].TotalJobs
+
+		var taskDetailSummary []TaskSummary
+
+		if candihelper.PtrToString(subscriber.filter.Search) != "" ||
+			candihelper.PtrToString(subscriber.filter.JobID) != "" ||
+			(!subscriber.filter.StartDate.IsZero() && !subscriber.filter.EndDate.IsZero()) {
+			taskDetailSummary = persistent.AggregateAllTaskJob(ctx, subscriber.filter)
+		} else {
+			taskDetailSummary = persistent.FindAllSummary(ctx, subscriber.filter)
+		}
+
+		if len(taskDetailSummary) == 1 {
+			meta.Detail = taskDetailSummary[0].ToSummaryDetail()
+			meta.TotalRecords = taskDetailSummary[0].CountTotalJob()
 		}
 		meta.Page, meta.Limit = subscriber.filter.Page, subscriber.filter.Limit
 		meta.TotalPages = int(math.Ceil(float64(meta.TotalRecords) / float64(meta.Limit)))
 
-		candihelper.TryCatch{
-			Try: func() {
-				subscriber.c <- JobListResolver{
-					Meta: meta,
-					Data: jobs,
-				}
-			},
-			Catch: func(error) {},
-		}.Do()
+		subscriber.writeDataToChannel(JobListResolver{
+			Meta: meta,
+			Data: jobs,
+		})
 	}
 }
 
@@ -145,14 +184,8 @@ func broadcastJobDetail(ctx context.Context) {
 			removeJobDetailSubscriber(clientID)
 			continue
 		}
-
 		detail.updateValue()
-		candihelper.TryCatch{
-			Try: func() {
-				subscriber.c <- *detail
-			},
-			Catch: func(error) {},
-		}.Do()
+		subscriber.writeDataToChannel(*detail)
 	}
 }
 

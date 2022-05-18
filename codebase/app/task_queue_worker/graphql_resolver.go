@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"net"
 	"net/http"
 	"sort"
@@ -98,7 +97,13 @@ func (r *rootResolver) GetJobDetail(ctx context.Context, input struct{ JobID str
 }
 
 func (r *rootResolver) DeleteJob(ctx context.Context, input struct{ JobID string }) (ok string, err error) {
-	err = persistent.DeleteJob(ctx, input.JobID)
+	job, err := persistent.DeleteJob(ctx, input.JobID)
+	if err != nil {
+		return "", err
+	}
+	persistent.IncrementSummary(ctx, job.TaskName, map[string]interface{}{
+		job.Status: -1,
+	})
 	broadcastAllToSubscribers(r.worker.ctx)
 	return
 }
@@ -127,6 +132,13 @@ func (r *rootResolver) StopJob(ctx context.Context, input struct {
 	return "Success stop job " + input.JobID, StopJob(r.worker.ctx, input.JobID)
 }
 
+func (r *rootResolver) RetryJob(ctx context.Context, input struct {
+	JobID string
+}) (string, error) {
+
+	return "Success retry job " + input.JobID, RetryJob(r.worker.ctx, input.JobID)
+}
+
 func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 	TaskName string
 }) (string, error) {
@@ -135,26 +147,44 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 		return "", fmt.Errorf("task '%s' unregistered, task must one of [%s]", input.TaskName, strings.Join(tasks, ", "))
 	}
 
+	for _, subscriber := range clientTaskJobListSubscribers {
+		subscriber.SkipBroadcast = true
+		subscriber.writeDataToChannel(JobListResolver{
+			Meta: MetaJobList{IsLoading: true},
+		})
+	}
+
 	stopAllJobInTask(input.TaskName)
 	queue.Clear(ctx, input.TaskName)
-	persistent.UpdateJob(ctx,
-		Filter{
-			TaskName: input.TaskName, Status: []string{string(statusQueueing), string(statusRetrying)},
-		},
-		map[string]interface{}{
-			"status": statusStopped,
-		},
-	)
+
+	incrQuery := map[string]int{}
+	affectedStatus := []string{string(statusQueueing), string(statusRetrying)}
+	for _, status := range affectedStatus {
+		countMatchedFilter, countAffected, err := persistent.UpdateJob(ctx,
+			&Filter{
+				TaskName: input.TaskName, Status: &status,
+			},
+			map[string]interface{}{
+				"status": statusStopped,
+			},
+		)
+		if err != nil {
+			return "", err
+		}
+		incrQuery[strings.ToLower(status)] -= int(countMatchedFilter)
+		incrQuery[strings.ToLower(string(statusStopped))] += int(countAffected)
+	}
+
+	for _, subscriber := range clientTaskJobListSubscribers {
+		subscriber.SkipBroadcast = false
+		subscriber.writeDataToChannel(JobListResolver{
+			Meta: MetaJobList{IsLoading: false},
+		})
+	}
+	persistent.IncrementSummary(ctx, input.TaskName, convertIncrementMap(incrQuery))
 	broadcastAllToSubscribers(r.worker.ctx)
 
 	return "Success stop all job in task " + input.TaskName, nil
-}
-
-func (r *rootResolver) RetryJob(ctx context.Context, input struct {
-	JobID string
-}) (string, error) {
-
-	return "Success retry job " + input.JobID, RetryJob(r.worker.ctx, input.JobID)
 }
 
 func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
@@ -163,30 +193,52 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 
 	go func(ctx context.Context) {
 
-		filter := Filter{
-			Page: 1, Limit: 10, Status: []string{string(statusFailure), string(statusStopped)}, TaskName: input.TaskName,
-		}
-		count := persistent.CountAllJob(ctx, filter)
-		totalPages := int(math.Ceil(float64(count) / float64(filter.Limit)))
-		for filter.Page <= totalPages {
-			jobs := persistent.FindAllJob(ctx, filter)
-			for _, job := range jobs {
-				job.Retries = 0
-				if job.Interval == "" {
-					job.Interval = defaultInterval.String()
-				}
-				task := registeredTask[job.TaskName]
-				job.Status = string(statusQueueing)
-				queue.PushJob(ctx, &job)
-				registerJobToWorker(&job, task.workerIndex)
-			}
-			filter.Page++
+		for _, subscriber := range clientTaskJobListSubscribers {
+			subscriber.SkipBroadcast = true
+			subscriber.writeDataToChannel(JobListResolver{
+				Meta: MetaJobList{IsLoading: true},
+			})
 		}
 
-		persistent.UpdateJob(ctx, filter, map[string]interface{}{
-			"status":  statusQueueing,
-			"retries": 0,
+		filter := &Filter{
+			Page: 1, Limit: 10, Sort: "created_at",
+			Statuses: []string{string(statusFailure), string(statusStopped)}, TaskName: input.TaskName,
+		}
+		StreamAllJob(ctx, filter, func(job *Job) {
+			job.Retries = 0
+			if job.Interval == "" {
+				job.Interval = defaultInterval.String()
+			}
+			job.Status = string(statusQueueing)
+			queue.PushJob(ctx, job)
+			registerJobToWorker(job, registeredTask[job.TaskName].workerIndex)
 		})
+
+		incr := map[string]int{}
+		for _, status := range filter.Statuses {
+			countMatchedFilter, countAffected, err := persistent.UpdateJob(ctx,
+				&Filter{
+					TaskName: input.TaskName, Status: &status,
+				},
+				map[string]interface{}{
+					"status":  statusQueueing,
+					"retries": 0,
+				},
+			)
+			if err != nil {
+				continue
+			}
+			incr[strings.ToLower(status)] -= int(countMatchedFilter)
+			incr[strings.ToLower(string(statusQueueing))] += int(countAffected)
+		}
+
+		for _, subscriber := range clientTaskJobListSubscribers {
+			subscriber.SkipBroadcast = false
+			subscriber.writeDataToChannel(JobListResolver{
+				Meta: MetaJobList{IsLoading: false},
+			})
+		}
+		persistent.IncrementSummary(ctx, input.TaskName, convertIncrementMap(incr))
 		broadcastAllToSubscribers(r.worker.ctx)
 		refreshWorkerNotif <- struct{}{}
 
@@ -199,10 +251,41 @@ func (r *rootResolver) CleanJob(ctx context.Context, input struct {
 	TaskName string
 }) (string, error) {
 
-	persistent.CleanJob(ctx, input.TaskName)
-	broadcastAllToSubscribers(ctx)
+	for _, subscriber := range clientTaskJobListSubscribers {
+		subscriber.SkipBroadcast = true
+		subscriber.writeDataToChannel(JobListResolver{
+			Meta: MetaJobList{IsLoading: true},
+		})
+	}
+
+	incrQuery := map[string]int{}
+	affectedStatus := []string{string(statusSuccess), string(statusFailure), string(statusStopped)}
+	for _, status := range affectedStatus {
+		countAffected := persistent.CleanJob(ctx,
+			&Filter{
+				TaskName: input.TaskName, Status: &status,
+			},
+		)
+		incrQuery[strings.ToLower(status)] -= int(countAffected)
+	}
+
+	for _, subscriber := range clientTaskJobListSubscribers {
+		subscriber.SkipBroadcast = false
+		subscriber.writeDataToChannel(JobListResolver{
+			Meta: MetaJobList{IsLoading: false},
+		})
+	}
+	persistent.IncrementSummary(ctx, input.TaskName, convertIncrementMap(incrQuery))
+	broadcastAllToSubscribers(r.worker.ctx)
 
 	return "Success clean all job in task " + input.TaskName, nil
+}
+
+func (r *rootResolver) RecalculateSummary(ctx context.Context) (string, error) {
+
+	RecalculateSummary(ctx)
+	broadcastAllToSubscribers(r.worker.ctx)
+	return "Success recalculate summary", nil
 }
 
 func (r *rootResolver) ClearAllClientSubscriber(ctx context.Context) (string, error) {
@@ -258,13 +341,18 @@ func (r *rootResolver) GetAllActiveSubscriber(ctx context.Context) (cs []*Client
 	return cs, nil
 }
 
-func (r *rootResolver) ListenTaskDashboard(ctx context.Context) (<-chan TaskListResolver, error) {
+func (r *rootResolver) ListenTaskDashboard(ctx context.Context, input struct {
+	Page, Limit int
+	Search      *string
+}) (<-chan TaskListResolver, error) {
 	output := make(chan TaskListResolver)
 
 	httpHeader := candishared.GetValueFromContext(ctx, candishared.ContextKeyHTTPHeader).(http.Header)
 	clientID := httpHeader.Get("Sec-WebSocket-Key")
 
-	if err := registerNewTaskListSubscriber(clientID, output); err != nil {
+	if err := registerNewTaskListSubscriber(clientID, &Filter{
+		Page: input.Page, Limit: input.Limit, Search: input.Search,
+	}, output); err != nil {
 		return nil, err
 	}
 
@@ -304,7 +392,7 @@ func (r *rootResolver) ListenTaskJobList(ctx context.Context, input struct {
 	TaskName           string
 	Page, Limit        int32
 	Search, JobID      *string
-	Status             []string
+	Statuses           []string
 	StartDate, EndDate *string
 }) (<-chan JobListResolver, error) {
 
@@ -321,44 +409,21 @@ func (r *rootResolver) ListenTaskJobList(ctx context.Context, input struct {
 	}
 
 	filter := Filter{
-		Page: int(input.Page), Limit: int(input.Limit), Search: input.Search, Status: input.Status, TaskName: input.TaskName,
+		Page: int(input.Page), Limit: int(input.Limit),
+		Search: input.Search, Statuses: input.Statuses, TaskName: input.TaskName,
 		JobID: input.JobID,
 	}
 
 	filter.StartDate, _ = time.Parse(time.RFC3339, candihelper.PtrToString(input.StartDate))
 	filter.EndDate, _ = time.Parse(time.RFC3339, candihelper.PtrToString(input.EndDate))
 
-	if err := registerNewJobListSubscriber(input.TaskName, clientID, filter, output); err != nil {
+	if err := registerNewJobListSubscriber(input.TaskName, clientID, &filter, output); err != nil {
 		return nil, err
 	}
 
+	go broadcastJobListToClient(ctx, clientID)
+
 	autoRemoveClient := time.NewTicker(defaultOption.autoRemoveClientInterval)
-
-	go func() {
-		jobs := persistent.FindAllJob(r.worker.ctx, filter)
-		var meta MetaJobList
-		filter.TaskNameList = []string{filter.TaskName}
-		counterAll := persistent.AggregateAllTaskJob(r.worker.ctx, filter)
-		if len(counterAll) == 1 {
-			meta.Detail.Failure = counterAll[0].Detail.Failure
-			meta.Detail.Retrying = counterAll[0].Detail.Retrying
-			meta.Detail.Success = counterAll[0].Detail.Success
-			meta.Detail.Queueing = counterAll[0].Detail.Queueing
-			meta.Detail.Stopped = counterAll[0].Detail.Stopped
-			meta.TotalRecords = counterAll[0].TotalJobs
-		}
-		meta.Page, meta.Limit = filter.Page, filter.Limit
-		meta.TotalPages = int(math.Ceil(float64(meta.TotalRecords) / float64(meta.Limit)))
-		candihelper.TryCatch{
-			Try: func() {
-				output <- JobListResolver{
-					Meta: meta, Data: jobs,
-				}
-			},
-			Catch: func(error) {},
-		}.Do()
-	}()
-
 	go func() {
 		defer func() { close(output); autoRemoveClient.Stop() }()
 

@@ -51,9 +51,7 @@ type (
 		Name       string
 		ModuleName string
 		TotalJobs  int
-		Detail     struct {
-			Failure, Retrying, Success, Queueing, Stopped int
-		}
+		Detail     SummaryDetail
 	}
 	// TaskListResolver resolver
 	TaskListResolver struct {
@@ -68,9 +66,8 @@ type (
 		TotalRecords   int
 		TotalPages     int
 		IsCloseSession bool
-		Detail         struct {
-			Failure, Retrying, Success, Queueing, Stopped int
-		}
+		IsLoading      bool
+		Detail         SummaryDetail
 	}
 
 	// JobListResolver resolver
@@ -79,13 +76,21 @@ type (
 		Data []Job
 	}
 
+	// SummaryDetail type
+	SummaryDetail struct {
+		Failure, Retrying, Success, Queueing, Stopped int
+	}
+
 	// Filter type
 	Filter struct {
 		Page, Limit        int
+		Sort               string
 		TaskName           string
 		TaskNameList       []string
 		Search, JobID      *string
-		Status             []string
+		Status             *string
+		Statuses           []string
+		ExcludeStatus      []string
 		ShowAll            bool
 		ShowHistories      *bool
 		StartDate, EndDate time.Time
@@ -97,13 +102,18 @@ type (
 		SubscribeList struct {
 			TaskDashboard bool
 			JobDetailID   string
-			JobList       Filter
+			JobList       *Filter
 		}
 	}
 
+	clientTaskDashboardSubscriber struct {
+		c      chan TaskListResolver
+		filter *Filter
+	}
 	clientTaskJobListSubscriber struct {
-		c      chan JobListResolver
-		filter Filter
+		c             chan JobListResolver
+		SkipBroadcast bool
+		filter        *Filter
 	}
 	clientJobDetailSubscriber struct {
 		c     chan Job
@@ -113,6 +123,19 @@ type (
 	// JobStatusEnum enum status
 	JobStatusEnum string
 )
+
+func (s *clientTaskDashboardSubscriber) writeDataToChannel(data TaskListResolver) {
+	defer func() { recover() }()
+	s.c <- data
+}
+func (s *clientTaskJobListSubscriber) writeDataToChannel(data JobListResolver) {
+	defer func() { recover() }()
+	s.c <- data
+}
+func (s *clientJobDetailSubscriber) writeDataToChannel(data Job) {
+	defer func() { recover() }()
+	s.c <- data
+}
 
 const (
 	statusRetrying JobStatusEnum = "RETRYING"
@@ -131,18 +154,19 @@ var (
 		moduleName  string
 	}
 
-	workers         []reflect.SelectCase
-	workerIndexTask map[int]*Task
+	workers                []reflect.SelectCase
+	runningWorkerIndexTask map[int]*Task
 
-	queue                                             QueueStorage
-	persistent                                        Persistent
-	refreshWorkerNotif, shutdown, closeAllSubscribers chan struct{}
-	semaphore                                         []chan struct{}
-	mutex                                             sync.Mutex
-	tasks                                             []string
+	queue      QueueStorage
+	persistent Persistent
 
-	clientTaskSubscribers        map[string]chan TaskListResolver
-	clientTaskJobListSubscribers map[string]clientTaskJobListSubscriber
+	refreshWorkerNotif, shutdown, closeAllSubscribers, semaphoreAddJob, semaphoreBroadcast chan struct{}
+	semaphore                                                                              []chan struct{}
+	mutex                                                                                  sync.Mutex
+	tasks                                                                                  []string
+
+	clientTaskSubscribers        map[string]clientTaskDashboardSubscriber
+	clientTaskJobListSubscribers map[string]*clientTaskJobListSubscriber
 	clientJobDetailSubscribers   map[string]clientJobDetailSubscriber
 
 	errClientLimitExceeded = errors.New("client limit exceeded, please try again later")
@@ -158,11 +182,12 @@ func makeAllGlobalVars(q QueueStorage, perst Persistent, opts ...OptionFunc) {
 	// set default value
 	defaultOption.tracingDashboard = "http://127.0.0.1:16686"
 	defaultOption.maxClientSubscriber = 5
+	defaultOption.maxConcurrentAddJob = 100
+	defaultOption.maxConcurrentBroadcast = 100
 	defaultOption.autoRemoveClientInterval = 30 * time.Minute
 	defaultOption.dashboardPort = 8080
 	defaultOption.debugMode = true
 	defaultOption.locker = &candiutils.NoopLocker{}
-	defaultOption.autoCreateIndex = true
 	defaultOption.dashboardBanner = `
     _________    _   ______  ____
    / ____/   |  / | / / __ \/  _/
@@ -176,8 +201,9 @@ func makeAllGlobalVars(q QueueStorage, perst Persistent, opts ...OptionFunc) {
 	}
 
 	refreshWorkerNotif, shutdown, closeAllSubscribers = make(chan struct{}), make(chan struct{}, 1), make(chan struct{})
-	clientTaskSubscribers = make(map[string]chan TaskListResolver, defaultOption.maxClientSubscriber)
-	clientTaskJobListSubscribers = make(map[string]clientTaskJobListSubscriber, defaultOption.maxClientSubscriber)
+	semaphoreAddJob, semaphoreBroadcast = make(chan struct{}, defaultOption.maxConcurrentAddJob), make(chan struct{}, defaultOption.maxConcurrentBroadcast)
+	clientTaskSubscribers = make(map[string]clientTaskDashboardSubscriber, defaultOption.maxClientSubscriber)
+	clientTaskJobListSubscribers = make(map[string]*clientTaskJobListSubscriber, defaultOption.maxClientSubscriber)
 	clientJobDetailSubscribers = make(map[string]clientJobDetailSubscriber, defaultOption.maxClientSubscriber)
 
 	registeredTask = make(map[string]struct {
@@ -185,7 +211,7 @@ func makeAllGlobalVars(q QueueStorage, perst Persistent, opts ...OptionFunc) {
 		workerIndex int
 		moduleName  string
 	})
-	workerIndexTask = make(map[int]*Task)
+	runningWorkerIndexTask = make(map[int]*Task)
 
 	// add refresh worker channel to first index
 	workers = append(workers, reflect.SelectCase{
