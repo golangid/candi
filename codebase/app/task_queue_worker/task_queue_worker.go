@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math"
 	"reflect"
 	"sync"
 
@@ -49,7 +48,7 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, perst Pe
 				}{
 					handler: handler, workerIndex: workerIndex, moduleName: string(m.Name()),
 				}
-				workerIndexTask[workerIndex] = &Task{
+				runningWorkerIndexTask[workerIndex] = &Task{
 					taskName: handler.Pattern,
 				}
 				tasks = append(tasks, handler.Pattern)
@@ -71,20 +70,17 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, perst Pe
 				queue.Clear(workerInstance.ctx, taskName)
 			}
 			// get current pending jobs
-			filter := Filter{
+			filter := &Filter{
 				Page: 1, Limit: 10,
 				TaskNameList: tasks,
-				Status:       []string{string(statusRetrying), string(statusQueueing)},
+				Statuses:     []string{string(statusRetrying), string(statusQueueing)},
 			}
-			count := persistent.CountAllJob(workerInstance.ctx, filter)
-			totalPages := int(math.Ceil(float64(count) / float64(filter.Limit)))
-			for filter.Page <= totalPages {
-				for _, job := range persistent.FindAllJob(workerInstance.ctx, filter) {
-					queue.PushJob(workerInstance.ctx, &job)
-					registerJobToWorker(&job, registeredTask[job.TaskName].workerIndex)
-				}
-				filter.Page++
-			}
+			StreamAllJob(workerInstance.ctx, filter, func(job *Job) {
+				queue.PushJob(workerInstance.ctx, job)
+				registerJobToWorker(job, registeredTask[job.TaskName].workerIndex)
+			})
+
+			RecalculateSummary(workerInstance.ctx)
 			refreshWorkerNotif <- struct{}{}
 		}()
 	}
@@ -142,26 +138,8 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 		fmt.Printf("\x1b[34;1mTask Queue Worker:\x1b[0m waiting %d job until done...\x1b[0m\n", runningJob)
 	}
 
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		t.wg.Wait()
-		done <- struct{}{}
-	}()
-
-	newCtx := context.Background()
-	select {
-	case <-ctx.Done():
-		persistent.UpdateJob(newCtx, Filter{
-			Status: []string{string(statusRetrying)},
-		}, map[string]interface{}{
-			"status": statusQueueing,
-		})
-		broadcastAllToSubscribers(newCtx)
-	case <-done:
-		broadcastAllToSubscribers(newCtx)
-		t.ctxCancelFunc()
-	}
+	t.wg.Wait()
+	t.ctxCancelFunc()
 }
 
 func (t *taskQueueWorker) Name() string {

@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
@@ -16,7 +17,7 @@ import (
 
 func (t *taskQueueWorker) triggerTask(workerIndex int) {
 
-	runningTask, ok := workerIndexTask[workerIndex]
+	runningTask, ok := runningWorkerIndexTask[workerIndex]
 	if !ok {
 		return
 	}
@@ -29,12 +30,16 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 
 	t.wg.Add(1)
 	go func(workerIndex int, task *Task) {
+		var ctx context.Context
+		ctx, runningTask.cancel = context.WithCancel(t.ctx)
+
 		defer func() {
 			if r := recover(); r != nil {
 				logger.LogRed("task_queue_worker > panic: " + t.ctx.Err().Error())
 			}
 			t.wg.Done()
 			<-semaphore[workerIndex-1]
+			runningTask.cancel()
 			refreshWorkerNotif <- struct{}{}
 		}()
 
@@ -43,12 +48,12 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 			return
 		}
 
-		t.execJob(task)
+		t.execJob(ctx, task)
 
 	}(workerIndex, runningTask)
 }
 
-func (t *taskQueueWorker) execJob(runningTask *Task) {
+func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 	jobID := queue.PopJob(t.ctx, runningTask.taskName)
 	if jobID == "" {
 		tryRegisterNextJob(t.ctx, runningTask.taskName)
@@ -62,14 +67,10 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 	}
 	defer defaultOption.locker.Unlock(t.getLockKey(jobID))
 
-	var ctx context.Context
-	ctx, runningTask.cancel = context.WithCancel(t.ctx)
-	defer runningTask.cancel()
-
 	selectedTask := registeredTask[runningTask.taskName]
 
 	job, err := persistent.FindJobByID(ctx, jobID, "retry_histories")
-	if err != nil || job.Status == string(statusStopped) {
+	if err != nil || job.Status != string(statusQueueing) {
 		tryRegisterNextJob(ctx, runningTask.taskName)
 		return
 	}
@@ -82,9 +83,17 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 	isRetry, startAt := false, time.Now()
 
 	job.Retries++
+	statusBefore := strings.ToLower(job.Status)
 	job.Status = string(statusRetrying)
-	persistent.SaveJob(ctx, job)
+	matchedCount, affectedCount, err := persistent.UpdateJob(
+		t.ctx, &Filter{JobID: &job.ID}, job.toMap(),
+	)
+	persistent.IncrementSummary(ctx, job.TaskName, map[string]interface{}{
+		string(job.Status): affectedCount,
+		statusBefore:       -1 * matchedCount,
+	})
 	broadcastAllToSubscribers(t.ctx)
+	statusBefore = strings.ToLower(job.Status)
 
 	if defaultOption.debugMode {
 		log.Printf("\x1b[35;3mTask Queue Worker: executing task '%s' (job id: %s)\x1b[0m", job.TaskName, job.ID)
@@ -96,7 +105,6 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
-			trace.SetError(err)
 			job.Error = err.Error()
 			job.Status = string(statusFailure)
 		}
@@ -115,9 +123,21 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 
 		logger.LogGreen("task_queue > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
-		trace.Finish()
+		trace.Finish(tracer.FinishWithError(err))
 
-		persistent.SaveJob(t.ctx, job, retryHistory)
+		matchedCount, affectedCount, _ := persistent.UpdateJob(
+			t.ctx,
+			&Filter{JobID: &job.ID, Status: candihelper.ToStringPtr(strings.ToUpper(statusBefore))},
+			job.toMap(),
+			retryHistory,
+		)
+		if affectedCount == 0 && matchedCount == 0 {
+			persistent.SaveJob(t.ctx, job, retryHistory)
+		}
+		persistent.IncrementSummary(ctx, job.TaskName, map[string]interface{}{
+			job.Status:   affectedCount,
+			statusBefore: -1 * matchedCount,
+		})
 		broadcastAllToSubscribers(t.ctx)
 	}()
 
@@ -167,7 +187,11 @@ func (t *taskQueueWorker) execJob(runningTask *Task) {
 		case *candishared.ErrorRetrier:
 			job.ErrorStack = e.StackTrace
 
-			if job.Retries < job.MaxRetry && e.Delay > 0 {
+			if job.Retries < job.MaxRetry {
+
+				if e.Delay <= 0 {
+					e.Delay = defaultInterval
+				}
 
 				isRetry = true
 				job.Interval = e.Delay.String()
@@ -211,25 +235,14 @@ func tryRegisterNextJob(ctx context.Context, taskName string) {
 		}
 	} else {
 
-		filter := Filter{
+		StreamAllJob(ctx, &Filter{
 			Page: 1, Limit: 10,
 			TaskName: taskName,
-			Status:   []string{string(statusQueueing)},
-		}
-		count := persistent.CountAllJob(ctx, filter)
-
-		if count == 0 {
-			return
-		}
-
-		totalPages := int(math.Ceil(float64(count) / float64(filter.Limit)))
-		for filter.Page <= totalPages {
-			for _, job := range persistent.FindAllJob(ctx, filter) {
-				queue.PushJob(ctx, &job)
-				registerJobToWorker(&job, registeredTask[job.TaskName].workerIndex)
-			}
-			filter.Page++
-		}
+			Status:   candihelper.ToStringPtr(string(statusQueueing)),
+		}, func(job *Job) {
+			queue.PushJob(ctx, job)
+			registerJobToWorker(job, registeredTask[job.TaskName].workerIndex)
+		})
 
 	}
 

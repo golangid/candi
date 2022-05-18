@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -34,7 +35,7 @@ func (a *AddJobRequest) Validate() error {
 	case a.MaxRetry <= 0:
 		return errors.New("Max retry cannot less or equal than zero")
 	case a.RetryInterval < 0:
-		return errors.New("Retry interval cannot less or equal than zero")
+		return errors.New("Retry interval cannot less than zero")
 	}
 
 	return nil
@@ -47,8 +48,7 @@ func AddJob(ctx context.Context, job *AddJobRequest) (jobID string, err error) {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("%v", r)
 		}
-		trace.SetError(err)
-		trace.Finish()
+		trace.Finish(tracer.FinishWithError(err))
 	}()
 
 	trace.SetTag("task_name", job.TaskName)
@@ -59,15 +59,7 @@ func AddJob(ctx context.Context, job *AddJobRequest) (jobID string, err error) {
 
 	task, ok := registeredTask[job.TaskName]
 	if !ok {
-		var tasks []string
-		for taskName := range registeredTask {
-			tasks = append(tasks, taskName)
-		}
 		return jobID, fmt.Errorf("task '%s' unregistered, task must one of [%s]", job.TaskName, strings.Join(tasks, ", "))
-	}
-
-	if job.MaxRetry <= 0 {
-		return jobID, errors.New("Max retry must greater than 0")
 	}
 
 	var newJob Job
@@ -84,14 +76,21 @@ func AddJob(ctx context.Context, job *AddJobRequest) (jobID string, err error) {
 
 	trace.Log("new_job_id", newJob.ID)
 
-	go func(job *Job, workerIndex int) {
-		ctx := context.Background()
-		queue.PushJob(ctx, job)
+	semaphoreAddJob <- struct{}{}
+	go func(ctx context.Context, job *Job, workerIndex int) {
+		defer func() {
+			refreshWorkerNotif <- struct{}{}
+			<-semaphoreAddJob
+		}()
+
 		persistent.SaveJob(ctx, job)
+		queue.PushJob(ctx, job)
+		persistent.IncrementSummary(ctx, job.TaskName, map[string]interface{}{
+			strings.ToLower(job.Status): 1,
+		})
 		broadcastAllToSubscribers(ctx)
 		registerJobToWorker(job, workerIndex)
-		refreshWorkerNotif <- struct{}{}
-	}(&newJob, task.workerIndex)
+	}(context.Background(), &newJob, task.workerIndex)
 
 	return newJob.ID, nil
 }
@@ -162,13 +161,19 @@ func RetryJob(ctx context.Context, jobID string) error {
 	if err != nil {
 		return err
 	}
+
+	statusBefore := job.Status
 	job.Interval = defaultInterval.String()
 	job.Status = string(statusQueueing)
 	if (job.Status == string(statusFailure)) || (job.Retries >= job.MaxRetry) {
 		job.Retries = 0
 	}
-	persistent.UpdateJob(ctx, Filter{JobID: &job.ID}, map[string]interface{}{
-		"status": statusQueueing, "interval": job.Interval, "retries": job.Retries,
+	matched, affected, _ := persistent.UpdateJob(ctx, &Filter{JobID: &job.ID}, map[string]interface{}{
+		"status": job.Status, "interval": job.Interval, "retries": job.Retries,
+	})
+	persistent.IncrementSummary(ctx, job.TaskName, map[string]interface{}{
+		statusBefore: -1 * matched,
+		job.Status:   affected,
 	})
 
 	task := registeredTask[job.TaskName]
@@ -176,7 +181,7 @@ func RetryJob(ctx context.Context, jobID string) error {
 	broadcastAllToSubscribers(ctx)
 	registerJobToWorker(job, task.workerIndex)
 
-	go func(job *Job) { refreshWorkerNotif <- struct{}{} }(job)
+	go func() { refreshWorkerNotif <- struct{}{} }()
 	return nil
 }
 
@@ -192,12 +197,71 @@ func StopJob(ctx context.Context, jobID string) error {
 		return err
 	}
 
+	statusBefore := job.Status
 	if job.Status == string(statusRetrying) {
 		stopAllJobInTask(job.TaskName)
 	}
 
-	persistent.UpdateJob(ctx, Filter{JobID: &job.ID}, map[string]interface{}{"status": statusStopped})
+	job.Status = string(statusStopped)
+	matchedCount, countAffected, err := persistent.UpdateJob(
+		ctx, &Filter{JobID: &job.ID, Status: &statusBefore},
+		map[string]interface{}{"status": job.Status},
+	)
+	if err != nil {
+		return err
+	}
+	persistent.IncrementSummary(ctx, job.TaskName, map[string]interface{}{
+		job.Status:   countAffected,
+		statusBefore: -1 * matchedCount,
+	})
 	broadcastAllToSubscribers(ctx)
 
 	return nil
+}
+
+// StreamAllJob api func for stream fetch all job
+func StreamAllJob(ctx context.Context, filter *Filter, streamFunc func(job *Job)) {
+
+	if filter.Page <= 0 {
+		filter.Page = 1
+	}
+	if filter.Limit <= 0 {
+		filter.Limit = 10
+	}
+
+	count := persistent.CountAllJob(ctx, filter)
+	if count == 0 {
+		return
+	}
+
+	totalPages := int(math.Ceil(float64(count) / float64(filter.Limit)))
+	for filter.Page <= totalPages {
+		for _, job := range persistent.FindAllJob(ctx, filter) {
+			streamFunc(&job)
+		}
+		filter.Page++
+	}
+}
+
+// RecalculateSummary func
+func RecalculateSummary(ctx context.Context) {
+
+	mapper := make(map[string]TaskSummary, len(tasks))
+	for _, taskSummary := range persistent.AggregateAllTaskJob(ctx, &Filter{}) {
+		mapper[taskSummary.ID] = taskSummary
+	}
+
+	for _, task := range tasks {
+		taskSummary, ok := mapper[task]
+		if !ok {
+			taskSummary.ID = task
+		}
+		persistent.UpdateSummary(ctx, taskSummary.ID, map[string]interface{}{
+			"success":  taskSummary.Success,
+			"queueing": taskSummary.Queueing,
+			"retrying": taskSummary.Retrying,
+			"failure":  taskSummary.Failure,
+			"stopped":  taskSummary.Stopped,
+		})
+	}
 }

@@ -60,12 +60,28 @@ func (job *Job) updateValue() {
 	}
 }
 
+func (job *Job) toMap() map[string]interface{} {
+	return map[string]interface{}{
+		"task_name":   job.TaskName,
+		"arguments":   job.Arguments,
+		"retries":     job.Retries,
+		"max_retry":   job.MaxRetry,
+		"interval":    job.Interval,
+		"created_at":  job.CreatedAt,
+		"finished_at": job.FinishedAt,
+		"status":      job.Status,
+		"error":       job.Error,
+		"error_stack": job.ErrorStack,
+		"trace_id":    job.TraceID,
+	}
+}
+
 func registerJobToWorker(job *Job, workerIndex int) {
 	interval, err := time.ParseDuration(job.Interval)
 	if err != nil || interval <= 0 {
 		return
 	}
-	taskIndex := workerIndexTask[workerIndex]
+	taskIndex := runningWorkerIndexTask[workerIndex]
 	if taskIndex.activeInterval == nil {
 		taskIndex.activeInterval = time.NewTicker(interval)
 	} else {
@@ -75,7 +91,7 @@ func registerJobToWorker(job *Job, workerIndex int) {
 }
 
 func stopAllJob() {
-	for _, job := range workerIndexTask {
+	for _, job := range runningWorkerIndexTask {
 		if job != nil && job.activeInterval != nil {
 			job.activeInterval.Stop()
 		}
@@ -88,7 +104,7 @@ func stopAllJobInTask(taskName string) {
 		return
 	}
 
-	if job := workerIndexTask[jobs.workerIndex]; job != nil {
+	if job := runningWorkerIndexTask[jobs.workerIndex]; job != nil {
 		if job.activeInterval != nil {
 			job.activeInterval.Stop()
 		}

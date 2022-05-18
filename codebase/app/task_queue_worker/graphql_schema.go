@@ -10,6 +10,7 @@ type Query {
 	tagline(): TaglineType!
 	get_job_detail(job_id: String!): JobResolver
 	get_all_active_subscriber(): [ClientSubscriber!]!
+	get_all_active_subscriber(): [ClientSubscriber!]!
 }
 
 type Mutation {
@@ -21,16 +22,21 @@ type Mutation {
 	retry_all_job(task_name: String!): String!
 	clear_all_client_subscriber(): String!
 	delete_job(job_id: String!): String!
+	recalculate_summary(): String!
 }
 
 type Subscription {
-	listen_task_dashboard(): TaskListResolver!
+	listen_task_dashboard(
+		page: Int!,
+		limit: Int!,
+		search: String
+	): TaskListResolver!
 	listen_task_job_list(
 		task_name: String!, 
 		page: Int!, 
 		limit: Int!, 
 		search: String, 
-		status: [String!]!,
+		statuses: [String!]!,
 		start_date: String,
 		end_date: String,
 		job_id: String
@@ -55,6 +61,7 @@ type MetaType {
 	total_pages: Int!
 	total_records: Int!
 	is_close_session: Boolean!
+	is_loading: Boolean!
 	detail: TaskDetailResolver!
 }
 
@@ -129,9 +136,9 @@ type FilterJobList {
 	page: Int!
 	limit: Int!
 	search: String
-	status: [String!]!
-	startDate: String!
-	endDate: String!
+	statuses: [String!]!
+	start_date: String!
+	end_date: String!
 }
 
 type ClientSubscriber {
@@ -141,7 +148,7 @@ type ClientSubscriber {
 
 type ClientSubscriberListDetail {
 	job_detail_id: String!
-	job_list: FilterJobList!
+	job_list: FilterJobList
 	task_dashboard: Boolean!
 }
 
