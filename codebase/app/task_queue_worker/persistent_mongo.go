@@ -159,7 +159,6 @@ func (s *mongoPersistent) FindAllJob(ctx context.Context, filter *Filter) (jobs 
 		strings.TrimPrefix(filter.Sort, "-"): sort,
 	})
 	findOptions.SetProjection(bson.M{"retry_histories": 0})
-	findOptions.SetAllowDiskUse(true)
 
 	query := s.toBsonFilter(filter)
 	cur, err := s.db.Collection(mongoJobCollections).Find(ctx, query, findOptions)
