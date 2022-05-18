@@ -230,9 +230,11 @@ func tryRegisterNextJob(ctx context.Context, taskName string) {
 
 	nextJobID := queue.NextJob(ctx, taskName)
 	if nextJobID != "" {
+
 		if nextJob, err := persistent.FindJobByID(ctx, nextJobID); err == nil {
 			registerJobToWorker(nextJob, registeredTask[taskName].workerIndex)
 		}
+
 	} else {
 
 		StreamAllJob(ctx, &Filter{
