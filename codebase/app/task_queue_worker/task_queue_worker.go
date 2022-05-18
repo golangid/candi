@@ -76,6 +76,18 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, perst Pe
 				Statuses:     []string{string(statusRetrying), string(statusQueueing)},
 			}
 			StreamAllJob(workerInstance.ctx, filter, func(job *Job) {
+				if job.Status != string(statusQueueing) {
+					statusBefore := job.Status
+					job.Status = string(statusQueueing)
+					matched, affected, _ := persistent.UpdateJob(workerInstance.ctx, &Filter{
+						JobID: &job.ID,
+					}, map[string]interface{}{
+						"status": job.Status,
+					})
+					persistent.IncrementSummary(workerInstance.ctx, job.TaskName, map[string]interface{}{
+						statusBefore: -1 * matched, job.Status: affected,
+					})
+				}
 				queue.PushJob(workerInstance.ctx, job)
 				registerJobToWorker(job, registeredTask[job.TaskName].workerIndex)
 			})
