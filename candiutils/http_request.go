@@ -17,21 +17,35 @@ import (
 	"github.com/golangid/candi/tracer"
 )
 
-// httpRequestImpl struct
-type httpRequestImpl struct {
-	client *hystrix.Client
+type (
+	// HTTPRequest interface
+	HTTPRequest interface {
+		DoRequest(ctx context.Context, method, url string, requestBody []byte, headers map[string]string) (result *HTTPRequestResult, err error)
+		Do(context context.Context, method, url string, reqBody []byte, headers map[string]string) (respBody []byte, respCode int, err error)
+	}
 
-	breakerName               string
-	timeout                   time.Duration
-	retries                   int
-	sleepBetweenRetry         time.Duration
-	tlsConfig                 *tls.Config
-	minHTTPErrorCodeThreshold int
-	hystrixOptions            []hystrix.Option
-}
+	// httpRequestImpl struct
+	httpRequestImpl struct {
+		client *hystrix.Client
 
-// HTTPRequestOption func type
-type HTTPRequestOption func(*httpRequestImpl)
+		breakerName               string
+		timeout                   time.Duration
+		retries                   int
+		sleepBetweenRetry         time.Duration
+		tlsConfig                 *tls.Config
+		minHTTPErrorCodeThreshold int
+		hystrixOptions            []hystrix.Option
+	}
+
+	// HTTPRequestResult struct
+	HTTPRequestResult struct {
+		*bytes.Buffer
+		RespCode int
+	}
+
+	// HTTPRequestOption func type
+	HTTPRequestOption func(*httpRequestImpl)
+)
 
 // HTTPRequestSetRetries option func
 func HTTPRequestSetRetries(retries int) HTTPRequestOption {
@@ -82,11 +96,6 @@ func HTTPRequestAddHystrixOptions(opts ...hystrix.Option) HTTPRequestOption {
 	}
 }
 
-// HTTPRequest interface
-type HTTPRequest interface {
-	Do(context context.Context, method, url string, reqBody []byte, headers map[string]string) ([]byte, int, error)
-}
-
 // NewHTTPRequest function
 // Request's Constructor
 func NewHTTPRequest(opts ...HTTPRequestOption) HTTPRequest {
@@ -115,7 +124,9 @@ func NewHTTPRequest(opts ...HTTPRequestOption) HTTPRequest {
 		hystrix.WithRetrier(retrier),
 		hystrix.WithRetryCount(httpReq.retries),
 		hystrix.WithCommandName(httpReq.breakerName),
-		hystrix.WithFallbackFunc(httpReq.fallbackErr),
+		hystrix.WithFallbackFunc(func(err error) error {
+			return err
+		}),
 	}
 	hystrixClientOpt = append(hystrixClientOpt, httpReq.hystrixOptions...)
 	if httpReq.tlsConfig != nil {
@@ -130,17 +141,26 @@ func NewHTTPRequest(opts ...HTTPRequestOption) HTTPRequest {
 }
 
 // Do function, for http client call
-func (request *httpRequestImpl) Do(ctx context.Context, method, url string, requestBody []byte, headers map[string]string) (respBody []byte, respCode int, err error) {
-	// set request http
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(requestBody))
+func (req *httpRequestImpl) Do(ctx context.Context, method, url string, requestBody []byte, headers map[string]string) (respBody []byte, respCode int, err error) {
+	httpResult, err := req.DoRequest(ctx, method, url, requestBody, headers)
 	if err != nil {
-		tracer.SetError(ctx, err)
 		return respBody, respCode, err
 	}
 
+	return httpResult.Bytes(), httpResult.RespCode, nil
+}
+
+func (req *httpRequestImpl) DoRequest(ctx context.Context, method, url string, requestBody []byte, headers map[string]string) (result *HTTPRequestResult, err error) {
+	// set request http
+	httpReq, err := http.NewRequest(method, url, bytes.NewBuffer(requestBody))
+	if err != nil {
+		tracer.SetError(ctx, err)
+		return nil, err
+	}
+
 	// set tracer
-	trace, ctx := tracer.StartTraceWithContext(ctx, fmt.Sprintf("HTTP Request: %s %s", method, req.URL.Host))
-	defer func() { trace.SetError(err); trace.Finish() }()
+	trace, ctx := tracer.StartTraceWithContext(ctx, fmt.Sprintf("HTTP Request: %s %s", method, httpReq.URL.Host))
+	defer func() { trace.Finish(tracer.FinishWithError(err)) }()
 
 	if headers == nil {
 		headers = map[string]string{}
@@ -149,54 +169,49 @@ func (request *httpRequestImpl) Do(ctx context.Context, method, url string, requ
 
 	// iterate optional data of headers
 	for key, value := range headers {
-		req.Header.Set(key, value)
+		httpReq.Header.Set(key, value)
 	}
 
-	trace.SetTag("http.method", req.Method)
-	trace.SetTag("http.url", req.URL.String())
-	trace.SetTag("http.url_path", req.URL.Path)
-	trace.SetTag("http.min_error_code", request.minHTTPErrorCodeThreshold)
-	trace.SetTag("http.retries", request.retries)
-	trace.SetTag("http.sleep_between_retry", request.sleepBetweenRetry.String())
-	trace.SetTag("http.timeout", request.timeout.String())
-	trace.SetTag("http.breaker_name", request.breakerName)
+	trace.SetTag("http.method", httpReq.Method)
+	trace.SetTag("http.url", httpReq.URL.String())
+	trace.SetTag("http.url_path", httpReq.URL.Path)
+	trace.SetTag("http.min_error_code", req.minHTTPErrorCodeThreshold)
+	trace.SetTag("http.retries", req.retries)
+	trace.SetTag("http.sleep_between_retry", req.sleepBetweenRetry.String())
+	trace.SetTag("http.timeout", req.timeout.String())
+	trace.SetTag("http.breaker_name", req.breakerName)
 
-	dumpRequest, _ := httputil.DumpRequest(req, false)
+	dumpRequest, _ := httputil.DumpRequest(httpReq, false)
 	trace.SetTag("http.request", dumpRequest)
 	if requestBody != nil {
 		trace.Log("request.body", requestBody)
 	}
 
-	// client request
-	resp, err := request.client.Do(req)
+	resp, err := req.client.Do(httpReq)
 	if err != nil && resp == nil {
-		return respBody, respCode, err
+		return nil, err
 	}
-	// close response body
 	defer resp.Body.Close()
 
-	respBody, err = io.ReadAll(resp.Body)
-	respCode = resp.StatusCode
+	result = &HTTPRequestResult{
+		Buffer:   &bytes.Buffer{},
+		RespCode: resp.StatusCode,
+	}
+	io.Copy(result, resp.Body)
 
 	dumpResponse, _ := httputil.DumpResponse(resp, false)
 	trace.SetTag("http.response", dumpResponse)
 	trace.SetTag("response.code", resp.StatusCode)
 	trace.SetTag("response.status", resp.Status)
-	trace.Log("response.body", respBody)
+	trace.Log("response.body", result.Bytes())
 
-	if request.minHTTPErrorCodeThreshold != 0 && resp.StatusCode >= request.minHTTPErrorCodeThreshold {
+	if req.minHTTPErrorCodeThreshold != 0 && resp.StatusCode >= req.minHTTPErrorCodeThreshold {
 		err = errors.New(resp.Status)
-		var resp map[string]string
-		json.Unmarshal(respBody, &resp)
-		if resp["message"] != "" {
-			err = errors.New(resp["message"])
+		var r map[string]string
+		json.NewDecoder(result).Decode(&r)
+		if r["message"] != "" {
+			err = errors.New(r["message"])
 		}
 	}
 	return
-}
-
-func (request *httpRequestImpl) fallbackErr(err error) error {
-	// log error
-	// ...
-	return err
 }
