@@ -144,7 +144,7 @@ func NewHTTPRequest(opts ...HTTPRequestOption) HTTPRequest {
 func (req *httpRequestImpl) Do(ctx context.Context, method, url string, requestBody []byte, headers map[string]string) (respBody []byte, respCode int, err error) {
 	httpResult, err := req.DoRequest(ctx, method, url, requestBody, headers)
 	if err != nil {
-		return respBody, respCode, err
+		return httpResult.Bytes(), httpResult.RespCode, err
 	}
 
 	return httpResult.Bytes(), httpResult.RespCode, nil
@@ -208,7 +208,7 @@ func (req *httpRequestImpl) DoRequest(ctx context.Context, method, url string, r
 	if req.minHTTPErrorCodeThreshold != 0 && resp.StatusCode >= req.minHTTPErrorCodeThreshold {
 		err = errors.New(resp.Status)
 		var r map[string]string
-		json.NewDecoder(result).Decode(&r)
+		json.Unmarshal(result.Bytes(), &r)
 		if r["message"] != "" {
 			err = errors.New(r["message"])
 		}
