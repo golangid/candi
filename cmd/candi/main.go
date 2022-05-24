@@ -49,14 +49,14 @@ func main() {
 		monorepoGenerator(flagParam)
 
 	case flagParam.initService:
-		flagParam.scopeFlag = "1"
+		flagParam.scopeFlag = "2"
 		if flagParam.isMonorepo {
 			flagParam.parseMonorepoFlag()
 		}
 		projectGenerator(flagParam, InitService, parseInput(&flagParam))
 
 	case flagParam.addModule:
-		flagParam.scopeFlag = "2"
+		flagParam.scopeFlag = "3"
 		if flagParam.isMonorepo {
 			if err := flagParam.parseMonorepoFlag(); err != nil {
 				fmt.Print(err.Error())
@@ -66,7 +66,7 @@ func main() {
 		projectGenerator(flagParam, AddModule, parseInput(&flagParam))
 
 	case flagParam.addHandler:
-		flagParam.scopeFlag = "3"
+		flagParam.scopeFlag = "4"
 		if isWorkdirMonorepo() {
 			if err := flagParam.parseMonorepoFlag(); err != nil {
 				fmt.Print(err.Error())
@@ -79,10 +79,10 @@ func main() {
 	selectScope:
 		if flagParam.scopeFlag == "" {
 			fmt.Printf("\033[1mWhat do you want?\n" +
-				"1) Init service\n" +
-				"2) Add module(s) in service\n" +
-				"3) Add delivery handler(s) in module\n" +
-				"4) Init monorepo codebase\n" +
+				"1) Init monorepo codebase\n" +
+				"2) Init service\n" +
+				"3) Add module(s) in service\n" +
+				"4) Add delivery handler(s) in module\n" +
 				"5) Run multiple service in monorepo\033[0m\n>> ")
 			cmdInput, _ := reader.ReadString('\n')
 			cmdInput = strings.TrimRight(cmdInput, "\n")
@@ -103,7 +103,7 @@ func main() {
 
 func selectScope(flagParam flagParameter, scope string) {
 	switch scope {
-	case InitMonorepo: // 4
+	case InitMonorepo: // 1
 		logger.Printf("\033[1mPlease input monorepo project name (enter for default):\033[0m")
 		fmt.Printf(">> ")
 		if cmdInput, _ := reader.ReadString('\n'); strings.TrimRight(cmdInput, "\n") != "" {

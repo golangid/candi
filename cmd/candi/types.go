@@ -11,7 +11,7 @@ import (
 
 var (
 	scopeMap = map[string]string{
-		"1": InitService, "2": AddModule, "3": AddHandler, "4": InitMonorepo, "5": RunServiceMonorepo,
+		"1": InitMonorepo, "2": InitService, "3": AddModule, "4": AddHandler, "5": RunServiceMonorepo,
 	}
 	serviceHandlersMap = map[string]string{
 		"1": RestHandler, "2": GrpcHandler, "3": GraphqlHandler,
