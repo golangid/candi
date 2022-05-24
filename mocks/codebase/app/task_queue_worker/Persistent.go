@@ -95,24 +95,8 @@ func (_m *Persistent) FindAllJob(ctx context.Context, filter *taskqueueworker.Fi
 	return r0
 }
 
-// FindAllSummary provides a mock function with given fields: ctx, filter
-func (_m *Persistent) FindAllSummary(ctx context.Context, filter *taskqueueworker.Filter) []taskqueueworker.TaskSummary {
-	ret := _m.Called(ctx, filter)
-
-	var r0 []taskqueueworker.TaskSummary
-	if rf, ok := ret.Get(0).(func(context.Context, *taskqueueworker.Filter) []taskqueueworker.TaskSummary); ok {
-		r0 = rf(ctx, filter)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]taskqueueworker.TaskSummary)
-		}
-	}
-
-	return r0
-}
-
 // FindJobByID provides a mock function with given fields: ctx, id, excludeFields
-func (_m *Persistent) FindJobByID(ctx context.Context, id string, excludeFields ...string) (*taskqueueworker.Job, error) {
+func (_m *Persistent) FindJobByID(ctx context.Context, id string, excludeFields ...string) (taskqueueworker.Job, error) {
 	_va := make([]interface{}, len(excludeFields))
 	for _i := range excludeFields {
 		_va[_i] = excludeFields[_i]
@@ -122,13 +106,11 @@ func (_m *Persistent) FindJobByID(ctx context.Context, id string, excludeFields 
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
-	var r0 *taskqueueworker.Job
-	if rf, ok := ret.Get(0).(func(context.Context, string, ...string) *taskqueueworker.Job); ok {
+	var r0 taskqueueworker.Job
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...string) taskqueueworker.Job); ok {
 		r0 = rf(ctx, id, excludeFields...)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*taskqueueworker.Job)
-		}
+		r0 = ret.Get(0).(taskqueueworker.Job)
 	}
 
 	var r1 error
@@ -141,11 +123,6 @@ func (_m *Persistent) FindJobByID(ctx context.Context, id string, excludeFields 
 	return r0, r1
 }
 
-// IncrementSummary provides a mock function with given fields: ctx, taskName, incr
-func (_m *Persistent) IncrementSummary(ctx context.Context, taskName string, incr map[string]interface{}) {
-	_m.Called(ctx, taskName, incr)
-}
-
 // SaveJob provides a mock function with given fields: ctx, job, retryHistories
 func (_m *Persistent) SaveJob(ctx context.Context, job *taskqueueworker.Job, retryHistories ...taskqueueworker.RetryHistory) {
 	_va := make([]interface{}, len(retryHistories))
@@ -156,6 +133,27 @@ func (_m *Persistent) SaveJob(ctx context.Context, job *taskqueueworker.Job, ret
 	_ca = append(_ca, ctx, job)
 	_ca = append(_ca, _va...)
 	_m.Called(_ca...)
+}
+
+// SetSummary provides a mock function with given fields: _a0
+func (_m *Persistent) SetSummary(_a0 taskqueueworker.Summary) {
+	_m.Called(_a0)
+}
+
+// Summary provides a mock function with given fields:
+func (_m *Persistent) Summary() taskqueueworker.Summary {
+	ret := _m.Called()
+
+	var r0 taskqueueworker.Summary
+	if rf, ok := ret.Get(0).(func() taskqueueworker.Summary); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(taskqueueworker.Summary)
+		}
+	}
+
+	return r0
 }
 
 // UpdateJob provides a mock function with given fields: ctx, filter, updated, retryHistories
@@ -191,9 +189,4 @@ func (_m *Persistent) UpdateJob(ctx context.Context, filter *taskqueueworker.Fil
 	}
 
 	return r0, r1, r2
-}
-
-// UpdateSummary provides a mock function with given fields: ctx, taskName, updated
-func (_m *Persistent) UpdateSummary(ctx context.Context, taskName string, updated map[string]interface{}) {
-	_m.Called(ctx, taskName, updated)
 }

@@ -5,6 +5,8 @@ package mocks
 import (
 	context "context"
 
+	candiutils "github.com/golangid/candi/candiutils"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -41,4 +43,27 @@ func (_m *HTTPRequest) Do(_a0 context.Context, method string, url string, reqBod
 	}
 
 	return r0, r1, r2
+}
+
+// DoRequest provides a mock function with given fields: ctx, method, url, requestBody, headers
+func (_m *HTTPRequest) DoRequest(ctx context.Context, method string, url string, requestBody []byte, headers map[string]string) (*candiutils.HTTPRequestResult, error) {
+	ret := _m.Called(ctx, method, url, requestBody, headers)
+
+	var r0 *candiutils.HTTPRequestResult
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, []byte, map[string]string) *candiutils.HTTPRequestResult); ok {
+		r0 = rf(ctx, method, url, requestBody, headers)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*candiutils.HTTPRequestResult)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, []byte, map[string]string) error); ok {
+		r1 = rf(ctx, method, url, requestBody, headers)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
