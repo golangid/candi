@@ -38,7 +38,7 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 		opt(&server.opt)
 	}
 
-	if server.opt.engineOption != nil{
+	if server.opt.engineOption != nil {
 		server.opt.engineOption(server.serverEngine)
 	}
 

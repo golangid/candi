@@ -8,7 +8,7 @@ const schema = `schema {
 
 type Query {
 	tagline(): TaglineType!
-	get_job_detail(job_id: String!): JobResolver
+	get_job_detail(job_id: String!): JobResolver!
 	get_all_active_subscriber(): [ClientSubscriber!]!
 	get_all_active_subscriber(): [ClientSubscriber!]!
 }
@@ -46,13 +46,19 @@ type Subscription {
 
 type TaglineType {
 	version: String!
+	go_version: String!
 	banner: String!
 	tagline: String!
 	start_at: String!
 	build_number: String!
+	config: Config!
 	task_list_client_subscribers: [String!]!
 	job_list_client_subscribers: [String!]!
 	memory_statistics: MemstatsResolver!
+}
+
+type Config {
+	with_persistent: Boolean!
 }
 
 type MetaType {
@@ -85,6 +91,7 @@ type TaskResolver {
 	name: String!
 	module_name: String!
 	total_jobs: Int!
+	is_loading: Boolean!
 	detail: TaskDetailResolver!
 }
 

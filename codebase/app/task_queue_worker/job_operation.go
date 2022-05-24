@@ -23,6 +23,7 @@ type (
 		MaxRetry      int           `json:"max_retry"`
 		Args          []byte        `json:"args"`
 		RetryInterval time.Duration `json:"retry_interval"`
+		direct        bool
 	}
 )
 
@@ -42,7 +43,7 @@ func (a *AddJobRequest) Validate() error {
 }
 
 // AddJob public function for add new job in same runtime
-func AddJob(ctx context.Context, job *AddJobRequest) (jobID string, err error) {
+func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "TaskQueueWorker:AddJob")
 	defer func() {
 		if r := recover(); r != nil {
@@ -51,28 +52,33 @@ func AddJob(ctx context.Context, job *AddJobRequest) (jobID string, err error) {
 		trace.Finish(tracer.FinishWithError(err))
 	}()
 
-	trace.SetTag("task_name", job.TaskName)
+	trace.SetTag("task_name", req.TaskName)
 
-	if err = job.Validate(); err != nil {
+	if err = req.Validate(); err != nil {
 		return jobID, err
 	}
 
-	task, ok := registeredTask[job.TaskName]
+	if !req.direct && defaultOption.externalWorkerHost != "" {
+		return AddJobViaHTTPRequest(ctx, defaultOption.externalWorkerHost, req)
+	}
+
+	task, ok := registeredTask[req.TaskName]
 	if !ok {
-		return jobID, fmt.Errorf("task '%s' unregistered, task must one of [%s]", job.TaskName, strings.Join(tasks, ", "))
+		return jobID, fmt.Errorf("task '%s' unregistered, task must one of [%s]", req.TaskName, strings.Join(tasks, ", "))
 	}
 
 	var newJob Job
 	newJob.ID = uuid.New().String()
-	newJob.TaskName = job.TaskName
-	newJob.Arguments = string(job.Args)
-	newJob.MaxRetry = job.MaxRetry
+	newJob.TaskName = req.TaskName
+	newJob.Arguments = string(req.Args)
+	newJob.MaxRetry = req.MaxRetry
 	newJob.Interval = defaultInterval.String()
-	if job.RetryInterval > 0 {
-		newJob.Interval = job.RetryInterval.String()
+	if req.RetryInterval > 0 {
+		newJob.Interval = req.RetryInterval.String()
 	}
 	newJob.Status = string(statusQueueing)
 	newJob.CreatedAt = time.Now()
+	newJob.direct = req.direct
 
 	trace.Log("new_job_id", newJob.ID)
 
@@ -84,12 +90,12 @@ func AddJob(ctx context.Context, job *AddJobRequest) (jobID string, err error) {
 		}()
 
 		persistent.SaveJob(ctx, job)
-		queue.PushJob(ctx, job)
-		persistent.IncrementSummary(ctx, job.TaskName, map[string]interface{}{
+		persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]interface{}{
 			strings.ToLower(job.Status): 1,
 		})
 		broadcastAllToSubscribers(ctx)
 		registerJobToWorker(job, workerIndex)
+		queue.PushJob(ctx, job)
 	}(context.Background(), &newJob, task.workerIndex)
 
 	return newJob.ID, nil
@@ -130,7 +136,7 @@ func AddJobViaHTTPRequest(ctx context.Context, workerHost string, req *AddJobReq
 			add_job(param: $param)
 		}`,
 	}
-	respBody, _, err := httpReq.Do(ctx, http.MethodPost, workerHost+"/graphql", candihelper.ToBytes(reqBody), header)
+	httpResp, err := httpReq.DoRequest(ctx, http.MethodPost, workerHost+"/graphql", candihelper.ToBytes(reqBody), header)
 	if err != nil {
 		return jobID, err
 	}
@@ -143,7 +149,7 @@ func AddJobViaHTTPRequest(ctx context.Context, workerHost string, req *AddJobReq
 			AddJob string `json:"add_job"`
 		} `json:"data"`
 	}
-	json.Unmarshal(respBody, &respPayload)
+	json.Unmarshal(httpResp.Bytes(), &respPayload)
 	if len(respPayload.Errors) > 0 {
 		return jobID, errors.New(respPayload.Errors[0].Message)
 	}
@@ -151,7 +157,7 @@ func AddJobViaHTTPRequest(ctx context.Context, workerHost string, req *AddJobReq
 }
 
 // GetDetailJob api for get detail job by id
-func GetDetailJob(ctx context.Context, jobID string) (*Job, error) {
+func GetDetailJob(ctx context.Context, jobID string) (Job, error) {
 	return persistent.FindJobByID(ctx, jobID)
 }
 
@@ -171,15 +177,15 @@ func RetryJob(ctx context.Context, jobID string) error {
 	matched, affected, _ := persistent.UpdateJob(ctx, &Filter{JobID: &job.ID}, map[string]interface{}{
 		"status": job.Status, "interval": job.Interval, "retries": job.Retries,
 	})
-	persistent.IncrementSummary(ctx, job.TaskName, map[string]interface{}{
-		statusBefore: -1 * matched,
+	persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]interface{}{
+		statusBefore: -matched,
 		job.Status:   affected,
 	})
 
 	task := registeredTask[job.TaskName]
-	queue.PushJob(ctx, job)
+	queue.PushJob(ctx, &job)
 	broadcastAllToSubscribers(ctx)
-	registerJobToWorker(job, task.workerIndex)
+	registerJobToWorker(&job, task.workerIndex)
 
 	go func() { refreshWorkerNotif <- struct{}{} }()
 	return nil
@@ -210,9 +216,9 @@ func StopJob(ctx context.Context, jobID string) error {
 	if err != nil {
 		return err
 	}
-	persistent.IncrementSummary(ctx, job.TaskName, map[string]interface{}{
+	persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]interface{}{
 		job.Status:   countAffected,
-		statusBefore: -1 * matchedCount,
+		statusBefore: -matchedCount,
 	})
 	broadcastAllToSubscribers(ctx)
 
@@ -256,7 +262,7 @@ func RecalculateSummary(ctx context.Context) {
 		if !ok {
 			taskSummary.ID = task
 		}
-		persistent.UpdateSummary(ctx, taskSummary.ID, map[string]interface{}{
+		persistent.Summary().UpdateSummary(ctx, taskSummary.ID, map[string]interface{}{
 			"success":  taskSummary.Success,
 			"queueing": taskSummary.Queueing,
 			"retrying": taskSummary.Retrying,

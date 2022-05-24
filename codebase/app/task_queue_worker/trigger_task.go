@@ -35,7 +35,7 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 
 		defer func() {
 			if r := recover(); r != nil {
-				logger.LogRed("task_queue_worker > panic: " + t.ctx.Err().Error())
+				logger.LogRed(fmt.Sprintf("task_queue_worker > panic: %v", r))
 			}
 			t.wg.Done()
 			<-semaphore[workerIndex-1]
@@ -88,9 +88,9 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 	matchedCount, affectedCount, err := persistent.UpdateJob(
 		t.ctx, &Filter{JobID: &job.ID}, job.toMap(),
 	)
-	persistent.IncrementSummary(ctx, job.TaskName, map[string]interface{}{
+	persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]interface{}{
 		string(job.Status): affectedCount,
-		statusBefore:       -1 * matchedCount,
+		statusBefore:       -matchedCount,
 	})
 	broadcastAllToSubscribers(t.ctx)
 	statusBefore = strings.ToLower(job.Status)
@@ -132,11 +132,11 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			retryHistory,
 		)
 		if affectedCount == 0 && matchedCount == 0 {
-			persistent.SaveJob(t.ctx, job, retryHistory)
+			persistent.SaveJob(t.ctx, &job, retryHistory)
 		}
-		persistent.IncrementSummary(ctx, job.TaskName, map[string]interface{}{
+		persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]interface{}{
 			job.Status:   affectedCount,
-			statusBefore: -1 * matchedCount,
+			statusBefore: -matchedCount,
 		})
 		broadcastAllToSubscribers(t.ctx)
 	}()
@@ -204,8 +204,8 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 					job.Arguments = string(e.NewArgsPayload)
 				}
 
-				registerJobToWorker(job, selectedTask.workerIndex)
-				queue.PushJob(ctx, job)
+				queue.PushJob(ctx, &job)
+				registerJobToWorker(&job, selectedTask.workerIndex)
 				return
 			}
 
@@ -232,7 +232,7 @@ func tryRegisterNextJob(ctx context.Context, taskName string) {
 	if nextJobID != "" {
 
 		if nextJob, err := persistent.FindJobByID(ctx, nextJobID); err == nil {
-			registerJobToWorker(nextJob, registeredTask[taskName].workerIndex)
+			registerJobToWorker(&nextJob, registeredTask[taskName].workerIndex)
 		}
 
 	} else {

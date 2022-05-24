@@ -23,6 +23,8 @@ const (
 type mongoPersistent struct {
 	db  *mongo.Database
 	ctx context.Context
+
+	summary Summary
 }
 
 // NewMongoPersistent create mongodb persistent
@@ -135,9 +137,20 @@ func NewMongoPersistent(db *mongo.Database) Persistent {
 		}
 	}
 
-	return &mongoPersistent{
+	mp := &mongoPersistent{
 		db: db, ctx: ctx,
 	}
+
+	// default summary from mongo
+	mp.summary = mp
+	return mp
+}
+
+func (s *mongoPersistent) SetSummary(summary Summary) {
+	s.summary = summary
+}
+func (s *mongoPersistent) Summary() Summary {
+	return s.summary
 }
 
 func (s *mongoPersistent) FindAllJob(ctx context.Context, filter *Filter) (jobs []Job) {
@@ -250,99 +263,6 @@ func (s *mongoPersistent) AggregateAllTaskJob(ctx context.Context, filter *Filte
 	csr.All(ctx, &results)
 	return
 }
-
-func (s *mongoPersistent) FindAllSummary(ctx context.Context, filter *Filter) (result []TaskSummary) {
-
-	query := bson.M{}
-
-	if filter.TaskName != "" {
-		query["task_name"] = filter.TaskName
-	} else if len(filter.TaskNameList) > 0 {
-		query["task_name"] = bson.M{
-			"$in": filter.TaskNameList,
-		}
-	}
-
-	cur, err := s.db.Collection(mongoJobSummaryCollections).Find(s.ctx, query)
-	if err != nil {
-		logger.LogE(err.Error())
-		return
-	}
-	defer cur.Close(ctx)
-
-	if err := cur.All(ctx, &result); err != nil {
-		logger.LogE(err.Error())
-	}
-
-	if len(filter.Statuses) > 0 {
-		for i, res := range result {
-			mapRes := res.ToMapResult()
-			newCount := map[string]int{}
-			for _, status := range filter.Statuses {
-				newCount[strings.ToUpper(status)] = mapRes[strings.ToUpper(status)]
-			}
-			res.SetValue(newCount)
-			result[i] = res
-		}
-	}
-
-	return
-}
-
-func (s *mongoPersistent) IncrementSummary(ctx context.Context, taskName string, incr map[string]interface{}) {
-
-	opt := options.UpdateOptions{
-		Upsert: candihelper.ToBoolPtr(true),
-	}
-	for k, v := range incr {
-		delete(incr, k)
-		if k == "" {
-			continue
-		}
-		incr[strings.ToLower(k)] = v
-	}
-	_, err := s.db.Collection(mongoJobSummaryCollections).UpdateOne(s.ctx,
-		bson.M{
-			"task_name": taskName,
-		},
-		bson.M{
-			"$inc": incr,
-		},
-		&opt,
-	)
-
-	if err != nil {
-		logger.LogE(err.Error())
-	}
-}
-
-func (s *mongoPersistent) UpdateSummary(ctx context.Context, taskName string, updated map[string]interface{}) {
-
-	opt := options.UpdateOptions{
-		Upsert: candihelper.ToBoolPtr(true),
-	}
-	for k, v := range updated {
-		delete(updated, k)
-		if k == "" {
-			continue
-		}
-		updated[strings.ToLower(k)] = v
-	}
-	_, err := s.db.Collection(mongoJobSummaryCollections).UpdateOne(s.ctx,
-		bson.M{
-			"task_name": taskName,
-		},
-		bson.M{
-			"$set": updated,
-		},
-		&opt,
-	)
-
-	if err != nil {
-		logger.LogE(err.Error())
-	}
-}
-
 func (s *mongoPersistent) SaveJob(ctx context.Context, job *Job, retryHistories ...RetryHistory) {
 	tracer.Log(ctx, "persistent.mongo:save_job", job.ID)
 	var err error
@@ -409,7 +329,7 @@ func (s *mongoPersistent) UpdateJob(ctx context.Context, filter *Filter, updated
 	return res.MatchedCount, res.ModifiedCount, nil
 }
 
-func (s *mongoPersistent) FindJobByID(ctx context.Context, id string, excludeFields ...string) (job *Job, err error) {
+func (s *mongoPersistent) FindJobByID(ctx context.Context, id string, excludeFields ...string) (job Job, err error) {
 	tracer.Log(ctx, "persistent.mongo:find_job", id)
 
 	var opts []*options.FindOneOptions
@@ -424,8 +344,7 @@ func (s *mongoPersistent) FindJobByID(ctx context.Context, id string, excludeFie
 		})
 	}
 
-	job = &Job{}
-	err = s.db.Collection(mongoJobCollections).FindOne(ctx, bson.M{"_id": id}, opts...).Decode(job)
+	err = s.db.Collection(mongoJobCollections).FindOne(ctx, bson.M{"_id": id}, opts...).Decode(&job)
 
 	if len(job.RetryHistories) == 0 {
 		job.RetryHistories = make([]RetryHistory, 0)
@@ -507,4 +426,103 @@ func (s *mongoPersistent) toBsonFilter(f *Filter) bson.M {
 	}
 
 	return bson.M{}
+}
+
+// summary
+
+func (s *mongoPersistent) FindAllSummary(ctx context.Context, filter *Filter) (result []TaskSummary) {
+
+	query := bson.M{}
+
+	if filter.TaskName != "" {
+		query["task_name"] = filter.TaskName
+	} else if len(filter.TaskNameList) > 0 {
+		query["task_name"] = bson.M{
+			"$in": filter.TaskNameList,
+		}
+	}
+
+	cur, err := s.db.Collection(mongoJobSummaryCollections).Find(s.ctx, query)
+	if err != nil {
+		logger.LogE(err.Error())
+		return
+	}
+	defer cur.Close(ctx)
+
+	if err := cur.All(ctx, &result); err != nil {
+		logger.LogE(err.Error())
+	}
+
+	if len(filter.Statuses) > 0 {
+		for i, res := range result {
+			mapRes := res.ToMapResult()
+			newCount := map[string]int{}
+			for _, status := range filter.Statuses {
+				newCount[strings.ToUpper(status)] = mapRes[strings.ToUpper(status)]
+			}
+			res.SetValue(newCount)
+			result[i] = res
+		}
+	}
+
+	return
+}
+
+func (s *mongoPersistent) FindDetailSummary(ctx context.Context, taskName string) (result TaskSummary) {
+	s.db.Collection(mongoJobSummaryCollections).FindOne(ctx, bson.M{"task_name": taskName}).Decode(&result)
+	return
+}
+
+func (s *mongoPersistent) IncrementSummary(ctx context.Context, taskName string, incr map[string]interface{}) {
+
+	opt := options.UpdateOptions{
+		Upsert: candihelper.ToBoolPtr(true),
+	}
+	for k, v := range incr {
+		delete(incr, k)
+		if k == "" {
+			continue
+		}
+		incr[strings.ToLower(k)] = v
+	}
+	_, err := s.db.Collection(mongoJobSummaryCollections).UpdateOne(s.ctx,
+		bson.M{
+			"task_name": taskName,
+		},
+		bson.M{
+			"$inc": incr,
+		},
+		&opt,
+	)
+
+	if err != nil {
+		logger.LogE(err.Error())
+	}
+}
+
+func (s *mongoPersistent) UpdateSummary(ctx context.Context, taskName string, updated map[string]interface{}) {
+
+	opt := options.UpdateOptions{
+		Upsert: candihelper.ToBoolPtr(true),
+	}
+	for k, v := range updated {
+		delete(updated, k)
+		if k == "" {
+			continue
+		}
+		updated[strings.ToLower(k)] = v
+	}
+	_, err := s.db.Collection(mongoJobSummaryCollections).UpdateOne(s.ctx,
+		bson.M{
+			"task_name": taskName,
+		},
+		bson.M{
+			"$set": updated,
+		},
+		&opt,
+	)
+
+	if err != nil {
+		logger.LogE(err.Error())
+	}
 }

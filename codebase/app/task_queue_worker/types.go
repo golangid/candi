@@ -24,8 +24,10 @@ type (
 		Banner                    string
 		Tagline                   string
 		Version                   string
+		GoVersion                 string
 		StartAt                   string
 		BuildNumber               string
+		Config                    ConfigResolver
 		TaskListClientSubscribers []string
 		JobListClientSubscribers  []string
 		MemoryStatistics          MemstatsResolver
@@ -51,6 +53,7 @@ type (
 		Name       string
 		ModuleName string
 		TotalJobs  int
+		IsLoading  bool
 		Detail     SummaryDetail
 	}
 	// TaskListResolver resolver
@@ -74,6 +77,11 @@ type (
 	JobListResolver struct {
 		Meta MetaJobList
 		Data []Job
+	}
+
+	// ConfigResolver resolver
+	ConfigResolver struct {
+		WithPersistent bool
 	}
 
 	// SummaryDetail type
@@ -165,29 +173,27 @@ var (
 	mutex                                                                                  sync.Mutex
 	tasks                                                                                  []string
 
-	clientTaskSubscribers        map[string]clientTaskDashboardSubscriber
+	clientTaskSubscribers        map[string]*clientTaskDashboardSubscriber
 	clientTaskJobListSubscribers map[string]*clientTaskJobListSubscriber
-	clientJobDetailSubscribers   map[string]clientJobDetailSubscriber
+	clientJobDetailSubscribers   map[string]*clientJobDetailSubscriber
 
 	errClientLimitExceeded = errors.New("client limit exceeded, please try again later")
 
 	defaultOption option
 )
 
-func makeAllGlobalVars(q QueueStorage, perst Persistent, opts ...OptionFunc) {
-
-	queue = q
-	persistent = perst
+func makeAllGlobalVars(opts ...OptionFunc) {
 
 	// set default value
 	defaultOption.tracingDashboard = "http://127.0.0.1:16686"
 	defaultOption.maxClientSubscriber = 5
 	defaultOption.maxConcurrentAddJob = 100
-	defaultOption.maxConcurrentBroadcast = 100
 	defaultOption.autoRemoveClientInterval = 30 * time.Minute
 	defaultOption.dashboardPort = 8080
 	defaultOption.debugMode = true
 	defaultOption.locker = &candiutils.NoopLocker{}
+	defaultOption.persistent = NewNoopPersistent()
+	defaultOption.queue = NewInMemQueue()
 	defaultOption.dashboardBanner = `
     _________    _   ______  ____
    / ____/   |  / | / / __ \/  _/
@@ -200,11 +206,14 @@ func makeAllGlobalVars(q QueueStorage, perst Persistent, opts ...OptionFunc) {
 		opt(&defaultOption)
 	}
 
+	queue = defaultOption.queue
+	persistent = defaultOption.persistent
+
 	refreshWorkerNotif, shutdown, closeAllSubscribers = make(chan struct{}), make(chan struct{}, 1), make(chan struct{})
-	semaphoreAddJob, semaphoreBroadcast = make(chan struct{}, defaultOption.maxConcurrentAddJob), make(chan struct{}, defaultOption.maxConcurrentBroadcast)
-	clientTaskSubscribers = make(map[string]clientTaskDashboardSubscriber, defaultOption.maxClientSubscriber)
+	semaphoreAddJob = make(chan struct{}, defaultOption.maxConcurrentAddJob)
+	clientTaskSubscribers = make(map[string]*clientTaskDashboardSubscriber, defaultOption.maxClientSubscriber)
 	clientTaskJobListSubscribers = make(map[string]*clientTaskJobListSubscriber, defaultOption.maxClientSubscriber)
-	clientJobDetailSubscribers = make(map[string]clientJobDetailSubscriber, defaultOption.maxClientSubscriber)
+	clientJobDetailSubscribers = make(map[string]*clientJobDetailSubscriber, defaultOption.maxClientSubscriber)
 
 	registeredTask = make(map[string]struct {
 		handler     types.WorkerHandler

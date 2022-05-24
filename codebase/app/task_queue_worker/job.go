@@ -1,6 +1,7 @@
 package taskqueueworker
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -26,6 +27,7 @@ type (
 		TraceID        string         `bson:"trace_id" json:"trace_id"`
 		RetryHistories []RetryHistory `bson:"retry_histories" json:"retry_histories"`
 		NextRetryAt    string         `bson:"-" json:"-"`
+		direct         bool           `bson:"-" json:"-"`
 	}
 
 	// RetryHistory model
@@ -77,10 +79,19 @@ func (job *Job) toMap() map[string]interface{} {
 }
 
 func registerJobToWorker(job *Job, workerIndex int) {
+	// skip reinit ticker chan
+	nextJob := queue.NextJob(context.Background(), job.TaskName)
+	// log.Println("skip", job.TaskName, len(semaphoreAddJob), nextJob, len(semaphoreAddJob) > 0 && job.direct && nextJob != "")
+	if len(semaphoreAddJob) > 1 && job.direct && nextJob != "" {
+		// fmt.Println(">>>> return")
+		return
+	}
+
 	interval, err := time.ParseDuration(job.Interval)
 	if err != nil || interval <= 0 {
 		return
 	}
+
 	taskIndex := runningWorkerIndexTask[workerIndex]
 	if taskIndex.activeInterval == nil {
 		taskIndex.activeInterval = time.NewTicker(interval)

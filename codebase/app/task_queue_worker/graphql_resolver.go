@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -66,13 +67,16 @@ func (r *rootResolver) Tagline(ctx context.Context) (res TaglineResolver) {
 	res.Banner = defaultOption.dashboardBanner
 	res.Tagline = "Task Queue Worker Dashboard"
 	res.Version = candi.Version
+	res.GoVersion = runtime.Version()
 	res.StartAt = env.BaseEnv().StartAt
 	res.BuildNumber = env.BaseEnv().BuildNumber
 	res.MemoryStatistics = getMemstats()
+	_, res.Config.WithPersistent = persistent.(*noopPersistent)
+	res.Config.WithPersistent = !res.Config.WithPersistent
 	return
 }
 
-func (r *rootResolver) GetJobDetail(ctx context.Context, input struct{ JobID string }) (res *Job, err error) {
+func (r *rootResolver) GetJobDetail(ctx context.Context, input struct{ JobID string }) (res Job, err error) {
 
 	res, err = persistent.FindJobByID(ctx, input.JobID)
 	if res.TraceID != "" && defaultOption.tracingDashboard != "" {
@@ -101,7 +105,7 @@ func (r *rootResolver) DeleteJob(ctx context.Context, input struct{ JobID string
 	if err != nil {
 		return "", err
 	}
-	persistent.IncrementSummary(ctx, job.TaskName, map[string]interface{}{
+	persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]interface{}{
 		job.Status: -1,
 	})
 	broadcastAllToSubscribers(r.worker.ctx)
@@ -114,6 +118,7 @@ func (r *rootResolver) AddJob(ctx context.Context, input struct{ Param AddJobInp
 		TaskName: input.Param.TaskName,
 		MaxRetry: int(input.Param.MaxRetry),
 		Args:     []byte(input.Param.Args),
+		direct:   true,
 	}
 	if input.Param.RetryInterval != nil {
 		interval, err := time.ParseDuration(*input.Param.RetryInterval)
@@ -147,42 +152,36 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 		return "", fmt.Errorf("task '%s' unregistered, task must one of [%s]", input.TaskName, strings.Join(tasks, ", "))
 	}
 
-	for _, subscriber := range clientTaskJobListSubscribers {
-		subscriber.SkipBroadcast = true
-		subscriber.writeDataToChannel(JobListResolver{
-			Meta: MetaJobList{IsLoading: true},
-		})
-	}
+	go func(ctx context.Context) {
 
-	stopAllJobInTask(input.TaskName)
-	queue.Clear(ctx, input.TaskName)
+		broadcastWhenChangeAllJob(ctx, input.TaskName, true)
 
-	incrQuery := map[string]int{}
-	affectedStatus := []string{string(statusQueueing), string(statusRetrying)}
-	for _, status := range affectedStatus {
-		countMatchedFilter, countAffected, err := persistent.UpdateJob(ctx,
-			&Filter{
-				TaskName: input.TaskName, Status: &status,
-			},
-			map[string]interface{}{
-				"status": statusStopped,
-			},
-		)
-		if err != nil {
-			return "", err
+		stopAllJobInTask(input.TaskName)
+		queue.Clear(ctx, input.TaskName)
+
+		incrQuery := map[string]int{}
+		affectedStatus := []string{string(statusQueueing), string(statusRetrying)}
+		for _, status := range affectedStatus {
+			countMatchedFilter, countAffected, err := persistent.UpdateJob(ctx,
+				&Filter{
+					TaskName: input.TaskName, Status: &status,
+				},
+				map[string]interface{}{
+					"status": statusStopped,
+				},
+			)
+			if err != nil {
+				continue
+			}
+			incrQuery[strings.ToLower(status)] -= int(countMatchedFilter)
+			incrQuery[strings.ToLower(string(statusStopped))] += int(countAffected)
 		}
-		incrQuery[strings.ToLower(status)] -= int(countMatchedFilter)
-		incrQuery[strings.ToLower(string(statusStopped))] += int(countAffected)
-	}
 
-	for _, subscriber := range clientTaskJobListSubscribers {
-		subscriber.SkipBroadcast = false
-		subscriber.writeDataToChannel(JobListResolver{
-			Meta: MetaJobList{IsLoading: false},
-		})
-	}
-	persistent.IncrementSummary(ctx, input.TaskName, convertIncrementMap(incrQuery))
-	broadcastAllToSubscribers(r.worker.ctx)
+		broadcastWhenChangeAllJob(ctx, input.TaskName, false)
+		persistent.Summary().IncrementSummary(ctx, input.TaskName, convertIncrementMap(incrQuery))
+		broadcastAllToSubscribers(r.worker.ctx)
+
+	}(r.worker.ctx)
 
 	return "Success stop all job in task " + input.TaskName, nil
 }
@@ -193,12 +192,7 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 
 	go func(ctx context.Context) {
 
-		for _, subscriber := range clientTaskJobListSubscribers {
-			subscriber.SkipBroadcast = true
-			subscriber.writeDataToChannel(JobListResolver{
-				Meta: MetaJobList{IsLoading: true},
-			})
-		}
+		broadcastWhenChangeAllJob(ctx, input.TaskName, true)
 
 		filter := &Filter{
 			Page: 1, Limit: 10, Sort: "created_at",
@@ -232,17 +226,12 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 			incr[strings.ToLower(string(statusQueueing))] += int(countAffected)
 		}
 
-		for _, subscriber := range clientTaskJobListSubscribers {
-			subscriber.SkipBroadcast = false
-			subscriber.writeDataToChannel(JobListResolver{
-				Meta: MetaJobList{IsLoading: false},
-			})
-		}
-		persistent.IncrementSummary(ctx, input.TaskName, convertIncrementMap(incr))
+		broadcastWhenChangeAllJob(ctx, input.TaskName, false)
+		persistent.Summary().IncrementSummary(ctx, input.TaskName, convertIncrementMap(incr))
 		broadcastAllToSubscribers(r.worker.ctx)
 		refreshWorkerNotif <- struct{}{}
 
-	}(context.Background())
+	}(r.worker.ctx)
 
 	return "Success retry all failure job in task " + input.TaskName, nil
 }
@@ -251,32 +240,26 @@ func (r *rootResolver) CleanJob(ctx context.Context, input struct {
 	TaskName string
 }) (string, error) {
 
-	for _, subscriber := range clientTaskJobListSubscribers {
-		subscriber.SkipBroadcast = true
-		subscriber.writeDataToChannel(JobListResolver{
-			Meta: MetaJobList{IsLoading: true},
-		})
-	}
+	go func(ctx context.Context) {
 
-	incrQuery := map[string]int{}
-	affectedStatus := []string{string(statusSuccess), string(statusFailure), string(statusStopped)}
-	for _, status := range affectedStatus {
-		countAffected := persistent.CleanJob(ctx,
-			&Filter{
-				TaskName: input.TaskName, Status: &status,
-			},
-		)
-		incrQuery[strings.ToLower(status)] -= int(countAffected)
-	}
+		broadcastWhenChangeAllJob(ctx, input.TaskName, true)
 
-	for _, subscriber := range clientTaskJobListSubscribers {
-		subscriber.SkipBroadcast = false
-		subscriber.writeDataToChannel(JobListResolver{
-			Meta: MetaJobList{IsLoading: false},
-		})
-	}
-	persistent.IncrementSummary(ctx, input.TaskName, convertIncrementMap(incrQuery))
-	broadcastAllToSubscribers(r.worker.ctx)
+		incrQuery := map[string]int{}
+		affectedStatus := []string{string(statusSuccess), string(statusFailure), string(statusStopped)}
+		for _, status := range affectedStatus {
+			countAffected := persistent.CleanJob(ctx,
+				&Filter{
+					TaskName: input.TaskName, Status: &status,
+				},
+			)
+			incrQuery[strings.ToLower(status)] -= int(countAffected)
+		}
+
+		broadcastWhenChangeAllJob(ctx, input.TaskName, false)
+		persistent.Summary().IncrementSummary(ctx, input.TaskName, convertIncrementMap(incrQuery))
+		broadcastAllToSubscribers(r.worker.ctx)
+
+	}(r.worker.ctx)
 
 	return "Success clean all job in task " + input.TaskName, nil
 }

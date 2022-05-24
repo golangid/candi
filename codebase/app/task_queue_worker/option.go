@@ -8,6 +8,8 @@ import (
 
 type (
 	option struct {
+		queue                    QueueStorage
+		persistent               Persistent
 		tracingDashboard         string
 		maxClientSubscriber      int
 		autoRemoveClientInterval time.Duration
@@ -16,12 +18,28 @@ type (
 		debugMode                bool
 		locker                   candiutils.Locker
 		maxConcurrentAddJob      int
-		maxConcurrentBroadcast   int
+
+		// externalWorkerHost setting worker host for add job, if not empty default using http request when add job
+		externalWorkerHost string
 	}
 
 	// OptionFunc type
 	OptionFunc func(*option)
 )
+
+// SetQueue option func
+func SetQueue(q QueueStorage) OptionFunc {
+	return func(o *option) {
+		o.queue = q
+	}
+}
+
+// SetPersistent option func
+func SetPersistent(p Persistent) OptionFunc {
+	return func(o *option) {
+		o.persistent = p
+	}
+}
 
 // SetTracingDashboard option func
 func SetTracingDashboard(host string) OptionFunc {
@@ -79,9 +97,10 @@ func SetMaxConcurrentAddJob(max int) OptionFunc {
 	}
 }
 
-// SetMaxConcurrentBroadcast option func
-func SetMaxConcurrentBroadcast(max int) OptionFunc {
+// SetExternalWorkerHost option func, setting worker host for add job, if not empty default using http request when add job
+func SetExternalWorkerHost(host string) OptionFunc {
+	defaultOption.externalWorkerHost = host
 	return func(o *option) {
-		o.maxConcurrentBroadcast = max
+		o.externalWorkerHost = host
 	}
 }

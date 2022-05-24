@@ -22,8 +22,8 @@ type taskQueueWorker struct {
 }
 
 // NewTaskQueueWorker create new task queue worker
-func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, perst Persistent, opts ...OptionFunc) factory.AppServerFactory {
-	makeAllGlobalVars(q, perst, opts...)
+func NewTaskQueueWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
+	makeAllGlobalVars(opts...)
 
 	workerInstance := &taskQueueWorker{
 		service: service,
@@ -68,6 +68,9 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, perst Pe
 		go func() {
 			for _, taskName := range tasks {
 				queue.Clear(workerInstance.ctx, taskName)
+				persistent.Summary().UpdateSummary(workerInstance.ctx, taskName, map[string]interface{}{
+					"is_loading": false,
+				})
 			}
 			// get current pending jobs
 			filter := &Filter{
@@ -84,8 +87,9 @@ func NewTaskQueueWorker(service factory.ServiceFactory, q QueueStorage, perst Pe
 					}, map[string]interface{}{
 						"status": job.Status,
 					})
-					persistent.IncrementSummary(workerInstance.ctx, job.TaskName, map[string]interface{}{
-						statusBefore: -1 * matched, job.Status: affected,
+
+					persistent.Summary().IncrementSummary(workerInstance.ctx, job.TaskName, map[string]interface{}{
+						statusBefore: -matched, job.Status: affected,
 					})
 				}
 				queue.PushJob(workerInstance.ctx, job)

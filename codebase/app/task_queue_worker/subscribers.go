@@ -18,7 +18,7 @@ func registerNewTaskListSubscriber(clientID string, filter *Filter, clientChanne
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	clientTaskSubscribers[clientID] = clientTaskDashboardSubscriber{
+	clientTaskSubscribers[clientID] = &clientTaskDashboardSubscriber{
 		c: clientChannel, filter: filter,
 	}
 	return nil
@@ -60,7 +60,7 @@ func registerNewJobDetailSubscriber(clientID, jobID string, clientChannel chan J
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	clientJobDetailSubscribers[clientID] = clientJobDetailSubscriber{
+	clientJobDetailSubscribers[clientID] = &clientJobDetailSubscriber{
 		c: clientChannel, jobID: jobID,
 	}
 	return nil
@@ -90,8 +90,6 @@ func broadcastTaskList(ctx context.Context) {
 		return
 	}
 
-	taskSummary := persistent.FindAllSummary(ctx, &Filter{})
-
 	var taskRes TaskListResolver
 	taskRes.Data = make([]TaskResolver, len(tasks))
 	mapper := make(map[string]int, len(tasks))
@@ -101,18 +99,15 @@ func broadcastTaskList(ctx context.Context) {
 		mapper[task] = i
 	}
 
-	for _, summary := range taskSummary {
+	for _, summary := range persistent.Summary().FindAllSummary(ctx, &Filter{}) {
 		if idx, ok := mapper[summary.TaskName]; ok {
 			res := TaskResolver{
 				Name:       summary.TaskName,
 				ModuleName: registeredTask[summary.TaskName].moduleName,
 				TotalJobs:  summary.CountTotalJob(),
 			}
-			res.Detail.Success = summary.Success
-			res.Detail.Queueing = summary.Queueing
-			res.Detail.Retrying = summary.Retrying
-			res.Detail.Failure = summary.Failure
-			res.Detail.Stopped = summary.Stopped
+			res.Detail = summary.ToSummaryDetail()
+			res.IsLoading = summary.IsLoading
 			taskRes.Data[idx] = res
 		}
 	}
@@ -143,33 +138,44 @@ func broadcastJobListToClient(ctx context.Context, clientID string) {
 		if subscriber.SkipBroadcast {
 			return
 		}
-		subscriber.filter.Sort = "-created_at"
-		jobs := persistent.FindAllJob(ctx, subscriber.filter)
 
-		var meta MetaJobList
-		subscriber.filter.TaskNameList = []string{subscriber.filter.TaskName}
+		summary := persistent.Summary().FindDetailSummary(ctx, subscriber.filter.TaskName)
+		if summary.IsLoading {
+			subscriber.SkipBroadcast = summary.IsLoading
+			subscriber.writeDataToChannel(JobListResolver{
+				Meta: MetaJobList{IsLoading: summary.IsLoading},
+			})
 
-		var taskDetailSummary []TaskSummary
-
-		if candihelper.PtrToString(subscriber.filter.Search) != "" ||
-			candihelper.PtrToString(subscriber.filter.JobID) != "" ||
-			(!subscriber.filter.StartDate.IsZero() && !subscriber.filter.EndDate.IsZero()) {
-			taskDetailSummary = persistent.AggregateAllTaskJob(ctx, subscriber.filter)
 		} else {
-			taskDetailSummary = persistent.FindAllSummary(ctx, subscriber.filter)
-		}
 
-		if len(taskDetailSummary) == 1 {
-			meta.Detail = taskDetailSummary[0].ToSummaryDetail()
-			meta.TotalRecords = taskDetailSummary[0].CountTotalJob()
-		}
-		meta.Page, meta.Limit = subscriber.filter.Page, subscriber.filter.Limit
-		meta.TotalPages = int(math.Ceil(float64(meta.TotalRecords) / float64(meta.Limit)))
+			subscriber.filter.Sort = "-created_at"
+			jobs := persistent.FindAllJob(ctx, subscriber.filter)
 
-		subscriber.writeDataToChannel(JobListResolver{
-			Meta: meta,
-			Data: jobs,
-		})
+			var meta MetaJobList
+			subscriber.filter.TaskNameList = []string{subscriber.filter.TaskName}
+
+			var taskDetailSummary []TaskSummary
+
+			if candihelper.PtrToString(subscriber.filter.Search) != "" ||
+				candihelper.PtrToString(subscriber.filter.JobID) != "" ||
+				(!subscriber.filter.StartDate.IsZero() && !subscriber.filter.EndDate.IsZero()) {
+				taskDetailSummary = persistent.AggregateAllTaskJob(ctx, subscriber.filter)
+			} else {
+				taskDetailSummary = persistent.Summary().FindAllSummary(ctx, subscriber.filter)
+			}
+
+			if len(taskDetailSummary) == 1 {
+				meta.Detail = taskDetailSummary[0].ToSummaryDetail()
+				meta.TotalRecords = taskDetailSummary[0].CountTotalJob()
+			}
+			meta.Page, meta.Limit = subscriber.filter.Page, subscriber.filter.Limit
+			meta.TotalPages = int(math.Ceil(float64(meta.TotalRecords) / float64(meta.Limit)))
+
+			subscriber.writeDataToChannel(JobListResolver{
+				Meta: meta,
+				Data: jobs,
+			})
+		}
 	}
 }
 
@@ -180,12 +186,57 @@ func broadcastJobDetail(ctx context.Context) {
 
 	for clientID, subscriber := range clientJobDetailSubscribers {
 		detail, err := persistent.FindJobByID(ctx, subscriber.jobID)
-		if err != nil || detail == nil {
+		if err != nil {
 			removeJobDetailSubscriber(clientID)
 			continue
 		}
 		detail.updateValue()
-		subscriber.writeDataToChannel(*detail)
+		subscriber.writeDataToChannel(detail)
+	}
+}
+
+func broadcastWhenChangeAllJob(ctx context.Context, taskName string, isLoading bool) {
+
+	persistent.Summary().UpdateSummary(ctx, taskName, map[string]interface{}{
+		"is_loading": isLoading,
+	})
+
+	var taskRes TaskListResolver
+	taskRes.Data = make([]TaskResolver, len(tasks))
+	mapper := make(map[string]int, len(tasks))
+	for i, task := range tasks {
+		taskRes.Data[i].Name = task
+		taskRes.Data[i].ModuleName = registeredTask[task].moduleName
+		mapper[task] = i
+	}
+
+	for _, summary := range persistent.Summary().FindAllSummary(ctx, &Filter{}) {
+		if idx, ok := mapper[summary.TaskName]; ok {
+			res := TaskResolver{
+				Name: summary.TaskName, ModuleName: registeredTask[summary.TaskName].moduleName,
+				TotalJobs: summary.CountTotalJob(),
+			}
+			res.Detail = summary.ToSummaryDetail()
+			res.IsLoading = summary.IsLoading
+			taskRes.Data[idx] = res
+		}
+	}
+
+	sort.Slice(taskRes.Data, func(i, j int) bool {
+		return taskRes.Data[i].ModuleName < taskRes.Data[i].ModuleName
+	})
+
+	taskRes.Meta.TotalClientSubscriber = len(clientTaskSubscribers) + len(clientTaskJobListSubscribers) + len(clientJobDetailSubscribers)
+
+	for _, subscriber := range clientTaskSubscribers {
+		subscriber.writeDataToChannel(taskRes)
+	}
+
+	for _, subscriber := range clientTaskJobListSubscribers {
+		subscriber.SkipBroadcast = isLoading
+		subscriber.writeDataToChannel(JobListResolver{
+			Meta: MetaJobList{IsLoading: isLoading},
+		})
 	}
 }
 
