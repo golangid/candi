@@ -178,7 +178,6 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 
 	if err != nil {
 		eventContext.SetError(err)
-		trace.SetError(err)
 
 		job.Error = err.Error()
 		job.Status = string(statusFailure)

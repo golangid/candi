@@ -16,6 +16,7 @@ type taskQueueWorker struct {
 	ctx           context.Context
 	ctxCancelFunc func()
 	isShutdown    bool
+	ready         chan struct{}
 
 	service factory.ServiceFactory
 	wg      sync.WaitGroup
@@ -27,6 +28,7 @@ func NewTaskQueueWorker(service factory.ServiceFactory, opts ...OptionFunc) fact
 
 	workerInstance := &taskQueueWorker{
 		service: service,
+		ready:   make(chan struct{}),
 	}
 	workerInstance.ctx, workerInstance.ctxCancelFunc = context.WithCancel(context.Background())
 	defaultOption.locker.Reset(fmt.Sprintf("%s:task-queue-worker-lock:*", service.Name()))
@@ -60,46 +62,7 @@ func NewTaskQueueWorker(service factory.ServiceFactory, opts ...OptionFunc) fact
 		}
 	}
 
-	if len(tasks) == 0 {
-		logger.LogYellow("Task Queue Worker: warning, no task provided")
-
-	} else {
-
-		go func() {
-			for _, taskName := range tasks {
-				queue.Clear(workerInstance.ctx, taskName)
-				persistent.Summary().UpdateSummary(workerInstance.ctx, taskName, map[string]interface{}{
-					"is_loading": false,
-				})
-			}
-			// get current pending jobs
-			filter := &Filter{
-				Page: 1, Limit: 10,
-				TaskNameList: tasks,
-				Statuses:     []string{string(statusRetrying), string(statusQueueing)},
-			}
-			StreamAllJob(workerInstance.ctx, filter, func(job *Job) {
-				if job.Status != string(statusQueueing) {
-					statusBefore := job.Status
-					job.Status = string(statusQueueing)
-					matched, affected, _ := persistent.UpdateJob(workerInstance.ctx, &Filter{
-						JobID: &job.ID,
-					}, map[string]interface{}{
-						"status": job.Status,
-					})
-
-					persistent.Summary().IncrementSummary(workerInstance.ctx, job.TaskName, map[string]interface{}{
-						statusBefore: -matched, job.Status: affected,
-					})
-				}
-				queue.PushJob(workerInstance.ctx, job)
-				registerJobToWorker(job, registeredTask[job.TaskName].workerIndex)
-			})
-
-			RecalculateSummary(workerInstance.ctx)
-			refreshWorkerNotif <- struct{}{}
-		}()
-	}
+	go workerInstance.prepare()
 
 	fmt.Printf("\x1b[34;1m⇨ Task Queue Worker running with %d task. Open [::]:%d for dashboard\x1b[0m\n\n",
 		len(registeredTask), defaultOption.dashboardPort)
@@ -107,7 +70,53 @@ func NewTaskQueueWorker(service factory.ServiceFactory, opts ...OptionFunc) fact
 	return workerInstance
 }
 
+func (t *taskQueueWorker) prepare() {
+	if len(tasks) == 0 {
+		logger.LogYellow("Task Queue Worker: warning, no task provided")
+		t.ready <- struct{}{}
+		return
+	}
+
+	for _, taskName := range tasks {
+		queue.Clear(t.ctx, taskName)
+		persistent.Summary().UpdateSummary(t.ctx, taskName, map[string]interface{}{
+			"is_loading": false,
+		})
+	}
+	// get current pending jobs
+	filter := &Filter{
+		Page: 1, Limit: 10,
+		TaskNameList: tasks,
+		Statuses:     []string{string(statusRetrying), string(statusQueueing)},
+	}
+	StreamAllJob(t.ctx, filter, func(job *Job) {
+		// update to queueing
+		if job.Status != string(statusQueueing) {
+			statusBefore := job.Status
+			job.Status = string(statusQueueing)
+			matched, affected, _ := persistent.UpdateJob(t.ctx, &Filter{
+				JobID: &job.ID,
+			}, map[string]interface{}{
+				"status": job.Status,
+			})
+
+			persistent.Summary().IncrementSummary(t.ctx, job.TaskName, map[string]interface{}{
+				statusBefore: -matched, job.Status: affected,
+			})
+		}
+		queue.PushJob(t.ctx, job)
+		registerJobToWorker(job, registeredTask[job.TaskName].workerIndex)
+	})
+
+	RecalculateSummary(t.ctx)
+	t.ready <- struct{}{}
+	refreshWorkerNotif <- struct{}{}
+}
+
 func (t *taskQueueWorker) Serve() {
+
+	<-t.ready
+
 	// serve graphql api for communication to dashboard
 	go serveGraphQLAPI(t)
 

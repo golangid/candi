@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"runtime"
 	"sort"
@@ -46,10 +45,7 @@ func serveGraphQLAPI(wrk *taskQueueWorker) {
 	httpEngine.Handler = mux
 
 	if err := httpEngine.ListenAndServe(); err != nil {
-		switch e := err.(type) {
-		case *net.OpError:
-			panic(fmt.Errorf("task queue worker dashboard: %v", e))
-		}
+		panic(fmt.Errorf("task queue worker dashboard: %v", err))
 	}
 }
 
