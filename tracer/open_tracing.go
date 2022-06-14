@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/url"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/golangid/candi/config/env"
 	opentracing "github.com/opentracing/opentracing-go"
 	ext "github.com/opentracing/opentracing-go/ext"
-	otlog "github.com/opentracing/opentracing-go/log"
 	config "github.com/uber/jaeger-client-go/config"
 )
 
@@ -83,6 +83,8 @@ func (j *jaegerPlatform) StartSpan(ctx context.Context, operationName string) Tr
 		span = opentracing.GlobalTracer().StartSpan(operationName, opentracing.ChildOf(span.Context()))
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
+	_, callerFile, callerLine, _ := runtime.Caller(4)
+	span.LogKV("caller", callerFile+":"+strconv.Itoa(callerLine))
 	return &jaegerTraceImpl{
 		ctx:  ctx,
 		span: span,
@@ -188,17 +190,8 @@ func (t *jaegerTraceImpl) SetError(err error) {
 
 	ext.Error.Set(t.span, true)
 	t.span.SetTag("error.message", err.Error())
-
-	stackTrace := make([]byte, 1024)
-	for {
-		n := runtime.Stack(stackTrace, false)
-		if n < len(stackTrace) {
-			stackTrace = stackTrace[:n]
-			break
-		}
-		stackTrace = make([]byte, 2*len(stackTrace))
-	}
-	t.span.LogFields(otlog.String("stacktrace", string(stackTrace)))
+	_, callerFile, callerLine, _ := runtime.Caller(1)
+	t.span.LogKV("error.source", callerFile+":"+strconv.Itoa(callerLine))
 }
 
 // SetError log data
@@ -231,7 +224,13 @@ func (t *jaegerTraceImpl) Finish(opts ...FinishOptionFunc) {
 		t.span.SetTag(k, toValue(v))
 	}
 
-	t.SetError(finishOpt.Error)
+	if finishOpt.Error != nil {
+		ext.Error.Set(t.span, true)
+		t.span.SetTag("error.message", finishOpt.Error.Error())
+		_, callerFile, callerLine, _ := runtime.Caller(1)
+		t.span.LogKV("error.source", callerFile+":"+strconv.Itoa(callerLine))
+	}
+
 	t.span.Finish()
 }
 
