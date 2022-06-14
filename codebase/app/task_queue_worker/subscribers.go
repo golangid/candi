@@ -74,21 +74,26 @@ func removeJobDetailSubscriber(clientID string) {
 }
 
 func broadcastAllToSubscribers(ctx context.Context) {
-	if len(clientTaskSubscribers) > 0 {
-		go broadcastTaskList(ctx)
-	}
-	if len(clientTaskJobListSubscribers) > 0 {
-		go broadcastJobList(ctx)
-	}
-	if len(clientJobDetailSubscribers) > 0 {
-		go broadcastJobDetail(ctx)
-	}
-}
-
-func broadcastTaskList(ctx context.Context) {
 	if ctx.Err() != nil {
 		return
 	}
+
+	semaphoreBroadcast <- struct{}{}
+	go func(ctx context.Context) {
+		if len(clientTaskSubscribers) > 0 {
+			broadcastTaskList(ctx)
+		}
+		if len(clientJobDetailSubscribers) > 0 {
+			broadcastJobDetail(ctx)
+		}
+		if len(clientTaskJobListSubscribers) > 0 {
+			broadcastJobList(ctx)
+		}
+		<-semaphoreBroadcast
+	}(ctx)
+}
+
+func broadcastTaskList(ctx context.Context) {
 
 	var taskRes TaskListResolver
 	taskRes.Data = make([]TaskResolver, len(tasks))
@@ -130,9 +135,7 @@ func broadcastJobList(ctx context.Context) {
 }
 
 func broadcastJobListToClient(ctx context.Context, clientID string) {
-	if ctx.Err() != nil {
-		return
-	}
+
 	subscriber, ok := clientTaskJobListSubscribers[clientID]
 	if ok {
 		if subscriber.SkipBroadcast {
@@ -180,9 +183,6 @@ func broadcastJobListToClient(ctx context.Context, clientID string) {
 }
 
 func broadcastJobDetail(ctx context.Context) {
-	if ctx.Err() != nil {
-		return
-	}
 
 	for clientID, subscriber := range clientJobDetailSubscribers {
 		detail, err := persistent.FindJobByID(ctx, subscriber.jobID)

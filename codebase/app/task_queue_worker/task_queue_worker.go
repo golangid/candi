@@ -77,17 +77,19 @@ func (t *taskQueueWorker) prepare() {
 		return
 	}
 
-	for _, taskName := range tasks {
-		queue.Clear(t.ctx, taskName)
-		persistent.Summary().UpdateSummary(t.ctx, taskName, map[string]interface{}{
-			"is_loading": false,
-		})
-	}
 	// get current pending jobs
 	filter := &Filter{
 		Page: 1, Limit: 10,
 		TaskNameList: tasks,
 		Statuses:     []string{string(statusRetrying), string(statusQueueing)},
+	}
+	countPendingJob := persistent.CountAllJob(t.ctx, filter)
+	isLoading := countPendingJob > 0
+	for _, taskName := range tasks {
+		queue.Clear(t.ctx, taskName)
+		persistent.Summary().UpdateSummary(t.ctx, taskName, map[string]interface{}{
+			"is_loading": isLoading,
+		})
 	}
 	StreamAllJob(t.ctx, filter, func(job *Job) {
 		// update to queueing
@@ -109,16 +111,23 @@ func (t *taskQueueWorker) prepare() {
 	})
 
 	RecalculateSummary(t.ctx)
+	if isLoading {
+		for _, taskName := range tasks {
+			persistent.Summary().UpdateSummary(t.ctx, taskName, map[string]interface{}{
+				"is_loading": !isLoading,
+			})
+		}
+	}
 	t.ready <- struct{}{}
 	refreshWorkerNotif <- struct{}{}
 }
 
 func (t *taskQueueWorker) Serve() {
 
-	<-t.ready
-
 	// serve graphql api for communication to dashboard
 	go serveGraphQLAPI(t)
+
+	<-t.ready
 
 	// run worker
 	for {

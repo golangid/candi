@@ -17,7 +17,7 @@ type (
 		dashboardPort            uint16
 		debugMode                bool
 		locker                   candiutils.Locker
-		maxConcurrentAddJob      int
+		maxConcurrentBroadcast   int
 
 		// externalWorkerHost setting worker host for add job, if not empty default using http request when add job
 		externalWorkerHost string
@@ -90,10 +90,10 @@ func SetLocker(locker candiutils.Locker) OptionFunc {
 	}
 }
 
-// SetMaxConcurrentAddJob option func
-func SetMaxConcurrentAddJob(max int) OptionFunc {
+// SetMaxConcurrentBroadcast option func
+func SetMaxConcurrentBroadcast(max int) OptionFunc {
 	return func(o *option) {
-		o.maxConcurrentAddJob = max
+		o.maxConcurrentBroadcast = max
 	}
 }
 

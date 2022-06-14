@@ -81,7 +81,7 @@ func (job *Job) toMap() map[string]interface{} {
 func registerJobToWorker(job *Job, workerIndex int) {
 	// skip reinit ticker chan
 	nextJob := queue.NextJob(context.Background(), job.TaskName)
-	if len(semaphoreAddJob) > 1 && job.direct && nextJob != "" {
+	if job.direct && nextJob != "" {
 		return
 	}
 

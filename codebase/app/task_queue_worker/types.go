@@ -168,10 +168,10 @@ var (
 	queue      QueueStorage
 	persistent Persistent
 
-	refreshWorkerNotif, shutdown, closeAllSubscribers, semaphoreAddJob, semaphoreBroadcast chan struct{}
-	semaphore                                                                              []chan struct{}
-	mutex                                                                                  sync.Mutex
-	tasks                                                                                  []string
+	refreshWorkerNotif, shutdown, closeAllSubscribers, semaphoreBroadcast chan struct{}
+	semaphore                                                             []chan struct{}
+	mutex                                                                 sync.Mutex
+	tasks                                                                 []string
 
 	clientTaskSubscribers        map[string]*clientTaskDashboardSubscriber
 	clientTaskJobListSubscribers map[string]*clientTaskJobListSubscriber
@@ -187,7 +187,7 @@ func makeAllGlobalVars(opts ...OptionFunc) {
 	// set default value
 	defaultOption.tracingDashboard = "http://127.0.0.1:16686"
 	defaultOption.maxClientSubscriber = 5
-	defaultOption.maxConcurrentAddJob = 100
+	defaultOption.maxConcurrentBroadcast = 50
 	defaultOption.autoRemoveClientInterval = 30 * time.Minute
 	defaultOption.dashboardPort = 8080
 	defaultOption.debugMode = true
@@ -210,7 +210,7 @@ func makeAllGlobalVars(opts ...OptionFunc) {
 	persistent = defaultOption.persistent
 
 	refreshWorkerNotif, shutdown, closeAllSubscribers = make(chan struct{}), make(chan struct{}, 1), make(chan struct{})
-	semaphoreAddJob = make(chan struct{}, defaultOption.maxConcurrentAddJob)
+	semaphoreBroadcast = make(chan struct{}, defaultOption.maxConcurrentBroadcast)
 	clientTaskSubscribers = make(map[string]*clientTaskDashboardSubscriber, defaultOption.maxClientSubscriber)
 	clientTaskJobListSubscribers = make(map[string]*clientTaskJobListSubscriber, defaultOption.maxClientSubscriber)
 	clientJobDetailSubscribers = make(map[string]*clientJobDetailSubscriber, defaultOption.maxClientSubscriber)
