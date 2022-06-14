@@ -144,7 +144,10 @@ func NewHTTPRequest(opts ...HTTPRequestOption) HTTPRequest {
 func (req *httpRequestImpl) Do(ctx context.Context, method, url string, requestBody []byte, headers map[string]string) (respBody []byte, respCode int, err error) {
 	httpResult, err := req.DoRequest(ctx, method, url, requestBody, headers)
 	if err != nil {
-		return httpResult.Bytes(), httpResult.RespCode, err
+		if httpResult != nil {
+			respBody, respCode = httpResult.Bytes(), httpResult.RespCode
+		}
+		return respBody, respCode, err
 	}
 
 	return httpResult.Bytes(), httpResult.RespCode, nil
