@@ -125,7 +125,7 @@ func (t *taskQueueWorker) prepare() {
 func (t *taskQueueWorker) Serve() {
 
 	// serve graphql api for communication to dashboard
-	go serveGraphQLAPI(t)
+	go t.serveGraphQLAPI()
 
 	<-t.ready
 

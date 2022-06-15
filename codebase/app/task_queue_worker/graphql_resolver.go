@@ -23,13 +23,13 @@ import (
 	"github.com/golangid/candi/config/env"
 )
 
-func serveGraphQLAPI(wrk *taskQueueWorker) {
+func (t *taskQueueWorker) serveGraphQLAPI() {
 	schemaOpts := []graphql.SchemaOpt{
 		graphql.UseStringDescriptions(),
 		graphql.UseFieldResolvers(),
 		graphql.Tracer(trace.NoopTracer{}),
 	}
-	schema := graphql.MustParseSchema(schema, &rootResolver{worker: wrk}, schemaOpts...)
+	schema := graphql.MustParseSchema(schema, &rootResolver{worker: t}, schemaOpts...)
 
 	mux := http.NewServeMux()
 	mux.Handle("/", http.StripPrefix("/", http.FileServer(dashboard.Dashboard)))

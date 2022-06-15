@@ -203,8 +203,11 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 					job.Arguments = string(e.NewArgsPayload)
 				}
 
+				nextJobID := queue.NextJob(ctx, job.TaskName)
 				queue.PushJob(ctx, &job)
-				registerJobToWorker(&job, selectedTask.workerIndex)
+				if nextJobID == "" {
+					registerJobToWorker(&job, selectedTask.workerIndex)
+				}
 				return
 			}
 

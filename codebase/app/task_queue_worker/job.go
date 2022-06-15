@@ -1,7 +1,6 @@
 package taskqueueworker
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -79,11 +78,6 @@ func (job *Job) toMap() map[string]interface{} {
 }
 
 func registerJobToWorker(job *Job, workerIndex int) {
-	// skip reinit ticker chan
-	nextJob := queue.NextJob(context.Background(), job.TaskName)
-	if job.direct && nextJob != "" {
-		return
-	}
 
 	interval, err := time.ParseDuration(job.Interval)
 	if err != nil || interval <= 0 {
