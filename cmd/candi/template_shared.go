@@ -133,12 +133,10 @@ func (c *callbacks) after(db *gorm.DB, operation string) {
 	} else {
 		trace.SetTag("db.connection", candihelper.MaskingPasswordURL(env.BaseEnv().DbSQLWriteDSN))
 	}
-	trace.SetTag("db.query", db.Statement.SQL.String())
-	trace.SetTag("db.vars", db.Statement.Vars)
+	trace.Log("db.query", db.Dialector.Explain(db.Statement.SQL.String(), db.Statement.Vars...))
+	trace.Log("db.rows_affected", db.RowsAffected)
 	trace.SetTag("db.table", db.Statement.Table)
 	trace.SetTag("db.method", operation)
-	trace.SetTag("db.count", db.RowsAffected)
-	trace.SetTag("db.err", db.Statement.Error)
 	if db.Statement.Error != nil && db.Statement.Error != gorm.ErrRecordNotFound {
 		trace.SetError(db.Statement.Error)
 	}

@@ -462,8 +462,9 @@ import (
 		`{{if .SQLUseGORM}}
 
 	{{ if .IsMonorepo }}"monorepo/globalshared"{{else}}"{{$.PackagePrefix}}/pkg/shared"{{end}}
-
-	"gorm.io/gorm"{{end}}` + `
+	"strings"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"{{end}}` + `
 )
 
 type {{camel .ModuleName}}RepoSQL struct {
@@ -487,9 +488,10 @@ func (r *{{camel .ModuleName}}RepoSQL) FetchAll(ctx context.Context, filter *dom
 	
 	{{if .SQLUseGORM}}db := {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, r.readDB)
 	
-	err = db.Order(filter.OrderBy + " " + filter.Sort).
-		Limit(filter.Limit).Offset(filter.CalculateOffset()).
-		Find(&data).Error
+	err = db.Order(clause.OrderByColumn{
+		Column: clause.Column{Name: filter.OrderBy},
+		Desc:   strings.ToUpper(filter.Sort) == "DESC",
+	}).Limit(filter.Limit).Offset(filter.CalculateOffset()).Find(&data).Error
 	{{else}}query := fmt.Sprintf("SELECT id, field, created_at, updated_at FROM {{snake .ModuleName}}s ORDER BY %s %s LIMIT %d OFFSET %d",
 		filter.OrderBy, filter.Sort, filter.Limit, filter.CalculateOffset())
 	trace.Log("query", query)
