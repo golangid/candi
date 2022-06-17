@@ -85,15 +85,14 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	semaphoreAddJob <- struct{}{}
 	go func(ctx context.Context, job *Job, workerIndex int) {
 
-		nextJobID := queue.NextJob(ctx, newJob.TaskName)
 		persistent.SaveJob(ctx, job)
 		persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]interface{}{
 			strings.ToLower(job.Status): 1,
 		})
 		broadcastAllToSubscribers(ctx)
-		queue.PushJob(ctx, job)
+		n := queue.PushJob(ctx, job)
 
-		if nextJobID == "" {
+		if n <= 1 {
 			registerJobToWorker(&newJob, workerIndex)
 			refreshWorkerNotif <- struct{}{}
 		}

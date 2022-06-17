@@ -35,13 +35,14 @@ func (r *redisQueue) GetAllJobs(ctx context.Context, taskName string) (jobs []*J
 	}
 	return
 }
-func (r *redisQueue) PushJob(ctx context.Context, job *Job) {
+func (r *redisQueue) PushJob(ctx context.Context, job *Job) (n int64) {
 	tracer.Log(ctx, "redis.queue:push_job", job.ID)
 
 	conn := r.pool.Get()
 	defer conn.Close()
 
-	conn.Do("RPUSH", job.TaskName, job.ID)
+	n, _ = redis.Int64(conn.Do("RPUSH", job.TaskName, job.ID))
+	return
 }
 func (r *redisQueue) PopJob(ctx context.Context, taskName string) string {
 	conn := r.pool.Get()

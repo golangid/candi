@@ -19,7 +19,7 @@ func NewInMemQueue() QueueStorage {
 	return q
 }
 
-func (i *inMemQueue) PushJob(ctx context.Context, job *Job) {
+func (i *inMemQueue) PushJob(ctx context.Context, job *Job) (n int64) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 
@@ -27,6 +27,7 @@ func (i *inMemQueue) PushJob(ctx context.Context, job *Job) {
 		i.queue[job.TaskName] = candishared.NewQueue()
 	}
 	i.queue[job.TaskName].Push(job.ID)
+	return int64(i.queue[job.TaskName].Len())
 }
 func (i *inMemQueue) PopJob(ctx context.Context, taskName string) string {
 	el, err := i.queue[taskName].Pop()
