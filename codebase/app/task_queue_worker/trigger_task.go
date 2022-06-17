@@ -56,13 +56,14 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 	jobID := queue.PopJob(t.ctx, runningTask.taskName)
 	if jobID == "" {
-		tryRegisterNextJob(t.ctx, runningTask.taskName)
+		t.registerNextJob(runningTask.taskName)
 		return
 	}
 
 	// lock for multiple worker (if running on multiple pods/instance)
 	if defaultOption.locker.IsLocked(t.getLockKey(jobID)) {
 		logger.LogYellow("task_queue_worker > job " + jobID + " is locked")
+		t.registerNextJob(runningTask.taskName)
 		return
 	}
 	defer defaultOption.locker.Unlock(t.getLockKey(jobID))
@@ -71,7 +72,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 
 	job, err := persistent.FindJobByID(ctx, jobID, "retry_histories")
 	if err != nil || job.Status != string(statusQueueing) {
-		tryRegisterNextJob(ctx, runningTask.taskName)
+		t.registerNextJob(runningTask.taskName)
 		return
 	}
 
@@ -98,8 +99,6 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 	if defaultOption.debugMode {
 		log.Printf("\x1b[35;3mTask Queue Worker: executing task '%s' (job id: %s)\x1b[0m", job.TaskName, job.ID)
 	}
-
-	tryRegisterNextJob(ctx, runningTask.taskName)
 
 	trace, ctx := tracer.StartTraceFromHeader(ctx, "TaskQueueWorker", map[string]string{})
 	defer func() {
@@ -139,6 +138,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			statusBefore: -matchedCount,
 		})
 		broadcastAllToSubscribers(t.ctx)
+		t.registerNextJob(runningTask.taskName)
 	}()
 
 	tags := trace.Tags()
@@ -203,11 +203,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 					job.Arguments = string(e.NewArgsPayload)
 				}
 
-				nextJobID := queue.NextJob(ctx, job.TaskName)
 				queue.PushJob(ctx, &job)
-				if nextJobID == "" {
-					registerJobToWorker(&job, selectedTask.workerIndex)
-				}
 				return
 			}
 
@@ -228,23 +224,24 @@ func (t *taskQueueWorker) getLockKey(jobID string) string {
 	return fmt.Sprintf("%s:task-queue-worker-lock:%s", t.service.Name(), jobID)
 }
 
-func tryRegisterNextJob(ctx context.Context, taskName string) {
+func (t *taskQueueWorker) registerNextJob(taskName string) {
 
-	nextJobID := queue.NextJob(ctx, taskName)
+	nextJobID := queue.NextJob(t.ctx, taskName)
 	if nextJobID != "" {
 
-		if nextJob, err := persistent.FindJobByID(ctx, nextJobID); err == nil {
+		if nextJob, err := persistent.FindJobByID(t.ctx, nextJobID); err == nil {
 			registerJobToWorker(&nextJob, registeredTask[taskName].workerIndex)
 		}
 
 	} else {
 
-		StreamAllJob(ctx, &Filter{
+		StreamAllJob(t.ctx, &Filter{
 			Page: 1, Limit: 10,
 			TaskName: taskName,
+			Sort:     "created_at",
 			Status:   candihelper.ToStringPtr(string(statusQueueing)),
 		}, func(job *Job) {
-			queue.PushJob(ctx, job)
+			queue.PushJob(t.ctx, job)
 			registerJobToWorker(job, registeredTask[job.TaskName].workerIndex)
 		})
 

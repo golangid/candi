@@ -81,6 +81,7 @@ func (t *taskQueueWorker) prepare() {
 	filter := &Filter{
 		Page: 1, Limit: 10,
 		TaskNameList: tasks,
+		Sort:         "created_at",
 		Statuses:     []string{string(statusRetrying), string(statusQueueing)},
 	}
 	countPendingJob := persistent.CountAllJob(t.ctx, filter)
