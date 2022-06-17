@@ -82,8 +82,7 @@ func main() {
 				"1) Init monorepo codebase\n" +
 				"2) Init service\n" +
 				"3) Add module(s) in service\n" +
-				"4) Add delivery handler(s) in module\n" +
-				"5) Run multiple service in monorepo\033[0m\n>> ")
+				"4) Add delivery handler(s) in module\033[0m\n>> ")
 			cmdInput, _ := reader.ReadString('\n')
 			cmdInput = strings.TrimRight(cmdInput, "\n")
 			flagParam.scopeFlag = cmdInput
