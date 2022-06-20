@@ -205,6 +205,8 @@ import (
 type (
 	// RepoArango abstraction
 	RepoArango interface {
+		WithTransaction(ctx context.Context, txFunc func(ctx context.Context) error, models ...ArangoModels) (err error)
+
 		// @candi:repositoryMethod
 	}
 
@@ -213,6 +215,10 @@ type (
 
 		// register all repository from modules
 		// @candi:repositoryField
+	}
+
+	ArangoModels interface {
+		CollectionName() string
 	}
 )
 
@@ -233,6 +239,63 @@ func GetSharedRepoArango() RepoArango{
 }
 
 // @candi:repositoryImplementation
+
+// WithTransaction run transaction for each repository with context, include handle canceled or timeout context
+func (r *repoArangoImpl) WithTransaction(ctx context.Context, txFunc func(ctx context.Context) error, models ...ArangoModels) (err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "RepoSQL:Transaction")
+	defer trace.Finish()
+
+	var cols []string
+	for _, value := range models {
+		cols = append(cols, value.CollectionName())
+	}
+
+	trxCollection := driver.TransactionCollections{
+		Read:      cols,
+		Write:     cols,
+		Exclusive: cols,
+	}
+
+	txID, err := r.writeDB.BeginTransaction(ctx, trxCollection, nil)
+	if err != nil {
+		return err
+	}
+	trace.Log("transactionId", txID)
+	txCtx := driver.WithTransactionID(ctx, txID)
+
+	defer func() {
+		if err != nil {
+			errAbort := r.writeDB.AbortTransaction(ctx, txID, nil)
+			trace.SetError(err)
+			trace.SetError(errAbort)
+		} else {
+			errCommit := r.writeDB.CommitTransaction(ctx, txID, nil)
+			trace.SetError(errCommit)
+		}
+	}()
+
+	errChan := make(chan error)
+	go func(ctx context.Context) {
+		defer func() {
+			if r := recover(); r != nil {
+				errChan <- fmt.Errorf("panic: %v", r)
+			}
+			close(errChan)
+		}()
+
+		if err := txFunc(ctx); err != nil {
+			errChan <- err
+		}
+	}(txCtx)
+
+	select {
+	case <-txCtx.Done():
+		return fmt.Errorf("Canceled or timeout: %v", txCtx.Err())
+	case e := <-errChan:
+		return e
+	}
+}
+
 `
 
 	templateRepositoryAbstraction = `// {{.Header}}
