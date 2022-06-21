@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -24,9 +23,13 @@ type (
 		Do(context context.Context, method, url string, reqBody []byte, headers map[string]string) (respBody []byte, respCode int, err error)
 	}
 
+	httpClientDo interface {
+		Do(req *http.Request) (*http.Response, error)
+	}
+
 	// httpRequestImpl struct
 	httpRequestImpl struct {
-		client *hystrix.Client
+		client httpClientDo
 
 		breakerName               string
 		timeout                   time.Duration
@@ -96,10 +99,18 @@ func HTTPRequestAddHystrixOptions(opts ...hystrix.Option) HTTPRequestOption {
 	}
 }
 
+// HTTPRequestSetClient option func
+func HTTPRequestSetClient(cl *http.Client) HTTPRequestOption {
+	return func(h *httpRequestImpl) {
+		h.client = cl
+	}
+}
+
 // NewHTTPRequest function
 // Request's Constructor
 func NewHTTPRequest(opts ...HTTPRequestOption) HTTPRequest {
 	httpReq := new(httpRequestImpl)
+
 	// set default value
 	httpReq.retries = 5
 	httpReq.sleepBetweenRetry = 500 * time.Millisecond
@@ -111,32 +122,34 @@ func NewHTTPRequest(opts ...HTTPRequestOption) HTTPRequest {
 		o(httpReq)
 	}
 
-	// define a maximum jitter interval
-	maximumJitterInterval := 10 * time.Millisecond
-	// create a backoff
-	backoff := heimdall.NewConstantBackoff(httpReq.sleepBetweenRetry, maximumJitterInterval)
-	// create a new retry mechanism with the backoff
-	retrier := heimdall.NewRetrier(backoff)
-
-	hystrixClientOpt := []hystrix.Option{
-		hystrix.WithHTTPTimeout(httpReq.timeout),
-		hystrix.WithHystrixTimeout(httpReq.timeout),
-		hystrix.WithRetrier(retrier),
-		hystrix.WithRetryCount(httpReq.retries),
-		hystrix.WithCommandName(httpReq.breakerName),
-		hystrix.WithFallbackFunc(func(err error) error {
-			return err
-		}),
-	}
-	hystrixClientOpt = append(hystrixClientOpt, httpReq.hystrixOptions...)
-	if httpReq.tlsConfig != nil {
-		hystrixClientOpt = append(hystrixClientOpt, hystrix.WithHTTPClient(&http.Client{
-			Transport: &http.Transport{TLSClientConfig: httpReq.tlsConfig},
-		}))
-	}
-
 	// set http client
-	httpReq.client = hystrix.NewClient(hystrixClientOpt...)
+	if httpReq.client == nil {
+		// define a maximum jitter interval
+		maximumJitterInterval := 10 * time.Millisecond
+		// create a backoff
+		backoff := heimdall.NewConstantBackoff(httpReq.sleepBetweenRetry, maximumJitterInterval)
+		// create a new retry mechanism with the backoff
+		retrier := heimdall.NewRetrier(backoff)
+
+		hystrixClientOpt := []hystrix.Option{
+			hystrix.WithHTTPTimeout(httpReq.timeout),
+			hystrix.WithHystrixTimeout(httpReq.timeout),
+			hystrix.WithRetrier(retrier),
+			hystrix.WithRetryCount(httpReq.retries),
+			hystrix.WithCommandName(httpReq.breakerName),
+			hystrix.WithFallbackFunc(func(err error) error {
+				return err
+			}),
+		}
+		hystrixClientOpt = append(hystrixClientOpt, httpReq.hystrixOptions...)
+		if httpReq.tlsConfig != nil {
+			hystrixClientOpt = append(hystrixClientOpt, hystrix.WithHTTPClient(&http.Client{
+				Transport: &http.Transport{TLSClientConfig: httpReq.tlsConfig},
+			}))
+		}
+		httpReq.client = hystrix.NewClient(hystrixClientOpt...)
+	}
+
 	return httpReq
 }
 
@@ -155,7 +168,7 @@ func (req *httpRequestImpl) Do(ctx context.Context, method, url string, requestB
 
 func (req *httpRequestImpl) DoRequest(ctx context.Context, method, url string, requestBody []byte, headers map[string]string) (result *HTTPRequestResult, err error) {
 	// set request http
-	httpReq, err := http.NewRequest(method, url, bytes.NewBuffer(requestBody))
+	httpReq, err := http.NewRequestWithContext(ctx, method, url, bytes.NewBuffer(requestBody))
 	if err != nil {
 		tracer.SetError(ctx, err)
 		return nil, err
@@ -200,7 +213,7 @@ func (req *httpRequestImpl) DoRequest(ctx context.Context, method, url string, r
 		Buffer:   &bytes.Buffer{},
 		RespCode: resp.StatusCode,
 	}
-	io.Copy(result, resp.Body)
+	io.Copy(result.Buffer, resp.Body)
 
 	dumpResponse, _ := httputil.DumpResponse(resp, false)
 	trace.SetTag("http.response", dumpResponse)
@@ -210,11 +223,6 @@ func (req *httpRequestImpl) DoRequest(ctx context.Context, method, url string, r
 
 	if req.minHTTPErrorCodeThreshold != 0 && resp.StatusCode >= req.minHTTPErrorCodeThreshold {
 		err = errors.New(resp.Status)
-		var r map[string]string
-		json.Unmarshal(result.Bytes(), &r)
-		if r["message"] != "" {
-			err = errors.New(r["message"])
-		}
 	}
 	return
 }
