@@ -137,49 +137,49 @@ func broadcastJobList(ctx context.Context) {
 func broadcastJobListToClient(ctx context.Context, clientID string) {
 
 	subscriber, ok := clientTaskJobListSubscribers[clientID]
-	if ok {
-		if subscriber.SkipBroadcast {
-			return
-		}
-
-		summary := persistent.Summary().FindDetailSummary(ctx, subscriber.filter.TaskName)
-		if summary.IsLoading {
-			subscriber.SkipBroadcast = summary.IsLoading
-			subscriber.writeDataToChannel(JobListResolver{
-				Meta: MetaJobList{IsLoading: summary.IsLoading},
-			})
-
-		} else {
-
-			subscriber.filter.Sort = "-created_at"
-			jobs := persistent.FindAllJob(ctx, subscriber.filter)
-
-			var meta MetaJobList
-			subscriber.filter.TaskNameList = []string{subscriber.filter.TaskName}
-
-			var taskDetailSummary []TaskSummary
-
-			if candihelper.PtrToString(subscriber.filter.Search) != "" ||
-				candihelper.PtrToString(subscriber.filter.JobID) != "" ||
-				(!subscriber.filter.StartDate.IsZero() && !subscriber.filter.EndDate.IsZero()) {
-				taskDetailSummary = persistent.AggregateAllTaskJob(ctx, subscriber.filter)
-			} else {
-				taskDetailSummary = persistent.Summary().FindAllSummary(ctx, subscriber.filter)
-			}
-
-			if len(taskDetailSummary) == 1 {
-				meta.Detail = taskDetailSummary[0].ToSummaryDetail()
-				meta.TotalRecords = taskDetailSummary[0].CountTotalJob()
-			}
-			meta.Page, meta.Limit = subscriber.filter.Page, subscriber.filter.Limit
-			meta.TotalPages = int(math.Ceil(float64(meta.TotalRecords) / float64(meta.Limit)))
-
-			subscriber.writeDataToChannel(JobListResolver{
-				Meta: meta,
-				Data: jobs,
-			})
-		}
+	if !ok {
+		return
 	}
+	if subscriber.SkipBroadcast {
+		return
+	}
+
+	summary := persistent.Summary().FindDetailSummary(ctx, subscriber.filter.TaskName)
+	if summary.IsLoading {
+		subscriber.SkipBroadcast = summary.IsLoading
+		subscriber.writeDataToChannel(JobListResolver{
+			Meta: MetaJobList{IsLoading: summary.IsLoading},
+		})
+		return
+	}
+
+	subscriber.filter.Sort = "-created_at"
+	jobs := persistent.FindAllJob(ctx, subscriber.filter)
+
+	var meta MetaJobList
+	subscriber.filter.TaskNameList = []string{subscriber.filter.TaskName}
+
+	var taskDetailSummary []TaskSummary
+
+	if candihelper.PtrToString(subscriber.filter.Search) != "" ||
+		candihelper.PtrToString(subscriber.filter.JobID) != "" ||
+		(!subscriber.filter.StartDate.IsZero() && !subscriber.filter.EndDate.IsZero()) {
+		taskDetailSummary = persistent.AggregateAllTaskJob(ctx, subscriber.filter)
+	} else {
+		taskDetailSummary = persistent.Summary().FindAllSummary(ctx, subscriber.filter)
+	}
+
+	if len(taskDetailSummary) == 1 {
+		meta.Detail = taskDetailSummary[0].ToSummaryDetail()
+		meta.TotalRecords = taskDetailSummary[0].CountTotalJob()
+	}
+	meta.Page, meta.Limit = subscriber.filter.Page, subscriber.filter.Limit
+	meta.TotalPages = int(math.Ceil(float64(meta.TotalRecords) / float64(meta.Limit)))
+
+	subscriber.writeDataToChannel(JobListResolver{
+		Meta: meta,
+		Data: jobs,
+	})
 }
 
 func broadcastJobDetail(ctx context.Context) {

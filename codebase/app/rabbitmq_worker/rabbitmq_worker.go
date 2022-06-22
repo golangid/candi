@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"runtime/debug"
 	"sync"
 
 	"github.com/golangid/candi/candihelper"
@@ -151,15 +152,15 @@ func (r *rabbitmqWorker) processMessage(message amqp.Delivery) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
+			trace.Log("stacktrace", string(debug.Stack()))
 		}
 
 		if selectedHandler.AutoACK {
 			message.Ack(false)
 		}
-		trace.SetError(err)
 		logger.LogGreen("rabbitmq_consumer > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
-		trace.Finish()
+		trace.Finish(tracer.FinishWithError(err))
 	}()
 
 	trace.SetTag("broker", candihelper.MaskingPasswordURL(r.opt.broker))

@@ -3,6 +3,7 @@ package kafkaworker
 import (
 	"fmt"
 	"log"
+	"runtime/debug"
 	"strconv"
 	"time"
 
@@ -68,6 +69,7 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 	defer func() {
 		if r := recover(); r != nil {
 			trace.SetError(fmt.Errorf("%v", r))
+			trace.Log("stacktrace", string(debug.Stack()))
 		}
 
 		if handler.AutoACK {

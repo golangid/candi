@@ -107,8 +107,9 @@ func (t *taskQueueWorker) prepare() {
 				statusBefore: -matched, job.Status: affected,
 			})
 		}
-		queue.PushJob(t.ctx, job)
-		registerJobToWorker(job, registeredTask[job.TaskName].workerIndex)
+		if n := queue.PushJob(t.ctx, job); n <= 1 {
+			registerJobToWorker(job, registeredTask[job.TaskName].workerIndex)
+		}
 	})
 
 	RecalculateSummary(t.ctx)

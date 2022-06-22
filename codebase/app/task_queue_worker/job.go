@@ -85,34 +85,30 @@ func registerJobToWorker(job *Job, workerIndex int) {
 	}
 
 	taskIndex := runningWorkerIndexTask[workerIndex]
-	if taskIndex.activeInterval == nil {
-		taskIndex.activeInterval = time.NewTicker(interval)
-	} else {
-		taskIndex.activeInterval.Reset(interval)
-	}
+	taskIndex.activeInterval = time.NewTicker(interval)
 	workers[workerIndex].Chan = reflect.ValueOf(taskIndex.activeInterval.C)
 }
 
 func stopAllJob() {
-	for _, job := range runningWorkerIndexTask {
-		if job != nil && job.activeInterval != nil {
-			job.activeInterval.Stop()
+	for _, task := range runningWorkerIndexTask {
+		if task != nil && task.activeInterval != nil {
+			task.activeInterval.Stop()
 		}
 	}
 }
 
 func stopAllJobInTask(taskName string) {
-	jobs, ok := registeredTask[taskName]
+	t, ok := registeredTask[taskName]
 	if !ok {
 		return
 	}
 
-	if job := runningWorkerIndexTask[jobs.workerIndex]; job != nil {
-		if job.activeInterval != nil {
-			job.activeInterval.Stop()
+	if task := runningWorkerIndexTask[t.workerIndex]; task != nil {
+		if task.activeInterval != nil {
+			task.activeInterval.Stop()
 		}
-		if job.cancel != nil {
-			job.cancel()
+		if task.cancel != nil {
+			task.cancel()
 		}
 	}
 }

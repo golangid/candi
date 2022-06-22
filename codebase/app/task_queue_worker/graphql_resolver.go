@@ -53,7 +53,7 @@ type rootResolver struct {
 	worker *taskQueueWorker
 }
 
-func (r *rootResolver) Tagline(ctx context.Context) (res TaglineResolver) {
+func (r *rootResolver) Tagline(ctx context.Context, input struct{ GC *bool }) (res TaglineResolver) {
 	for taskClient := range clientTaskSubscribers {
 		res.TaskListClientSubscribers = append(res.TaskListClientSubscribers, taskClient)
 	}
@@ -69,6 +69,10 @@ func (r *rootResolver) Tagline(ctx context.Context) (res TaglineResolver) {
 	res.MemoryStatistics = getMemstats()
 	_, res.Config.WithPersistent = persistent.(*noopPersistent)
 	res.Config.WithPersistent = !res.Config.WithPersistent
+
+	if input.GC != nil && *input.GC {
+		runtime.GC()
+	}
 	return
 }
 
@@ -200,8 +204,9 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 				job.Interval = defaultInterval.String()
 			}
 			job.Status = string(statusQueueing)
-			queue.PushJob(ctx, job)
-			registerJobToWorker(job, registeredTask[job.TaskName].workerIndex)
+			if n := queue.PushJob(ctx, job); n <= 1 {
+				registerJobToWorker(job, registeredTask[job.TaskName].workerIndex)
+			}
 		})
 
 		incr := map[string]int{}
@@ -337,10 +342,10 @@ func (r *rootResolver) ListenTaskDashboard(ctx context.Context, input struct {
 
 	autoRemoveClient := time.NewTicker(defaultOption.autoRemoveClientInterval)
 
-	go broadcastTaskList(r.worker.ctx)
-
 	go func() {
 		defer func() { broadcastTaskList(r.worker.ctx); close(output); autoRemoveClient.Stop() }()
+
+		broadcastTaskList(r.worker.ctx)
 
 		select {
 		case <-ctx.Done():
@@ -400,11 +405,11 @@ func (r *rootResolver) ListenTaskJobList(ctx context.Context, input struct {
 		return nil, err
 	}
 
-	go broadcastJobListToClient(ctx, clientID)
-
 	autoRemoveClient := time.NewTicker(defaultOption.autoRemoveClientInterval)
 	go func() {
 		defer func() { close(output); autoRemoveClient.Stop() }()
+
+		broadcastJobListToClient(ctx, clientID)
 
 		select {
 		case <-ctx.Done():
@@ -454,7 +459,6 @@ func (r *rootResolver) ListenJobDetail(ctx context.Context, input struct {
 	}
 
 	autoRemoveClient := time.NewTicker(defaultOption.autoRemoveClientInterval)
-
 	go func() {
 		defer func() { close(output); autoRemoveClient.Stop() }()
 

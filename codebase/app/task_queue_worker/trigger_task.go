@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -31,15 +32,16 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 	t.wg.Add(1)
 	go func(workerIndex int, task *Task) {
 		var ctx context.Context
-		ctx, runningTask.cancel = context.WithCancel(t.ctx)
+		ctx, task.cancel = context.WithCancel(t.ctx)
 
 		defer func() {
 			if r := recover(); r != nil {
 				logger.LogRed(fmt.Sprintf("task_queue_worker > panic: %v", r))
 			}
+			t.registerNextJob(task.taskName)
 			t.wg.Done()
 			<-semaphore[workerIndex-1]
-			runningTask.cancel()
+			task.cancel()
 			refreshWorkerNotif <- struct{}{}
 		}()
 
@@ -56,14 +58,12 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 	jobID := queue.PopJob(t.ctx, runningTask.taskName)
 	if jobID == "" {
-		t.registerNextJob(runningTask.taskName)
 		return
 	}
 
 	// lock for multiple worker (if running on multiple pods/instance)
 	if defaultOption.locker.IsLocked(t.getLockKey(jobID)) {
 		logger.LogYellow("task_queue_worker > job " + jobID + " is locked")
-		t.registerNextJob(runningTask.taskName)
 		return
 	}
 	defer defaultOption.locker.Unlock(t.getLockKey(jobID))
@@ -72,7 +72,6 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 
 	job, err := persistent.FindJobByID(ctx, jobID, "retry_histories")
 	if err != nil || job.Status != string(statusQueueing) {
-		t.registerNextJob(runningTask.taskName)
 		return
 	}
 
@@ -81,7 +80,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
 
-	isRetry, startAt := false, time.Now()
+	startAt := time.Now()
 
 	job.Retries++
 	statusBefore := strings.ToLower(job.Status)
@@ -106,6 +105,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			err = fmt.Errorf("panic: %v", r)
 			job.Error = err.Error()
 			job.Status = string(statusFailure)
+			trace.Log("stacktrace", string(debug.Stack()))
 		}
 
 		job.FinishedAt = time.Now()
@@ -113,11 +113,6 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			Status: job.Status, Error: job.Error, TraceID: job.TraceID,
 			StartAt: startAt, EndAt: job.FinishedAt,
 			ErrorStack: job.ErrorStack,
-		}
-
-		trace.SetTag("is_retry", isRetry)
-		if isRetry {
-			job.Status = string(statusQueueing)
 		}
 
 		logger.LogGreen("task_queue > trace_url: " + tracer.GetTraceURL(ctx))
@@ -138,7 +133,6 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			statusBefore: -matchedCount,
 		})
 		broadcastAllToSubscribers(t.ctx)
-		t.registerNextJob(runningTask.taskName)
 	}()
 
 	tags := trace.Tags()
@@ -192,7 +186,8 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 					e.Delay = defaultInterval
 				}
 
-				isRetry = true
+				trace.SetTag("is_retry", true)
+				job.Status = string(statusQueueing)
 				job.Interval = e.Delay.String()
 				if e.NewRetryIntervalFunc != nil {
 					job.Interval = e.NewRetryIntervalFunc(job.Retries).String()
@@ -241,8 +236,9 @@ func (t *taskQueueWorker) registerNextJob(taskName string) {
 			Sort:     "created_at",
 			Status:   candihelper.ToStringPtr(string(statusQueueing)),
 		}, func(job *Job) {
-			queue.PushJob(t.ctx, job)
-			registerJobToWorker(job, registeredTask[job.TaskName].workerIndex)
+			if n := queue.PushJob(t.ctx, job); n <= 1 {
+				registerJobToWorker(job, registeredTask[job.TaskName].workerIndex)
+			}
 		})
 
 	}

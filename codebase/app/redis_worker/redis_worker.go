@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"runtime/debug"
 	"sync"
 
 	"github.com/golangid/candi/candishared"
@@ -183,7 +184,8 @@ func (r *redisWorker) processMessage(param RedisMessage) {
 	trace, ctx := tracer.StartTraceFromHeader(ctx, "RedisSubscriber", map[string]string{})
 	defer func() {
 		if r := recover(); r != nil {
-			trace.SetError(fmt.Errorf("%v", r))
+			trace.SetError(fmt.Errorf("panic: %v", r))
+			trace.Log("stacktrace", string(debug.Stack()))
 		}
 		logger.LogGreen("redis_subscriber > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime/debug"
 	"sync"
 
 	"github.com/golangid/candi/candihelper"
@@ -126,6 +127,7 @@ START:
 				defer func() {
 					if r := recover(); r != nil {
 						trace.SetError(fmt.Errorf("panic: %v", r))
+						trace.Log("stacktrace", string(debug.Stack()))
 					}
 					logger.LogGreen("postgres_listener > trace_url: " + tracer.GetTraceURL(ctx))
 					trace.SetTag("trace_id", tracer.GetTraceID(ctx))

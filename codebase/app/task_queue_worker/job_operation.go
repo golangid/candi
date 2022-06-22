@@ -91,7 +91,6 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 		})
 		broadcastAllToSubscribers(ctx)
 		n := queue.PushJob(ctx, job)
-
 		if n <= 1 {
 			registerJobToWorker(&newJob, workerIndex)
 			refreshWorkerNotif <- struct{}{}

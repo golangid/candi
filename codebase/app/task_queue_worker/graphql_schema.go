@@ -7,9 +7,8 @@ const schema = `schema {
 }
 
 type Query {
-	tagline(): TaglineType!
+	tagline(gc: Boolean): TaglineType!
 	get_job_detail(job_id: String!): JobResolver!
-	get_all_active_subscriber(): [ClientSubscriber!]!
 	get_all_active_subscriber(): [ClientSubscriber!]!
 }
 
