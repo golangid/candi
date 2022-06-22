@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -25,7 +24,7 @@ func serviceRunner(serviceName string) {
 		commandList = append(commandList, services...)
 	} else {
 		logger.Printf("\x1b[34;1mRUNNING ALL SERVICE in \"services/\" directory\x1b[0m\n")
-		files, err := ioutil.ReadDir("services")
+		files, err := os.ReadDir("services")
 		if err != nil {
 			logger.Fatalf(RedFormat, "ERROR: "+err.Error()+" (must in monorepo root)")
 		}

@@ -2,7 +2,6 @@ package candihelper
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,7 +22,7 @@ func LoadAllFile(path, formatFile string) []byte {
 
 		fileName := info.Name()
 		if strings.HasSuffix(fileName, formatFile) {
-			s, err := ioutil.ReadFile(p)
+			s, err := os.ReadFile(p)
 			if err != nil {
 				panic(err)
 			}

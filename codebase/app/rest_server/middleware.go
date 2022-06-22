@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -48,13 +47,13 @@ func (h *restServer) echoRestTracerMiddleware(next echo.HandlerFunc) echo.Handle
 			logger.LogGreen("rest_api > trace_url: " + tracer.GetTraceURL(ctx))
 		}()
 
-		body, _ := ioutil.ReadAll(req.Body)
+		body, _ := io.ReadAll(req.Body)
 		if len(body) < h.opt.jaegerMaxPacketSize { // limit request body size to 65000 bytes (if higher tracer cannot show root span)
 			trace.Log("request.body", body)
 		} else {
 			trace.Log("request.body.size", len(body))
 		}
-		req.Body = ioutil.NopCloser(bytes.NewBuffer(body)) // reuse body
+		req.Body = io.NopCloser(bytes.NewBuffer(body)) // reuse body
 
 		httpDump, _ := httputil.DumpRequest(req, false)
 		trace.SetTag("http.request", string(httpDump))

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"runtime"
@@ -110,8 +109,8 @@ func printBanner() {
 }
 
 func isWorkdirMonorepo() bool {
-	_, errSdk := ioutil.ReadDir("sdk/")
-	_, errService := ioutil.ReadDir("services/")
+	_, errSdk := os.ReadDir("sdk/")
+	_, errService := os.ReadDir("services/")
 	return (errSdk == nil) && (errService == nil)
 }
 
@@ -175,7 +174,7 @@ func loadSavedConfig(flagParam *flagParameter) serviceConfig {
 		baseDir = flagParam.outputFlag + flagParam.serviceName + "/"
 	}
 
-	b, err := ioutil.ReadFile(baseDir + "candi.json")
+	b, err := os.ReadFile(baseDir + "candi.json")
 	if err != nil {
 		log.Fatal("ERROR: cannot find candi.json file")
 	}
