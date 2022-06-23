@@ -80,7 +80,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
 
-	startAt := time.Now()
+	isRetry, startAt := false, time.Now()
 
 	job.Retries++
 	statusBefore := strings.ToLower(job.Status)
@@ -113,6 +113,11 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			Status: job.Status, Error: job.Error, TraceID: job.TraceID,
 			StartAt: startAt, EndAt: job.FinishedAt,
 			ErrorStack: job.ErrorStack,
+		}
+
+		trace.SetTag("is_retry", isRetry)
+		if isRetry {
+			job.Status = string(statusQueueing)
 		}
 
 		logger.LogGreen("task_queue > trace_url: " + tracer.GetTraceURL(ctx))
@@ -186,8 +191,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 					e.Delay = defaultInterval
 				}
 
-				trace.SetTag("is_retry", true)
-				job.Status = string(statusQueueing)
+				isRetry = true
 				job.Interval = e.Delay.String()
 				if e.NewRetryIntervalFunc != nil {
 					job.Interval = e.NewRetryIntervalFunc(job.Retries).String()
