@@ -179,6 +179,7 @@ func (c *cronWorker) Shutdown(ctx context.Context) {
 
 	c.wg.Wait()
 	c.ctxCancelFunc()
+	c.opt.locker.Reset(fmt.Sprintf(lockPattern, c.service.Name(), "*"))
 }
 
 func (c *cronWorker) Name() string {

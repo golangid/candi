@@ -41,8 +41,10 @@ const (
 						'action', TG_OP,
 						'data', data);
 		
-		-- Execute pg_notify(channel, notification)
-		PERFORM pg_notify('events', notification::text);
+		IF LENGTH(notification::text) < 8000 THEN
+			-- Execute pg_notify(channel, notification)
+			PERFORM pg_notify('events', notification::text); -- error
+		END IF;
 		
 		-- Result is ignored since this is an AFTER trigger
 		RETURN NULL; 
@@ -67,7 +69,7 @@ type (
 )
 
 func execCreateFunctionEventQuery(db *sql.DB) {
-	query := `select pg_get_functiondef('notify_event()'::regprocedure);`
+	query := `SELECT pg_get_functiondef('notify_event()'::regprocedure);`
 	var tmp string
 	err := db.QueryRow(query).Scan(&tmp)
 	if err != nil {
@@ -85,10 +87,10 @@ func execCreateFunctionEventQuery(db *sql.DB) {
 }
 
 func execTriggerQuery(db *sql.DB, tableName string) {
-	query := `select event_object_table as table_name
-		from information_schema.triggers
-		where event_object_table=$1
-		group by table_name`
+	query := `SELECT event_object_table AS table_name
+		FROM information_schema.triggers
+		WHERE event_object_table=$1
+		GROUP BY table_name`
 
 	var existingTable string
 	err := db.QueryRow(query, tableName).Scan(&existingTable)

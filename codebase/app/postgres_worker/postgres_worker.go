@@ -205,6 +205,7 @@ func (p *postgresWorker) Shutdown(ctx context.Context) {
 	p.listener.Close()
 	p.wg.Wait()
 	p.ctxCancelFunc()
+	p.opt.locker.Reset(fmt.Sprintf("%s:postgres-worker-lock:*", p.service.Name()))
 }
 
 func (p *postgresWorker) Name() string {
