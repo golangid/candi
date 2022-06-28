@@ -11,7 +11,7 @@ import (
 )
 
 // SetupCronWorker setup cron worker with default config, copy this function if you want to construct with custom config
-func SetupCronWorker(service factory.ServiceFactory) factory.AppServerFactory {
+func SetupCronWorker(service factory.ServiceFactory, opts ...cronworker.OptionFunc) factory.AppServerFactory {
 	cronOptions := []cronworker.OptionFunc{
 		cronworker.SetMaxGoroutines(env.BaseEnv().MaxGoroutines),
 		cronworker.SetDebugMode(env.BaseEnv().DebugMode),
@@ -28,5 +28,6 @@ func SetupCronWorker(service factory.ServiceFactory) factory.AppServerFactory {
 		}
 		cronOptions = append(cronOptions, cronworker.SetConsul(consul))
 	}
+	cronOptions = append(cronOptions, opts...)
 	return cronworker.NewWorker(service, cronOptions...)
 }

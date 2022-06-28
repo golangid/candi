@@ -11,7 +11,7 @@ import (
 )
 
 // SetupPostgresWorker setup cron worker with default config
-func SetupPostgresWorker(service factory.ServiceFactory) factory.AppServerFactory {
+func SetupPostgresWorker(service factory.ServiceFactory, opts ...postgresworker.OptionFunc) factory.AppServerFactory {
 	postgresOptions := []postgresworker.OptionFunc{
 		postgresworker.SetPostgresDSN(env.BaseEnv().DbSQLWriteDSN),
 		postgresworker.SetMaxGoroutines(env.BaseEnv().MaxGoroutines),
@@ -29,5 +29,6 @@ func SetupPostgresWorker(service factory.ServiceFactory) factory.AppServerFactor
 		}
 		postgresOptions = append(postgresOptions, postgresworker.SetConsul(consul))
 	}
+	postgresOptions = append(postgresOptions, opts...)
 	return postgresworker.NewWorker(service, postgresOptions...)
 }

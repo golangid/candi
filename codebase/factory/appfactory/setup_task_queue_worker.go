@@ -7,7 +7,7 @@ import (
 )
 
 // SetupTaskQueueWorker setup cron worker with default config
-func SetupTaskQueueWorker(service factory.ServiceFactory) factory.AppServerFactory {
+func SetupTaskQueueWorker(service factory.ServiceFactory, opts ...taskqueueworker.OptionFunc) factory.AppServerFactory {
 	if service.GetDependency().GetRedisPool() == nil {
 		panic("Task queue worker require redis for queue")
 	}
@@ -25,12 +25,14 @@ func SetupTaskQueueWorker(service factory.ServiceFactory) factory.AppServerFacto
 		WriteDB(),
 	)
 
-	return taskqueueworker.NewTaskQueueWorker(service,
+	workerOpts := []taskqueueworker.OptionFunc{
 		taskqueueworker.SetQueue(queue),
 		taskqueueworker.SetPersistent(persistent),
 		taskqueueworker.SetDashboardHTTPPort(env.BaseEnv().TaskQueueDashboardPort),
 		taskqueueworker.SetMaxClientSubscriber(env.BaseEnv().TaskQueueDashboardMaxClientSubscribers),
-		taskqueueworker.SetTracingDashboard(env.BaseEnv().JaegerTracingDashboard+"/trace"),
+		taskqueueworker.SetTracingDashboard(env.BaseEnv().JaegerTracingDashboard + "/trace"),
 		taskqueueworker.SetDebugMode(env.BaseEnv().DebugMode),
-	)
+	}
+	workerOpts = append(workerOpts, opts...)
+	return taskqueueworker.NewTaskQueueWorker(service, workerOpts...)
 }

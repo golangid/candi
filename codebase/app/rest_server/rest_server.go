@@ -43,7 +43,7 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 	}
 
 	if server.opt.sharedListener != nil {
-		server.listener = server.opt.sharedListener.Match(cmux.HTTP1Fast())
+		server.listener = server.opt.sharedListener.Match(cmux.Any())
 	}
 
 	server.serverEngine.HTTPErrorHandler = server.opt.errorHandler

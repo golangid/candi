@@ -10,9 +10,8 @@ import (
 )
 
 // SetupGraphQLServer setup cron worker with default config
-func SetupGraphQLServer(service factory.ServiceFactory) factory.AppServerFactory {
-	return graphqlserver.NewServer(
-		service,
+func SetupGraphQLServer(service factory.ServiceFactory, opts ...graphqlserver.OptionFunc) factory.AppServerFactory {
+	gqlOptions := []graphqlserver.OptionFunc{
 		graphqlserver.SetHTTPPort(env.BaseEnv().HTTPPort),
 		graphqlserver.SetRootPath(env.BaseEnv().HTTPRootPath),
 		graphqlserver.SetDisableIntrospection(env.BaseEnv().GraphQLDisableIntrospection),
@@ -20,5 +19,7 @@ func SetupGraphQLServer(service factory.ServiceFactory) factory.AppServerFactory
 		graphqlserver.SetSharedListener(service.GetConfig().SharedListener),
 		graphqlserver.SetDebugMode(env.BaseEnv().DebugMode),
 		graphqlserver.SetJaegerMaxPacketSize(env.BaseEnv().JaegerMaxPacketSize),
-	)
+	}
+	gqlOptions = append(gqlOptions, opts...)
+	return graphqlserver.NewServer(service, gqlOptions...)
 }

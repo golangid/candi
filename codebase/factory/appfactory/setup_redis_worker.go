@@ -7,9 +7,11 @@ import (
 )
 
 // SetupRedisWorker setup cron worker with default config
-func SetupRedisWorker(service factory.ServiceFactory) factory.AppServerFactory {
-	return redisworker.NewWorker(service,
+func SetupRedisWorker(service factory.ServiceFactory, opts ...redisworker.OptionFunc) factory.AppServerFactory {
+	redisOpts := []redisworker.OptionFunc{
 		redisworker.SetMaxGoroutines(env.BaseEnv().MaxGoroutines),
 		redisworker.SetDebugMode(env.BaseEnv().DebugMode),
-	)
+	}
+	redisOpts = append(redisOpts, opts...)
+	return redisworker.NewWorker(service, redisOpts...)
 }

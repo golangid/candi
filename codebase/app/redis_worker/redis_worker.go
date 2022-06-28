@@ -152,6 +152,7 @@ func (r *redisWorker) Shutdown(ctx context.Context) {
 
 	r.wg.Wait()
 	r.ctxCancelFunc()
+	r.opt.locker.Reset(fmt.Sprintf("%s:redis-worker-lock:*", r.service.Name()))
 }
 
 func (r *redisWorker) Name() string {
@@ -171,6 +172,7 @@ func (r *redisWorker) processMessage(param RedisMessage) {
 
 	// lock for multiple worker (if running on multiple pods/instance)
 	if r.opt.locker.IsLocked(r.getLockKey(param.HandlerName, param.EventID)) {
+		logger.LogYellow("redis_subscriber > eventID " + param.EventID + " is locked")
 		return
 	}
 	defer r.opt.locker.Unlock(r.getLockKey(param.HandlerName, param.EventID))

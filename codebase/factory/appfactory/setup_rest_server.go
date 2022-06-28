@@ -10,9 +10,8 @@ import (
 )
 
 // SetupRESTServer setup cron worker with default config
-func SetupRESTServer(service factory.ServiceFactory) factory.AppServerFactory {
-	return restserver.NewServer(
-		service,
+func SetupRESTServer(service factory.ServiceFactory, opts ...restserver.OptionFunc) factory.AppServerFactory {
+	restOptions := []restserver.OptionFunc{
 		restserver.SetHTTPPort(env.BaseEnv().HTTPPort),
 		restserver.SetRootPath(env.BaseEnv().HTTPRootPath),
 		restserver.SetIncludeGraphQL(env.BaseEnv().UseGraphQL),
@@ -20,5 +19,7 @@ func SetupRESTServer(service factory.ServiceFactory) factory.AppServerFactory {
 		restserver.SetSharedListener(service.GetConfig().SharedListener),
 		restserver.SetDebugMode(env.BaseEnv().DebugMode),
 		restserver.SetJaegerMaxPacketSize(env.BaseEnv().JaegerMaxPacketSize),
-	)
+	}
+	restOptions = append(restOptions, opts...)
+	return restserver.NewServer(service, restOptions...)
 }

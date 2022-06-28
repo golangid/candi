@@ -7,11 +7,13 @@ import (
 )
 
 // SetupKafkaWorker setup cron worker with default config
-func SetupKafkaWorker(service factory.ServiceFactory) factory.AppServerFactory {
-	return kafkaworker.NewWorker(service,
+func SetupKafkaWorker(service factory.ServiceFactory, opts ...kafkaworker.OptionFunc) factory.AppServerFactory {
+	kafkaOpts := []kafkaworker.OptionFunc{
 		kafkaworker.SetMaxGoroutines(env.BaseEnv().MaxGoroutines),
 		kafkaworker.SetDebugMode(env.BaseEnv().DebugMode),
 		kafkaworker.SetConsumerGroup(env.BaseEnv().Kafka.ConsumerGroup),
 		kafkaworker.SetBrokers(env.BaseEnv().Kafka.Brokers),
-	)
+	}
+	kafkaOpts = append(kafkaOpts, opts...)
+	return kafkaworker.NewWorker(service, kafkaOpts...)
 }
