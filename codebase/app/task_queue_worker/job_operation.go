@@ -53,6 +53,7 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	}()
 
 	trace.SetTag("task_name", req.TaskName)
+	trace.Log("message", req.Args)
 
 	if err = req.Validate(); err != nil {
 		return jobID, err
@@ -80,7 +81,7 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	newJob.CreatedAt = time.Now()
 	newJob.direct = req.direct
 
-	trace.Log("new_job_id", newJob.ID)
+	trace.SetTag("job_id", newJob.ID)
 
 	semaphoreAddJob <- struct{}{}
 	go func(ctx context.Context, job *Job, workerIndex int) {
