@@ -114,6 +114,9 @@ func AddJobViaHTTPRequest(ctx context.Context, workerHost string, req *AddJobReq
 
 	httpReq := candiutils.NewHTTPRequest(
 		candiutils.HTTPRequestSetBreakerName("task_queue_worker_add_job"),
+		candiutils.HTTPRequestSetClient(&http.Client{
+			Timeout: 30 * time.Second,
+		}),
 	)
 
 	header := map[string]string{
