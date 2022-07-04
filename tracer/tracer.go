@@ -15,6 +15,7 @@ var (
 // Tracer for trace
 type Tracer interface {
 	Context() context.Context
+	NewContext() context.Context
 	Tags() map[string]interface{}
 	SetTag(key string, value interface{})
 	InjectRequestHeader(header map[string]string)
@@ -74,6 +75,7 @@ func GetTraceURL(ctx context.Context) (u string) {
 type noopTracer struct{ ctx context.Context }
 
 func (n noopTracer) Context() context.Context                   { return n.ctx }
+func (n noopTracer) NewContext() context.Context                { return n.ctx }
 func (noopTracer) Tags() map[string]interface{}                 { return map[string]interface{}{} }
 func (noopTracer) SetTag(key string, value interface{})         { return }
 func (noopTracer) InjectRequestHeader(header map[string]string) { return }

@@ -51,6 +51,22 @@ func (_m *Tracer) Log(key string, value interface{}) {
 	_m.Called(key, value)
 }
 
+// NewContext provides a mock function with given fields:
+func (_m *Tracer) NewContext() context.Context {
+	ret := _m.Called()
+
+	var r0 context.Context
+	if rf, ok := ret.Get(0).(func() context.Context); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(context.Context)
+		}
+	}
+
+	return r0
+}
+
 // SetError provides a mock function with given fields: err
 func (_m *Tracer) SetError(err error) {
 	_m.Called(err)
@@ -75,4 +91,19 @@ func (_m *Tracer) Tags() map[string]interface{} {
 	}
 
 	return r0
+}
+
+type mockConstructorTestingTNewTracer interface {
+	mock.TestingT
+	Cleanup(func())
+}
+
+// NewTracer creates a new instance of Tracer. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewTracer(t mockConstructorTestingTNewTracer) *Tracer {
+	mock := &Tracer{}
+	mock.Mock.Test(t)
+
+	t.Cleanup(func() { mock.AssertExpectations(t) })
+
+	return mock
 }

@@ -182,6 +182,11 @@ func (t *jaegerTraceImpl) InjectRequestHeader(header map[string]string) {
 	)
 }
 
+// NewContext to continue tracer with new context
+func (t *jaegerTraceImpl) NewContext() context.Context {
+	return opentracing.ContextWithSpan(context.Background(), t.span)
+}
+
 // SetError set error in span
 func (t *jaegerTraceImpl) SetError(err error) {
 	if t.span == nil || err == nil {
