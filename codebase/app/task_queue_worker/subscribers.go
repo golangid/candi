@@ -78,7 +78,6 @@ func broadcastAllToSubscribers(ctx context.Context) {
 		return
 	}
 
-	semaphoreBroadcast <- struct{}{}
 	go func(ctx context.Context) {
 		if len(clientTaskSubscribers) > 0 {
 			broadcastTaskList(ctx)
@@ -89,7 +88,6 @@ func broadcastAllToSubscribers(ctx context.Context) {
 		if len(clientTaskJobListSubscribers) > 0 {
 			broadcastJobList(ctx)
 		}
-		<-semaphoreBroadcast
 	}(ctx)
 }
 

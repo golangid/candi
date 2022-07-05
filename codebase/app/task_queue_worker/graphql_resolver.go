@@ -274,15 +274,20 @@ func (r *rootResolver) RecalculateSummary(ctx context.Context) (string, error) {
 
 func (r *rootResolver) ClearAllClientSubscriber(ctx context.Context) (string, error) {
 
-	for range clientTaskSubscribers {
-		closeAllSubscribers <- struct{}{}
-	}
-	for range clientTaskJobListSubscribers {
-		closeAllSubscribers <- struct{}{}
-	}
-	for range clientJobDetailSubscribers {
-		closeAllSubscribers <- struct{}{}
-	}
+	go func() {
+		for k := range clientTaskSubscribers {
+			removeTaskListSubscriber(k)
+			closeAllSubscribers <- struct{}{}
+		}
+		for k := range clientTaskJobListSubscribers {
+			removeJobListSubscriber(k)
+			closeAllSubscribers <- struct{}{}
+		}
+		for k := range clientJobDetailSubscribers {
+			removeJobDetailSubscriber(k)
+			closeAllSubscribers <- struct{}{}
+		}
+	}()
 
 	return "Success clear all client subscriber", nil
 }
@@ -342,10 +347,10 @@ func (r *rootResolver) ListenTaskDashboard(ctx context.Context, input struct {
 
 	autoRemoveClient := time.NewTicker(defaultOption.autoRemoveClientInterval)
 
+	go broadcastTaskList(r.worker.ctx)
+
 	go func() {
 		defer func() { broadcastTaskList(r.worker.ctx); close(output); autoRemoveClient.Stop() }()
-
-		broadcastTaskList(r.worker.ctx)
 
 		select {
 		case <-ctx.Done():
@@ -358,11 +363,7 @@ func (r *rootResolver) ListenTaskDashboard(ctx context.Context, input struct {
 			return
 
 		case <-autoRemoveClient.C:
-			output <- TaskListResolver{
-				Meta: MetaTaskResolver{
-					IsCloseSession: true,
-				},
-			}
+			output <- TaskListResolver{Meta: MetaTaskResolver{IsCloseSession: true}}
 			removeTaskListSubscriber(clientID)
 			return
 		}
@@ -405,11 +406,11 @@ func (r *rootResolver) ListenTaskJobList(ctx context.Context, input struct {
 		return nil, err
 	}
 
+	go broadcastJobListToClient(ctx, clientID)
+
 	autoRemoveClient := time.NewTicker(defaultOption.autoRemoveClientInterval)
 	go func() {
 		defer func() { close(output); autoRemoveClient.Stop() }()
-
-		broadcastJobListToClient(ctx, clientID)
 
 		select {
 		case <-ctx.Done():
@@ -422,11 +423,7 @@ func (r *rootResolver) ListenTaskJobList(ctx context.Context, input struct {
 			return
 
 		case <-autoRemoveClient.C:
-			output <- JobListResolver{
-				Meta: MetaJobList{
-					IsCloseSession: true,
-				},
-			}
+			output <- JobListResolver{Meta: MetaJobList{IsCloseSession: true}}
 			removeJobListSubscriber(clientID)
 			return
 
@@ -458,11 +455,11 @@ func (r *rootResolver) ListenJobDetail(ctx context.Context, input struct {
 		return nil, err
 	}
 
+	go broadcastJobDetail(ctx)
+
 	autoRemoveClient := time.NewTicker(defaultOption.autoRemoveClientInterval)
 	go func() {
 		defer func() { close(output); autoRemoveClient.Stop() }()
-
-		broadcastJobDetail(ctx)
 
 		select {
 		case <-ctx.Done():
@@ -470,10 +467,12 @@ func (r *rootResolver) ListenJobDetail(ctx context.Context, input struct {
 			return
 
 		case <-closeAllSubscribers:
+			output <- Job{}
 			removeJobDetailSubscriber(clientID)
 			return
 
 		case <-autoRemoveClient.C:
+			output <- Job{}
 			removeJobDetailSubscriber(clientID)
 			return
 

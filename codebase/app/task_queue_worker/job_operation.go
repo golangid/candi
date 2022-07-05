@@ -53,7 +53,6 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	}()
 
 	trace.SetTag("task_name", req.TaskName)
-	trace.Log("message", req.Args)
 
 	if err = req.Validate(); err != nil {
 		return jobID, err
@@ -62,6 +61,8 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	if !req.direct && defaultOption.externalWorkerHost != "" {
 		return AddJobViaHTTPRequest(ctx, defaultOption.externalWorkerHost, req)
 	}
+
+	trace.Log("message", req.Args)
 
 	task, ok := registeredTask[req.TaskName]
 	if !ok {
@@ -85,6 +86,7 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 
 	semaphoreAddJob <- struct{}{}
 	go func(ctx context.Context, job *Job, workerIndex int) {
+		defer func() { <-semaphoreAddJob }()
 
 		persistent.SaveJob(ctx, job)
 		persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]interface{}{
@@ -96,7 +98,6 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 			registerJobToWorker(&newJob, workerIndex)
 			refreshWorkerNotif <- struct{}{}
 		}
-		<-semaphoreAddJob
 
 	}(context.Background(), &newJob, task.workerIndex)
 

@@ -169,10 +169,10 @@ var (
 	queue      QueueStorage
 	persistent Persistent
 
-	refreshWorkerNotif, shutdown, closeAllSubscribers, semaphoreBroadcast, semaphoreAddJob chan struct{}
-	semaphore                                                                              []chan struct{}
-	mutex                                                                                  sync.Mutex
-	tasks                                                                                  []string
+	refreshWorkerNotif, shutdown, closeAllSubscribers, semaphoreAddJob chan struct{}
+	semaphore                                                          []chan struct{}
+	mutex                                                              sync.Mutex
+	tasks                                                              []string
 
 	clientTaskSubscribers        map[string]*clientTaskDashboardSubscriber
 	clientTaskJobListSubscribers map[string]*clientTaskJobListSubscriber
@@ -210,7 +210,6 @@ func makeAllGlobalVars(opts ...OptionFunc) {
 	persistent = defaultOption.persistent
 
 	refreshWorkerNotif, shutdown, closeAllSubscribers = make(chan struct{}), make(chan struct{}, 1), make(chan struct{})
-	semaphoreBroadcast = make(chan struct{}, env.BaseEnv().MaxGoroutines)
 	semaphoreAddJob = make(chan struct{}, env.BaseEnv().MaxGoroutines)
 	clientTaskSubscribers = make(map[string]*clientTaskDashboardSubscriber, defaultOption.maxClientSubscriber)
 	clientTaskJobListSubscribers = make(map[string]*clientTaskJobListSubscriber, defaultOption.maxClientSubscriber)
