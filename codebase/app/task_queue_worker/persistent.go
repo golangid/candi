@@ -7,6 +7,7 @@ import (
 type (
 	// Persistent abstraction
 	Persistent interface {
+		Ping(ctx context.Context) error
 		SetSummary(Summary)
 		Summary() Summary
 		FindAllJob(ctx context.Context, filter *Filter) (jobs []Job)
@@ -37,6 +38,9 @@ func NewNoopPersistent() Persistent {
 	}
 }
 
+func (n *noopPersistent) Ping(ctx context.Context) error {
+	return nil
+}
 func (n *noopPersistent) SetSummary(s Summary) {
 }
 func (n *noopPersistent) Summary() Summary {

@@ -20,76 +20,6 @@ type (
 		activeInterval *time.Ticker
 	}
 
-	// TaglineResolver resolver
-	TaglineResolver struct {
-		Banner                    string
-		Tagline                   string
-		Version                   string
-		GoVersion                 string
-		StartAt                   string
-		BuildNumber               string
-		Config                    ConfigResolver
-		TaskListClientSubscribers []string
-		JobListClientSubscribers  []string
-		MemoryStatistics          MemstatsResolver
-	}
-	// MemstatsResolver resolver
-	MemstatsResolver struct {
-		Alloc         string
-		TotalAlloc    string
-		NumGC         int
-		NumGoroutines int
-	}
-	// MetaTaskResolver meta resolver
-	MetaTaskResolver struct {
-		Page                  int
-		Limit                 int
-		TotalRecords          int
-		TotalPages            int
-		IsCloseSession        bool
-		TotalClientSubscriber int
-	}
-	// TaskResolver resolver
-	TaskResolver struct {
-		Name       string
-		ModuleName string
-		TotalJobs  int
-		IsLoading  bool
-		Detail     SummaryDetail
-	}
-	// TaskListResolver resolver
-	TaskListResolver struct {
-		Meta MetaTaskResolver
-		Data []TaskResolver
-	}
-
-	// MetaJobList resolver
-	MetaJobList struct {
-		Page           int
-		Limit          int
-		TotalRecords   int
-		TotalPages     int
-		IsCloseSession bool
-		IsLoading      bool
-		Detail         SummaryDetail
-	}
-
-	// JobListResolver resolver
-	JobListResolver struct {
-		Meta MetaJobList
-		Data []Job
-	}
-
-	// ConfigResolver resolver
-	ConfigResolver struct {
-		WithPersistent bool
-	}
-
-	// SummaryDetail type
-	SummaryDetail struct {
-		Failure, Retrying, Success, Queueing, Stopped int
-	}
-
 	// Filter type
 	Filter struct {
 		Page, Limit        int
@@ -125,7 +55,7 @@ type (
 		filter        *Filter
 	}
 	clientJobDetailSubscriber struct {
-		c     chan Job
+		c     chan JobResolver
 		jobID string
 	}
 
@@ -141,7 +71,7 @@ func (s *clientTaskJobListSubscriber) writeDataToChannel(data JobListResolver) {
 	defer func() { recover() }()
 	s.c <- data
 }
-func (s *clientJobDetailSubscriber) writeDataToChannel(data Job) {
+func (s *clientJobDetailSubscriber) writeDataToChannel(data JobResolver) {
 	defer func() { recover() }()
 	s.c <- data
 }
@@ -194,8 +124,7 @@ func makeAllGlobalVars(opts ...OptionFunc) {
 	defaultOption.locker = &candiutils.NoopLocker{}
 	defaultOption.persistent = NewNoopPersistent()
 	defaultOption.queue = NewInMemQueue()
-	defaultOption.dashboardBanner = `
-    _________    _   ______  ____
+	defaultOption.dashboardBanner = `    _________    _   ______  ____
    / ____/   |  / | / / __ \/  _/
   / /   / /| | /  |/ / / / // /  
  / /___/ ___ |/ /|  / /_/ // /   

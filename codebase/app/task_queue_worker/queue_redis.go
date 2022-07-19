@@ -3,6 +3,7 @@ package taskqueueworker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/golangid/candi/tracer"
 	"github.com/gomodule/redigo/redis"
@@ -72,4 +73,15 @@ func (r *redisQueue) Clear(ctx context.Context, taskName string) {
 	defer conn.Close()
 
 	conn.Do("DEL", taskName)
+}
+func (r *redisQueue) Ping() error {
+
+	ping := r.pool.Get()
+	defer ping.Close()
+
+	_, err := ping.Do("PING")
+	if err != nil {
+		return errors.New("redis ping: " + err.Error())
+	}
+	return nil
 }

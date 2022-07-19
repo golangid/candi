@@ -11,12 +11,12 @@ import (
 	"time"
 
 	dashboard "github.com/golangid/candi-plugin/task-queue-worker/dashboard"
+	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/graphql-go"
 	"github.com/golangid/graphql-go/relay"
 	"github.com/golangid/graphql-go/trace"
 
 	"github.com/golangid/candi"
-	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/app/graphql_server/static"
 	"github.com/golangid/candi/codebase/app/graphql_server/ws"
@@ -35,6 +35,7 @@ func (t *taskQueueWorker) serveGraphQLAPI() {
 	mux.Handle("/", http.StripPrefix("/", http.FileServer(dashboard.Dashboard)))
 	mux.Handle("/task", http.StripPrefix("/", http.FileServer(dashboard.Dashboard)))
 	mux.Handle("/job", http.StripPrefix("/", http.FileServer(dashboard.Dashboard)))
+	mux.Handle("/expired", http.StripPrefix("/", http.FileServer(dashboard.Dashboard)))
 
 	mux.HandleFunc("/graphql", ws.NewHandlerFunc(schema, &relay.Handler{Schema: schema}))
 	mux.HandleFunc("/voyager", func(rw http.ResponseWriter, r *http.Request) { rw.Write([]byte(static.VoyagerAsset)) })
@@ -53,7 +54,7 @@ type rootResolver struct {
 	worker *taskQueueWorker
 }
 
-func (r *rootResolver) Tagline(ctx context.Context, input struct{ GC *bool }) (res TaglineResolver) {
+func (r *rootResolver) Dashboard(ctx context.Context, input struct{ GC *bool }) (res DashboardResolver) {
 	for taskClient := range clientTaskSubscribers {
 		res.TaskListClientSubscribers = append(res.TaskListClientSubscribers, taskClient)
 	}
@@ -67,36 +68,40 @@ func (r *rootResolver) Tagline(ctx context.Context, input struct{ GC *bool }) (r
 	res.StartAt = env.BaseEnv().StartAt
 	res.BuildNumber = env.BaseEnv().BuildNumber
 	res.MemoryStatistics = getMemstats()
-	_, res.Config.WithPersistent = persistent.(*noopPersistent)
-	res.Config.WithPersistent = !res.Config.WithPersistent
+	res.Config.WithPersistent = !isDefaultPersistent()
 
 	if input.GC != nil && *input.GC {
 		runtime.GC()
 	}
+
+	// dependency health
+	if err := persistent.Ping(ctx); err != nil {
+		res.DependencyHealth.Persistent = candihelper.ToStringPtr(err.Error())
+	}
+	if err := queue.Ping(); err != nil {
+		res.DependencyHealth.Queue = candihelper.ToStringPtr(err.Error())
+	}
 	return
 }
 
-func (r *rootResolver) GetJobDetail(ctx context.Context, input struct{ JobID string }) (res Job, err error) {
+func (r *rootResolver) GetAllJob(ctx context.Context, input struct{ Filter *GetAllJobInputResolver }) (result JobListResolver, err error) {
 
-	res, err = persistent.FindJobByID(ctx, input.JobID)
-	if res.TraceID != "" && defaultOption.tracingDashboard != "" {
-		res.TraceID = fmt.Sprintf("%s/%s", defaultOption.tracingDashboard, res.TraceID)
+	if input.Filter == nil {
+		input.Filter = &GetAllJobInputResolver{}
 	}
-	res.CreatedAt = res.CreatedAt.In(candihelper.AsiaJakartaLocalTime)
-	if delay, err := time.ParseDuration(res.Interval); err == nil && res.Status == string(statusQueueing) {
-		res.NextRetryAt = time.Now().Add(delay).In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
-	}
-	sort.Slice(res.RetryHistories, func(i, j int) bool {
-		return res.RetryHistories[i].EndAt.After(res.RetryHistories[j].EndAt)
-	})
-	for i := range res.RetryHistories {
-		res.RetryHistories[i].StartAt = res.RetryHistories[i].StartAt.In(candihelper.AsiaJakartaLocalTime)
-		res.RetryHistories[i].EndAt = res.RetryHistories[i].EndAt.In(candihelper.AsiaJakartaLocalTime)
 
-		if res.RetryHistories[i].TraceID != "" && defaultOption.tracingDashboard != "" {
-			res.RetryHistories[i].TraceID = fmt.Sprintf("%s/%s", defaultOption.tracingDashboard, res.RetryHistories[i].TraceID)
-		}
+	filter := input.Filter.ToFilter()
+	result.GetAllJob(ctx, &filter)
+	return
+}
+
+func (r *rootResolver) GetJobDetail(ctx context.Context, input struct{ JobID string }) (res JobResolver, err error) {
+
+	job, err := persistent.FindJobByID(ctx, input.JobID)
+	if err != nil {
+		return res, err
 	}
+	res.ParseFromJob(&job)
 	return
 }
 
@@ -373,36 +378,27 @@ func (r *rootResolver) ListenTaskDashboard(ctx context.Context, input struct {
 	return output, nil
 }
 
-func (r *rootResolver) ListenTaskJobList(ctx context.Context, input struct {
-	TaskName           string
-	Page, Limit        int32
-	Search, JobID      *string
-	Statuses           []string
-	StartDate, EndDate *string
-}) (<-chan JobListResolver, error) {
+func (r *rootResolver) ListenAllJob(ctx context.Context, input struct{ Filter *GetAllJobInputResolver }) (<-chan JobListResolver, error) {
 
 	output := make(chan JobListResolver)
 
 	httpHeader := candishared.GetValueFromContext(ctx, candishared.ContextKeyHTTPHeader).(http.Header)
 	clientID := httpHeader.Get("Sec-WebSocket-Key")
 
-	if input.Page <= 0 {
-		input.Page = 1
-	}
-	if input.Limit <= 0 || input.Limit > 10 {
-		input.Limit = 10
+	if input.Filter == nil {
+		input.Filter = &GetAllJobInputResolver{}
 	}
 
-	filter := Filter{
-		Page: int(input.Page), Limit: int(input.Limit),
-		Search: input.Search, Statuses: input.Statuses, TaskName: input.TaskName,
-		JobID: input.JobID,
+	filter := input.Filter.ToFilter()
+
+	if filter.Page <= 0 {
+		filter.Page = 1
+	}
+	if filter.Limit <= 0 || filter.Limit > 10 {
+		filter.Limit = 10
 	}
 
-	filter.StartDate, _ = time.Parse(time.RFC3339, candihelper.PtrToString(input.StartDate))
-	filter.EndDate, _ = time.Parse(time.RFC3339, candihelper.PtrToString(input.EndDate))
-
-	if err := registerNewJobListSubscriber(input.TaskName, clientID, &filter, output); err != nil {
+	if err := registerNewJobListSubscriber(filter.TaskName, clientID, &filter, output); err != nil {
 		return nil, err
 	}
 
@@ -433,11 +429,11 @@ func (r *rootResolver) ListenTaskJobList(ctx context.Context, input struct {
 	return output, nil
 }
 
-func (r *rootResolver) ListenJobDetail(ctx context.Context, input struct {
+func (r *rootResolver) ListenDetailJob(ctx context.Context, input struct {
 	JobID string
-}) (<-chan Job, error) {
+}) (<-chan JobResolver, error) {
 
-	output := make(chan Job)
+	output := make(chan JobResolver)
 
 	httpHeader := candishared.GetValueFromContext(ctx, candishared.ContextKeyHTTPHeader).(http.Header)
 	clientID := httpHeader.Get("Sec-WebSocket-Key")
@@ -467,12 +463,12 @@ func (r *rootResolver) ListenJobDetail(ctx context.Context, input struct {
 			return
 
 		case <-closeAllSubscribers:
-			output <- Job{}
+			output <- JobResolver{IsCloseSession: true}
 			removeJobDetailSubscriber(clientID)
 			return
 
 		case <-autoRemoveClient.C:
-			output <- Job{}
+			output <- JobResolver{IsCloseSession: true}
 			removeJobDetailSubscriber(clientID)
 			return
 

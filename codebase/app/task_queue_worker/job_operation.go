@@ -159,6 +159,7 @@ func AddJobViaHTTPRequest(ctx context.Context, workerHost string, req *AddJobReq
 	if len(respPayload.Errors) > 0 {
 		return jobID, errors.New(respPayload.Errors[0].Message)
 	}
+	trace.SetTag("job_id", respPayload.Data.AddJob)
 	return respPayload.Data.AddJob, nil
 }
 

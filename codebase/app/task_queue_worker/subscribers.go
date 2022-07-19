@@ -3,7 +3,6 @@ package taskqueueworker
 import (
 	"context"
 	"fmt"
-	"math"
 	"runtime"
 	"sort"
 
@@ -52,7 +51,7 @@ func removeJobListSubscriber(clientID string) {
 	delete(clientTaskJobListSubscribers, clientID)
 }
 
-func registerNewJobDetailSubscriber(clientID, jobID string, clientChannel chan Job) error {
+func registerNewJobDetailSubscriber(clientID, jobID string, clientChannel chan JobResolver) error {
 	if len(clientJobDetailSubscribers) >= defaultOption.maxClientSubscriber {
 		return errClientLimitExceeded
 	}
@@ -138,9 +137,6 @@ func broadcastJobListToClient(ctx context.Context, clientID string) {
 	if !ok {
 		return
 	}
-	if subscriber.SkipBroadcast {
-		return
-	}
 
 	summary := persistent.Summary().FindDetailSummary(ctx, subscriber.filter.TaskName)
 	if summary.IsLoading {
@@ -150,34 +146,18 @@ func broadcastJobListToClient(ctx context.Context, clientID string) {
 		})
 		return
 	}
+	if subscriber.SkipBroadcast {
+		return
+	}
 
 	subscriber.filter.Sort = "-created_at"
-	jobs := persistent.FindAllJob(ctx, subscriber.filter)
-
-	var meta MetaJobList
-	subscriber.filter.TaskNameList = []string{subscriber.filter.TaskName}
-
-	var taskDetailSummary []TaskSummary
-
-	if candihelper.PtrToString(subscriber.filter.Search) != "" ||
+	subscriber.SkipBroadcast = candihelper.PtrToString(subscriber.filter.Search) != "" ||
 		candihelper.PtrToString(subscriber.filter.JobID) != "" ||
-		(!subscriber.filter.StartDate.IsZero() && !subscriber.filter.EndDate.IsZero()) {
-		taskDetailSummary = persistent.AggregateAllTaskJob(ctx, subscriber.filter)
-	} else {
-		taskDetailSummary = persistent.Summary().FindAllSummary(ctx, subscriber.filter)
-	}
+		(!subscriber.filter.StartDate.IsZero() && !subscriber.filter.EndDate.IsZero())
 
-	if len(taskDetailSummary) == 1 {
-		meta.Detail = taskDetailSummary[0].ToSummaryDetail()
-		meta.TotalRecords = taskDetailSummary[0].CountTotalJob()
-	}
-	meta.Page, meta.Limit = subscriber.filter.Page, subscriber.filter.Limit
-	meta.TotalPages = int(math.Ceil(float64(meta.TotalRecords) / float64(meta.Limit)))
-
-	subscriber.writeDataToChannel(JobListResolver{
-		Meta: meta,
-		Data: jobs,
-	})
+	var jobListResolver JobListResolver
+	jobListResolver.GetAllJob(ctx, subscriber.filter)
+	subscriber.writeDataToChannel(jobListResolver)
 }
 
 func broadcastJobDetail(ctx context.Context) {
@@ -188,8 +168,9 @@ func broadcastJobDetail(ctx context.Context) {
 			removeJobDetailSubscriber(clientID)
 			continue
 		}
-		detail.updateValue()
-		subscriber.writeDataToChannel(detail)
+		var jobResolver JobResolver
+		jobResolver.ParseFromJob(&detail)
+		subscriber.writeDataToChannel(jobResolver)
 	}
 }
 

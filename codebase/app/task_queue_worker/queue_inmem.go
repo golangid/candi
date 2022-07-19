@@ -56,3 +56,6 @@ func (i *inMemQueue) Clear(ctx context.Context, taskName string) {
 
 	i.queue[taskName] = nil
 }
+func (i *inMemQueue) Ping() error {
+	return nil
+}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/logger"
@@ -13,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 const (
@@ -186,20 +186,6 @@ func (s *mongoPersistent) FindAllJob(ctx context.Context, filter *Filter) (jobs 
 		if err := cur.Decode(&job); err != nil {
 			logger.LogE(err.Error())
 			continue
-		}
-		if job.Status == string(statusSuccess) {
-			job.Error = ""
-		}
-		if delay, err := time.ParseDuration(job.Interval); err == nil && job.Status == string(statusQueueing) {
-			job.NextRetryAt = time.Now().Add(delay).In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
-		}
-		if job.TraceID != "" && defaultOption.tracingDashboard != "" {
-			job.TraceID = fmt.Sprintf("%s/%s", defaultOption.tracingDashboard, job.TraceID)
-		}
-		job.CreatedAt = job.CreatedAt.In(candihelper.AsiaJakartaLocalTime)
-		job.FinishedAt = job.FinishedAt.In(candihelper.AsiaJakartaLocalTime)
-		if job.Retries > job.MaxRetry {
-			job.Retries = job.MaxRetry
 		}
 		jobs = append(jobs, job)
 	}
@@ -525,4 +511,12 @@ func (s *mongoPersistent) UpdateSummary(ctx context.Context, taskName string, up
 	if err != nil {
 		logger.LogE(err.Error())
 	}
+}
+
+func (s *mongoPersistent) Ping(ctx context.Context) error {
+
+	if err := s.db.Client().Ping(ctx, readpref.Primary()); err != nil {
+		return fmt.Errorf("mongodb ping: %v", err)
+	}
+	return nil
 }
