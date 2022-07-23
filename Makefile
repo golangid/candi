@@ -2,6 +2,7 @@
 
 # mocks all interfaces
 mocks:
+	@rm -rf mocks/cmd;
 	@mockery --all --keeptree
 	@if [ -f mocks/candiutils/HTTPRequestOption.go ]; then rm mocks/candiutils/HTTPRequestOption.go; fi;
 	@if [ -f mocks/codebase/app/cron_worker/OptionFunc.go ]; then rm mocks/codebase/app/cron_worker/OptionFunc.go; fi;
