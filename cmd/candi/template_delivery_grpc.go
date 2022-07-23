@@ -7,18 +7,14 @@ package grpchandler
 
 import (
 	"context"
-	"time"
 
 	proto "{{.ProtoSource}}/{{.ModuleName}}"
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
-	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
-	"google.golang.org/grpc"` + `
-	
-	{{if and .MongoDeps (not .SQLDeps)}}"go.mongodb.org/mongo-driver/bson/primitive"{{end}}` + `
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
-	"{{.LibraryName}}/candihelper"
 	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/factory/types"
@@ -63,11 +59,15 @@ func (h *GRPCHandler) GetAll{{upper (camel .ModuleName)}}(ctx context.Context, r
 		Filter: candishared.Filter{
 			Limit: int(req.Limit), Page: int(req.Page), Search: req.Search, OrderBy: req.OrderBy, Sort: req.Sort, ShowAll: req.ShowAll,
 		},
+		StartDate: req.StartDate, EndDate: req.EndDate,
+	}
+	if err := h.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/get_all", filter); err != nil {
+		return nil,  grpc.Errorf(codes.InvalidArgument, err.Error())
 	}
 
 	data, meta, err := h.uc.{{upper (camel .ModuleName)}}().GetAll{{upper (camel .ModuleName)}}(ctx, &filter)
 	if err != nil {
-		return nil, err
+		return nil, grpc.Errorf(codes.FailedPrecondition, err.Error())
 	}
 
 	resp := &proto.GetAll{{upper (camel .ModuleName)}}Response{
@@ -78,9 +78,8 @@ func (h *GRPCHandler) GetAll{{upper (camel .ModuleName)}}(ctx context.Context, r
 
 	for _, d := range data {
 		data := &proto.{{upper (camel .ModuleName)}}Model{
-			CreatedAt: d.CreatedAt.Format(time.RFC3339), UpdatedAt: d.UpdatedAt.Format(time.RFC3339),
+			ID: d.ID, Field: d.Field, CreatedAt: d.CreatedAt, UpdatedAt: d.UpdatedAt,
 		}
-		data.ID = d.ID{{if and .MongoDeps (not .SQLDeps)}}.Hex(){{end}}
 		resp.Data = append(resp.Data, data)
 	}
 
@@ -96,79 +95,70 @@ func (h *GRPCHandler) GetDetail{{upper (camel .ModuleName)}}(ctx context.Context
 
 	data, err := h.uc.{{upper (camel .ModuleName)}}().GetDetail{{upper (camel .ModuleName)}}(ctx, req.ID)
 	if err != nil {
-		return nil, err
+		return nil, grpc.Errorf(codes.FailedPrecondition, err.Error())
 	}
 
 	resp := &proto.{{upper (camel .ModuleName)}}Model{
-		CreatedAt: data.CreatedAt.Format(time.RFC3339), UpdatedAt: data.UpdatedAt.Format(time.RFC3339),
+		ID: data.ID, Field: data.Field, CreatedAt: data.CreatedAt, UpdatedAt: data.UpdatedAt,
 	}
-	resp.ID = data.ID{{if and .MongoDeps (not .SQLDeps)}}.Hex(){{end}}
 	return resp, nil
 }
 
 // Create{{upper (camel .ModuleName)}} rpc method
-func (h *GRPCHandler) Create{{upper (camel .ModuleName)}}(ctx context.Context, req *proto.{{upper (camel .ModuleName)}}Model) (resp *proto.Response, err error) {
+func (h *GRPCHandler) Create{{upper (camel .ModuleName)}}(ctx context.Context, req *proto.Request{{upper (camel .ModuleName)}}Model) (resp *proto.BaseResponse, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryGRPC:Create{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
 
-	mErr := candihelper.NewMultiError()
-
-	var payload shareddomain.{{upper (camel .ModuleName)}}
-	{{if and .MongoDeps (not .SQLDeps)}}payload.ID, err = primitive.ObjectIDFromHex(req.ID)
-	mErr.Append("id", err){{else}}payload.ID = req.ID{{end}}
-
-	payload.CreatedAt, err = time.Parse(time.RFC3339, req.CreatedAt)
-	mErr.Append("createdAt", err)
-	payload.UpdatedAt, err = time.Parse(time.RFC3339, req.UpdatedAt)
-	mErr.Append("modifiedAt", err)
-	if mErr.HasError() {
-		return nil, mErr
+	var payload domain.Request{{upper (camel .ModuleName)}}
+	payload.Field = req.Field
+	if err := h.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/save", payload); err != nil {
+		return nil,  grpc.Errorf(codes.InvalidArgument, err.Error())
 	}
-
 	if err := h.uc.{{upper (camel .ModuleName)}}().Create{{upper (camel .ModuleName)}}(ctx, &payload); err != nil {
-		return nil, err
+		return nil, grpc.Errorf(codes.FailedPrecondition, err.Error())
 	}
 
-	return &proto.Response{
+	return &proto.BaseResponse{
 		Message: "Success",
 	}, nil
 }
 
 // Update{{upper (camel .ModuleName)}} rpc method
-func (h *GRPCHandler) Update{{upper (camel .ModuleName)}}(ctx context.Context, req *proto.{{upper (camel .ModuleName)}}Model) (resp *proto.Response, err error) {
+func (h *GRPCHandler) Update{{upper (camel .ModuleName)}}(ctx context.Context, req *proto.Request{{upper (camel .ModuleName)}}Model) (resp *proto.BaseResponse, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryGRPC:Update{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
 
-	var payload shareddomain.{{upper (camel .ModuleName)}}
-	{{if and .MongoDeps (not .SQLDeps)}}if payload.ID, err = primitive.ObjectIDFromHex(req.ID); err != nil {
-		return nil, err
-	}{{else}}payload.ID = req.ID{{end}}
-
-	if err := h.uc.{{upper (camel .ModuleName)}}().Update{{upper (camel .ModuleName)}}(ctx, req.ID, &payload); err != nil {
-		return nil, err
+	var payload domain.Request{{upper (camel .ModuleName)}}
+	payload.ID = req.ID
+	payload.Field = req.Field
+	if err := h.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/save", payload); err != nil {
+		return nil,  grpc.Errorf(codes.InvalidArgument, err.Error())
+	}
+	if err := h.uc.{{upper (camel .ModuleName)}}().Update{{upper (camel .ModuleName)}}(ctx, &payload); err != nil {
+		return nil, grpc.Errorf(codes.FailedPrecondition, err.Error())
 	}
 
-	return &proto.Response{
+	return &proto.BaseResponse{
 		Message: "Success",
 	}, nil
 }
 
 // Delete{{upper (camel .ModuleName)}} rpc method
-func (h *GRPCHandler) Delete{{upper (camel .ModuleName)}}(ctx context.Context, req *proto.{{upper (camel .ModuleName)}}Model) (resp *proto.Response, err error) {
+func (h *GRPCHandler) Delete{{upper (camel .ModuleName)}}(ctx context.Context, req *proto.Request{{upper (camel .ModuleName)}}Model) (resp *proto.BaseResponse, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryGRPC:Delete{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
 
 	if err := h.uc.{{upper (camel .ModuleName)}}().Delete{{upper (camel .ModuleName)}}(ctx, req.ID); err != nil {
-		return nil, err
+		return nil, grpc.Errorf(codes.FailedPrecondition, err.Error())
 	}
 
-	return &proto.Response{
+	return &proto.BaseResponse{
 		Message: "Success",
 	}, nil
 }
@@ -181,9 +171,9 @@ option go_package = "{{.PackagePrefix}}/api/proto/{{.ModuleName}}";
 service {{upper (camel .ModuleName)}}Handler {
 	rpc GetAll{{upper (camel .ModuleName)}}(GetAll{{upper (camel .ModuleName)}}Request) returns (GetAll{{upper (camel .ModuleName)}}Response);
 	rpc GetDetail{{upper (camel .ModuleName)}}(GetDetail{{upper (camel .ModuleName)}}Request) returns ({{upper (camel .ModuleName)}}Model);
-	rpc Create{{upper (camel .ModuleName)}}({{upper (camel .ModuleName)}}Model) returns (Response);
-	rpc Update{{upper (camel .ModuleName)}}({{upper (camel .ModuleName)}}Model) returns (Response);
-	rpc Delete{{upper (camel .ModuleName)}}({{upper (camel .ModuleName)}}Model) returns (Response);
+	rpc Create{{upper (camel .ModuleName)}}(Request{{upper (camel .ModuleName)}}Model) returns (BaseResponse);
+	rpc Update{{upper (camel .ModuleName)}}(Request{{upper (camel .ModuleName)}}Model) returns (BaseResponse);
+	rpc Delete{{upper (camel .ModuleName)}}(Request{{upper (camel .ModuleName)}}Model) returns (BaseResponse);
 }
 
 message Meta {
@@ -200,6 +190,8 @@ message GetAll{{upper (camel .ModuleName)}}Request {
 	string OrderBy=4;
 	string Sort=5;
 	bool ShowAll=6;
+	string StartDate=7;
+	string EndDate=8;
 }
 
 message GetAll{{upper (camel .ModuleName)}}Response {
@@ -211,6 +203,11 @@ message GetDetail{{upper (camel .ModuleName)}}Request {
 	string ID=1;
 }
 
+message Request{{upper (camel .ModuleName)}}Model {
+	string ID=1;
+	string Field=2;
+}
+
 message {{upper (camel .ModuleName)}}Model {
 	string ID=1;
 	string Field=2;
@@ -218,7 +215,7 @@ message {{upper (camel .ModuleName)}}Model {
 	string UpdatedAt=4;
 }
 
-message Response {
+message BaseResponse {
 	string Message=1;
 }
 `

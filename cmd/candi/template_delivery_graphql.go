@@ -59,7 +59,7 @@ package graphqlhandler
 import (
 	"context"
 
-	shareddomain "{{.PackagePrefix}}/pkg/shared/domain"
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 
 	"{{.LibraryName}}/tracer"
 )
@@ -79,6 +79,9 @@ func (q *queryResolver) GetAll{{upper (camel .ModuleName)}}(ctx context.Context,
 		input.Filter = new(CommonFilter)
 	}
 	filter := input.Filter.toSharedFilter()
+	if err := q.root.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/get_all", filter); err != nil {
+		return results, err
+	}
 	data, meta, err := q.root.uc.{{upper (camel .ModuleName)}}().GetAll{{upper (camel .ModuleName)}}(ctx, &filter)
 	if err != nil {
 		return results, err
@@ -90,7 +93,7 @@ func (q *queryResolver) GetAll{{upper (camel .ModuleName)}}(ctx context.Context,
 }
 
 // GetDetail{{upper (camel .ModuleName)}} resolver
-func (q *queryResolver) GetDetail{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ ID string }) (data shareddomain.{{upper (camel .ModuleName)}}, err error) {
+func (q *queryResolver) GetDetail{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ ID string }) (data domain.Response{{upper (camel .ModuleName)}}, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryGraphQL:GetDetail{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
@@ -98,7 +101,6 @@ func (q *queryResolver) GetDetail{{upper (camel .ModuleName)}}(ctx context.Conte
 
 	return q.root.uc.{{upper (camel .ModuleName)}}().GetDetail{{upper (camel .ModuleName)}}(ctx, input.ID)
 }
-
 `
 	deliveryGraphqlMutationTemplate = `// {{.Header}}
 
@@ -107,7 +109,7 @@ package graphqlhandler
 import (
 	"context"
 	
-	shareddomain "{{.PackagePrefix}}/pkg/shared/domain"
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 
 	"{{.LibraryName}}/tracer"
 )
@@ -117,12 +119,15 @@ type mutationResolver struct {
 }
 
 // Create{{upper (camel .ModuleName)}} resolver
-func (m *mutationResolver) Create{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ Data shareddomain.{{upper (camel .ModuleName)}} }) (ok string, err error) {
+func (m *mutationResolver) Create{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ Data domain.Request{{upper (camel .ModuleName)}} }) (ok string, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryGraphQL:Create{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
+	if err := m.root.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/save", input.Data); err != nil {
+		return "", err
+	}
 	if err := m.root.uc.{{upper (camel .ModuleName)}}().Create{{upper (camel .ModuleName)}}(ctx, &input.Data); err != nil {
 		return ok, err
 	}
@@ -132,14 +137,18 @@ func (m *mutationResolver) Create{{upper (camel .ModuleName)}}(ctx context.Conte
 // Update{{upper (camel .ModuleName)}} resolver
 func (m *mutationResolver) Update{{upper (camel .ModuleName)}}(ctx context.Context, input struct {
 	ID   string
-	Data shareddomain.{{upper (camel .ModuleName)}}
+	Data domain.Request{{upper (camel .ModuleName)}}
 }) (ok string, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryGraphQL:Update{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
-	if err := m.root.uc.{{upper (camel .ModuleName)}}().Update{{upper (camel .ModuleName)}}(ctx, input.ID, &input.Data); err != nil {
+	input.Data.ID = input.ID
+	if err := m.root.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/save", input.Data); err != nil {
+		return "", err
+	}
+	if err := m.root.uc.{{upper (camel .ModuleName)}}().Update{{upper (camel .ModuleName)}}(ctx, &input.Data); err != nil {
 		return ok, err
 	}
 	return "Success", nil
@@ -208,7 +217,6 @@ func (s *subscriptionResolver) ListenData(ctx context.Context) <-chan shareddoma
 
 import (
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
-	shareddomain "{{.PackagePrefix}}/pkg/shared/domain"
 
 	"{{.LibraryName}}/candihelper"
 	"{{.LibraryName}}/candishared"
@@ -248,7 +256,7 @@ func (f *CommonFilter) toSharedFilter() (filter domain.Filter{{upper (camel .Mod
 // {{upper (camel .ModuleName)}}ListResolver resolver
 type {{upper (camel .ModuleName)}}ListResolver struct {
 	Meta candishared.Meta
-	Data []shareddomain.{{upper (camel .ModuleName)}}
+	Data []domain.Response{{upper (camel .ModuleName)}}
 }
 `
 
@@ -331,8 +339,8 @@ type MetaResolver {
 }
 
 enum FilterSortEnum {
-	asc
-	desc
+	ASC
+	DESC
 }
 `
 )

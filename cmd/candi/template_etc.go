@@ -95,12 +95,76 @@ main_service.go
 coverage.txt
 `
 
-	jsonSchemaTemplate = `{
-	"$schema": "http://json-schema.org/draft-07/schema#",
-	"$id": "example",
-	"title": "json schema type",
+	jsonSchemaFilterGetTemplate = `{
+	"$schema": "http://json-schema.org/draft-07/schema",
+	"title": "JSON Schema for get all",
 	"type": "object",
-	"properties": {}
+	"properties": {
+		"page": {
+			"type": "number",
+			"default": 1,
+			"minimum": 0
+		},
+		"limit": {
+			"type": "number",
+			"default": 10,
+			"minimum": 1
+		},
+		"orderBy": {
+			"type": "string",
+			"enum": ["id", "field", "createdAt", "updatedAt"]
+		},
+		"sort": {
+			"type": "string",
+			"enum": ["asc", "desc", "ASC", "DESC"]
+		},
+		"search": {
+			"type": "string"
+		},
+		"startDate": {
+			"anyOf": [
+				{
+					"type": "string",
+					"format": "date"
+				},
+				{
+					"type": "string",
+					"maxLength": 0
+				}
+			]
+		},
+		"endDate": {
+			"anyOf": [
+				{
+					"type": "string",
+					"format": "date"
+				},
+				{
+					"type": "string",
+					"maxLength": 0
+				}
+			]
+		}
+	},
+	"additionalProperties": true
+}
+`
+
+	jsonSchemaSaveTemplate = `{
+	"$schema": "http://json-schema.org/draft-07/schema",
+	"title": "JSON Schema for save",
+	"type": "object",
+	"properties": {
+		"id": {
+			"type": "string"
+		},
+		"field": {
+			"type": "string",
+			"minLength": 1
+		}
+	},
+	"required": [ "field" ],
+	"additionalProperties": false
 }
 `
 

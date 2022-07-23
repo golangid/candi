@@ -125,10 +125,10 @@ func GetMigrateTables() []interface{} {
 	templateCmdMigrationInitModule = `-- +goose Up
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS {{snake .ModuleName}}s (
-	"id" varchar(255) NOT NULL PRIMARY KEY,
-	"field" varchar(255),
-	"created_at" timestamptz(6),
-	"updated_at" timestamptz(6)
+	"id" VARCHAR(255) NOT NULL PRIMARY KEY,
+	"field" VARCHAR(255),
+	"created_at" TIMESTAMPTZ(6),
+	"updated_at" TIMESTAMPTZ(6)
 );
 -- +goose StatementEnd
 

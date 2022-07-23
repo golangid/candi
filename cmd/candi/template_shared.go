@@ -109,8 +109,6 @@ func (c *callbacks) before(db *gorm.DB) {
 		return
 	}
 	trace := tracer.StartTrace(ctx, "gorm.sql")
-	d, _ := db.DB()
-	tracer.Log(trace.Context(), "db.stats.before", d.Stats())
 	db.Set(spanGormKey, trace)
 }
 
@@ -140,9 +138,6 @@ func (c *callbacks) after(db *gorm.DB, operation string) {
 	if db.Statement.Error != nil && db.Statement.Error != gorm.ErrRecordNotFound {
 		trace.SetError(db.Statement.Error)
 	}
-
-	d, _ := db.DB()
-	tracer.Log(trace.Context(), "db.stats.after", d.Stats())
 }
 
 func registerCallbacks(db *gorm.DB, name string, c *callbacks) {

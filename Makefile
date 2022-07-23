@@ -5,6 +5,7 @@ mocks:
 	@rm -rf mocks/cmd;
 	@mockery --all --keeptree
 	@if [ -f mocks/candiutils/HTTPRequestOption.go ]; then rm mocks/candiutils/HTTPRequestOption.go; fi;
+	@if [ -f mocks/candiutils/httpClientDo.go ]; then rm mocks/candiutils/httpClientDo.go; fi;
 	@if [ -f mocks/codebase/app/cron_worker/OptionFunc.go ]; then rm mocks/codebase/app/cron_worker/OptionFunc.go; fi;
 	@if [ -f mocks/codebase/app/graphql_server/ws/sendFunc.go ]; then rm mocks/codebase/app/graphql_server/ws/sendFunc.go; fi;
 	@if [ -f mocks/codebase/app/graphql_server/OptionFunc.go ]; then rm mocks/codebase/app/graphql_server/OptionFunc.go; fi;

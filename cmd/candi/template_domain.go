@@ -1,9 +1,7 @@
 package main
 
 const (
-	templateSharedDomain = `// {{.Header}}
-
-package domain
+	templateSharedDomain = `package domain
 
 import (
 	"time"` +
@@ -29,16 +27,34 @@ func ({{upper (camel .ModuleName)}}) CollectionName() string {
 	return "{{snake .ModuleName}}s"
 }{{end}}
 `
-	templateModuleDomain = `// {{.Header}}
-
-package domain
+	templateModuleDomain = `package domain
 
 import "{{.LibraryName}}/candishared"
 
 // Filter{{upper (camel .ModuleName)}} model
 type Filter{{upper (camel .ModuleName)}} struct {
 	candishared.Filter
-	ID string
+	ID        string ` + "`json:\"id\"`" + `
+	StartDate string ` + "`json:\"startDate\"`" + `
+	EndDate   string ` + "`json:\"endDate\"`" + `
+}
+`
+	templateModuleRequestDomain = `package domain
+
+// Request{{upper (camel .ModuleName)}} model
+type Request{{upper (camel .ModuleName)}} struct {
+	ID    string ` + "`json:\"id\"`" + `
+	Field string ` + "`json:\"field\"`" + `
+}
+`
+	templateModuleResponseDomain = `package domain
+
+// Response{{upper (camel .ModuleName)}} model
+type Response{{upper (camel .ModuleName)}} struct {
+	ID        string ` + "`json:\"id\"`" + `
+	Field     string ` + "`json:\"field\"`" + `
+	CreatedAt string ` + "`json:\"createdAt\"`" + `
+	UpdatedAt string ` + "`json:\"updatedAt\"`" + `
 }
 `
 )

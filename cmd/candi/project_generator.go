@@ -39,6 +39,9 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 	apiGraphQLStructure := FileStructure{
 		TargetDir: "graphql/", IsDir: true, SkipFunc: func() bool { return !srvConfig.GraphQLHandler },
 	}
+	apiJSONSchemaStructure := FileStructure{
+		TargetDir: "jsonschema/", IsDir: true,
+	}
 
 	apiGraphQLSchemaStructure := FileStructure{
 		FromTemplate: true, DataSource: srvConfig, Source: defaultGraphqlRootSchema, FileName: "_schema.graphql",
@@ -104,6 +107,9 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 				TargetDir: "domain/", IsDir: true,
 				Childs: []FileStructure{
 					{FromTemplate: true, DataSource: mod, Source: templateModuleDomain, FileName: "filter.go"},
+					{FromTemplate: true, DataSource: mod, Source: "package domain\n", FileName: "payload.go"},
+					{FromTemplate: true, DataSource: mod, Source: templateModuleRequestDomain, FileName: "request.go"},
+					{FromTemplate: true, DataSource: mod, Source: templateModuleResponseDomain, FileName: "response.go"},
 				},
 			},
 			{
@@ -114,8 +120,17 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 				TargetDir: "usecase/", IsDir: true,
 				Childs: []FileStructure{
 					{FromTemplate: true, DataSource: mod, Source: templateUsecaseAbstraction, FileName: "usecase.go"},
-					{FromTemplate: true, DataSource: mod, Source: templateUsecaseImpl, FileName: "usecase_impl.go"},
-					{FromTemplate: true, DataSource: mod, Source: templateUsecaseTest, FileName: "usecase_impl_test.go"},
+					{FromTemplate: true, DataSource: mod, Source: templateUsecaseTest, FileName: "usecase_test.go"},
+					{FromTemplate: true, DataSource: mod, Source: templateUsecaseGetAll, FileName: fmt.Sprintf("get_all_%s.go", candihelper.ToDelimited(mod.ModuleName, '_'))},
+					{FromTemplate: true, DataSource: mod, Source: templateUsecaseGetAllTest, FileName: fmt.Sprintf("get_all_%s_test.go", candihelper.ToDelimited(mod.ModuleName, '_'))},
+					{FromTemplate: true, DataSource: mod, Source: templateUsecaseGetDetail, FileName: fmt.Sprintf("get_detail_%s.go", candihelper.ToDelimited(mod.ModuleName, '_'))},
+					{FromTemplate: true, DataSource: mod, Source: templateUsecaseGetDetailTest, FileName: fmt.Sprintf("get_detail_%s_test.go", candihelper.ToDelimited(mod.ModuleName, '_'))},
+					{FromTemplate: true, DataSource: mod, Source: templateUsecaseCreate, FileName: fmt.Sprintf("create_%s.go", candihelper.ToDelimited(mod.ModuleName, '_'))},
+					{FromTemplate: true, DataSource: mod, Source: templateUsecaseCreateTest, FileName: fmt.Sprintf("create_%s_test.go", candihelper.ToDelimited(mod.ModuleName, '_'))},
+					{FromTemplate: true, DataSource: mod, Source: templateUsecaseUpdate, FileName: fmt.Sprintf("update_%s.go", candihelper.ToDelimited(mod.ModuleName, '_'))},
+					{FromTemplate: true, DataSource: mod, Source: templateUsecaseUpdateTest, FileName: fmt.Sprintf("update_%s_test.go", candihelper.ToDelimited(mod.ModuleName, '_'))},
+					{FromTemplate: true, DataSource: mod, Source: templateUsecaseDelete, FileName: fmt.Sprintf("delete_%s.go", candihelper.ToDelimited(mod.ModuleName, '_'))},
+					{FromTemplate: true, DataSource: mod, Source: templateUsecaseDeleteTest, FileName: fmt.Sprintf("delete_%s_test.go", candihelper.ToDelimited(mod.ModuleName, '_'))},
 				},
 			},
 		}
@@ -138,6 +153,13 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 			},
 			SkipFunc: func() bool { return !srvConfig.GRPCHandler },
 		})
+		apiJSONSchemaStructure.Childs = append(apiJSONSchemaStructure.Childs, FileStructure{
+			TargetDir: mod.ModuleName + "/", IsDir: true,
+			Childs: []FileStructure{
+				{FromTemplate: true, DataSource: mod, Source: jsonSchemaFilterGetTemplate, FileName: "get_all.json"},
+				{FromTemplate: true, DataSource: mod, Source: jsonSchemaSaveTemplate, FileName: "save.json"},
+			},
+		})
 		apiGraphQLStructure.Childs = append(apiGraphQLStructure.Childs, FileStructure{
 			FromTemplate: true, DataSource: mod, Source: defaultGraphqlSchema, FileName: mod.ModuleName + ".graphql",
 			SkipFunc: func() bool { return !srvConfig.GraphQLHandler },
@@ -145,7 +167,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 
 		// for shared domain
 		sharedDomainFiles = append(sharedDomainFiles, FileStructure{
-			FromTemplate: true, DataSource: mod, Source: templateSharedDomain, FileName: mod.ModuleName + ".go",
+			FromTemplate: true, DataSource: mod, Source: templateSharedDomain, FileName: candihelper.ToDelimited(mod.ModuleName, '_') + ".go",
 		})
 		migrationFiles = append(migrationFiles, FileStructure{
 			FromTemplate: true, DataSource: mod, Source: templateCmdMigrationInitModule,
@@ -185,13 +207,8 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 		}...)
 		apiStructure.Childs = []FileStructure{
 			apiGraphQLStructure,
-			{
-				TargetDir: "jsonschema/", IsDir: true,
-				Childs: []FileStructure{
-					{Source: jsonSchemaTemplate, FromTemplate: true, FileName: "schema.json"},
-				},
-			},
 			apiProtoStructure,
+			apiJSONSchemaStructure,
 		}
 		migrationFiles = append(migrationFiles, FileStructure{FromTemplate: true, DataSource: srvConfig,
 			Source: templateCmdMigrationInitTable, FileName: "00000000000000_init_tables.go"})
@@ -287,9 +304,9 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 
 		internalServiceStructure.Childs = append(internalServiceStructure.Childs, moduleStructure)
 		apiStructure.Skip = true
-		apiProtoStructure.Skip, apiGraphQLStructure.Skip = true, true
+		apiProtoStructure.Skip, apiGraphQLStructure.Skip, apiJSONSchemaStructure.Skip = true, true, true
 		apiStructure.Childs = []FileStructure{
-			apiProtoStructure, apiGraphQLStructure,
+			apiProtoStructure, apiGraphQLStructure, apiJSONSchemaStructure,
 		}
 
 		baseDirectoryFile.Childs = append(baseDirectoryFile.Childs, []FileStructure{

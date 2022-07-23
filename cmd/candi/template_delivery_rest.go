@@ -6,12 +6,13 @@ const (
 package resthandler
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 
 	"github.com/labstack/echo"
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
-	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
 	"{{.LibraryName}}/candihelper"
@@ -57,7 +58,11 @@ func (h *RestHandler) getAll{{upper (camel .ModuleName)}}(c echo.Context) error 
 
 	var filter domain.Filter{{upper (camel .ModuleName)}}
 	if err := candihelper.ParseFromQueryParam(c.Request().URL.Query(), &filter); err != nil {
-		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
+		return wrapper.NewHTTPResponse(http.StatusBadRequest, "Failed parse filter", err).JSON(c.Response())
+	}
+
+	if err := h.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/get_all", filter); err != nil {
+		return wrapper.NewHTTPResponse(http.StatusBadRequest, "Failed validate filter", err).JSON(c.Response())
 	}
 
 	data, meta, err := h.uc.{{upper (camel .ModuleName)}}().GetAll{{upper (camel .ModuleName)}}(ctx, &filter)
@@ -85,8 +90,13 @@ func (h *RestHandler) create{{upper (camel .ModuleName)}}(c echo.Context) error 
 	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{upper (camel .ModuleName)}}DeliveryREST:Create{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	var payload shareddomain.{{upper (camel .ModuleName)}}
-	if err := c.Bind(&payload); err != nil {
+	body, _ := io.ReadAll(c.Request().Body)
+	if err := h.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/save", body); err != nil {
+		return wrapper.NewHTTPResponse(http.StatusBadRequest, "Failed validate payload", err).JSON(c.Response())
+	}
+
+	var payload domain.Request{{upper (camel .ModuleName)}}
+	if err := json.Unmarshal(body, &payload); err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
 
@@ -102,12 +112,18 @@ func (h *RestHandler) update{{upper (camel .ModuleName)}}(c echo.Context) error 
 	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{upper (camel .ModuleName)}}DeliveryREST:Update{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	var payload shareddomain.{{upper (camel .ModuleName)}}
-	if err := c.Bind(&payload); err != nil {
+	body, _ := io.ReadAll(c.Request().Body)
+	if err := h.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/save", body); err != nil {
+		return wrapper.NewHTTPResponse(http.StatusBadRequest, "Failed validate payload", err).JSON(c.Response())
+	}
+
+	var payload domain.Request{{upper (camel .ModuleName)}}
+	if err := json.Unmarshal(body, &payload); err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
 
-	err := h.uc.{{upper (camel .ModuleName)}}().Update{{upper (camel .ModuleName)}}(ctx, c.Param("id"), &payload)
+	payload.ID = c.Param("id")
+	err := h.uc.{{upper (camel .ModuleName)}}().Update{{upper (camel .ModuleName)}}(ctx, &payload)
 	if err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
@@ -138,9 +154,9 @@ import (
 	"strings"
 	"testing"
 
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	mockusecase "{{$.PackagePrefix}}/pkg/mocks/modules/{{cleanPathModule .ModuleName}}/usecase"
 	mocksharedusecase "{{$.PackagePrefix}}/pkg/mocks/shared/usecase"
-	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 
 	"{{.LibraryName}}/candishared"
 	mockdeps "{{.LibraryName}}/mocks/codebase/factory/dependency"
@@ -193,7 +209,7 @@ func TestRestHandler_getAll{{upper (camel .ModuleName)}}(t *testing.T) {
 
 			{{camel .ModuleName}}Usecase := &mockusecase.{{upper (camel .ModuleName)}}Usecase{}
 			{{camel .ModuleName}}Usecase.On("GetAll{{upper (camel .ModuleName)}}", mock.Anything, mock.Anything).Return(
-				[]shareddomain.{{upper (camel .ModuleName)}}{}, candishared.Meta{}, tt.wantUsecaseError)
+				[]domain.Response{{upper (camel .ModuleName)}}{}, candishared.Meta{}, tt.wantUsecaseError)
 			mockValidator := &mockinterfaces.Validator{}
 			mockValidator.On("ValidateDocument", mock.Anything, mock.Anything).Return(tt.wantValidateError)
 
@@ -227,7 +243,7 @@ func TestRestHandler_getDetail{{upper (camel .ModuleName)}}ByID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			{{camel .ModuleName}}Usecase := &mockusecase.{{upper (camel .ModuleName)}}Usecase{}
-			{{camel .ModuleName}}Usecase.On("GetDetail{{upper (camel .ModuleName)}}", mock.Anything, mock.Anything).Return(shareddomain.{{upper (camel .ModuleName)}}{}, tt.wantUsecaseError)
+			{{camel .ModuleName}}Usecase.On("GetDetail{{upper (camel .ModuleName)}}", mock.Anything, mock.Anything).Return(domain.Response{{upper (camel .ModuleName)}}{}, tt.wantUsecaseError)
 			mockValidator := &mockinterfaces.Validator{}
 			mockValidator.On("ValidateDocument", mock.Anything, mock.Anything).Return(tt.wantValidateError)
 
