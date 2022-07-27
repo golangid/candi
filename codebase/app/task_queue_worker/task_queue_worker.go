@@ -103,7 +103,7 @@ func (t *taskQueueWorker) prepare() {
 				"status": job.Status,
 			})
 
-			persistent.Summary().IncrementSummary(t.ctx, job.TaskName, map[string]interface{}{
+			persistent.Summary().IncrementSummary(t.ctx, job.TaskName, map[string]int64{
 				statusBefore: -matched, job.Status: affected,
 			})
 		}

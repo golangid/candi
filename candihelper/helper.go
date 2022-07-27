@@ -544,3 +544,92 @@ func GetRuntimeStackLine() string {
 
 	return fmt.Sprintf("%s:%d", file, line)
 }
+
+// ToString helper
+func ToString(val interface{}) (str string) {
+	switch s := val.(type) {
+	case string:
+		return s
+	case bool:
+		return strconv.FormatBool(s)
+	case float64:
+		return strconv.FormatFloat(s, 'f', -1, 64)
+	case float32:
+		return strconv.FormatFloat(float64(s), 'f', -1, 32)
+	case int:
+		return strconv.Itoa(s)
+	case int64:
+		return strconv.FormatInt(s, 10)
+	case int32:
+		return strconv.Itoa(int(s))
+	case int16:
+		return strconv.FormatInt(int64(s), 10)
+	case int8:
+		return strconv.FormatInt(int64(s), 10)
+	case uint:
+		return strconv.FormatInt(int64(s), 10)
+	case uint64:
+		return strconv.FormatInt(int64(s), 10)
+	case uint32:
+		return strconv.FormatInt(int64(s), 10)
+	case uint16:
+		return strconv.FormatInt(int64(s), 10)
+	case uint8:
+		return strconv.FormatInt(int64(s), 10)
+	case []byte:
+		return string(s)
+	case nil:
+		return ""
+	case fmt.Stringer:
+		return s.String()
+	case error:
+		return s.Error()
+	default:
+		return ""
+	}
+}
+
+// ToInt helper
+func ToInt(val interface{}) (i int) {
+	switch s := val.(type) {
+	case int:
+		return s
+	case int64:
+		return int(s)
+	case int32:
+		return int(s)
+	case int16:
+		return int(s)
+	case int8:
+		return int(s)
+	case uint:
+		return int(s)
+	case uint64:
+		return int(s)
+	case uint32:
+		return int(s)
+	case uint16:
+		return int(s)
+	case uint8:
+		return int(s)
+	case float64:
+		return int(s)
+	case float32:
+		return int(s)
+	case string:
+		v, err := strconv.ParseInt(s, 0, 0)
+		if err == nil {
+			return int(v)
+		}
+		return 0
+	case bool:
+		if s {
+			return 1
+		}
+		return 0
+	case nil:
+		return 0
+	default:
+		return 0
+	}
+}

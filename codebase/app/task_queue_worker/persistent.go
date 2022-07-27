@@ -4,6 +4,11 @@ import (
 	"context"
 )
 
+const (
+	jobModelName        = "task_queue_worker_jobs"
+	jobSummaryModelName = "task_queue_worker_job_summaries"
+)
+
 type (
 	// Persistent abstraction
 	Persistent interface {

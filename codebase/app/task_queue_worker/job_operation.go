@@ -13,7 +13,6 @@ import (
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candiutils"
 	"github.com/golangid/candi/tracer"
-	"github.com/google/uuid"
 )
 
 type (
@@ -70,7 +69,6 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	}
 
 	var newJob Job
-	newJob.ID = uuid.New().String()
 	newJob.TaskName = req.TaskName
 	newJob.Arguments = string(req.Args)
 	newJob.MaxRetry = req.MaxRetry
@@ -89,7 +87,7 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 		defer func() { <-semaphoreAddJob }()
 
 		persistent.SaveJob(ctx, job)
-		persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]interface{}{
+		persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
 			strings.ToLower(job.Status): 1,
 		})
 		broadcastAllToSubscribers(ctx)
@@ -184,7 +182,7 @@ func RetryJob(ctx context.Context, jobID string) error {
 	matched, affected, _ := persistent.UpdateJob(ctx, &Filter{JobID: &job.ID}, map[string]interface{}{
 		"status": job.Status, "interval": job.Interval, "retries": job.Retries,
 	})
-	persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]interface{}{
+	persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
 		statusBefore: -matched,
 		job.Status:   affected,
 	})
@@ -223,7 +221,7 @@ func StopJob(ctx context.Context, jobID string) error {
 	if err != nil {
 		return err
 	}
-	persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]interface{}{
+	persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
 		job.Status:   countAffected,
 		statusBefore: -matchedCount,
 	})

@@ -106,9 +106,13 @@ func SetEnv(env Environment) {
 package configs
 
 import (
+	taskqueueworker "{{.LibraryName}}/codebase/app/task_queue_worker"
 	"{{.LibraryName}}/codebase/factory"
 	"{{.LibraryName}}/codebase/factory/appfactory"
-	"{{.LibraryName}}/config/env"
+	"{{.LibraryName}}/config/env"{{if not .MongoDeps}}
+
+	"database/sql"
+	_ "github.com/mattn/go-sqlite3"{{end}}
 )
 
 /*
@@ -138,7 +142,18 @@ func InitAppFromEnvironmentConfig(service factory.ServiceFactory) (apps []factor
 		apps = append(apps, appfactory.SetupCronWorker(service))
 	}
 	if env.BaseEnv().UseTaskQueueWorker {
-		apps = append(apps, appfactory.SetupTaskQueueWorker(service))
+		{{if .MongoDeps}}persistent := taskqueueworker.NewMongoPersistent(service.
+			GetDependency().
+			GetMongoDatabase().
+			WriteDB(),
+		){{else}}db, err := sql.Open("sqlite3", "./candi_task_queue_worker.db")
+		if err != nil {
+			panic(err)
+		}
+		persistent := taskqueueworker.NewSQLPersistent(db){{end}}
+		apps = append(apps, appfactory.SetupTaskQueueWorker(service,
+			taskqueueworker.SetPersistent(persistent),
+		))
 	}
 	if env.BaseEnv().UseRedisSubscriber {
 		apps = append(apps, appfactory.SetupRedisWorker(service))

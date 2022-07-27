@@ -110,7 +110,7 @@ func (r *rootResolver) DeleteJob(ctx context.Context, input struct{ JobID string
 	if err != nil {
 		return "", err
 	}
-	persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]interface{}{
+	persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
 		job.Status: -1,
 	})
 	broadcastAllToSubscribers(r.worker.ctx)
@@ -164,7 +164,7 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 		stopAllJobInTask(input.TaskName)
 		queue.Clear(ctx, input.TaskName)
 
-		incrQuery := map[string]int{}
+		incrQuery := map[string]int64{}
 		affectedStatus := []string{string(statusQueueing), string(statusRetrying)}
 		for _, status := range affectedStatus {
 			countMatchedFilter, countAffected, err := persistent.UpdateJob(ctx,
@@ -178,12 +178,12 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 			if err != nil {
 				continue
 			}
-			incrQuery[strings.ToLower(status)] -= int(countMatchedFilter)
-			incrQuery[strings.ToLower(string(statusStopped))] += int(countAffected)
+			incrQuery[strings.ToLower(status)] -= countMatchedFilter
+			incrQuery[strings.ToLower(string(statusStopped))] += countAffected
 		}
 
 		broadcastWhenChangeAllJob(ctx, input.TaskName, false)
-		persistent.Summary().IncrementSummary(ctx, input.TaskName, convertIncrementMap(incrQuery))
+		persistent.Summary().IncrementSummary(ctx, input.TaskName, incrQuery)
 		broadcastAllToSubscribers(r.worker.ctx)
 
 	}(r.worker.ctx)
@@ -214,7 +214,7 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 			}
 		})
 
-		incr := map[string]int{}
+		incr := map[string]int64{}
 		for _, status := range filter.Statuses {
 			countMatchedFilter, countAffected, err := persistent.UpdateJob(ctx,
 				&Filter{
@@ -228,12 +228,12 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 			if err != nil {
 				continue
 			}
-			incr[strings.ToLower(status)] -= int(countMatchedFilter)
-			incr[strings.ToLower(string(statusQueueing))] += int(countAffected)
+			incr[strings.ToLower(status)] -= countMatchedFilter
+			incr[strings.ToLower(string(statusQueueing))] += countAffected
 		}
 
 		broadcastWhenChangeAllJob(ctx, input.TaskName, false)
-		persistent.Summary().IncrementSummary(ctx, input.TaskName, convertIncrementMap(incr))
+		persistent.Summary().IncrementSummary(ctx, input.TaskName, incr)
 		broadcastAllToSubscribers(r.worker.ctx)
 		refreshWorkerNotif <- struct{}{}
 
@@ -250,7 +250,7 @@ func (r *rootResolver) CleanJob(ctx context.Context, input struct {
 
 		broadcastWhenChangeAllJob(ctx, input.TaskName, true)
 
-		incrQuery := map[string]int{}
+		incrQuery := map[string]int64{}
 		affectedStatus := []string{string(statusSuccess), string(statusFailure), string(statusStopped)}
 		for _, status := range affectedStatus {
 			countAffected := persistent.CleanJob(ctx,
@@ -258,11 +258,11 @@ func (r *rootResolver) CleanJob(ctx context.Context, input struct {
 					TaskName: input.TaskName, Status: &status,
 				},
 			)
-			incrQuery[strings.ToLower(status)] -= int(countAffected)
+			incrQuery[strings.ToLower(status)] -= countAffected
 		}
 
 		broadcastWhenChangeAllJob(ctx, input.TaskName, false)
-		persistent.Summary().IncrementSummary(ctx, input.TaskName, convertIncrementMap(incrQuery))
+		persistent.Summary().IncrementSummary(ctx, input.TaskName, incrQuery)
 		broadcastAllToSubscribers(r.worker.ctx)
 
 	}(r.worker.ctx)

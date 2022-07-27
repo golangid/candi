@@ -43,11 +43,10 @@ func (job *Job) toMap() map[string]interface{} {
 		"retries":     job.Retries,
 		"max_retry":   job.MaxRetry,
 		"interval":    job.Interval,
-		"created_at":  job.CreatedAt,
-		"finished_at": job.FinishedAt,
+		"created_at":  job.CreatedAt.Format(time.RFC3339),
+		"finished_at": job.FinishedAt.Format(time.RFC3339),
 		"status":      job.Status,
 		"error":       job.Error,
-		"error_stack": job.ErrorStack,
 		"trace_id":    job.TraceID,
 	}
 }

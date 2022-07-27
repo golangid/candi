@@ -45,7 +45,7 @@ func (_m *Summary) FindDetailSummary(ctx context.Context, taskName string) taskq
 }
 
 // IncrementSummary provides a mock function with given fields: ctx, taskName, incr
-func (_m *Summary) IncrementSummary(ctx context.Context, taskName string, incr map[string]interface{}) {
+func (_m *Summary) IncrementSummary(ctx context.Context, taskName string, incr map[string]int64) {
 	_m.Called(ctx, taskName, incr)
 }
 

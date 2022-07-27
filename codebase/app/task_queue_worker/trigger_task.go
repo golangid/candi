@@ -88,7 +88,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 	matchedCount, affectedCount, err := persistent.UpdateJob(
 		t.ctx, &Filter{JobID: &job.ID}, job.toMap(),
 	)
-	persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]interface{}{
+	persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
 		string(job.Status): affectedCount,
 		statusBefore:       -matchedCount,
 	})
@@ -133,7 +133,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		if affectedCount == 0 && matchedCount == 0 {
 			persistent.SaveJob(t.ctx, &job, retryHistory)
 		}
-		persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]interface{}{
+		persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
 			job.Status:   affectedCount,
 			statusBefore: -matchedCount,
 		})

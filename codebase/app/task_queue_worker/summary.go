@@ -12,7 +12,7 @@ type (
 		FindAllSummary(ctx context.Context, filter *Filter) (result []TaskSummary)
 		FindDetailSummary(ctx context.Context, taskName string) (result TaskSummary)
 		UpdateSummary(ctx context.Context, taskName string, updated map[string]interface{})
-		IncrementSummary(ctx context.Context, taskName string, incr map[string]interface{})
+		IncrementSummary(ctx context.Context, taskName string, incr map[string]int64)
 	}
 
 	// TaskSummary model
@@ -152,7 +152,7 @@ func (i *inMemSummary) UpdateSummary(ctx context.Context, taskName string, updat
 	i.values[taskName] = summary
 	return
 }
-func (i *inMemSummary) IncrementSummary(ctx context.Context, taskName string, incr map[string]interface{}) {
+func (i *inMemSummary) IncrementSummary(ctx context.Context, taskName string, incr map[string]int64) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 
@@ -161,24 +161,17 @@ func (i *inMemSummary) IncrementSummary(ctx context.Context, taskName string, in
 		summary = new(TaskSummary)
 	}
 	for k, v := range incr {
-		var count int
-		switch c := v.(type) {
-		case int:
-			count = c
-		case int64:
-			count = int(c)
-		}
 		switch strings.ToUpper(k) {
 		case string(statusFailure):
-			summary.Failure += count
+			summary.Failure += int(v)
 		case string(statusRetrying):
-			summary.Retrying += count
+			summary.Retrying += int(v)
 		case string(statusSuccess):
-			summary.Success += count
+			summary.Success += int(v)
 		case string(statusQueueing):
-			summary.Queueing += count
+			summary.Queueing += int(v)
 		case string(statusStopped):
-			summary.Stopped += count
+			summary.Stopped += int(v)
 		}
 	}
 	i.values[taskName] = summary

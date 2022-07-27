@@ -2,13 +2,13 @@ package main
 
 const (
 	dockerfileTemplate = `# Stage 1
-FROM golang:1.16.4-alpine3.13 AS dependency_builder
+FROM golang:1.18.4-alpine3.16 AS dependency_builder
 
 WORKDIR /go/src
 ENV GO111MODULE=on
 
 RUN apk update
-RUN apk add --no-cache bash ca-certificates git make
+RUN apk add --no-cache bash ca-certificates git gcc musl-dev
 
 COPY go.mod .
 COPY go.sum .
@@ -21,7 +21,7 @@ FROM dependency_builder AS service_builder
 WORKDIR /usr/app
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o bin
+RUN go build -o bin
 
 # Stage 3
 FROM alpine:latest  
@@ -85,7 +85,10 @@ test:
 
 go {{.GoVersion}}
 
-require {{.LibraryName}} {{.Version}}
+require (
+	{{.LibraryName}} {{.Version}}
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
+)
 `
 
 	gitignoreTemplate = `bin
@@ -345,13 +348,13 @@ $ make migration service={{service_name}} down
 		"```\n"
 
 	dockerfileMonorepoTemplate = `# Stage 1
-FROM golang:1.16.4-alpine3.13 AS dependency_builder
+FROM golang:1.18.4-alpine3.16 AS dependency_builder
 
 WORKDIR /go/src
 ENV GO111MODULE=on
 
 RUN apk update
-RUN apk add --no-cache bash ca-certificates git
+RUN apk add --no-cache bash ca-certificates git make gcc musl-dev
 
 COPY go.mod .
 COPY go.sum .
@@ -368,7 +371,7 @@ COPY sdk sdk
 COPY services/$SERVICE_NAME services/$SERVICE_NAME
 COPY go.mod .
 COPY go.sum .
-RUN CGO_ENABLED=0 GOOS=linux go build -o bin services/$SERVICE_NAME/*.go
+RUN go build -o bin services/$SERVICE_NAME/*.go
 
 # Stage 3
 FROM alpine:latest  
