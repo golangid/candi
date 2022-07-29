@@ -180,6 +180,7 @@ stageSelectWorkerHandlers:
 
 		srvConfig.OutputDir = flagParam.outputFlag
 		if scope == AddHandler {
+			srvConfig.parseDefaultHeader()
 			scopeAddHandler(flagParam, srvConfig, serviceHandlers, workerHandlers)
 		}
 		return
@@ -204,8 +205,8 @@ stageSelectDependencies:
 		fmt.Printf(RedFormat, "Redis Subscriber need redis, try again")
 		goto stageSelectDependencies
 	}
-	if workerHandlers[TaskqueueHandler] && !(dependencies[RedisDeps] && dependencies[MongodbDeps]) {
-		fmt.Printf(RedFormat, "Task Queue Worker need redis (for queue) and mongo (for log storage), try again")
+	if workerHandlers[TaskqueueHandler] && !dependencies[RedisDeps] {
+		fmt.Printf(RedFormat, "Task Queue Worker need redis (for queue), try again")
 		goto stageSelectDependencies
 	}
 

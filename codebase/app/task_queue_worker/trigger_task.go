@@ -70,7 +70,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 
 	selectedTask := registeredTask[runningTask.taskName]
 
-	job, err := persistent.FindJobByID(ctx, jobID, "retry_histories")
+	job, err := persistent.FindJobByID(ctx, jobID, nil)
 	if err != nil || job.Status != string(statusQueueing) {
 		return
 	}
@@ -228,7 +228,7 @@ func (t *taskQueueWorker) registerNextJob(taskName string) {
 	nextJobID := queue.NextJob(t.ctx, taskName)
 	if nextJobID != "" {
 
-		if nextJob, err := persistent.FindJobByID(t.ctx, nextJobID); err == nil {
+		if nextJob, err := persistent.FindJobByID(t.ctx, nextJobID, nil); err == nil {
 			registerJobToWorker(&nextJob, registeredTask[taskName].workerIndex)
 		}
 

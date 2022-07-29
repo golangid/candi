@@ -59,13 +59,14 @@ type (
 
 	// MetaJobList resolver
 	MetaJobList struct {
-		Page           int
-		Limit          int
-		TotalRecords   int
-		TotalPages     int
-		IsCloseSession bool
-		IsLoading      bool
-		Detail         SummaryDetail
+		Page              int
+		Limit             int
+		TotalRecords      int
+		TotalPages        int
+		IsCloseSession    bool
+		IsLoading         bool
+		IsFreezeBroadcast bool
+		Detail            SummaryDetail
 	}
 
 	// SummaryDetail type
@@ -95,7 +96,11 @@ type (
 		TraceID        string
 		RetryHistories []RetryHistory
 		NextRetryAt    string
-		IsCloseSession bool
+		Meta           struct {
+			IsCloseSession bool
+			Page           int
+			TotalHistory   int
+		}
 	}
 
 	// ConfigResolver resolver
@@ -106,13 +111,22 @@ type (
 	// GetAllJobInputResolver resolver
 	GetAllJobInputResolver struct {
 		TaskName  *string
-		Page      *int32
-		Limit     *int32
+		Page      *int
+		Limit     *int
 		Search    *string
 		JobID     *string
 		Statuses  *[]string
 		StartDate *string
 		EndDate   *string
+	}
+
+	// GetAllJobHistoryInputResolver resolver
+	GetAllJobHistoryInputResolver struct {
+		Page      *int
+		Limit     *int
+		StartDate *string
+		EndDate   *string
+		JobID     string
 	}
 )
 
@@ -126,10 +140,10 @@ func (i *GetAllJobInputResolver) ToFilter() (filter Filter) {
 	}
 
 	if i.Page != nil && *i.Page > 0 {
-		filter.Page = int(*i.Page)
+		filter.Page = *i.Page
 	}
 	if i.Limit != nil && *i.Limit > 0 {
-		filter.Limit = int(*i.Limit)
+		filter.Limit = *i.Limit
 	}
 	if i.Statuses != nil {
 		filter.Statuses = *i.Statuses
@@ -138,6 +152,24 @@ func (i *GetAllJobInputResolver) ToFilter() (filter Filter) {
 	filter.StartDate, _ = time.Parse(time.RFC3339, candihelper.PtrToString(i.StartDate))
 	filter.EndDate, _ = time.Parse(time.RFC3339, candihelper.PtrToString(i.EndDate))
 
+	return
+}
+
+// ToFilter method
+func (i *GetAllJobHistoryInputResolver) ToFilter() (filter Filter) {
+
+	filter = Filter{
+		Page: 1, Limit: 10,
+	}
+
+	if i.Page != nil && *i.Page > 0 {
+		filter.Page = *i.Page
+	}
+	if i.Limit != nil && *i.Limit > 0 {
+		filter.Limit = *i.Limit
+	}
+	filter.StartDate, _ = time.Parse(time.RFC3339, candihelper.PtrToString(i.StartDate))
+	filter.EndDate, _ = time.Parse(time.RFC3339, candihelper.PtrToString(i.EndDate))
 	return
 }
 

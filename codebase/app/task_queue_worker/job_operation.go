@@ -163,12 +163,12 @@ func AddJobViaHTTPRequest(ctx context.Context, workerHost string, req *AddJobReq
 
 // GetDetailJob api for get detail job by id
 func GetDetailJob(ctx context.Context, jobID string) (Job, error) {
-	return persistent.FindJobByID(ctx, jobID)
+	return persistent.FindJobByID(ctx, jobID, nil)
 }
 
 // RetryJob api for retry job by id
 func RetryJob(ctx context.Context, jobID string) error {
-	job, err := persistent.FindJobByID(ctx, jobID)
+	job, err := persistent.FindJobByID(ctx, jobID, nil)
 	if err != nil {
 		return err
 	}
@@ -203,7 +203,7 @@ func StopJob(ctx context.Context, jobID string) error {
 		ctx = context.Background()
 	}
 
-	job, err := persistent.FindJobByID(ctx, jobID)
+	job, err := persistent.FindJobByID(ctx, jobID, nil)
 	if err != nil {
 		return err
 	}

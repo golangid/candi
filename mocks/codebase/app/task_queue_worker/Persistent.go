@@ -95,27 +95,20 @@ func (_m *Persistent) FindAllJob(ctx context.Context, filter *taskqueueworker.Fi
 	return r0
 }
 
-// FindJobByID provides a mock function with given fields: ctx, id, excludeFields
-func (_m *Persistent) FindJobByID(ctx context.Context, id string, excludeFields ...string) (taskqueueworker.Job, error) {
-	_va := make([]interface{}, len(excludeFields))
-	for _i := range excludeFields {
-		_va[_i] = excludeFields[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx, id)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
+// FindJobByID provides a mock function with given fields: ctx, id, filterHistory
+func (_m *Persistent) FindJobByID(ctx context.Context, id string, filterHistory *taskqueueworker.Filter) (taskqueueworker.Job, error) {
+	ret := _m.Called(ctx, id, filterHistory)
 
 	var r0 taskqueueworker.Job
-	if rf, ok := ret.Get(0).(func(context.Context, string, ...string) taskqueueworker.Job); ok {
-		r0 = rf(ctx, id, excludeFields...)
+	if rf, ok := ret.Get(0).(func(context.Context, string, *taskqueueworker.Filter) taskqueueworker.Job); ok {
+		r0 = rf(ctx, id, filterHistory)
 	} else {
 		r0 = ret.Get(0).(taskqueueworker.Job)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, ...string) error); ok {
-		r1 = rf(ctx, id, excludeFields...)
+	if rf, ok := ret.Get(1).(func(context.Context, string, *taskqueueworker.Filter) error); ok {
+		r1 = rf(ctx, id, filterHistory)
 	} else {
 		r1 = ret.Error(1)
 	}

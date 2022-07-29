@@ -8,7 +8,7 @@ const schema = `schema {
 
 type Query {
 	dashboard(gc: Boolean): DashboardType!
-	get_job_detail(job_id: String!): JobResolver!
+	get_detail_job(job_id: String!, filter: GetAllJobHistoryInputResolver): JobResolver!
 	get_all_active_subscriber(): [ClientSubscriber!]!
 	get_all_job(filter: GetAllJobInputResolver): JobListResolver!
 }
@@ -32,7 +32,7 @@ type Subscription {
 		search: String
 	): TaskListResolver!
 	listen_all_job(filter: GetAllJobInputResolver): JobListResolver!
-	listen_detail_job(job_id: String!): JobResolver!
+	listen_detail_job(job_id: String!, filter: GetAllJobHistoryInputResolver): JobResolver!
 }
 
 type DashboardType {
@@ -65,6 +65,7 @@ type MetaType {
 	total_records: Int!
 	is_close_session: Boolean!
 	is_loading: Boolean!
+	is_freeze_broadcast: Boolean!
 	detail: TaskDetailResolver!
 }
 
@@ -111,7 +112,6 @@ type JobListResolver {
 }
 
 type JobResolver {
-	is_close_session: Boolean!
 	id: String!
 	task_name: String!
 	arguments: String!
@@ -125,6 +125,13 @@ type JobResolver {
 	created_at: String!
 	finished_at: String!
 	next_retry_at: String!
+	meta: JoDetailMetaResolver!
+}
+
+type JoDetailMetaResolver {
+	is_close_session: Boolean!
+	page: Int!
+	total_history: Int!
 }
 
 type JobRetryHistory {
@@ -173,6 +180,13 @@ input GetAllJobInputResolver {
 	start_date: String,
 	end_date: String,
 	job_id: String
+}
+
+input GetAllJobHistoryInputResolver {
+	page: Int, 
+	limit: Int,
+	start_date: String,
+	end_date: String
 }
 `
 

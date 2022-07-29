@@ -33,6 +33,7 @@ type (
 		ShowAll            bool
 		ShowHistories      *bool
 		StartDate, EndDate time.Time
+		Count              int
 	}
 
 	// ClientSubscriber model
@@ -55,8 +56,8 @@ type (
 		filter        *Filter
 	}
 	clientJobDetailSubscriber struct {
-		c     chan JobResolver
-		jobID string
+		c      chan JobResolver
+		filter *Filter
 	}
 
 	// JobStatusEnum enum status
@@ -74,6 +75,11 @@ func (s *clientTaskJobListSubscriber) writeDataToChannel(data JobListResolver) {
 func (s *clientJobDetailSubscriber) writeDataToChannel(data JobResolver) {
 	defer func() { recover() }()
 	s.c <- data
+}
+
+// CalculateOffset method
+func (f *Filter) CalculateOffset() int {
+	return (f.Page - 1) * f.Limit
 }
 
 const (

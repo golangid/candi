@@ -95,13 +95,22 @@ func (r *rootResolver) GetAllJob(ctx context.Context, input struct{ Filter *GetA
 	return
 }
 
-func (r *rootResolver) GetJobDetail(ctx context.Context, input struct{ JobID string }) (res JobResolver, err error) {
+func (r *rootResolver) GetDetailJob(ctx context.Context, input struct {
+	JobID  string
+	Filter *GetAllJobHistoryInputResolver
+}) (res JobResolver, err error) {
 
-	job, err := persistent.FindJobByID(ctx, input.JobID)
+	if input.Filter == nil {
+		input.Filter = &GetAllJobHistoryInputResolver{}
+	}
+	filter := input.Filter.ToFilter()
+	job, err := persistent.FindJobByID(ctx, input.JobID, &filter)
 	if err != nil {
 		return res, err
 	}
 	res.ParseFromJob(&job)
+	res.Meta.Page = filter.Page
+	res.Meta.TotalHistory = filter.Count
 	return
 }
 
@@ -322,7 +331,7 @@ func (r *rootResolver) GetAllActiveSubscriber(ctx context.Context) (cs []*Client
 			mapper[k] = &ClientSubscriber{}
 		}
 		mapper[k].ClientID = k
-		mapper[k].SubscribeList.JobDetailID = v.jobID
+		mapper[k].SubscribeList.JobDetailID = candihelper.PtrToString(v.filter.JobID)
 	}
 
 	for _, v := range mapper {
@@ -398,7 +407,7 @@ func (r *rootResolver) ListenAllJob(ctx context.Context, input struct{ Filter *G
 		filter.Limit = 10
 	}
 
-	if err := registerNewJobListSubscriber(filter.TaskName, clientID, &filter, output); err != nil {
+	if err := registerNewJobListSubscriber(clientID, &filter, output); err != nil {
 		return nil, err
 	}
 
@@ -430,7 +439,8 @@ func (r *rootResolver) ListenAllJob(ctx context.Context, input struct{ Filter *G
 }
 
 func (r *rootResolver) ListenDetailJob(ctx context.Context, input struct {
-	JobID string
+	JobID  string
+	Filter *GetAllJobHistoryInputResolver
 }) (<-chan JobResolver, error) {
 
 	output := make(chan JobResolver)
@@ -442,12 +452,17 @@ func (r *rootResolver) ListenDetailJob(ctx context.Context, input struct {
 		return output, errors.New("Job ID cannot empty")
 	}
 
-	_, err := persistent.FindJobByID(ctx, input.JobID, "retry_histories")
+	_, err := persistent.FindJobByID(ctx, input.JobID, nil)
 	if err != nil {
 		return output, errors.New("Job not found")
 	}
 
-	if err := registerNewJobDetailSubscriber(clientID, input.JobID, output); err != nil {
+	if input.Filter == nil {
+		input.Filter = &GetAllJobHistoryInputResolver{}
+	}
+	filter := input.Filter.ToFilter()
+	filter.JobID = &input.JobID
+	if err := registerNewJobDetailSubscriber(clientID, &filter, output); err != nil {
 		return nil, err
 	}
 
@@ -463,12 +478,16 @@ func (r *rootResolver) ListenDetailJob(ctx context.Context, input struct {
 			return
 
 		case <-closeAllSubscribers:
-			output <- JobResolver{IsCloseSession: true}
+			var js JobResolver
+			js.Meta.IsCloseSession = true
+			output <- js
 			removeJobDetailSubscriber(clientID)
 			return
 
 		case <-autoRemoveClient.C:
-			output <- JobResolver{IsCloseSession: true}
+			var js JobResolver
+			js.Meta.IsCloseSession = true
+			output <- js
 			removeJobDetailSubscriber(clientID)
 			return
 

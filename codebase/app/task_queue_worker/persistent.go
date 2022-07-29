@@ -16,7 +16,7 @@ type (
 		SetSummary(Summary)
 		Summary() Summary
 		FindAllJob(ctx context.Context, filter *Filter) (jobs []Job)
-		FindJobByID(ctx context.Context, id string, excludeFields ...string) (job Job, err error)
+		FindJobByID(ctx context.Context, id string, filterHistory *Filter) (job Job, err error)
 		CountAllJob(ctx context.Context, filter *Filter) int
 		AggregateAllTaskJob(ctx context.Context, filter *Filter) (result []TaskSummary)
 		SaveJob(ctx context.Context, job *Job, retryHistories ...RetryHistory)
@@ -54,7 +54,7 @@ func (n *noopPersistent) Summary() Summary {
 func (n *noopPersistent) FindAllJob(ctx context.Context, filter *Filter) (jobs []Job) {
 	return
 }
-func (n *noopPersistent) FindJobByID(ctx context.Context, id string, excludeFields ...string) (job Job, err error) {
+func (n *noopPersistent) FindJobByID(ctx context.Context, id string, filter *Filter) (job Job, err error) {
 	return
 }
 func (n *noopPersistent) CountAllJob(ctx context.Context, filter *Filter) (count int) {

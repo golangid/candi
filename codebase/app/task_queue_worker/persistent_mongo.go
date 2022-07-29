@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/logger"
@@ -188,6 +189,43 @@ func (s *MongoPersistent) FindAllJob(ctx context.Context, filter *Filter) (jobs 
 	return
 }
 
+func (s *MongoPersistent) FindJobByID(ctx context.Context, id string, filterHistory *Filter) (job Job, err error) {
+	var opts []*options.FindOneOptions
+	filter := bson.M{"_id": id}
+
+	if filterHistory == nil {
+		opts = append(opts, &options.FindOneOptions{
+			Projection: bson.M{"retry_histories": 0},
+		})
+	} else {
+		opts = append(opts, &options.FindOneOptions{
+			Projection: bson.M{"retry_histories": bson.M{"$slice": []interface{}{filterHistory.CalculateOffset(), filterHistory.Limit}}},
+		})
+		cur, err := s.db.Collection(jobModelName).Aggregate(ctx, []bson.M{
+			{"$match": filter},
+			{"$project": bson.M{"count": bson.M{"$size": "$retry_histories"}}},
+		})
+		if err == nil {
+			for cur.Next(ctx) {
+				var res struct {
+					ID    string `bson:"_id"`
+					Count int    `bson:"count"`
+				}
+				cur.Decode(&res)
+				filterHistory.Count = res.Count
+			}
+			cur.Close(ctx)
+		}
+	}
+
+	err = s.db.Collection(jobModelName).FindOne(ctx, filter, opts...).Decode(&job)
+	if len(job.RetryHistories) == 0 {
+		job.RetryHistories = make([]RetryHistory, 0)
+	}
+
+	return
+}
+
 func (s *MongoPersistent) CountAllJob(ctx context.Context, filter *Filter) int {
 	queryFilter := s.toBsonFilter(filter)
 	count, _ := s.db.Collection(jobModelName).CountDocuments(ctx, queryFilter)
@@ -250,6 +288,7 @@ func (s *MongoPersistent) SaveJob(ctx context.Context, job *Job, retryHistories 
 
 	if job.ID == "" {
 		job.ID = uuid.New().String()
+		job.CreatedAt = time.Now()
 		if len(job.RetryHistories) == 0 {
 			job.RetryHistories = make([]RetryHistory, 0)
 		}
@@ -263,6 +302,7 @@ func (s *MongoPersistent) SaveJob(ctx context.Context, job *Job, retryHistories 
 			updateQuery["$push"] = bson.M{
 				"retry_histories": bson.M{
 					"$each": retryHistories,
+					"$sort": bson.M{"start_at": -1},
 				},
 			}
 		}
@@ -292,6 +332,7 @@ func (s *MongoPersistent) UpdateJob(ctx context.Context, filter *Filter, updated
 		updateQuery["$push"] = bson.M{
 			"retry_histories": bson.M{
 				"$each": retryHistories,
+				"$sort": bson.M{"start_at": -1},
 			},
 		}
 	}
@@ -308,31 +349,6 @@ func (s *MongoPersistent) UpdateJob(ctx context.Context, filter *Filter, updated
 	}
 
 	return res.MatchedCount, res.ModifiedCount, nil
-}
-
-func (s *MongoPersistent) FindJobByID(ctx context.Context, id string, excludeFields ...string) (job Job, err error) {
-	tracer.Log(ctx, "persistent.mongo:find_job", id)
-
-	var opts []*options.FindOneOptions
-
-	if len(excludeFields) > 0 {
-		exclude := bson.M{}
-		for _, exc := range excludeFields {
-			exclude[exc] = 0
-		}
-		opts = append(opts, &options.FindOneOptions{
-			Projection: exclude,
-		})
-	}
-
-	err = s.db.Collection(jobModelName).FindOne(ctx, bson.M{"_id": id}, opts...).Decode(&job)
-
-	if len(job.RetryHistories) == 0 {
-		job.RetryHistories = make([]RetryHistory, 0)
-	}
-
-	tracer.Log(ctx, "persistent.find_job_by_id", id)
-	return
 }
 
 func (s *MongoPersistent) CleanJob(ctx context.Context, filter *Filter) (affectedRow int64) {
@@ -464,7 +480,6 @@ func (s *MongoPersistent) IncrementSummary(ctx context.Context, taskName string,
 		if k == "" {
 			continue
 		}
-		fmt.Println(k, v)
 		incr[strings.ToLower(k)] = v
 	}
 	_, err := s.db.Collection(jobSummaryModelName).UpdateOne(s.ctx,

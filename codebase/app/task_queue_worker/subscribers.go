@@ -30,7 +30,7 @@ func removeTaskListSubscriber(clientID string) {
 	delete(clientTaskSubscribers, clientID)
 }
 
-func registerNewJobListSubscriber(taskName, clientID string, filter *Filter, clientChannel chan JobListResolver) error {
+func registerNewJobListSubscriber(clientID string, filter *Filter, clientChannel chan JobListResolver) error {
 	if len(clientTaskJobListSubscribers) >= defaultOption.maxClientSubscriber {
 		return errClientLimitExceeded
 	}
@@ -51,7 +51,7 @@ func removeJobListSubscriber(clientID string) {
 	delete(clientTaskJobListSubscribers, clientID)
 }
 
-func registerNewJobDetailSubscriber(clientID, jobID string, clientChannel chan JobResolver) error {
+func registerNewJobDetailSubscriber(clientID string, filter *Filter, clientChannel chan JobResolver) error {
 	if len(clientJobDetailSubscribers) >= defaultOption.maxClientSubscriber {
 		return errClientLimitExceeded
 	}
@@ -60,7 +60,7 @@ func registerNewJobDetailSubscriber(clientID, jobID string, clientChannel chan J
 	defer mutex.Unlock()
 
 	clientJobDetailSubscribers[clientID] = &clientJobDetailSubscriber{
-		c: clientChannel, jobID: jobID,
+		c: clientChannel, filter: filter,
 	}
 	return nil
 }
@@ -157,19 +157,22 @@ func broadcastJobListToClient(ctx context.Context, clientID string) {
 
 	var jobListResolver JobListResolver
 	jobListResolver.GetAllJob(ctx, subscriber.filter)
+	jobListResolver.Meta.IsFreezeBroadcast = subscriber.SkipBroadcast
 	subscriber.writeDataToChannel(jobListResolver)
 }
 
 func broadcastJobDetail(ctx context.Context) {
 
 	for clientID, subscriber := range clientJobDetailSubscribers {
-		detail, err := persistent.FindJobByID(ctx, subscriber.jobID)
+		detail, err := persistent.FindJobByID(ctx, candihelper.PtrToString(subscriber.filter.JobID), subscriber.filter)
 		if err != nil {
 			removeJobDetailSubscriber(clientID)
 			continue
 		}
 		var jobResolver JobResolver
 		jobResolver.ParseFromJob(&detail)
+		jobResolver.Meta.Page = subscriber.filter.Page
+		jobResolver.Meta.TotalHistory = subscriber.filter.Count
 		subscriber.writeDataToChannel(jobResolver)
 	}
 }
