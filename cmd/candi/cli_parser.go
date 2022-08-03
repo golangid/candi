@@ -205,10 +205,6 @@ stageSelectDependencies:
 		fmt.Printf(RedFormat, "Redis Subscriber need redis, try again")
 		goto stageSelectDependencies
 	}
-	if workerHandlers[TaskqueueHandler] && !dependencies[RedisDeps] {
-		fmt.Printf(RedFormat, "Task Queue Worker need redis (for queue), try again")
-		goto stageSelectDependencies
-	}
 
 	if dependencies[SqldbDeps] {
 	stageSelectSQLDriver:

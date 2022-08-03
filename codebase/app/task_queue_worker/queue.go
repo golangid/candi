@@ -9,4 +9,5 @@ type QueueStorage interface {
 	NextJob(ctx context.Context, taskName string) (jobID string)
 	Clear(ctx context.Context, taskName string)
 	Ping() error
+	Type() string
 }

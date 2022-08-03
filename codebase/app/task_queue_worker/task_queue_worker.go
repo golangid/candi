@@ -24,7 +24,7 @@ type taskQueueWorker struct {
 
 // NewTaskQueueWorker create new task queue worker
 func NewTaskQueueWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
-	makeAllGlobalVars(opts...)
+	makeAllGlobalVars(service, opts...)
 
 	workerInstance := &taskQueueWorker{
 		service: service,

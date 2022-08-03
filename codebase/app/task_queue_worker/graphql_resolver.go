@@ -81,6 +81,10 @@ func (r *rootResolver) Dashboard(ctx context.Context, input struct{ GC *bool }) 
 	if err := queue.Ping(); err != nil {
 		res.DependencyHealth.Queue = candihelper.ToStringPtr(err.Error())
 	}
+
+	res.DependencyDetail.PersistentType = persistent.Type()
+	res.DependencyDetail.QueueType = queue.Type()
+
 	return
 }
 

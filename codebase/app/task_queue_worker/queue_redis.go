@@ -85,3 +85,6 @@ func (r *redisQueue) Ping() error {
 	}
 	return nil
 }
+func (r *redisQueue) Type() string {
+	return "Redis Queue"
+}

@@ -163,6 +163,20 @@ func (_m *Persistent) Summary() taskqueueworker.Summary {
 	return r0
 }
 
+// Type provides a mock function with given fields:
+func (_m *Persistent) Type() string {
+	ret := _m.Called()
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
 // UpdateJob provides a mock function with given fields: ctx, filter, updated, retryHistories
 func (_m *Persistent) UpdateJob(ctx context.Context, filter *taskqueueworker.Filter, updated map[string]interface{}, retryHistories ...taskqueueworker.RetryHistory) (int64, int64, error) {
 	_va := make([]interface{}, len(retryHistories))

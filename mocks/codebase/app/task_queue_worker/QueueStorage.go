@@ -75,6 +75,20 @@ func (_m *QueueStorage) PushJob(ctx context.Context, job *taskqueueworker.Job) i
 	return r0
 }
 
+// Type provides a mock function with given fields:
+func (_m *QueueStorage) Type() string {
+	ret := _m.Called()
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
 type mockConstructorTestingTNewQueueStorage interface {
 	mock.TestingT
 	Cleanup(func())

@@ -531,3 +531,11 @@ func (s *MongoPersistent) Ping(ctx context.Context) error {
 	}
 	return nil
 }
+
+func (s *MongoPersistent) Type() string {
+	var commandResult struct {
+		Version string `bson:"version"`
+	}
+	s.db.RunCommand(s.ctx, bson.D{{Key: "serverStatus", Value: 1}}).Decode(&commandResult)
+	return "MongoDB Persistent. Version: " + commandResult.Version
+}

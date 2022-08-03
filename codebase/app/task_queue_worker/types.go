@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/golangid/candi/candiutils"
+	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/config/env"
 )
@@ -82,6 +83,11 @@ func (f *Filter) CalculateOffset() int {
 	return (f.Page - 1) * f.Limit
 }
 
+// String method
+func (j JobStatusEnum) String() string {
+	return string(j)
+}
+
 const (
 	statusRetrying JobStatusEnum = "RETRYING"
 	statusFailure  JobStatusEnum = "FAILURE"
@@ -119,7 +125,7 @@ var (
 	defaultOption option
 )
 
-func makeAllGlobalVars(opts ...OptionFunc) {
+func makeAllGlobalVars(service factory.ServiceFactory, opts ...OptionFunc) {
 
 	// set default value
 	defaultOption.tracingDashboard = "http://127.0.0.1:16686"
@@ -128,8 +134,19 @@ func makeAllGlobalVars(opts ...OptionFunc) {
 	defaultOption.dashboardPort = 8080
 	defaultOption.debugMode = true
 	defaultOption.locker = &candiutils.NoopLocker{}
-	defaultOption.persistent = NewNoopPersistent()
-	defaultOption.queue = NewInMemQueue()
+
+	// set default persistent & queue
+	if service.GetDependency().GetMongoDatabase() != nil {
+		defaultOption.persistent = NewMongoPersistent(service.GetDependency().GetMongoDatabase().WriteDB())
+	} else {
+		defaultOption.persistent = NewNoopPersistent()
+	}
+	if service.GetDependency().GetRedisPool() != nil {
+		defaultOption.queue = NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
+	} else {
+		defaultOption.queue = NewInMemQueue()
+	}
+
 	defaultOption.dashboardBanner = `    _________    _   ______  ____
    / ____/   |  / | / / __ \/  _/
   / /   / /| | /  |/ / / / // /  

@@ -26,6 +26,10 @@ type (
 			Persistent *string
 			Queue      *string
 		}
+		DependencyDetail struct {
+			PersistentType string
+			QueueType      string
+		}
 	}
 	// MemstatsResolver resolver
 	MemstatsResolver struct {

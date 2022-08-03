@@ -23,6 +23,7 @@ type (
 		UpdateJob(ctx context.Context, filter *Filter, updated map[string]interface{}, retryHistories ...RetryHistory) (matchedCount, affectedRow int64, err error)
 		CleanJob(ctx context.Context, filter *Filter) (affectedRow int64)
 		DeleteJob(ctx context.Context, id string) (job Job, err error)
+		Type() string
 	}
 
 	noopPersistent struct {
@@ -74,4 +75,7 @@ func (n *noopPersistent) CleanJob(ctx context.Context, filter *Filter) (affected
 }
 func (n *noopPersistent) DeleteJob(ctx context.Context, id string) (job Job, err error) {
 	return
+}
+func (n *noopPersistent) Type() string {
+	return "In Memory Persistent"
 }

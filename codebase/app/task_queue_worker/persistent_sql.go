@@ -18,6 +18,7 @@ type (
 		db            *sql.DB
 		summary       Summary
 		queryReplacer *strings.Replacer
+		versionFunc   string
 	}
 )
 
@@ -59,14 +60,13 @@ func NewSQLPersistent(db *sql.DB) *SQLPersistent {
 
 	// init job_histories table
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS task_queue_worker_job_histories (
-		id INTEGER PRIMARY KEY NOT NULL,
-		job_id VARCHAR(255),
-		error_stack VARCHAR(255),
-		status VARCHAR(255),
-		error VARCHAR(255),
-		trace_id VARCHAR(255),
-		start_at VARCHAR(255),
-		end_at VARCHAR(255)
+		job_id VARCHAR(255) NOT NULL DEFAULT '',
+		error_stack VARCHAR(255) NOT NULL DEFAULT '',
+		status VARCHAR(255) NOT NULL DEFAULT '',
+		error VARCHAR(255) NOT NULL DEFAULT '',
+		trace_id VARCHAR(255) NOT NULL DEFAULT '',
+		start_at TIMESTAMP,
+		end_at TIMESTAMP
     );`)
 	if err != nil {
 		panic(err)
@@ -92,12 +92,24 @@ func NewSQLPersistent(db *sql.DB) *SQLPersistent {
 		}
 	}
 
-	sqlLitePersistent := &SQLPersistent{
+	sqlPersistent := &SQLPersistent{
 		db:            db,
 		queryReplacer: strings.NewReplacer("'", "''"),
 	}
-	sqlLitePersistent.summary = sqlLitePersistent
-	return sqlLitePersistent
+	sqlPersistent.summary = sqlPersistent
+
+	for _, versionFunc := range []string{
+		"version()",
+		"sqlite_version()",
+		"@@version",
+	} {
+		if err := db.QueryRow(`SELECT ` + versionFunc).Scan(&sqlPersistent.versionFunc); err == nil {
+			sqlPersistent.versionFunc = versionFunc
+			break
+		}
+	}
+
+	return sqlPersistent
 }
 
 func (s *SQLPersistent) Ping(ctx context.Context) error {
@@ -140,7 +152,8 @@ func (s *SQLPersistent) FindAllJob(ctx context.Context, filter *Filter) (jobs []
 		); err != nil {
 			return
 		}
-		job.FinishedAt = finishedAt.Time
+		job.CreatedAt = candihelper.ToAsiaJakartaTime(job.CreatedAt)
+		job.FinishedAt = candihelper.ToAsiaJakartaTime(finishedAt.Time)
 		jobs = append(jobs, job)
 	}
 
@@ -153,7 +166,8 @@ func (s *SQLPersistent) FindJobByID(ctx context.Context, id string, filterHistor
 		&job.ID, &job.TaskName, &job.Arguments, &job.Retries, &job.MaxRetry, &job.Interval, &job.CreatedAt,
 		&finishedAt, &job.Status, &job.Error, &job.TraceID,
 	)
-	job.FinishedAt = finishedAt.Time
+	job.CreatedAt = candihelper.ToAsiaJakartaTime(job.CreatedAt)
+	job.FinishedAt = candihelper.ToAsiaJakartaTime(finishedAt.Time)
 	if err != nil {
 		logger.LogE(err.Error())
 		return job, err
@@ -175,6 +189,7 @@ func (s *SQLPersistent) FindJobByID(ctx context.Context, id string, filterHistor
 			rows.Scan(&rh.ErrorStack, &rh.Status, &rh.Error, &rh.TraceID, &startAt, &endAt)
 			rh.StartAt, _ = time.Parse(time.RFC3339Nano, startAt)
 			rh.EndAt, _ = time.Parse(time.RFC3339Nano, endAt)
+			rh.StartAt, rh.EndAt = candihelper.ToAsiaJakartaTime(rh.StartAt), candihelper.ToAsiaJakartaTime(rh.EndAt)
 			job.RetryHistories = append(job.RetryHistories, rh)
 		}
 		s.db.QueryRow(`SELECT COUNT(*) FROM task_queue_worker_job_histories WHERE job_id = '` + s.queryReplacer.Replace(id) + `'`).
@@ -185,7 +200,9 @@ func (s *SQLPersistent) FindJobByID(ctx context.Context, id string, filterHistor
 }
 func (s *SQLPersistent) CountAllJob(ctx context.Context, filter *Filter) (count int) {
 	where, _ := s.toQueryFilter(filter)
-	s.db.QueryRow(`SELECT COUNT(*) FROM ` + jobModelName + ` ` + where).Scan(&count)
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM ` + jobModelName + ` ` + where).Scan(&count); err != nil {
+		logger.LogE(err.Error())
+	}
 	return
 }
 func (s *SQLPersistent) AggregateAllTaskJob(ctx context.Context, filter *Filter) (result []TaskSummary) {
@@ -240,9 +257,9 @@ func (s *SQLPersistent) SaveJob(ctx context.Context, job *Job, retryHistories ..
 				'` + candihelper.ToString(job.Retries) + `',
 				'` + candihelper.ToString(job.MaxRetry) + `',
 				'` + s.queryReplacer.Replace(job.Interval) + `',
-				'` + job.CreatedAt.Format(time.RFC3339) + `',
-				'` + time.Now().Format(time.RFC3339) + `',
-				'` + job.FinishedAt.Format(time.RFC3339) + `',
+				'` + job.CreatedAt.Format(time.RFC3339Nano) + `',
+				'` + time.Now().Format(time.RFC3339Nano) + `',
+				'` + job.FinishedAt.Format(time.RFC3339Nano) + `',
 				'` + s.queryReplacer.Replace(job.Status) + `',
 				'` + s.queryReplacer.Replace(job.Error) + `',
 				'` + s.queryReplacer.Replace(job.TraceID) + `'
@@ -254,8 +271,8 @@ func (s *SQLPersistent) SaveJob(ctx context.Context, job *Job, retryHistories ..
 			retries='` + candihelper.ToString(job.Retries) + `', 
 			max_retry='` + candihelper.ToString(job.MaxRetry) + `', 
 			interval='` + s.queryReplacer.Replace(job.Interval) + `', 
-			updated_at='` + time.Now().Format(time.RFC3339) + `', 
-			finished_at='` + job.FinishedAt.Format(time.RFC3339) + `', 
+			updated_at='` + time.Now().Format(time.RFC3339Nano) + `', 
+			finished_at='` + job.FinishedAt.Format(time.RFC3339Nano) + `', 
 			status='` + s.queryReplacer.Replace(job.Status) + `', 
 			error='` + s.queryReplacer.Replace(job.Error) + `', 
 			trace_id='` + s.queryReplacer.Replace(job.TraceID) + `'
@@ -289,20 +306,8 @@ func (s *SQLPersistent) UpdateJob(ctx context.Context, filter *Filter, updated m
 		logger.LogE(err.Error())
 		return matchedCount, affectedRow, err
 	}
-	tx, err := s.db.Begin()
-	if err != nil {
-		logger.LogE(err.Error())
-		return matchedCount, affectedRow, err
-	}
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		} else {
-			tx.Commit()
-		}
-	}()
 
-	tx.QueryRow(`SELECT COUNT(*) FROM ` + jobModelName + ` ` + where).Scan(&matchedCount)
+	s.db.QueryRow(`SELECT COUNT(*) FROM ` + jobModelName + ` ` + where).Scan(&matchedCount)
 	var setFields []string
 	for field, value := range updated {
 		if t, ok := value.(time.Time); ok {
@@ -310,7 +315,7 @@ func (s *SQLPersistent) UpdateJob(ctx context.Context, filter *Filter, updated m
 		}
 		setFields = append(setFields, field+"='"+s.queryReplacer.Replace(candihelper.ToString(value))+"'")
 	}
-	res, err := tx.Exec(`UPDATE ` + jobModelName + ` SET ` + strings.Join(setFields, ",") + ` ` + where)
+	res, err := s.db.Exec(`UPDATE ` + jobModelName + ` SET ` + strings.Join(setFields, ",") + ` ` + where)
 	if err != nil {
 		logger.LogE(err.Error())
 		return matchedCount, affectedRow, err
@@ -319,7 +324,7 @@ func (s *SQLPersistent) UpdateJob(ctx context.Context, filter *Filter, updated m
 
 	if filter.JobID != nil {
 		for _, rh := range retryHistories {
-			_, err = tx.Exec(`INSERT INTO task_queue_worker_job_histories (job_id, error_stack, status, error, trace_id, start_at, end_at) 
+			_, err = s.db.Exec(`INSERT INTO task_queue_worker_job_histories (job_id, error_stack, status, error, trace_id, start_at, end_at) 
 			VALUES (
 				'` + s.queryReplacer.Replace(*filter.JobID) + `',
 				'` + s.queryReplacer.Replace(rh.ErrorStack) + `',
@@ -471,6 +476,14 @@ func (s *SQLPersistent) IncrementSummary(ctx context.Context, taskName string, i
 		}
 	}
 	return
+}
+func (s *SQLPersistent) Type() string {
+	var version string
+	s.db.QueryRow(`SELECT ` + s.versionFunc).Scan(&version)
+	if s.versionFunc == "sqlite_version()" {
+		version = "SQLite " + version
+	}
+	return "SQL Persistent. Version: " + version
 }
 
 func (s *SQLPersistent) toQueryFilter(f *Filter) (where string, err error) {

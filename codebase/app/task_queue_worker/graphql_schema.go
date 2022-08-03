@@ -47,6 +47,7 @@ type DashboardType {
 	job_list_client_subscribers: [String!]!
 	memory_statistics: MemstatsResolver!
 	dependency_health: DependencyHealth!
+	dependency_detail: DependencyDetail!
 }
 
 type Config {
@@ -56,6 +57,11 @@ type Config {
 type DependencyHealth {
 	persistent: String
 	queue: String
+}
+
+type DependencyDetail {
+	persistent_type: String!
+	queue_type: String!
 }
 
 type MetaType {

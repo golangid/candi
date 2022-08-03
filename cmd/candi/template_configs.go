@@ -109,7 +109,7 @@ import (
 	taskqueueworker "{{.LibraryName}}/codebase/app/task_queue_worker"
 	"{{.LibraryName}}/codebase/factory"
 	"{{.LibraryName}}/codebase/factory/appfactory"
-	"{{.LibraryName}}/config/env"{{if not .MongoDeps}}
+	"{{.LibraryName}}/config/env"{{if not (or .SQLDeps .MongoDeps)}}
 
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"{{end}}
@@ -143,9 +143,9 @@ func InitAppFromEnvironmentConfig(service factory.ServiceFactory) (apps []factor
 	}
 	if env.BaseEnv().UseTaskQueueWorker {
 		{{if .MongoDeps}}persistent := taskqueueworker.NewMongoPersistent(service.
-			GetDependency().
-			GetMongoDatabase().
-			WriteDB(),
+			GetDependency().GetMongoDatabase().WriteDB(),
+		){{else if .SQLDeps}}persistent := taskqueueworker.NewSQLPersistent(service.
+			GetDependency().GetSQLDatabase().WriteDB(),
 		){{else}}db, err := sql.Open("sqlite3", "./candi_task_queue_worker.db")
 		if err != nil {
 			panic(err)
