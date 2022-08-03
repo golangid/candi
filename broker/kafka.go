@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -40,6 +41,35 @@ func KafkaSetPublisher(pub interfaces.Publisher) KafkaOptionFunc {
 	}
 }
 
+// GetDefaultKafkaConfig construct default kafka config
+func GetDefaultKafkaConfig(additionalConfigFunc ...func(*sarama.Config)) *sarama.Config {
+	version := env.BaseEnv().Kafka.ClientVersion
+	if version == "" {
+		version = "2.0.0"
+	}
+
+	// set default configuration
+	cfg := sarama.NewConfig()
+	cfg.Version, _ = sarama.ParseKafkaVersion(version)
+
+	// Producer config
+	cfg.ClientID = env.BaseEnv().Kafka.ClientID
+	cfg.Producer.Retry.Max = 15
+	cfg.Producer.Retry.Backoff = 50 * time.Millisecond
+	cfg.Producer.RequiredAcks = sarama.WaitForAll
+	cfg.Producer.Return.Successes = true
+
+	// Consumer config
+	cfg.Consumer.Offsets.Initial = sarama.OffsetOldest
+	cfg.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
+
+	for _, additionalFunc := range additionalConfigFunc {
+		additionalFunc(cfg)
+	}
+
+	return cfg
+}
+
 // KafkaBroker configuration
 type KafkaBroker struct {
 	brokerHost []string
@@ -59,31 +89,14 @@ func NewKafkaBroker(opts ...KafkaOptionFunc) *KafkaBroker {
 		opt(kb)
 	}
 
-	version := env.BaseEnv().Kafka.ClientVersion
-	if version == "" {
-		version = "2.0.0"
-	}
-
 	if kb.config == nil {
 		// set default configuration
-		kb.config = sarama.NewConfig()
-		kb.config.Version, _ = sarama.ParseKafkaVersion(version)
-
-		// Producer config
-		kb.config.ClientID = env.BaseEnv().Kafka.ClientID
-		kb.config.Producer.Retry.Max = 15
-		kb.config.Producer.Retry.Backoff = 50 * time.Millisecond
-		kb.config.Producer.RequiredAcks = sarama.WaitForAll
-		kb.config.Producer.Return.Successes = true
-
-		// Consumer config
-		kb.config.Consumer.Offsets.Initial = sarama.OffsetOldest
-		kb.config.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
+		kb.config = GetDefaultKafkaConfig()
 	}
 
 	saramaClient, err := sarama.NewClient(kb.brokerHost, kb.config)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("%s. Brokers: %s", err, strings.Join(kb.brokerHost, ", ")))
 	}
 	kb.client = saramaClient
 
