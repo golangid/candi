@@ -39,7 +39,7 @@ func NewTaskQueueWorker(service factory.ServiceFactory, opts ...OptionFunc) fact
 			h.MountHandlers(&handlerGroup)
 			for _, handler := range handlerGroup.Handlers {
 				if _, ok := registeredTask[handler.Pattern]; ok {
-					panic("Task Queue Worker: task " + handler.Pattern + " has been registered")
+					panic("Task Queue Worker: task \"" + handler.Pattern + "\" has been registered")
 				}
 
 				workerIndex := len(workers)
@@ -77,6 +77,12 @@ func (t *taskQueueWorker) prepare() {
 		return
 	}
 
+	for _, taskName := range tasks {
+		queue.Clear(t.ctx, taskName)
+	}
+	persistent.Summary().DeleteAllSummary(t.ctx)
+	persistent.CleanJob(t.ctx, &Filter{ExcludeTaskNameList: tasks})
+
 	// get current pending jobs
 	filter := &Filter{
 		Page: 1, Limit: 10,
@@ -84,27 +90,21 @@ func (t *taskQueueWorker) prepare() {
 		Sort:         "created_at",
 		Statuses:     []string{string(statusRetrying), string(statusQueueing)},
 	}
-	countPendingJob := persistent.CountAllJob(t.ctx, filter)
-	isLoading := countPendingJob > 0
 	for _, taskName := range tasks {
 		queue.Clear(t.ctx, taskName)
 		persistent.Summary().UpdateSummary(t.ctx, taskName, map[string]interface{}{
-			"is_loading": isLoading,
+			"is_loading": true,
 		})
 	}
+	broadcastTaskList(t.ctx)
 	StreamAllJob(t.ctx, filter, func(job *Job) {
 		// update to queueing
 		if job.Status != string(statusQueueing) {
-			statusBefore := job.Status
 			job.Status = string(statusQueueing)
-			matched, affected, _ := persistent.UpdateJob(t.ctx, &Filter{
+			persistent.UpdateJob(t.ctx, &Filter{
 				JobID: &job.ID,
 			}, map[string]interface{}{
 				"status": job.Status,
-			})
-
-			persistent.Summary().IncrementSummary(t.ctx, job.TaskName, map[string]int64{
-				statusBefore: -matched, job.Status: affected,
 			})
 		}
 		if n := queue.PushJob(t.ctx, job); n <= 1 {
@@ -113,15 +113,14 @@ func (t *taskQueueWorker) prepare() {
 	})
 
 	RecalculateSummary(t.ctx)
-	if isLoading {
-		for _, taskName := range tasks {
-			persistent.Summary().UpdateSummary(t.ctx, taskName, map[string]interface{}{
-				"is_loading": !isLoading,
-			})
-		}
+	for _, taskName := range tasks {
+		persistent.Summary().UpdateSummary(t.ctx, taskName, map[string]interface{}{
+			"is_loading": false,
+		})
 	}
 	t.ready <- struct{}{}
 	refreshWorkerNotif <- struct{}{}
+	broadcastTaskList(t.ctx)
 }
 
 func (t *taskQueueWorker) Serve() {

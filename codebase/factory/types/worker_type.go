@@ -25,7 +25,7 @@ type WorkerHandlerGroup struct {
 	Handlers []WorkerHandler
 }
 
-// Add method from WorkerHandlerGroup, patternRoute can contains unique topic name, key, and task name
+// Add method from WorkerHandlerGroup, patternRoute can contains unique topic name, key, or task name
 func (m *WorkerHandlerGroup) Add(patternRoute string, mainHandlerFunc WorkerHandlerFunc, opts ...WorkerHandlerOptionFunc) {
 	h := WorkerHandler{
 		Pattern: patternRoute, HandlerFuncs: []WorkerHandlerFunc{mainHandlerFunc}, AutoACK: true,

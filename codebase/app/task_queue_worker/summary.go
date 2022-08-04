@@ -13,6 +13,7 @@ type (
 		FindDetailSummary(ctx context.Context, taskName string) (result TaskSummary)
 		UpdateSummary(ctx context.Context, taskName string, updated map[string]interface{})
 		IncrementSummary(ctx context.Context, taskName string, incr map[string]int64)
+		DeleteAllSummary(ctx context.Context)
 	}
 
 	// TaskSummary model
@@ -177,3 +178,4 @@ func (i *inMemSummary) IncrementSummary(ctx context.Context, taskName string, in
 	i.values[taskName] = summary
 	return
 }
+func (i *inMemSummary) DeleteAllSummary(ctx context.Context) {}

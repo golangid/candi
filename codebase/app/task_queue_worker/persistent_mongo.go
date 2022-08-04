@@ -384,6 +384,12 @@ func (s *MongoPersistent) toBsonFilter(f *Filter) bson.M {
 				"$in": f.TaskNameList,
 			},
 		})
+	} else if len(f.ExcludeTaskNameList) > 0 {
+		pipeQuery = append(pipeQuery, bson.M{
+			"task_name": bson.M{
+				"$nin": f.ExcludeTaskNameList,
+			},
+		})
 	}
 
 	if f.JobID != nil && *f.JobID != "" {
@@ -524,6 +530,14 @@ func (s *MongoPersistent) UpdateSummary(ctx context.Context, taskName string, up
 	}
 }
 
+func (s *MongoPersistent) DeleteAllSummary(ctx context.Context) {
+	_, err := s.db.Collection(jobSummaryModelName).DeleteMany(ctx, bson.M{})
+	if err != nil {
+		logger.LogE(err.Error())
+		return
+	}
+}
+
 func (s *MongoPersistent) Ping(ctx context.Context) error {
 
 	if err := s.db.Client().Ping(ctx, readpref.Primary()); err != nil {
@@ -537,5 +551,5 @@ func (s *MongoPersistent) Type() string {
 		Version string `bson:"version"`
 	}
 	s.db.RunCommand(s.ctx, bson.D{{Key: "serverStatus", Value: 1}}).Decode(&commandResult)
-	return "MongoDB Persistent. Version: " + commandResult.Version
+	return "MongoDB Persistent, version: " + commandResult.Version
 }

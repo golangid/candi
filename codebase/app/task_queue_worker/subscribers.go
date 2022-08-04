@@ -138,26 +138,28 @@ func broadcastJobListToClient(ctx context.Context, clientID string) {
 		return
 	}
 
-	summary := persistent.Summary().FindDetailSummary(ctx, subscriber.filter.TaskName)
-	if summary.IsLoading {
-		subscriber.SkipBroadcast = summary.IsLoading
-		subscriber.writeDataToChannel(JobListResolver{
-			Meta: MetaJobList{IsLoading: summary.IsLoading},
-		})
-		return
+	if subscriber.filter.TaskName != "" {
+		summary := persistent.Summary().FindDetailSummary(ctx, subscriber.filter.TaskName)
+		if summary.IsLoading {
+			subscriber.skipBroadcast = summary.IsLoading
+			subscriber.writeDataToChannel(JobListResolver{
+				Meta: MetaJobList{IsLoading: summary.IsLoading},
+			})
+			return
+		}
 	}
-	if subscriber.SkipBroadcast {
+	if subscriber.skipBroadcast {
 		return
 	}
 
 	subscriber.filter.Sort = "-created_at"
-	subscriber.SkipBroadcast = candihelper.PtrToString(subscriber.filter.Search) != "" ||
+	subscriber.skipBroadcast = candihelper.PtrToString(subscriber.filter.Search) != "" ||
 		candihelper.PtrToString(subscriber.filter.JobID) != "" ||
 		(!subscriber.filter.StartDate.IsZero() && !subscriber.filter.EndDate.IsZero())
 
 	var jobListResolver JobListResolver
 	jobListResolver.GetAllJob(ctx, subscriber.filter)
-	jobListResolver.Meta.IsFreezeBroadcast = subscriber.SkipBroadcast
+	jobListResolver.Meta.IsFreezeBroadcast = subscriber.skipBroadcast
 	subscriber.writeDataToChannel(jobListResolver)
 }
 
@@ -215,7 +217,7 @@ func broadcastWhenChangeAllJob(ctx context.Context, taskName string, isLoading b
 	}
 
 	for _, subscriber := range clientTaskJobListSubscribers {
-		subscriber.SkipBroadcast = isLoading
+		subscriber.skipBroadcast = isLoading
 		subscriber.writeDataToChannel(JobListResolver{
 			Meta: MetaJobList{IsLoading: isLoading},
 		})

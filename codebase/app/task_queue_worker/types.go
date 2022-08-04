@@ -23,18 +23,19 @@ type (
 
 	// Filter type
 	Filter struct {
-		Page, Limit        int
-		Sort               string
-		TaskName           string
-		TaskNameList       []string
-		Search, JobID      *string
-		Status             *string
-		Statuses           []string
-		ExcludeStatus      []string
-		ShowAll            bool
-		ShowHistories      *bool
-		StartDate, EndDate time.Time
-		Count              int
+		Page, Limit         int
+		Sort                string
+		TaskName            string
+		TaskNameList        []string
+		ExcludeTaskNameList []string
+		Search, JobID       *string
+		Status              *string
+		Statuses            []string
+		ExcludeStatus       []string
+		ShowAll             bool
+		ShowHistories       *bool
+		StartDate, EndDate  time.Time
+		Count               int
 	}
 
 	// ClientSubscriber model
@@ -53,7 +54,7 @@ type (
 	}
 	clientTaskJobListSubscriber struct {
 		c             chan JobListResolver
-		SkipBroadcast bool
+		skipBroadcast bool
 		filter        *Filter
 	}
 	clientJobDetailSubscriber struct {
@@ -134,19 +135,6 @@ func makeAllGlobalVars(service factory.ServiceFactory, opts ...OptionFunc) {
 	defaultOption.dashboardPort = 8080
 	defaultOption.debugMode = true
 	defaultOption.locker = &candiutils.NoopLocker{}
-
-	// set default persistent & queue
-	if service.GetDependency().GetMongoDatabase() != nil {
-		defaultOption.persistent = NewMongoPersistent(service.GetDependency().GetMongoDatabase().WriteDB())
-	} else {
-		defaultOption.persistent = NewNoopPersistent()
-	}
-	if service.GetDependency().GetRedisPool() != nil {
-		defaultOption.queue = NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
-	} else {
-		defaultOption.queue = NewInMemQueue()
-	}
-
 	defaultOption.dashboardBanner = `    _________    _   ______  ____
    / ____/   |  / | / / __ \/  _/
   / /   / /| | /  |/ / / / // /  
@@ -156,6 +144,25 @@ func makeAllGlobalVars(service factory.ServiceFactory, opts ...OptionFunc) {
 	//  override option value
 	for _, opt := range opts {
 		opt(&defaultOption)
+	}
+
+	// set default persistent & queue if not defined
+	if defaultOption.persistent == nil {
+		if service.GetDependency().GetMongoDatabase() != nil {
+			defaultOption.persistent = NewMongoPersistent(service.GetDependency().GetMongoDatabase().WriteDB())
+		} else if service.GetDependency().GetSQLDatabase() != nil {
+			defaultOption.persistent = NewSQLPersistent(service.GetDependency().GetSQLDatabase().WriteDB())
+		} else {
+			defaultOption.persistent = NewNoopPersistent()
+		}
+	}
+
+	if defaultOption.queue == nil {
+		if service.GetDependency().GetRedisPool() != nil {
+			defaultOption.queue = NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
+		} else {
+			defaultOption.queue = NewInMemQueue()
+		}
 	}
 
 	queue = defaultOption.queue

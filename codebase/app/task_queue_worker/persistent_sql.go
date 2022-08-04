@@ -436,9 +436,10 @@ func (s *SQLPersistent) UpdateSummary(ctx context.Context, taskName string, upda
 	}
 	affected, _ := res.RowsAffected()
 	if affected == 0 {
-		query := fmt.Sprintf(`INSERT INTO %s (id, success, queueing, retrying, failure, stopped) VALUES ('%s', '%d', '%d', '%d', '%d', '%d')`,
+		query := fmt.Sprintf(`INSERT INTO %s (id, success, queueing, retrying, failure, stopped, is_loading) VALUES ('%s', '%d', '%d', '%d', '%d', '%d', '%s')`,
 			jobSummaryModelName, s.queryReplacer.Replace(taskName), candihelper.ToInt(updated["success"]), candihelper.ToInt(updated["queueing"]),
-			candihelper.ToInt(updated["retrying"]), candihelper.ToInt(updated["failure"]), candihelper.ToInt(updated["stopped"]))
+			candihelper.ToInt(updated["retrying"]), candihelper.ToInt(updated["failure"]), candihelper.ToInt(updated["stopped"]),
+			s.queryReplacer.Replace(candihelper.ToString(updated["is_loading"])))
 		_, err := s.db.Exec(query)
 		if err != nil {
 			logger.LogE(err.Error())
@@ -477,13 +478,20 @@ func (s *SQLPersistent) IncrementSummary(ctx context.Context, taskName string, i
 	}
 	return
 }
+func (s *SQLPersistent) DeleteAllSummary(ctx context.Context) {
+	_, err := s.db.Exec(`DELETE FROM ` + jobSummaryModelName)
+	if err != nil {
+		logger.LogE(err.Error())
+		return
+	}
+}
 func (s *SQLPersistent) Type() string {
 	var version string
 	s.db.QueryRow(`SELECT ` + s.versionFunc).Scan(&version)
 	if s.versionFunc == "sqlite_version()" {
 		version = "SQLite " + version
 	}
-	return "SQL Persistent. Version: " + version
+	return "SQL Persistent, version: " + version
 }
 
 func (s *SQLPersistent) toQueryFilter(f *Filter) (where string, err error) {
@@ -492,11 +500,9 @@ func (s *SQLPersistent) toQueryFilter(f *Filter) (where string, err error) {
 	if f.TaskName != "" {
 		conditions = append(conditions, "task_name='"+s.queryReplacer.Replace(f.TaskName)+"'")
 	} else if len(f.TaskNameList) > 0 {
-		var taskNameList []string
-		for _, taskName := range f.TaskNameList {
-			taskNameList = append(taskNameList, "'"+s.queryReplacer.Replace(taskName)+"'")
-		}
-		conditions = append(conditions, "task_name IN ("+strings.Join(taskNameList, ",")+")")
+		conditions = append(conditions, "task_name IN "+s.toMultiParamQuery(f.TaskNameList))
+	} else if len(f.ExcludeTaskNameList) > 0 {
+		conditions = append(conditions, "task_name NOT IN "+s.toMultiParamQuery(f.ExcludeTaskNameList))
 	}
 
 	if f.JobID != nil && *f.JobID != "" {
@@ -506,11 +512,7 @@ func (s *SQLPersistent) toQueryFilter(f *Filter) (where string, err error) {
 		conditions = append(conditions, `(arguments LIKE '%%`+*f.Search+`%%' OR error LIKE '%%`+*f.Search+`%%')`)
 	}
 	if len(f.Statuses) > 0 {
-		var statuses []string
-		for _, status := range f.Statuses {
-			statuses = append(statuses, "'"+s.queryReplacer.Replace(status)+"'")
-		}
-		conditions = append(conditions, "status IN ("+strings.Join(statuses, ",")+")")
+		conditions = append(conditions, "status IN "+s.toMultiParamQuery(f.Statuses))
 	}
 	if f.Status != nil {
 		conditions = append(conditions, "status='"+s.queryReplacer.Replace(*f.Status)+"'")
@@ -525,4 +527,12 @@ func (s *SQLPersistent) toQueryFilter(f *Filter) (where string, err error) {
 
 	where = " WHERE " + strings.Join(conditions, " AND ")
 	return
+}
+
+func (s *SQLPersistent) toMultiParamQuery(params []string) string {
+	var in []string
+	for _, taskName := range params {
+		in = append(in, "'"+s.queryReplacer.Replace(taskName)+"'")
+	}
+	return " (" + strings.Join(in, ",") + ") "
 }
