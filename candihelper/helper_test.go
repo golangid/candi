@@ -208,11 +208,11 @@ func TestParseToQueryParam(t *testing.T) {
 	var param VariantRequestParams
 	param.Filter = "product"
 	param.FilterQuery = "kulkas"
-	param.FilterSkuNo = "sku001"
+	param.FilterSkuNo = ""
 	param.Page = 1
 	param.Limit = 10
 
-	want := "filter=product&filter[query]=kulkas&filter[skuNo]=sku001&page=1&limit=10"
+	want := "filter=product&filter[query]=kulkas&page=1&limit=10"
 	assert.Equal(t, want, ParseToQueryParam(&param))
 }
 

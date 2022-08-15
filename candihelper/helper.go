@@ -146,6 +146,8 @@ func ParseToQueryParam(source interface{}) (s string) {
 			uri = append(uri, ParseToQueryParam(field.Interface()))
 			continue
 		}
+
+		isOmitempty := strings.HasSuffix(pType.Field(i).Tag.Get("json"), ",omitempty")
 		key := strings.TrimSuffix(pType.Field(i).Tag.Get("json"), ",omitempty")
 		if key == "-" {
 			continue
@@ -155,6 +157,9 @@ func ParseToQueryParam(source interface{}) (s string) {
 		switch dataType {
 		case reflect.String:
 			val := url.PathEscape(field.String())
+			if val == "" && isOmitempty {
+				continue
+			}
 			uri = append(uri, fmt.Sprintf("%s=%s", key, val))
 		case reflect.Ptr:
 			val := ""
