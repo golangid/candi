@@ -60,10 +60,17 @@ func InitMongoDB(ctx context.Context) interfaces.MongoDatabase {
 	deferFunc := logger.LogWithDefer("Load MongoDB connection...")
 	defer deferFunc()
 
-	return &mongoInstance{
+	mi := &mongoInstance{
 		read:  ConnectMongoDB(ctx, env.BaseEnv().DbMongoReadHost),
 		write: ConnectMongoDB(ctx, env.BaseEnv().DbMongoWriteHost),
 	}
+	if env.BaseEnv().DbMongoReadHost != "" {
+		mi.read = ConnectMongoDB(ctx, env.BaseEnv().DbMongoReadHost)
+	}
+	if env.BaseEnv().DbMongoWriteHost != "" {
+		mi.write = ConnectMongoDB(ctx, env.BaseEnv().DbMongoWriteHost)
+	}
+	return mi
 }
 
 // ConnectMongoDB connect to mongodb with dsn

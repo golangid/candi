@@ -57,15 +57,16 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 		return jobID, err
 	}
 
-	if !req.direct && defaultOption.externalWorkerHost != "" {
-		return AddJobViaHTTPRequest(ctx, defaultOption.externalWorkerHost, req)
+	if !req.direct && externalWorkerHost != "" {
+		return AddJobViaHTTPRequest(ctx, externalWorkerHost, req)
 	}
 
 	trace.Log("message", req.Args)
 
-	task, ok := registeredTask[req.TaskName]
+	task, ok := engine.registeredTask[req.TaskName]
 	if !ok {
-		return jobID, fmt.Errorf("task '%s' unregistered, task must one of [%s]", req.TaskName, strings.Join(tasks, ", "))
+		return jobID, fmt.Errorf("task '%s' unregistered, task must one of [%s]",
+			req.TaskName, strings.Join(engine.tasks, ", "))
 	}
 
 	var newJob Job
@@ -80,24 +81,20 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	newJob.CreatedAt = time.Now()
 	newJob.direct = req.direct
 
+	if err := engine.opt.persistent.SaveJob(ctx, &newJob); err != nil {
+		return jobID, fmt.Errorf("Cannot save job, error: %s", err.Error())
+	}
 	trace.SetTag("job_id", newJob.ID)
 
-	semaphoreAddJob <- struct{}{}
-	go func(ctx context.Context, job *Job, workerIndex int) {
-		defer func() { <-semaphoreAddJob }()
-
-		persistent.SaveJob(ctx, job)
-		persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
-			strings.ToLower(job.Status): 1,
-		})
-		broadcastAllToSubscribers(ctx)
-		n := queue.PushJob(ctx, job)
-		if n <= 1 {
-			registerJobToWorker(&newJob, workerIndex)
-			refreshWorkerNotif <- struct{}{}
-		}
-
-	}(context.Background(), &newJob, task.workerIndex)
+	engine.opt.persistent.Summary().IncrementSummary(ctx, newJob.TaskName, map[string]int64{
+		strings.ToLower(newJob.Status): 1,
+	})
+	engine.subscriber.broadcastAllToSubscribers(context.Background())
+	n := engine.opt.queue.PushJob(ctx, &newJob)
+	if n <= 1 {
+		engine.registerJobToWorker(&newJob, task.workerIndex)
+		engine.doRefreshWorker()
+	}
 
 	return newJob.ID, nil
 }
@@ -136,9 +133,7 @@ func AddJobViaHTTPRequest(ctx context.Context, workerHost string, req *AddJobReq
 		"variables": map[string]interface{}{
 			"param": param,
 		},
-		"query": `mutation addJob($param: AddJobInputResolver!) {
-			add_job(param: $param)
-		}`,
+		"query": `mutation addJob($param: AddJobInputResolver!) { add_job(param: $param) }`,
 	}
 	httpResp, err := httpReq.DoRequest(ctx, http.MethodPost, workerHost+"/graphql", candihelper.ToBytes(reqBody), header)
 	if err != nil {
@@ -163,12 +158,12 @@ func AddJobViaHTTPRequest(ctx context.Context, workerHost string, req *AddJobReq
 
 // GetDetailJob api for get detail job by id
 func GetDetailJob(ctx context.Context, jobID string) (Job, error) {
-	return persistent.FindJobByID(ctx, jobID, nil)
+	return engine.opt.persistent.FindJobByID(ctx, jobID, nil)
 }
 
 // RetryJob api for retry job by id
 func RetryJob(ctx context.Context, jobID string) error {
-	job, err := persistent.FindJobByID(ctx, jobID, nil)
+	job, err := engine.opt.persistent.FindJobByID(ctx, jobID, nil)
 	if err != nil {
 		return err
 	}
@@ -179,20 +174,20 @@ func RetryJob(ctx context.Context, jobID string) error {
 	if (job.Status == string(statusFailure)) || (job.Retries >= job.MaxRetry) {
 		job.Retries = 0
 	}
-	matched, affected, _ := persistent.UpdateJob(ctx, &Filter{JobID: &job.ID}, map[string]interface{}{
+	matched, affected, _ := engine.opt.persistent.UpdateJob(ctx, &Filter{JobID: &job.ID}, map[string]interface{}{
 		"status": job.Status, "interval": job.Interval, "retries": job.Retries,
 	})
-	persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
+	engine.opt.persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
 		statusBefore: -matched,
 		job.Status:   affected,
 	})
 
-	task := registeredTask[job.TaskName]
-	queue.PushJob(ctx, &job)
-	broadcastAllToSubscribers(ctx)
-	registerJobToWorker(&job, task.workerIndex)
+	task := engine.registeredTask[job.TaskName]
+	engine.opt.queue.PushJob(ctx, &job)
+	engine.subscriber.broadcastAllToSubscribers(ctx)
+	engine.registerJobToWorker(&job, task.workerIndex)
+	engine.doRefreshWorker()
 
-	go func() { refreshWorkerNotif <- struct{}{} }()
 	return nil
 }
 
@@ -203,29 +198,29 @@ func StopJob(ctx context.Context, jobID string) error {
 		ctx = context.Background()
 	}
 
-	job, err := persistent.FindJobByID(ctx, jobID, nil)
+	job, err := engine.opt.persistent.FindJobByID(ctx, jobID, nil)
 	if err != nil {
 		return err
 	}
 
 	statusBefore := job.Status
 	if job.Status == string(statusRetrying) {
-		stopAllJobInTask(job.TaskName)
+		engine.stopAllJobInTask(job.TaskName)
 	}
 
 	job.Status = string(statusStopped)
-	matchedCount, countAffected, err := persistent.UpdateJob(
+	matchedCount, countAffected, err := engine.opt.persistent.UpdateJob(
 		ctx, &Filter{JobID: &job.ID, Status: &statusBefore},
 		map[string]interface{}{"status": job.Status},
 	)
 	if err != nil {
 		return err
 	}
-	persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
+	engine.opt.persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
 		job.Status:   countAffected,
 		statusBefore: -matchedCount,
 	})
-	broadcastAllToSubscribers(ctx)
+	engine.subscriber.broadcastAllToSubscribers(ctx)
 
 	return nil
 }
@@ -240,14 +235,14 @@ func StreamAllJob(ctx context.Context, filter *Filter, streamFunc func(job *Job)
 		filter.Limit = 10
 	}
 
-	count := persistent.CountAllJob(ctx, filter)
+	count := engine.opt.persistent.CountAllJob(ctx, filter)
 	if count == 0 {
 		return
 	}
 
 	totalPages := int(math.Ceil(float64(count) / float64(filter.Limit)))
 	for filter.Page <= totalPages {
-		for _, job := range persistent.FindAllJob(ctx, filter) {
+		for _, job := range engine.opt.persistent.FindAllJob(ctx, filter) {
 			streamFunc(&job)
 		}
 		filter.Page++
@@ -257,17 +252,17 @@ func StreamAllJob(ctx context.Context, filter *Filter, streamFunc func(job *Job)
 // RecalculateSummary func
 func RecalculateSummary(ctx context.Context) {
 
-	mapper := make(map[string]TaskSummary, len(tasks))
-	for _, taskSummary := range persistent.AggregateAllTaskJob(ctx, &Filter{}) {
+	mapper := make(map[string]TaskSummary, len(engine.tasks))
+	for _, taskSummary := range engine.opt.persistent.AggregateAllTaskJob(ctx, &Filter{}) {
 		mapper[taskSummary.ID] = taskSummary
 	}
 
-	for _, task := range tasks {
+	for _, task := range engine.tasks {
 		taskSummary, ok := mapper[task]
 		if !ok {
 			taskSummary.ID = task
 		}
-		persistent.Summary().UpdateSummary(ctx, taskSummary.ID, map[string]interface{}{
+		engine.opt.persistent.Summary().UpdateSummary(ctx, taskSummary.ID, map[string]interface{}{
 			"success":  taskSummary.Success,
 			"queueing": taskSummary.Queueing,
 			"retrying": taskSummary.Retrying,

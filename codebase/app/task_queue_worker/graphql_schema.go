@@ -11,6 +11,7 @@ type Query {
 	get_detail_job(job_id: String!, filter: GetAllJobHistoryInputResolver): JobResolver!
 	get_all_active_subscriber(): [ClientSubscriber!]!
 	get_all_job(filter: GetAllJobInputResolver): JobListResolver!
+	get_all_configuration(): [ConfigurationResolver!]!
 }
 
 type Mutation {
@@ -21,8 +22,10 @@ type Mutation {
 	clean_job(task_name: String!): String!
 	retry_all_job(task_name: String!): String!
 	clear_all_client_subscriber(): String!
+	kill_client_subscriber(client_id: String!): String!
 	delete_job(job_id: String!): String!
 	recalculate_summary(): String!
+	set_configuration(config: SetConfigurationInputResolver!): String!
 }
 
 type Subscription {
@@ -43,8 +46,6 @@ type DashboardType {
 	start_at: String!
 	build_number: String!
 	config: Config!
-	task_list_client_subscribers: [String!]!
-	job_list_client_subscribers: [String!]!
 	memory_statistics: MemstatsResolver!
 	dependency_health: DependencyHealth!
 	dependency_detail: DependencyDetail!
@@ -82,6 +83,7 @@ type MetaTaskResolver {
 	total_records: Int!
 	is_close_session: Boolean!
 	total_client_subscriber: Int!
+	client_id: String!
 }
 
 type MemstatsResolver {
@@ -161,13 +163,8 @@ type FilterJobList {
 
 type ClientSubscriber {
 	client_id: String!
-	subscribe_list: ClientSubscriberListDetail!
-}
-
-type ClientSubscriberListDetail {
-	job_detail_id: String!
-	job_list: FilterJobList
-	task_dashboard: Boolean!
+	page_name: String!
+	page_filter: String!
 }
 
 input AddJobInputResolver {
@@ -193,6 +190,20 @@ input GetAllJobHistoryInputResolver {
 	limit: Int,
 	start_date: String,
 	end_date: String
+}
+
+input SetConfigurationInputResolver {
+	key: String!
+	name: String!
+	value: String!
+	is_active: Boolean!
+}
+
+type ConfigurationResolver {
+	key: String!
+	name: String!
+	value: String!
+	is_active: Boolean!
 }
 `
 

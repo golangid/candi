@@ -116,6 +116,50 @@ func (_m *Persistent) FindJobByID(ctx context.Context, id string, filterHistory 
 	return r0, r1
 }
 
+// GetAllConfiguration provides a mock function with given fields: ctx
+func (_m *Persistent) GetAllConfiguration(ctx context.Context) ([]taskqueueworker.Configuration, error) {
+	ret := _m.Called(ctx)
+
+	var r0 []taskqueueworker.Configuration
+	if rf, ok := ret.Get(0).(func(context.Context) []taskqueueworker.Configuration); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]taskqueueworker.Configuration)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetConfiguration provides a mock function with given fields: key
+func (_m *Persistent) GetConfiguration(key string) (taskqueueworker.Configuration, error) {
+	ret := _m.Called(key)
+
+	var r0 taskqueueworker.Configuration
+	if rf, ok := ret.Get(0).(func(string) taskqueueworker.Configuration); ok {
+		r0 = rf(key)
+	} else {
+		r0 = ret.Get(0).(taskqueueworker.Configuration)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(key)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Ping provides a mock function with given fields: ctx
 func (_m *Persistent) Ping(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -131,7 +175,7 @@ func (_m *Persistent) Ping(ctx context.Context) error {
 }
 
 // SaveJob provides a mock function with given fields: ctx, job, retryHistories
-func (_m *Persistent) SaveJob(ctx context.Context, job *taskqueueworker.Job, retryHistories ...taskqueueworker.RetryHistory) {
+func (_m *Persistent) SaveJob(ctx context.Context, job *taskqueueworker.Job, retryHistories ...taskqueueworker.RetryHistory) error {
 	_va := make([]interface{}, len(retryHistories))
 	for _i := range retryHistories {
 		_va[_i] = retryHistories[_i]
@@ -139,7 +183,30 @@ func (_m *Persistent) SaveJob(ctx context.Context, job *taskqueueworker.Job, ret
 	var _ca []interface{}
 	_ca = append(_ca, ctx, job)
 	_ca = append(_ca, _va...)
-	_m.Called(_ca...)
+	ret := _m.Called(_ca...)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *taskqueueworker.Job, ...taskqueueworker.RetryHistory) error); ok {
+		r0 = rf(ctx, job, retryHistories...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SetConfiguration provides a mock function with given fields: cfg
+func (_m *Persistent) SetConfiguration(cfg *taskqueueworker.Configuration) error {
+	ret := _m.Called(cfg)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*taskqueueworker.Configuration) error); ok {
+		r0 = rf(cfg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // SetSummary provides a mock function with given fields: _a0

@@ -4,11 +4,6 @@ import (
 	"context"
 )
 
-const (
-	jobModelName        = "task_queue_worker_jobs"
-	jobSummaryModelName = "task_queue_worker_job_summaries"
-)
-
 type (
 	// Persistent abstraction
 	Persistent interface {
@@ -19,11 +14,14 @@ type (
 		FindJobByID(ctx context.Context, id string, filterHistory *Filter) (job Job, err error)
 		CountAllJob(ctx context.Context, filter *Filter) int
 		AggregateAllTaskJob(ctx context.Context, filter *Filter) (result []TaskSummary)
-		SaveJob(ctx context.Context, job *Job, retryHistories ...RetryHistory)
+		SaveJob(ctx context.Context, job *Job, retryHistories ...RetryHistory) (err error)
 		UpdateJob(ctx context.Context, filter *Filter, updated map[string]interface{}, retryHistories ...RetryHistory) (matchedCount, affectedRow int64, err error)
 		CleanJob(ctx context.Context, filter *Filter) (affectedRow int64)
 		DeleteJob(ctx context.Context, id string) (job Job, err error)
 		Type() string
+		GetAllConfiguration(ctx context.Context) (cfg []Configuration, err error)
+		GetConfiguration(key string) (Configuration, error)
+		SetConfiguration(cfg *Configuration) (err error)
 	}
 
 	noopPersistent struct {
@@ -34,10 +32,7 @@ type (
 // NewNoopPersistent constructor
 func NewNoopPersistent() Persistent {
 
-	values := make(map[string]*TaskSummary, len(tasks))
-	for _, task := range tasks {
-		values[task] = new(TaskSummary)
-	}
+	values := make(map[string]*TaskSummary)
 
 	return &noopPersistent{
 		summary: &inMemSummary{values: values},
@@ -64,7 +59,7 @@ func (n *noopPersistent) CountAllJob(ctx context.Context, filter *Filter) (count
 func (n *noopPersistent) AggregateAllTaskJob(ctx context.Context, filter *Filter) (result []TaskSummary) {
 	return
 }
-func (n *noopPersistent) SaveJob(ctx context.Context, job *Job, retryHistories ...RetryHistory) {
+func (n *noopPersistent) SaveJob(ctx context.Context, job *Job, retryHistories ...RetryHistory) (err error) {
 	return
 }
 func (n *noopPersistent) UpdateJob(ctx context.Context, filter *Filter, updated map[string]interface{}, retryHistories ...RetryHistory) (matchedCount, affectedRow int64, err error) {
@@ -79,3 +74,8 @@ func (n *noopPersistent) DeleteJob(ctx context.Context, id string) (job Job, err
 func (n *noopPersistent) Type() string {
 	return "In Memory Persistent"
 }
+func (n *noopPersistent) GetAllConfiguration(ctx context.Context) (cfg []Configuration, err error) {
+	return
+}
+func (n *noopPersistent) GetConfiguration(key string) (cfg Configuration, err error) { return }
+func (n *noopPersistent) SetConfiguration(cfg *Configuration) (err error)            { return }

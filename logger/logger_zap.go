@@ -78,6 +78,20 @@ func LogE(message string) {
 	zap.S().Error(message)
 }
 
+// LogIfError log if error not nil
+func LogIfError(err error) {
+	if err != nil {
+		zap.S().Error(err.Error())
+	}
+}
+
+// LogPanicIfError log if error not nil
+func LogPanicIfError(err error) {
+	if err != nil {
+		zap.S().Panic(err.Error())
+	}
+}
+
 // LogEf error with format
 func LogEf(format string, i ...interface{}) {
 	zap.S().Errorf(format, i...)

@@ -1,5 +1,11 @@
 package taskqueueworker
 
+import "errors"
+
+var (
+	errClientLimitExceeded = errors.New("client limit exceeded, please try again later")
+)
+
 func convertIncrementMap(mp map[string]int) map[string]interface{} {
 	res := make(map[string]interface{})
 	for k, v := range mp {
@@ -9,11 +15,11 @@ func convertIncrementMap(mp map[string]int) map[string]interface{} {
 }
 
 func isDefaultPersistent() bool {
-	_, ok := persistent.(*noopPersistent)
+	_, ok := engine.opt.persistent.(*noopPersistent)
 	return ok
 }
 
 func isDefaultQueue() bool {
-	_, ok := queue.(*inMemQueue)
+	_, ok := engine.opt.queue.(*inMemQueue)
 	return ok
 }

@@ -29,7 +29,7 @@ func (t *taskQueueWorker) serveGraphQLAPI() {
 		graphql.UseFieldResolvers(),
 		graphql.Tracer(trace.NoopTracer{}),
 	}
-	schema := graphql.MustParseSchema(schema, &rootResolver{worker: t}, schemaOpts...)
+	schema := graphql.MustParseSchema(schema, &rootResolver{engine: t}, schemaOpts...)
 
 	mux := http.NewServeMux()
 	mux.Handle("/", http.StripPrefix("/", http.FileServer(dashboard.Dashboard)))
@@ -42,7 +42,7 @@ func (t *taskQueueWorker) serveGraphQLAPI() {
 	mux.HandleFunc("/playground", func(rw http.ResponseWriter, r *http.Request) { rw.Write([]byte(static.PlaygroundAsset)) })
 
 	httpEngine := new(http.Server)
-	httpEngine.Addr = fmt.Sprintf(":%d", defaultOption.dashboardPort)
+	httpEngine.Addr = fmt.Sprintf(":%d", engine.opt.dashboardPort)
 	httpEngine.Handler = mux
 
 	if err := httpEngine.ListenAndServe(); err != nil {
@@ -51,17 +51,12 @@ func (t *taskQueueWorker) serveGraphQLAPI() {
 }
 
 type rootResolver struct {
-	worker *taskQueueWorker
+	engine *taskQueueWorker
 }
 
 func (r *rootResolver) Dashboard(ctx context.Context, input struct{ GC *bool }) (res DashboardResolver) {
-	for taskClient := range clientTaskSubscribers {
-		res.TaskListClientSubscribers = append(res.TaskListClientSubscribers, taskClient)
-	}
-	for client := range clientTaskJobListSubscribers {
-		res.JobListClientSubscribers = append(res.JobListClientSubscribers, client)
-	}
-	res.Banner = defaultOption.dashboardBanner
+
+	res.Banner = r.engine.opt.dashboardBanner
 	res.Tagline = "Task Queue Worker Dashboard"
 	res.Version = candi.Version
 	res.GoVersion = runtime.Version()
@@ -75,15 +70,15 @@ func (r *rootResolver) Dashboard(ctx context.Context, input struct{ GC *bool }) 
 	}
 
 	// dependency health
-	if err := persistent.Ping(ctx); err != nil {
+	if err := r.engine.opt.persistent.Ping(ctx); err != nil {
 		res.DependencyHealth.Persistent = candihelper.ToStringPtr(err.Error())
 	}
-	if err := queue.Ping(); err != nil {
+	if err := r.engine.opt.queue.Ping(); err != nil {
 		res.DependencyHealth.Queue = candihelper.ToStringPtr(err.Error())
 	}
 
-	res.DependencyDetail.PersistentType = persistent.Type()
-	res.DependencyDetail.QueueType = queue.Type()
+	res.DependencyDetail.PersistentType = r.engine.opt.persistent.Type()
+	res.DependencyDetail.QueueType = r.engine.opt.queue.Type()
 
 	return
 }
@@ -108,7 +103,7 @@ func (r *rootResolver) GetDetailJob(ctx context.Context, input struct {
 		input.Filter = &GetAllJobHistoryInputResolver{}
 	}
 	filter := input.Filter.ToFilter()
-	job, err := persistent.FindJobByID(ctx, input.JobID, &filter)
+	job, err := r.engine.opt.persistent.FindJobByID(ctx, input.JobID, &filter)
 	if err != nil {
 		return res, err
 	}
@@ -119,14 +114,14 @@ func (r *rootResolver) GetDetailJob(ctx context.Context, input struct {
 }
 
 func (r *rootResolver) DeleteJob(ctx context.Context, input struct{ JobID string }) (ok string, err error) {
-	job, err := persistent.DeleteJob(ctx, input.JobID)
+	job, err := r.engine.opt.persistent.DeleteJob(ctx, input.JobID)
 	if err != nil {
 		return "", err
 	}
-	persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
+	r.engine.opt.persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
 		job.Status: -1,
 	})
-	broadcastAllToSubscribers(r.worker.ctx)
+	r.engine.subscriber.broadcastAllToSubscribers(r.engine.ctx)
 	return
 }
 
@@ -152,35 +147,36 @@ func (r *rootResolver) StopJob(ctx context.Context, input struct {
 	JobID string
 }) (string, error) {
 
-	return "Success stop job " + input.JobID, StopJob(r.worker.ctx, input.JobID)
+	return "Success stop job " + input.JobID, StopJob(r.engine.ctx, input.JobID)
 }
 
 func (r *rootResolver) RetryJob(ctx context.Context, input struct {
 	JobID string
 }) (string, error) {
 
-	return "Success retry job " + input.JobID, RetryJob(r.worker.ctx, input.JobID)
+	return "Success retry job " + input.JobID, RetryJob(r.engine.ctx, input.JobID)
 }
 
 func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 	TaskName string
 }) (string, error) {
 
-	if _, ok := registeredTask[input.TaskName]; !ok {
-		return "", fmt.Errorf("task '%s' unregistered, task must one of [%s]", input.TaskName, strings.Join(tasks, ", "))
+	if _, ok := r.engine.registeredTask[input.TaskName]; !ok {
+		return "", fmt.Errorf("task '%s' unregistered, task must one of [%s]",
+			input.TaskName, strings.Join(r.engine.tasks, ", "))
 	}
 
 	go func(ctx context.Context) {
 
-		broadcastWhenChangeAllJob(ctx, input.TaskName, true)
+		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, true)
 
-		stopAllJobInTask(input.TaskName)
-		queue.Clear(ctx, input.TaskName)
+		r.engine.stopAllJobInTask(input.TaskName)
+		r.engine.opt.queue.Clear(ctx, input.TaskName)
 
 		incrQuery := map[string]int64{}
 		affectedStatus := []string{string(statusQueueing), string(statusRetrying)}
 		for _, status := range affectedStatus {
-			countMatchedFilter, countAffected, err := persistent.UpdateJob(ctx,
+			countMatchedFilter, countAffected, err := r.engine.opt.persistent.UpdateJob(ctx,
 				&Filter{
 					TaskName: input.TaskName, Status: &status,
 				},
@@ -195,11 +191,11 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 			incrQuery[strings.ToLower(string(statusStopped))] += countAffected
 		}
 
-		broadcastWhenChangeAllJob(ctx, input.TaskName, false)
-		persistent.Summary().IncrementSummary(ctx, input.TaskName, incrQuery)
-		broadcastAllToSubscribers(r.worker.ctx)
+		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, false)
+		r.engine.opt.persistent.Summary().IncrementSummary(ctx, input.TaskName, incrQuery)
+		r.engine.subscriber.broadcastAllToSubscribers(r.engine.ctx)
 
-	}(r.worker.ctx)
+	}(r.engine.ctx)
 
 	return "Success stop all job in task " + input.TaskName, nil
 }
@@ -210,7 +206,7 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 
 	go func(ctx context.Context) {
 
-		broadcastWhenChangeAllJob(ctx, input.TaskName, true)
+		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, true)
 
 		filter := &Filter{
 			Page: 1, Limit: 10, Sort: "created_at",
@@ -222,14 +218,14 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 				job.Interval = defaultInterval.String()
 			}
 			job.Status = string(statusQueueing)
-			if n := queue.PushJob(ctx, job); n <= 1 {
-				registerJobToWorker(job, registeredTask[job.TaskName].workerIndex)
+			if n := r.engine.opt.queue.PushJob(ctx, job); n <= 1 {
+				r.engine.registerJobToWorker(job, r.engine.registeredTask[job.TaskName].workerIndex)
 			}
 		})
 
 		incr := map[string]int64{}
 		for _, status := range filter.Statuses {
-			countMatchedFilter, countAffected, err := persistent.UpdateJob(ctx,
+			countMatchedFilter, countAffected, err := r.engine.opt.persistent.UpdateJob(ctx,
 				&Filter{
 					TaskName: input.TaskName, Status: &status,
 				},
@@ -245,12 +241,12 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 			incr[strings.ToLower(string(statusQueueing))] += countAffected
 		}
 
-		broadcastWhenChangeAllJob(ctx, input.TaskName, false)
-		persistent.Summary().IncrementSummary(ctx, input.TaskName, incr)
-		broadcastAllToSubscribers(r.worker.ctx)
-		refreshWorkerNotif <- struct{}{}
+		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, false)
+		r.engine.opt.persistent.Summary().IncrementSummary(ctx, input.TaskName, incr)
+		r.engine.subscriber.broadcastAllToSubscribers(r.engine.ctx)
+		r.engine.refreshWorkerNotif <- struct{}{}
 
-	}(r.worker.ctx)
+	}(r.engine.ctx)
 
 	return "Success retry all failure job in task " + input.TaskName, nil
 }
@@ -261,12 +257,12 @@ func (r *rootResolver) CleanJob(ctx context.Context, input struct {
 
 	go func(ctx context.Context) {
 
-		broadcastWhenChangeAllJob(ctx, input.TaskName, true)
+		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, true)
 
 		incrQuery := map[string]int64{}
 		affectedStatus := []string{string(statusSuccess), string(statusFailure), string(statusStopped)}
 		for _, status := range affectedStatus {
-			countAffected := persistent.CleanJob(ctx,
+			countAffected := r.engine.opt.persistent.CleanJob(ctx,
 				&Filter{
 					TaskName: input.TaskName, Status: &status,
 				},
@@ -274,11 +270,11 @@ func (r *rootResolver) CleanJob(ctx context.Context, input struct {
 			incrQuery[strings.ToLower(status)] -= countAffected
 		}
 
-		broadcastWhenChangeAllJob(ctx, input.TaskName, false)
-		persistent.Summary().IncrementSummary(ctx, input.TaskName, incrQuery)
-		broadcastAllToSubscribers(r.worker.ctx)
+		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, false)
+		r.engine.opt.persistent.Summary().IncrementSummary(ctx, input.TaskName, incrQuery)
+		r.engine.subscriber.broadcastAllToSubscribers(r.engine.ctx)
 
-	}(r.worker.ctx)
+	}(r.engine.ctx)
 
 	return "Success clean all job in task " + input.TaskName, nil
 }
@@ -286,56 +282,82 @@ func (r *rootResolver) CleanJob(ctx context.Context, input struct {
 func (r *rootResolver) RecalculateSummary(ctx context.Context) (string, error) {
 
 	RecalculateSummary(ctx)
-	broadcastAllToSubscribers(r.worker.ctx)
+	r.engine.subscriber.broadcastAllToSubscribers(r.engine.ctx)
 	return "Success recalculate summary", nil
 }
 
 func (r *rootResolver) ClearAllClientSubscriber(ctx context.Context) (string, error) {
 
 	go func() {
-		for k := range clientTaskSubscribers {
-			removeTaskListSubscriber(k)
-			closeAllSubscribers <- struct{}{}
+		for k := range r.engine.subscriber.clientTaskSubscribers {
+			r.engine.subscriber.removeTaskListSubscriber(k)
+			r.engine.subscriber.closeAllSubscribers <- struct{}{}
 		}
-		for k := range clientTaskJobListSubscribers {
-			removeJobListSubscriber(k)
-			closeAllSubscribers <- struct{}{}
+		for k := range r.engine.subscriber.clientTaskJobListSubscribers {
+			r.engine.subscriber.removeJobListSubscriber(k)
+			r.engine.subscriber.closeAllSubscribers <- struct{}{}
 		}
-		for k := range clientJobDetailSubscribers {
-			removeJobDetailSubscriber(k)
-			closeAllSubscribers <- struct{}{}
+		for k := range r.engine.subscriber.clientJobDetailSubscribers {
+			r.engine.subscriber.removeJobDetailSubscriber(k)
+			r.engine.subscriber.closeAllSubscribers <- struct{}{}
 		}
 	}()
 
 	return "Success clear all client subscriber", nil
 }
 
+func (r *rootResolver) KillClientSubscriber(ctx context.Context, input struct{ ClientID string }) (string, error) {
+
+	taskSubs, ok := r.engine.subscriber.clientTaskSubscribers[input.ClientID]
+	if ok {
+		taskSubs.c <- TaskListResolver{Meta: MetaTaskResolver{IsCloseSession: true}}
+		r.engine.subscriber.removeTaskListSubscriber(input.ClientID)
+	}
+	jobListSubs, ok := r.engine.subscriber.clientTaskJobListSubscribers[input.ClientID]
+	if ok {
+		jobListSubs.c <- JobListResolver{Meta: MetaJobList{IsCloseSession: true}}
+		r.engine.subscriber.removeJobListSubscriber(input.ClientID)
+	}
+	jobDetailSubs, ok := r.engine.subscriber.clientJobDetailSubscribers[input.ClientID]
+	if ok {
+		var js JobResolver
+		js.Meta.IsCloseSession = true
+		jobDetailSubs.c <- js
+		r.engine.subscriber.removeJobDetailSubscriber(input.ClientID)
+	}
+
+	r.engine.subscriber.broadcastTaskList(ctx)
+	return "Success kill client subscriber", nil
+}
+
 func (r *rootResolver) GetAllActiveSubscriber(ctx context.Context) (cs []*ClientSubscriber, err error) {
 
 	mapper := make(map[string]*ClientSubscriber)
-	for k := range clientTaskSubscribers {
+	for k := range r.engine.subscriber.clientTaskSubscribers {
 		_, ok := mapper[k]
 		if !ok {
 			mapper[k] = &ClientSubscriber{}
 		}
 		mapper[k].ClientID = k
-		mapper[k].SubscribeList.TaskDashboard = true
+		mapper[k].PageName = "Root Dashboard"
 	}
-	for k, v := range clientTaskJobListSubscribers {
+	for k, v := range r.engine.subscriber.clientTaskJobListSubscribers {
 		_, ok := mapper[k]
 		if !ok {
 			mapper[k] = &ClientSubscriber{}
 		}
 		mapper[k].ClientID = k
-		mapper[k].SubscribeList.JobList = v.filter
+		mapper[k].PageName = "Job List"
+		mapper[k].PageFilter = string(candihelper.ToBytes(v.filter))
 	}
-	for k, v := range clientJobDetailSubscribers {
+	for k, v := range r.engine.subscriber.clientJobDetailSubscribers {
 		_, ok := mapper[k]
 		if !ok {
 			mapper[k] = &ClientSubscriber{}
 		}
 		mapper[k].ClientID = k
-		mapper[k].SubscribeList.JobDetailID = candihelper.PtrToString(v.filter.JobID)
+		mapper[k].PageName = "Job Detail"
+		mapper[k].PageFilter = candihelper.PtrToString(v.filter.JobID)
 	}
 
 	for _, v := range mapper {
@@ -343,9 +365,35 @@ func (r *rootResolver) GetAllActiveSubscriber(ctx context.Context) (cs []*Client
 	}
 
 	sort.Slice(cs, func(i, j int) bool {
-		return cs[i].ClientID < cs[j].ClientID
+		return cs[i].PageName > cs[j].PageName
 	})
 	return cs, nil
+}
+
+func (r *rootResolver) GetAllConfiguration(ctx context.Context) (res []ConfigurationResolver, err error) {
+	configs, err := r.engine.opt.persistent.GetAllConfiguration(ctx)
+	if err != nil {
+		return res, err
+	}
+	res = make([]ConfigurationResolver, 0)
+	for _, cfg := range configs {
+		res = append(res, ConfigurationResolver{
+			Key: cfg.Key, Name: cfg.Name, Value: cfg.Value, IsActive: cfg.IsActive,
+		})
+	}
+	return
+}
+
+func (r *rootResolver) SetConfiguration(ctx context.Context, input struct {
+	Config ConfigurationResolver
+}) (res string, err error) {
+
+	if err := r.engine.configuration.setConfiguration(&Configuration{
+		Key: input.Config.Key, Name: input.Config.Name, Value: input.Config.Value, IsActive: input.Config.IsActive,
+	}); err != nil {
+		return res, err
+	}
+	return "success", nil
 }
 
 func (r *rootResolver) ListenTaskDashboard(ctx context.Context, input struct {
@@ -357,32 +405,32 @@ func (r *rootResolver) ListenTaskDashboard(ctx context.Context, input struct {
 	httpHeader := candishared.GetValueFromContext(ctx, candishared.ContextKeyHTTPHeader).(http.Header)
 	clientID := httpHeader.Get("Sec-WebSocket-Key")
 
-	if err := registerNewTaskListSubscriber(clientID, &Filter{
+	if err := r.engine.subscriber.registerNewTaskListSubscriber(clientID, &Filter{
 		Page: input.Page, Limit: input.Limit, Search: input.Search,
 	}, output); err != nil {
 		return nil, err
 	}
 
-	autoRemoveClient := time.NewTicker(defaultOption.autoRemoveClientInterval)
+	autoRemoveClient := time.NewTicker(r.engine.configuration.getClientSubscriberAge())
 
-	go broadcastTaskList(r.worker.ctx)
+	go r.engine.subscriber.broadcastTaskList(r.engine.ctx)
 
 	go func() {
-		defer func() { broadcastTaskList(r.worker.ctx); close(output); autoRemoveClient.Stop() }()
+		defer func() { r.engine.subscriber.broadcastTaskList(r.engine.ctx); close(output); autoRemoveClient.Stop() }()
 
 		select {
 		case <-ctx.Done():
-			removeTaskListSubscriber(clientID)
+			r.engine.subscriber.removeTaskListSubscriber(clientID)
 			return
 
-		case <-closeAllSubscribers:
+		case <-r.engine.subscriber.closeAllSubscribers:
 			output <- TaskListResolver{Meta: MetaTaskResolver{IsCloseSession: true}}
-			removeTaskListSubscriber(clientID)
+			r.engine.subscriber.removeTaskListSubscriber(clientID)
 			return
 
 		case <-autoRemoveClient.C:
 			output <- TaskListResolver{Meta: MetaTaskResolver{IsCloseSession: true}}
-			removeTaskListSubscriber(clientID)
+			r.engine.subscriber.removeTaskListSubscriber(clientID)
 			return
 		}
 
@@ -411,29 +459,29 @@ func (r *rootResolver) ListenAllJob(ctx context.Context, input struct{ Filter *G
 		filter.Limit = 10
 	}
 
-	if err := registerNewJobListSubscriber(clientID, &filter, output); err != nil {
+	if err := r.engine.subscriber.registerNewJobListSubscriber(clientID, &filter, output); err != nil {
 		return nil, err
 	}
 
-	go broadcastJobListToClient(ctx, clientID)
+	go r.engine.subscriber.broadcastJobListToClient(ctx, clientID)
 
-	autoRemoveClient := time.NewTicker(defaultOption.autoRemoveClientInterval)
+	autoRemoveClient := time.NewTicker(r.engine.configuration.getClientSubscriberAge())
 	go func() {
 		defer func() { close(output); autoRemoveClient.Stop() }()
 
 		select {
 		case <-ctx.Done():
-			removeJobListSubscriber(clientID)
+			r.engine.subscriber.removeJobListSubscriber(clientID)
 			return
 
-		case <-closeAllSubscribers:
+		case <-r.engine.subscriber.closeAllSubscribers:
 			output <- JobListResolver{Meta: MetaJobList{IsCloseSession: true}}
-			removeJobListSubscriber(clientID)
+			r.engine.subscriber.removeJobListSubscriber(clientID)
 			return
 
 		case <-autoRemoveClient.C:
 			output <- JobListResolver{Meta: MetaJobList{IsCloseSession: true}}
-			removeJobListSubscriber(clientID)
+			r.engine.subscriber.removeJobListSubscriber(clientID)
 			return
 
 		}
@@ -456,7 +504,7 @@ func (r *rootResolver) ListenDetailJob(ctx context.Context, input struct {
 		return output, errors.New("Job ID cannot empty")
 	}
 
-	_, err := persistent.FindJobByID(ctx, input.JobID, nil)
+	_, err := r.engine.opt.persistent.FindJobByID(ctx, input.JobID, nil)
 	if err != nil {
 		return output, errors.New("Job not found")
 	}
@@ -466,33 +514,33 @@ func (r *rootResolver) ListenDetailJob(ctx context.Context, input struct {
 	}
 	filter := input.Filter.ToFilter()
 	filter.JobID = &input.JobID
-	if err := registerNewJobDetailSubscriber(clientID, &filter, output); err != nil {
+	if err := r.engine.subscriber.registerNewJobDetailSubscriber(clientID, &filter, output); err != nil {
 		return nil, err
 	}
 
-	go broadcastJobDetail(ctx)
+	go r.engine.subscriber.broadcastJobDetail(ctx)
 
-	autoRemoveClient := time.NewTicker(defaultOption.autoRemoveClientInterval)
+	autoRemoveClient := time.NewTicker(r.engine.configuration.getClientSubscriberAge())
 	go func() {
 		defer func() { close(output); autoRemoveClient.Stop() }()
 
 		select {
 		case <-ctx.Done():
-			removeJobDetailSubscriber(clientID)
+			r.engine.subscriber.removeJobDetailSubscriber(clientID)
 			return
 
-		case <-closeAllSubscribers:
+		case <-r.engine.subscriber.closeAllSubscribers:
 			var js JobResolver
 			js.Meta.IsCloseSession = true
 			output <- js
-			removeJobDetailSubscriber(clientID)
+			r.engine.subscriber.removeJobDetailSubscriber(clientID)
 			return
 
 		case <-autoRemoveClient.C:
 			var js JobResolver
 			js.Meta.IsCloseSession = true
 			output <- js
-			removeJobDetailSubscriber(clientID)
+			r.engine.subscriber.removeJobDetailSubscriber(clientID)
 			return
 
 		}

@@ -72,6 +72,17 @@ func NewSQLPersistent(db *sql.DB) *SQLPersistent {
 		panic(err)
 	}
 
+	// init configuration table
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS ` + configurationModelName + ` (
+		key VARCHAR(255) PRIMARY KEY NOT NULL DEFAULT '',
+		name VARCHAR(255) NOT NULL DEFAULT '',
+		value VARCHAR(255) NOT NULL DEFAULT '',
+		is_active BOOLEAN DEFAULT false
+    );`)
+	if err != nil {
+		panic(err)
+	}
+
 	indexList := map[string]struct {
 		tableName, field string
 	}{
@@ -244,7 +255,7 @@ func (s *SQLPersistent) AggregateAllTaskJob(ctx context.Context, filter *Filter)
 
 	return
 }
-func (s *SQLPersistent) SaveJob(ctx context.Context, job *Job, retryHistories ...RetryHistory) {
+func (s *SQLPersistent) SaveJob(ctx context.Context, job *Job, retryHistories ...RetryHistory) (err error) {
 	var query string
 	if job.ID == "" {
 		job.ID = uuid.NewString()
@@ -279,9 +290,10 @@ func (s *SQLPersistent) SaveJob(ctx context.Context, job *Job, retryHistories ..
 			WHERE id = '` + s.queryReplacer.Replace(job.ID) + `'`
 	}
 
-	_, err := s.db.Exec(query)
+	_, err = s.db.Exec(query)
 	if err != nil {
 		logger.LogE(err.Error())
+		return err
 	}
 
 	for _, rh := range retryHistories {
@@ -297,8 +309,11 @@ func (s *SQLPersistent) SaveJob(ctx context.Context, job *Job, retryHistories ..
 			)`)
 		if err != nil {
 			logger.LogE(err.Error())
+			return err
 		}
 	}
+
+	return nil
 }
 func (s *SQLPersistent) UpdateJob(ctx context.Context, filter *Filter, updated map[string]interface{}, retryHistories ...RetryHistory) (matchedCount, affectedRow int64, err error) {
 	where, err := s.toQueryFilter(filter)
@@ -348,6 +363,11 @@ func (s *SQLPersistent) CleanJob(ctx context.Context, filter *Filter) (affectedR
 		return affectedRow
 	}
 
+	_, err = s.db.Exec(`DELETE FROM task_queue_worker_job_histories WHERE job_id IN (SELECT id FROM ` + jobModelName + ` ` + where + `)`)
+	if err != nil {
+		logger.LogE(err.Error())
+	}
+
 	res, err := s.db.Exec(`DELETE FROM ` + jobModelName + ` ` + where)
 	if err != nil {
 		logger.LogE(err.Error())
@@ -363,6 +383,10 @@ func (s *SQLPersistent) DeleteJob(ctx context.Context, id string) (job Job, err 
 		&job.FinishedAt, &job.Status, &job.Error, &job.TraceID,
 	)
 	_, err = s.db.Exec(`DELETE FROM ` + jobModelName + ` WHERE id='` + s.queryReplacer.Replace(id) + `'`)
+	if err != nil {
+		logger.LogE(err.Error())
+	}
+	_, err = s.db.Exec(`DELETE FROM task_queue_worker_job_histories WHERE job_id='` + s.queryReplacer.Replace(id) + `'`)
 	if err != nil {
 		logger.LogE(err.Error())
 	}
@@ -520,6 +544,9 @@ func (s *SQLPersistent) toQueryFilter(f *Filter) (where string, err error) {
 	if !f.StartDate.IsZero() && !f.EndDate.IsZero() {
 		conditions = append(conditions, "created_at BETWEEN '"+f.StartDate.Format(time.RFC3339)+"' AND '"+f.EndDate.Format(time.RFC3339)+"'")
 	}
+	if !f.BeforeCreatedAt.IsZero() {
+		conditions = append(conditions, "created_at <= '"+f.BeforeCreatedAt.Format(time.RFC3339)+"'")
+	}
 
 	if len(conditions) == 0 {
 		return where, errors.New("empty filter")
@@ -535,4 +562,50 @@ func (s *SQLPersistent) toMultiParamQuery(params []string) string {
 		in = append(in, "'"+s.queryReplacer.Replace(taskName)+"'")
 	}
 	return " (" + strings.Join(in, ",") + ") "
+}
+
+func (s *SQLPersistent) GetAllConfiguration(ctx context.Context) (cfg []Configuration, err error) {
+	rows, err := s.db.Query(`SELECT key, name, value, is_active FROM ` + configurationModelName + ` ORDER BY key`)
+	if err != nil {
+		return cfg, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var config Configuration
+		rows.Scan(&config.Key, &config.Name, &config.Value, &config.IsActive)
+		cfg = append(cfg, config)
+	}
+	return
+}
+
+func (s *SQLPersistent) GetConfiguration(key string) (cfg Configuration, err error) {
+	err = s.db.QueryRow(`SELECT key, name, value, is_active FROM `+configurationModelName+
+		` WHERE key='`+s.queryReplacer.Replace(key)+`'`).Scan(&cfg.Key, &cfg.Name, &cfg.Value, &cfg.IsActive)
+	return
+}
+
+func (s *SQLPersistent) SetConfiguration(cfg *Configuration) (err error) {
+	res, err := s.db.Exec(`UPDATE ` + configurationModelName + ` SET 
+		name='` + s.queryReplacer.Replace(cfg.Name) + `', 
+		value='` + s.queryReplacer.Replace(cfg.Value) + `', 
+		is_active=` + candihelper.ToString(cfg.IsActive) + `
+		WHERE key = '` + s.queryReplacer.Replace(cfg.Key) + `'`)
+	if err != nil {
+		logger.LogE(err.Error())
+		return err
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		_, err := s.db.Exec(`INSERT INTO ` + configurationModelName + ` (key, name, value, is_active) VALUES (
+			'` + s.queryReplacer.Replace(cfg.Key) + `',
+			'` + s.queryReplacer.Replace(cfg.Name) + `',
+			'` + s.queryReplacer.Replace(cfg.Value) + `',
+			` + candihelper.ToString(cfg.IsActive) + `
+		)`)
+		if err != nil {
+			logger.LogE(err.Error())
+			return err
+		}
+	}
+	return nil
 }

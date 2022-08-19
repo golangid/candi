@@ -17,9 +17,6 @@ type (
 		dashboardPort            uint16
 		debugMode                bool
 		locker                   candiutils.Locker
-
-		// externalWorkerHost setting worker host for add job, if not empty default using http request when add job
-		externalWorkerHost string
 	}
 
 	// OptionFunc type
@@ -91,8 +88,8 @@ func SetLocker(locker candiutils.Locker) OptionFunc {
 
 // SetExternalWorkerHost option func, setting worker host for add job, if not empty default using http request when add job
 func SetExternalWorkerHost(host string) OptionFunc {
-	defaultOption.externalWorkerHost = host
+	externalWorkerHost = host
 	return func(o *option) {
-		o.externalWorkerHost = host
+		externalWorkerHost = host
 	}
 }

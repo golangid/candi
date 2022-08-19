@@ -133,6 +133,35 @@ func NewMongoPersistent(db *mongo.Database) *MongoPersistent {
 		}
 	}
 
+	// check and create index in collection task_queue_worker_configurations
+	indexViewConfigurationColl := db.Collection(jobSummaryModelName).Indexes()
+	currentIndexConfigurationNames := make(map[string]struct{})
+	curConfiguration, err := indexViewConfigurationColl.List(ctx)
+	if err == nil {
+		for curConfiguration.Next(ctx) {
+			var result bson.M
+			curConfiguration.Decode(&result)
+
+			idxName, _ := result["name"].(string)
+			if idxName != "" {
+				currentIndexConfigurationNames[idxName] = struct{}{}
+			}
+		}
+	}
+	indexes = map[string]mongo.IndexModel{
+		"key_1": {
+			Keys: bson.M{
+				"key": 1,
+			},
+			Options: uniqueOpts,
+		},
+	}
+	for name, idx := range indexes {
+		if _, ok := currentIndexConfigurationNames[name]; !ok {
+			indexViewConfigurationColl.CreateOne(ctx, idx)
+		}
+	}
+
 	mp := &MongoPersistent{
 		db: db, ctx: ctx,
 	}
@@ -282,9 +311,8 @@ func (s *MongoPersistent) AggregateAllTaskJob(ctx context.Context, filter *Filte
 	csr.All(ctx, &results)
 	return
 }
-func (s *MongoPersistent) SaveJob(ctx context.Context, job *Job, retryHistories ...RetryHistory) {
+func (s *MongoPersistent) SaveJob(ctx context.Context, job *Job, retryHistories ...RetryHistory) (err error) {
 	tracer.Log(ctx, "persistent.mongo:save_job", job.ID)
-	var err error
 
 	if job.ID == "" {
 		job.ID = uuid.New().String()
@@ -321,6 +349,7 @@ func (s *MongoPersistent) SaveJob(ctx context.Context, job *Job, retryHistories 
 	if err != nil {
 		logger.LogE(err.Error())
 	}
+	return
 }
 
 func (s *MongoPersistent) UpdateJob(ctx context.Context, filter *Filter, updated map[string]interface{}, retryHistories ...RetryHistory) (matchedCount, affectedRow int64, err error) {
@@ -418,6 +447,13 @@ func (s *MongoPersistent) toBsonFilter(f *Filter) bson.M {
 		pipeQuery = append(pipeQuery, bson.M{
 			"created_at": bson.M{
 				"$gte": f.StartDate, "$lte": f.EndDate,
+			},
+		})
+	}
+	if !f.BeforeCreatedAt.IsZero() {
+		pipeQuery = append(pipeQuery, bson.M{
+			"created_at": bson.M{
+				"$lte": f.BeforeCreatedAt,
 			},
 		})
 	}
@@ -550,6 +586,43 @@ func (s *MongoPersistent) Type() string {
 	var commandResult struct {
 		Version string `bson:"version"`
 	}
-	s.db.RunCommand(s.ctx, bson.D{{Key: "serverStatus", Value: 1}}).Decode(&commandResult)
-	return "MongoDB Persistent, version: " + commandResult.Version
+	err := s.db.RunCommand(s.ctx, bson.D{{Key: "serverStatus", Value: 1}}).Decode(&commandResult)
+	logger.LogIfError(err)
+	if commandResult.Version != "" {
+		commandResult.Version = ", version: " + commandResult.Version
+	}
+	return "MongoDB Persistent" + commandResult.Version
+}
+
+func (s *MongoPersistent) GetAllConfiguration(ctx context.Context) (cfg []Configuration, err error) {
+	cur, err := s.db.Collection(configurationModelName).Find(s.ctx, bson.M{})
+	if err != nil {
+		return cfg, err
+	}
+	defer cur.Close(ctx)
+	cur.All(ctx, &cfg)
+	return
+}
+
+func (s *MongoPersistent) GetConfiguration(key string) (cfg Configuration, err error) {
+	err = s.db.Collection(configurationModelName).FindOne(s.ctx, bson.M{
+		"key": key,
+	}).Decode(&cfg)
+	return
+}
+
+func (s *MongoPersistent) SetConfiguration(cfg *Configuration) (err error) {
+	opt := options.UpdateOptions{
+		Upsert: candihelper.ToBoolPtr(true),
+	}
+	_, err = s.db.Collection(configurationModelName).UpdateOne(s.ctx,
+		bson.M{
+			"key": cfg.Key,
+		},
+		bson.M{
+			"$set": cfg,
+		},
+		&opt,
+	)
+	return
 }

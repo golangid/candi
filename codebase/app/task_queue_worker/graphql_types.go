@@ -12,17 +12,15 @@ import (
 type (
 	// DashboardResolver resolver
 	DashboardResolver struct {
-		Banner                    string
-		Tagline                   string
-		Version                   string
-		GoVersion                 string
-		StartAt                   string
-		BuildNumber               string
-		Config                    ConfigResolver
-		TaskListClientSubscribers []string
-		JobListClientSubscribers  []string
-		MemoryStatistics          MemstatsResolver
-		DependencyHealth          struct {
+		Banner           string
+		Tagline          string
+		Version          string
+		GoVersion        string
+		StartAt          string
+		BuildNumber      string
+		Config           ConfigResolver
+		MemoryStatistics MemstatsResolver
+		DependencyHealth struct {
 			Persistent *string
 			Queue      *string
 		}
@@ -46,6 +44,7 @@ type (
 		TotalPages            int
 		IsCloseSession        bool
 		TotalClientSubscriber int
+		ClientID              string
 	}
 	// TaskResolver resolver
 	TaskResolver struct {
@@ -107,6 +106,13 @@ type (
 		}
 	}
 
+	// ClientSubscriber model
+	ClientSubscriber struct {
+		ClientID   string
+		PageName   string
+		PageFilter string
+	}
+
 	// ConfigResolver resolver
 	ConfigResolver struct {
 		WithPersistent bool
@@ -131,6 +137,14 @@ type (
 		StartDate *string
 		EndDate   *string
 		JobID     string
+	}
+
+	// ConfigurationResolver resolver
+	ConfigurationResolver struct {
+		Key      string
+		Name     string
+		Value    string
+		IsActive bool
 	}
 )
 
@@ -198,8 +212,8 @@ func (j *JobResolver) ParseFromJob(job *Job) {
 	if delay, err := time.ParseDuration(job.Interval); err == nil && job.Status == string(statusQueueing) {
 		j.NextRetryAt = time.Now().Add(delay).In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 	}
-	if job.TraceID != "" && defaultOption.tracingDashboard != "" {
-		j.TraceID = fmt.Sprintf("%s/%s", defaultOption.tracingDashboard, job.TraceID)
+	if job.TraceID != "" && engine.opt.tracingDashboard != "" {
+		j.TraceID = fmt.Sprintf("%s/%s", engine.opt.tracingDashboard, job.TraceID)
 	}
 	j.CreatedAt = job.CreatedAt.In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 	j.FinishedAt = job.FinishedAt.In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
@@ -211,15 +225,15 @@ func (j *JobResolver) ParseFromJob(job *Job) {
 		job.RetryHistories[i].StartAt = job.RetryHistories[i].StartAt.In(candihelper.AsiaJakartaLocalTime)
 		job.RetryHistories[i].EndAt = job.RetryHistories[i].EndAt.In(candihelper.AsiaJakartaLocalTime)
 
-		if job.RetryHistories[i].TraceID != "" && defaultOption.tracingDashboard != "" {
-			job.RetryHistories[i].TraceID = fmt.Sprintf("%s/%s", defaultOption.tracingDashboard, job.RetryHistories[i].TraceID)
+		if job.RetryHistories[i].TraceID != "" && engine.opt.tracingDashboard != "" {
+			job.RetryHistories[i].TraceID = fmt.Sprintf("%s/%s", engine.opt.tracingDashboard, job.RetryHistories[i].TraceID)
 		}
 	}
 }
 
 func (j *JobListResolver) GetAllJob(ctx context.Context, filter *Filter) {
 
-	jobs := persistent.FindAllJob(ctx, filter)
+	jobs := engine.opt.persistent.FindAllJob(ctx, filter)
 
 	var meta MetaJobList
 	var taskDetailSummary []TaskSummary
@@ -227,9 +241,9 @@ func (j *JobListResolver) GetAllJob(ctx context.Context, filter *Filter) {
 	if candihelper.PtrToString(filter.Search) != "" ||
 		candihelper.PtrToString(filter.JobID) != "" ||
 		(!filter.StartDate.IsZero() && !filter.EndDate.IsZero()) {
-		taskDetailSummary = persistent.AggregateAllTaskJob(ctx, filter)
+		taskDetailSummary = engine.opt.persistent.AggregateAllTaskJob(ctx, filter)
 	} else {
-		taskDetailSummary = persistent.Summary().FindAllSummary(ctx, filter)
+		taskDetailSummary = engine.opt.persistent.Summary().FindAllSummary(ctx, filter)
 	}
 
 	for _, detailSummary := range taskDetailSummary {

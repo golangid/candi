@@ -5,107 +5,165 @@ import (
 	"fmt"
 	"runtime"
 	"sort"
+	"sync"
 
 	"github.com/golangid/candi/candihelper"
 )
 
-func registerNewTaskListSubscriber(clientID string, filter *Filter, clientChannel chan TaskListResolver) error {
-	if len(clientTaskSubscribers) >= defaultOption.maxClientSubscriber {
+type (
+	subscriber struct {
+		mutex                        sync.Mutex
+		configuration                *configurationUsecase
+		opt                          *option
+		clientTaskSubscribers        map[string]*clientTaskDashboardSubscriber
+		clientTaskJobListSubscribers map[string]*clientTaskJobListSubscriber
+		clientJobDetailSubscribers   map[string]*clientJobDetailSubscriber
+		closeAllSubscribers          chan struct{}
+	}
+
+	clientTaskDashboardSubscriber struct {
+		c        chan TaskListResolver
+		clientID string
+		filter   *Filter
+	}
+	clientTaskJobListSubscriber struct {
+		c             chan JobListResolver
+		clientID      string
+		skipBroadcast bool
+		filter        *Filter
+	}
+	clientJobDetailSubscriber struct {
+		c        chan JobResolver
+		clientID string
+		filter   *Filter
+	}
+)
+
+func (s *clientTaskDashboardSubscriber) writeDataToChannel(data TaskListResolver) {
+	defer func() { recover() }()
+	s.c <- data
+}
+func (s *clientTaskJobListSubscriber) writeDataToChannel(data JobListResolver) {
+	defer func() { recover() }()
+	s.c <- data
+}
+func (s *clientJobDetailSubscriber) writeDataToChannel(data JobResolver) {
+	defer func() { recover() }()
+	s.c <- data
+}
+
+func initSubscriber(cfg *configurationUsecase, opt *option) *subscriber {
+	return &subscriber{
+		configuration:                cfg,
+		opt:                          opt,
+		clientTaskSubscribers:        make(map[string]*clientTaskDashboardSubscriber, cfg.getMaxClientSubscriber()),
+		clientTaskJobListSubscribers: make(map[string]*clientTaskJobListSubscriber, cfg.getMaxClientSubscriber()),
+		clientJobDetailSubscribers:   make(map[string]*clientJobDetailSubscriber, cfg.getMaxClientSubscriber()),
+		closeAllSubscribers:          make(chan struct{}),
+	}
+}
+
+func (s *subscriber) registerNewTaskListSubscriber(clientID string, filter *Filter, clientChannel chan TaskListResolver) error {
+	if s.getTotalSubscriber() >= s.configuration.getMaxClientSubscriber() {
 		return errClientLimitExceeded
 	}
 
-	mutex.Lock()
-	defer mutex.Unlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-	clientTaskSubscribers[clientID] = &clientTaskDashboardSubscriber{
+	s.clientTaskSubscribers[clientID] = &clientTaskDashboardSubscriber{
+		c: clientChannel, filter: filter, clientID: clientID,
+	}
+	return nil
+}
+
+func (s *subscriber) removeTaskListSubscriber(clientID string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	delete(s.clientTaskSubscribers, clientID)
+}
+
+func (s *subscriber) registerNewJobListSubscriber(clientID string, filter *Filter, clientChannel chan JobListResolver) error {
+	if s.getTotalSubscriber() >= s.configuration.getMaxClientSubscriber() {
+		return errClientLimitExceeded
+	}
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.clientTaskJobListSubscribers[clientID] = &clientTaskJobListSubscriber{
 		c: clientChannel, filter: filter,
 	}
 	return nil
 }
 
-func removeTaskListSubscriber(clientID string) {
-	mutex.Lock()
-	defer mutex.Unlock()
+func (s *subscriber) removeJobListSubscriber(clientID string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-	delete(clientTaskSubscribers, clientID)
+	delete(s.clientTaskJobListSubscribers, clientID)
 }
 
-func registerNewJobListSubscriber(clientID string, filter *Filter, clientChannel chan JobListResolver) error {
-	if len(clientTaskJobListSubscribers) >= defaultOption.maxClientSubscriber {
+func (s *subscriber) registerNewJobDetailSubscriber(clientID string, filter *Filter, clientChannel chan JobResolver) error {
+	if s.getTotalSubscriber() >= s.configuration.getMaxClientSubscriber() {
 		return errClientLimitExceeded
 	}
 
-	mutex.Lock()
-	defer mutex.Unlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-	clientTaskJobListSubscribers[clientID] = &clientTaskJobListSubscriber{
+	s.clientJobDetailSubscribers[clientID] = &clientJobDetailSubscriber{
 		c: clientChannel, filter: filter,
 	}
 	return nil
 }
 
-func removeJobListSubscriber(clientID string) {
-	mutex.Lock()
-	defer mutex.Unlock()
+func (s *subscriber) removeJobDetailSubscriber(clientID string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-	delete(clientTaskJobListSubscribers, clientID)
+	delete(s.clientJobDetailSubscribers, clientID)
 }
 
-func registerNewJobDetailSubscriber(clientID string, filter *Filter, clientChannel chan JobResolver) error {
-	if len(clientJobDetailSubscribers) >= defaultOption.maxClientSubscriber {
-		return errClientLimitExceeded
-	}
-
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	clientJobDetailSubscribers[clientID] = &clientJobDetailSubscriber{
-		c: clientChannel, filter: filter,
-	}
-	return nil
+func (s *subscriber) getTotalSubscriber() int {
+	return len(s.clientTaskSubscribers) + len(s.clientTaskJobListSubscribers) + len(s.clientJobDetailSubscribers)
 }
 
-func removeJobDetailSubscriber(clientID string) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	delete(clientJobDetailSubscribers, clientID)
-}
-
-func broadcastAllToSubscribers(ctx context.Context) {
+func (s *subscriber) broadcastAllToSubscribers(ctx context.Context) {
 	if ctx.Err() != nil {
 		return
 	}
 
 	go func(ctx context.Context) {
-		if len(clientTaskSubscribers) > 0 {
-			broadcastTaskList(ctx)
+		if len(s.clientTaskSubscribers) > 0 {
+			s.broadcastTaskList(ctx)
 		}
-		if len(clientJobDetailSubscribers) > 0 {
-			broadcastJobDetail(ctx)
+		if len(s.clientTaskJobListSubscribers) > 0 {
+			s.broadcastJobList(ctx)
 		}
-		if len(clientTaskJobListSubscribers) > 0 {
-			broadcastJobList(ctx)
+		if len(s.clientJobDetailSubscribers) > 0 {
+			s.broadcastJobDetail(ctx)
 		}
 	}(ctx)
 }
 
-func broadcastTaskList(ctx context.Context) {
+func (s *subscriber) broadcastTaskList(ctx context.Context) {
 
 	var taskRes TaskListResolver
-	taskRes.Data = make([]TaskResolver, len(tasks))
-	mapper := make(map[string]int, len(tasks))
-	for i, task := range tasks {
+	taskRes.Data = make([]TaskResolver, len(engine.tasks))
+	mapper := make(map[string]int, len(engine.tasks))
+	for i, task := range engine.tasks {
 		taskRes.Data[i].Name = task
-		taskRes.Data[i].ModuleName = registeredTask[task].moduleName
+		taskRes.Data[i].ModuleName = engine.registeredTask[task].moduleName
 		mapper[task] = i
 	}
 
-	for _, summary := range persistent.Summary().FindAllSummary(ctx, &Filter{}) {
+	for _, summary := range s.opt.persistent.Summary().FindAllSummary(ctx, &Filter{}) {
 		if idx, ok := mapper[summary.TaskName]; ok {
 			res := TaskResolver{
 				Name:       summary.TaskName,
-				ModuleName: registeredTask[summary.TaskName].moduleName,
+				ModuleName: engine.registeredTask[summary.TaskName].moduleName,
 				TotalJobs:  summary.CountTotalJob(),
 			}
 			res.Detail = summary.ToSummaryDetail()
@@ -118,28 +176,29 @@ func broadcastTaskList(ctx context.Context) {
 		return taskRes.Data[i].ModuleName < taskRes.Data[i].ModuleName
 	})
 
-	taskRes.Meta.TotalClientSubscriber = len(clientTaskSubscribers) + len(clientTaskJobListSubscribers) + len(clientJobDetailSubscribers)
+	taskRes.Meta.TotalClientSubscriber = s.getTotalSubscriber()
 
-	for _, subscriber := range clientTaskSubscribers {
+	for clientID, subscriber := range s.clientTaskSubscribers {
+		taskRes.Meta.ClientID = clientID
 		subscriber.writeDataToChannel(taskRes)
 	}
 }
 
-func broadcastJobList(ctx context.Context) {
-	for clientID := range clientTaskJobListSubscribers {
-		broadcastJobListToClient(ctx, clientID)
+func (s *subscriber) broadcastJobList(ctx context.Context) {
+	for clientID := range s.clientTaskJobListSubscribers {
+		s.broadcastJobListToClient(ctx, clientID)
 	}
 }
 
-func broadcastJobListToClient(ctx context.Context, clientID string) {
+func (s *subscriber) broadcastJobListToClient(ctx context.Context, clientID string) {
 
-	subscriber, ok := clientTaskJobListSubscribers[clientID]
+	subscriber, ok := s.clientTaskJobListSubscribers[clientID]
 	if !ok {
 		return
 	}
 
 	if subscriber.filter.TaskName != "" {
-		summary := persistent.Summary().FindDetailSummary(ctx, subscriber.filter.TaskName)
+		summary := s.opt.persistent.Summary().FindDetailSummary(ctx, subscriber.filter.TaskName)
 		if summary.IsLoading {
 			subscriber.skipBroadcast = summary.IsLoading
 			subscriber.writeDataToChannel(JobListResolver{
@@ -163,12 +222,12 @@ func broadcastJobListToClient(ctx context.Context, clientID string) {
 	subscriber.writeDataToChannel(jobListResolver)
 }
 
-func broadcastJobDetail(ctx context.Context) {
+func (s *subscriber) broadcastJobDetail(ctx context.Context) {
 
-	for clientID, subscriber := range clientJobDetailSubscribers {
-		detail, err := persistent.FindJobByID(ctx, candihelper.PtrToString(subscriber.filter.JobID), subscriber.filter)
+	for clientID, subscriber := range s.clientJobDetailSubscribers {
+		detail, err := s.opt.persistent.FindJobByID(ctx, candihelper.PtrToString(subscriber.filter.JobID), subscriber.filter)
 		if err != nil {
-			removeJobDetailSubscriber(clientID)
+			s.removeJobDetailSubscriber(clientID)
 			continue
 		}
 		var jobResolver JobResolver
@@ -179,25 +238,25 @@ func broadcastJobDetail(ctx context.Context) {
 	}
 }
 
-func broadcastWhenChangeAllJob(ctx context.Context, taskName string, isLoading bool) {
+func (s *subscriber) broadcastWhenChangeAllJob(ctx context.Context, taskName string, isLoading bool) {
 
-	persistent.Summary().UpdateSummary(ctx, taskName, map[string]interface{}{
+	s.opt.persistent.Summary().UpdateSummary(ctx, taskName, map[string]interface{}{
 		"is_loading": isLoading,
 	})
 
 	var taskRes TaskListResolver
-	taskRes.Data = make([]TaskResolver, len(tasks))
-	mapper := make(map[string]int, len(tasks))
-	for i, task := range tasks {
+	taskRes.Data = make([]TaskResolver, len(engine.tasks))
+	mapper := make(map[string]int, len(engine.tasks))
+	for i, task := range engine.tasks {
 		taskRes.Data[i].Name = task
-		taskRes.Data[i].ModuleName = registeredTask[task].moduleName
+		taskRes.Data[i].ModuleName = engine.registeredTask[task].moduleName
 		mapper[task] = i
 	}
 
-	for _, summary := range persistent.Summary().FindAllSummary(ctx, &Filter{}) {
+	for _, summary := range s.opt.persistent.Summary().FindAllSummary(ctx, &Filter{}) {
 		if idx, ok := mapper[summary.TaskName]; ok {
 			res := TaskResolver{
-				Name: summary.TaskName, ModuleName: registeredTask[summary.TaskName].moduleName,
+				Name: summary.TaskName, ModuleName: engine.registeredTask[summary.TaskName].moduleName,
 				TotalJobs: summary.CountTotalJob(),
 			}
 			res.Detail = summary.ToSummaryDetail()
@@ -210,13 +269,12 @@ func broadcastWhenChangeAllJob(ctx context.Context, taskName string, isLoading b
 		return taskRes.Data[i].ModuleName < taskRes.Data[i].ModuleName
 	})
 
-	taskRes.Meta.TotalClientSubscriber = len(clientTaskSubscribers) + len(clientTaskJobListSubscribers) + len(clientJobDetailSubscribers)
+	taskRes.Meta.TotalClientSubscriber = s.getTotalSubscriber()
 
-	for _, subscriber := range clientTaskSubscribers {
+	for _, subscriber := range s.clientTaskSubscribers {
 		subscriber.writeDataToChannel(taskRes)
 	}
-
-	for _, subscriber := range clientTaskJobListSubscribers {
+	for _, subscriber := range s.clientTaskJobListSubscribers {
 		subscriber.skipBroadcast = isLoading
 		subscriber.writeDataToChannel(JobListResolver{
 			Meta: MetaJobList{IsLoading: isLoading},

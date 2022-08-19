@@ -18,13 +18,19 @@ import (
 
 func (t *taskQueueWorker) triggerTask(workerIndex int) {
 
-	runningTask, ok := runningWorkerIndexTask[workerIndex]
+	runningTask, ok := t.runningWorkerIndexTask[workerIndex]
 	if !ok {
 		return
 	}
+
+	if runningTask.isInternalTask {
+		t.execInternalTask(runningTask.internalTaskName)
+		return
+	}
+
 	runningTask.activeInterval.Stop()
 
-	semaphore[workerIndex-1] <- struct{}{}
+	t.semaphore[workerIndex-1] <- struct{}{}
 	if t.isShutdown {
 		return
 	}
@@ -40,9 +46,9 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 			}
 			t.registerNextJob(task.taskName)
 			t.wg.Done()
-			<-semaphore[workerIndex-1]
+			<-t.semaphore[workerIndex-1]
 			task.cancel()
-			refreshWorkerNotif <- struct{}{}
+			t.refreshWorkerNotif <- struct{}{}
 		}()
 
 		if t.ctx.Err() != nil {
@@ -56,21 +62,21 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 }
 
 func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
-	jobID := queue.PopJob(t.ctx, runningTask.taskName)
+	jobID := t.opt.queue.PopJob(t.ctx, runningTask.taskName)
 	if jobID == "" {
 		return
 	}
 
 	// lock for multiple worker (if running on multiple pods/instance)
-	if defaultOption.locker.IsLocked(t.getLockKey(jobID)) {
+	if t.opt.locker.IsLocked(t.getLockKey(jobID)) {
 		logger.LogYellow("task_queue_worker > job " + jobID + " is locked")
 		return
 	}
-	defer defaultOption.locker.Unlock(t.getLockKey(jobID))
+	defer t.opt.locker.Unlock(t.getLockKey(jobID))
 
-	selectedTask := registeredTask[runningTask.taskName]
+	selectedTask := t.registeredTask[runningTask.taskName]
 
-	job, err := persistent.FindJobByID(ctx, jobID, nil)
+	job, err := t.opt.persistent.FindJobByID(ctx, jobID, nil)
 	if err != nil || job.Status != string(statusQueueing) {
 		return
 	}
@@ -85,17 +91,17 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 	job.Retries++
 	statusBefore := strings.ToLower(job.Status)
 	job.Status = string(statusRetrying)
-	matchedCount, affectedCount, err := persistent.UpdateJob(
+	matchedCount, affectedCount, err := t.opt.persistent.UpdateJob(
 		t.ctx, &Filter{JobID: &job.ID}, job.toMap(),
 	)
-	persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
+	t.opt.persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
 		string(job.Status): affectedCount,
 		statusBefore:       -matchedCount,
 	})
-	broadcastAllToSubscribers(t.ctx)
+	t.subscriber.broadcastAllToSubscribers(t.ctx)
 	statusBefore = strings.ToLower(job.Status)
 
-	if defaultOption.debugMode {
+	if t.opt.debugMode {
 		log.Printf("\x1b[35;3mTask Queue Worker: executing task '%s' (job id: %s)\x1b[0m", job.TaskName, job.ID)
 	}
 
@@ -124,20 +130,20 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish(tracer.FinishWithError(err))
 
-		matchedCount, affectedCount, _ := persistent.UpdateJob(
+		matchedCount, affectedCount, _ := t.opt.persistent.UpdateJob(
 			t.ctx,
 			&Filter{JobID: &job.ID, Status: candihelper.ToStringPtr(strings.ToUpper(statusBefore))},
 			job.toMap(),
 			retryHistory,
 		)
 		if affectedCount == 0 && matchedCount == 0 {
-			persistent.SaveJob(t.ctx, &job, retryHistory)
+			t.opt.persistent.SaveJob(t.ctx, &job, retryHistory)
 		}
-		persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
+		t.opt.persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
 			job.Status:   affectedCount,
 			statusBefore: -matchedCount,
 		})
-		broadcastAllToSubscribers(t.ctx)
+		t.subscriber.broadcastAllToSubscribers(t.ctx)
 	}()
 
 	tags := trace.Tags()
@@ -202,7 +208,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 					job.Arguments = string(e.NewArgsPayload)
 				}
 
-				queue.PushJob(ctx, &job)
+				t.opt.queue.PushJob(ctx, &job)
 				return
 			}
 
@@ -225,11 +231,11 @@ func (t *taskQueueWorker) getLockKey(jobID string) string {
 
 func (t *taskQueueWorker) registerNextJob(taskName string) {
 
-	nextJobID := queue.NextJob(t.ctx, taskName)
+	nextJobID := t.opt.queue.NextJob(t.ctx, taskName)
 	if nextJobID != "" {
 
-		if nextJob, err := persistent.FindJobByID(t.ctx, nextJobID, nil); err == nil {
-			registerJobToWorker(&nextJob, registeredTask[taskName].workerIndex)
+		if nextJob, err := t.opt.persistent.FindJobByID(t.ctx, nextJobID, nil); err == nil {
+			t.registerJobToWorker(&nextJob, t.registeredTask[taskName].workerIndex)
 		}
 
 	} else {
@@ -240,11 +246,46 @@ func (t *taskQueueWorker) registerNextJob(taskName string) {
 			Sort:     "created_at",
 			Status:   candihelper.ToStringPtr(string(statusQueueing)),
 		}, func(job *Job) {
-			if n := queue.PushJob(t.ctx, job); n <= 1 {
-				registerJobToWorker(job, registeredTask[job.TaskName].workerIndex)
+			if n := t.opt.queue.PushJob(t.ctx, job); n <= 1 {
+				t.registerJobToWorker(job, t.registeredTask[job.TaskName].workerIndex)
 			}
 		})
 
+	}
+
+}
+
+func (t *taskQueueWorker) execInternalTask(internalTaskName string) {
+
+	logger.LogIf("running internal task: %s", internalTaskName)
+
+	switch internalTaskName {
+	case configurationRetentionAgeKey:
+
+		cfg, _ := t.opt.persistent.GetConfiguration(configurationRetentionAgeKey)
+		if !cfg.IsActive {
+			return
+		}
+		dateDuration, err := time.ParseDuration(cfg.Value)
+		if err != nil || dateDuration <= 0 {
+			return
+		}
+
+		beforeCreatedAt := time.Now().Add(-dateDuration)
+		affectedStatus := []string{string(statusSuccess), string(statusFailure), string(statusStopped)}
+		for _, task := range t.tasks {
+			incrQuery := map[string]int64{}
+			for _, status := range affectedStatus {
+				countAffected := t.opt.persistent.CleanJob(t.ctx,
+					&Filter{
+						TaskName: task, Status: &status, BeforeCreatedAt: beforeCreatedAt,
+					},
+				)
+				incrQuery[strings.ToLower(status)] -= countAffected
+			}
+			t.opt.persistent.Summary().IncrementSummary(t.ctx, task, incrQuery)
+		}
+		t.subscriber.broadcastAllToSubscribers(t.ctx)
 	}
 
 }

@@ -14,6 +14,11 @@ type Summary struct {
 	mock.Mock
 }
 
+// DeleteAllSummary provides a mock function with given fields: ctx
+func (_m *Summary) DeleteAllSummary(ctx context.Context) {
+	_m.Called(ctx)
+}
+
 // FindAllSummary provides a mock function with given fields: ctx, filter
 func (_m *Summary) FindAllSummary(ctx context.Context, filter *taskqueueworker.Filter) []taskqueueworker.TaskSummary {
 	ret := _m.Called(ctx, filter)
