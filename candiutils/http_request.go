@@ -191,9 +191,6 @@ func (req *httpRequestImpl) DoRequest(ctx context.Context, method, url string, r
 	trace.SetTag("http.method", httpReq.Method)
 	trace.SetTag("http.url", httpReq.URL.String())
 	trace.SetTag("http.url_path", httpReq.URL.Path)
-	trace.SetTag("http.min_error_code", req.minHTTPErrorCodeThreshold)
-	trace.SetTag("http.retries", req.retries)
-	trace.SetTag("http.sleep_between_retry", req.sleepBetweenRetry.String())
 	trace.SetTag("http.timeout", req.timeout.String())
 	trace.SetTag("http.breaker_name", req.breakerName)
 

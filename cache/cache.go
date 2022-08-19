@@ -84,10 +84,11 @@ func (r *RedisCache) Set(ctx context.Context, key string, value interface{}, exp
 	if _, err = cl.Do("SET", key, value); err != nil {
 		return
 	}
-	if _, err = cl.Do("EXPIRE", key, int(expire.Seconds())); err != nil {
-		return
+
+	if expire >= 0 {
+		_, err = cl.Do("EXPIRE", key, int(expire.Seconds()))
 	}
-	return nil
+	return
 }
 
 // Exists method
