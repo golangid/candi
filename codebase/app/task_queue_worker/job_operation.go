@@ -63,6 +63,9 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 
 	trace.Log("message", req.Args)
 
+	if engine == nil {
+		return jobID, errWorkerInactive
+	}
 	task, ok := engine.registeredTask[req.TaskName]
 	if !ok {
 		return jobID, fmt.Errorf("task '%s' unregistered, task must one of [%s]",
@@ -158,11 +161,18 @@ func AddJobViaHTTPRequest(ctx context.Context, workerHost string, req *AddJobReq
 
 // GetDetailJob api for get detail job by id
 func GetDetailJob(ctx context.Context, jobID string) (Job, error) {
+	if engine == nil {
+		return Job{}, errWorkerInactive
+	}
 	return engine.opt.persistent.FindJobByID(ctx, jobID, nil)
 }
 
 // RetryJob api for retry job by id
 func RetryJob(ctx context.Context, jobID string) error {
+	if engine == nil {
+		return errWorkerInactive
+	}
+
 	job, err := engine.opt.persistent.FindJobByID(ctx, jobID, nil)
 	if err != nil {
 		return err
@@ -193,6 +203,9 @@ func RetryJob(ctx context.Context, jobID string) error {
 
 // StopJob api for stop job by id
 func StopJob(ctx context.Context, jobID string) error {
+	if engine == nil {
+		return errWorkerInactive
+	}
 
 	if ctx.Err() != nil {
 		ctx = context.Background()
@@ -227,6 +240,9 @@ func StopJob(ctx context.Context, jobID string) error {
 
 // StreamAllJob api func for stream fetch all job
 func StreamAllJob(ctx context.Context, filter *Filter, streamFunc func(job *Job)) {
+	if engine == nil {
+		return
+	}
 
 	if filter.Page <= 0 {
 		filter.Page = 1
@@ -251,6 +267,9 @@ func StreamAllJob(ctx context.Context, filter *Filter, streamFunc func(job *Job)
 
 // RecalculateSummary func
 func RecalculateSummary(ctx context.Context) {
+	if engine == nil {
+		return
+	}
 
 	mapper := make(map[string]TaskSummary, len(engine.tasks))
 	for _, taskSummary := range engine.opt.persistent.AggregateAllTaskJob(ctx, &Filter{}) {

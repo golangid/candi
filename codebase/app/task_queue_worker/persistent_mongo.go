@@ -134,7 +134,7 @@ func NewMongoPersistent(db *mongo.Database) *MongoPersistent {
 	}
 
 	// check and create index in collection task_queue_worker_configurations
-	indexViewConfigurationColl := db.Collection(jobSummaryModelName).Indexes()
+	indexViewConfigurationColl := db.Collection(configurationModelName).Indexes()
 	currentIndexConfigurationNames := make(map[string]struct{})
 	curConfiguration, err := indexViewConfigurationColl.List(ctx)
 	if err == nil {

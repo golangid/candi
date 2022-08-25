@@ -4,6 +4,7 @@ import "errors"
 
 var (
 	errClientLimitExceeded = errors.New("client limit exceeded, please try again later")
+	errWorkerInactive      = errors.New("Worker is inactive")
 )
 
 func convertIncrementMap(mp map[string]int) map[string]interface{} {
