@@ -278,7 +278,7 @@ func (t *taskQueueWorker) execInternalTask(internalTaskName string) {
 			for _, status := range affectedStatus {
 				countAffected := t.opt.persistent.CleanJob(t.ctx,
 					&Filter{
-						TaskName: task, Status: &status, BeforeCreatedAt: beforeCreatedAt,
+						TaskName: task, Status: &status, BeforeCreatedAt: &beforeCreatedAt,
 					},
 				)
 				incrQuery[strings.ToLower(status)] -= countAffected

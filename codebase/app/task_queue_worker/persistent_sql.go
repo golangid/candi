@@ -541,10 +541,10 @@ func (s *SQLPersistent) toQueryFilter(f *Filter) (where string, err error) {
 	if f.Status != nil {
 		conditions = append(conditions, "status='"+s.queryReplacer.Replace(*f.Status)+"'")
 	}
-	if !f.StartDate.IsZero() && !f.EndDate.IsZero() {
-		conditions = append(conditions, "created_at BETWEEN '"+f.StartDate.Format(time.RFC3339)+"' AND '"+f.EndDate.Format(time.RFC3339)+"'")
+	if startDate, endDate := f.ParseStartEndDate(); !startDate.IsZero() && !endDate.IsZero() {
+		conditions = append(conditions, "created_at BETWEEN '"+startDate.Format(time.RFC3339)+"' AND '"+endDate.Format(time.RFC3339)+"'")
 	}
-	if !f.BeforeCreatedAt.IsZero() {
+	if f.BeforeCreatedAt != nil && !f.BeforeCreatedAt.IsZero() {
 		conditions = append(conditions, "created_at <= '"+f.BeforeCreatedAt.Format(time.RFC3339)+"'")
 	}
 

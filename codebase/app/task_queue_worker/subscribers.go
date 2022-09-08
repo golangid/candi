@@ -214,7 +214,7 @@ func (s *subscriber) broadcastJobListToClient(ctx context.Context, clientID stri
 	subscriber.filter.Sort = "-created_at"
 	subscriber.skipBroadcast = candihelper.PtrToString(subscriber.filter.Search) != "" ||
 		candihelper.PtrToString(subscriber.filter.JobID) != "" ||
-		(!subscriber.filter.StartDate.IsZero() && !subscriber.filter.EndDate.IsZero())
+		(subscriber.filter.StartDate != "" && subscriber.filter.EndDate != "")
 
 	var jobListResolver JobListResolver
 	jobListResolver.GetAllJob(ctx, subscriber.filter)

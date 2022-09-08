@@ -443,17 +443,17 @@ func (s *MongoPersistent) toBsonFilter(f *Filter) bson.M {
 			"status": *f.Status,
 		})
 	}
-	if !f.StartDate.IsZero() && !f.EndDate.IsZero() {
+	if startDate, endDate := f.ParseStartEndDate(); !startDate.IsZero() && !endDate.IsZero() {
 		pipeQuery = append(pipeQuery, bson.M{
 			"created_at": bson.M{
-				"$gte": f.StartDate, "$lte": f.EndDate,
+				"$gte": startDate, "$lte": endDate,
 			},
 		})
 	}
-	if !f.BeforeCreatedAt.IsZero() {
+	if f.BeforeCreatedAt != nil && !f.BeforeCreatedAt.IsZero() {
 		pipeQuery = append(pipeQuery, bson.M{
 			"created_at": bson.M{
-				"$lte": f.BeforeCreatedAt,
+				"$lte": *f.BeforeCreatedAt,
 			},
 		})
 	}

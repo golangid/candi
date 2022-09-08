@@ -14,23 +14,23 @@ const (
 type (
 	// Filter type
 	Filter struct {
-		Page                int       `json:"page"`
-		Limit               int       `json:"limit"`
-		Sort                string    `json:"sort,omitempty"`
-		TaskName            string    `json:"taskName,omitempty"`
-		TaskNameList        []string  `json:"taskNameList,omitempty"`
-		ExcludeTaskNameList []string  `json:"excludeTaskNameList,omitempty"`
-		Search              *string   `json:"search,omitempty"`
-		JobID               *string   `json:"jobID,omitempty"`
-		Status              *string   `json:"status,omitempty"`
-		Statuses            []string  `json:"statuses,omitempty"`
-		ExcludeStatus       []string  `json:"excludeStatus,omitempty"`
-		ShowAll             bool      `json:"showAll,omitempty"`
-		ShowHistories       *bool     `json:"showHistories,omitempty"`
-		StartDate           time.Time `json:"startDate,omitempty"`
-		EndDate             time.Time `json:"endDate,omitempty"`
-		BeforeCreatedAt     time.Time `json:"beforeCreatedAt,omitempty"`
-		Count               int       `json:"count,omitempty"`
+		Page                int        `json:"page"`
+		Limit               int        `json:"limit"`
+		Sort                string     `json:"sort,omitempty"`
+		TaskName            string     `json:"taskName,omitempty"`
+		TaskNameList        []string   `json:"taskNameList,omitempty"`
+		ExcludeTaskNameList []string   `json:"excludeTaskNameList,omitempty"`
+		Search              *string    `json:"search,omitempty"`
+		JobID               *string    `json:"jobID,omitempty"`
+		Status              *string    `json:"status,omitempty"`
+		Statuses            []string   `json:"statuses,omitempty"`
+		ExcludeStatus       []string   `json:"excludeStatus,omitempty"`
+		ShowAll             bool       `json:"showAll,omitempty"`
+		ShowHistories       *bool      `json:"showHistories,omitempty"`
+		StartDate           string     `json:"startDate,omitempty"`
+		EndDate             string     `json:"endDate,omitempty"`
+		BeforeCreatedAt     *time.Time `json:"beforeCreatedAt,omitempty"`
+		Count               int        `json:"count,omitempty"`
 	}
 
 	// TaskSummary model
@@ -88,6 +88,15 @@ type (
 // CalculateOffset method
 func (f *Filter) CalculateOffset() int {
 	return (f.Page - 1) * f.Limit
+}
+
+// ParseStartEndDate method
+func (f *Filter) ParseStartEndDate() (startDate, endDate time.Time) {
+
+	startDate, _ = time.Parse(time.RFC3339, f.StartDate)
+	endDate, _ = time.Parse(time.RFC3339, f.EndDate)
+
+	return
 }
 
 // CountTotalJob method

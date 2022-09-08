@@ -167,8 +167,12 @@ func (i *GetAllJobInputResolver) ToFilter() (filter Filter) {
 		filter.Statuses = *i.Statuses
 	}
 
-	filter.StartDate, _ = time.Parse(time.RFC3339, candihelper.PtrToString(i.StartDate))
-	filter.EndDate, _ = time.Parse(time.RFC3339, candihelper.PtrToString(i.EndDate))
+	if i.StartDate != nil {
+		filter.StartDate = *i.StartDate
+	}
+	if i.EndDate != nil {
+		filter.EndDate = *i.EndDate
+	}
 
 	return
 }
@@ -186,8 +190,12 @@ func (i *GetAllJobHistoryInputResolver) ToFilter() (filter Filter) {
 	if i.Limit != nil && *i.Limit > 0 {
 		filter.Limit = *i.Limit
 	}
-	filter.StartDate, _ = time.Parse(time.RFC3339, candihelper.PtrToString(i.StartDate))
-	filter.EndDate, _ = time.Parse(time.RFC3339, candihelper.PtrToString(i.EndDate))
+	if i.StartDate != nil {
+		filter.StartDate = *i.StartDate
+	}
+	if i.EndDate != nil {
+		filter.EndDate = *i.EndDate
+	}
 	return
 }
 
@@ -240,7 +248,7 @@ func (j *JobListResolver) GetAllJob(ctx context.Context, filter *Filter) {
 
 	if candihelper.PtrToString(filter.Search) != "" ||
 		candihelper.PtrToString(filter.JobID) != "" ||
-		(!filter.StartDate.IsZero() && !filter.EndDate.IsZero()) {
+		(filter.StartDate != "" && filter.EndDate != "") {
 		taskDetailSummary = engine.opt.persistent.AggregateAllTaskJob(ctx, filter)
 	} else {
 		taskDetailSummary = engine.opt.persistent.Summary().FindAllSummary(ctx, filter)
