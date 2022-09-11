@@ -6,7 +6,7 @@ import (
 	"github.com/golangid/candi/config/env"
 )
 
-// SetupRabbitMQWorker setup cron worker with default config
+// SetupRabbitMQWorker setup rabbitmq worker with default config
 func SetupRabbitMQWorker(service factory.ServiceFactory, opts ...rabbitmqworker.OptionFunc) factory.AppServerFactory {
 	rabbitMQOpts := []rabbitmqworker.OptionFunc{
 		rabbitmqworker.SetMaxGoroutines(env.BaseEnv().MaxGoroutines),

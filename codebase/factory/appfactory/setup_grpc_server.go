@@ -6,7 +6,7 @@ import (
 	"github.com/golangid/candi/config/env"
 )
 
-// SetupGRPCServer setup cron worker with default config
+// SetupGRPCServer setup grpc server with default config
 func SetupGRPCServer(service factory.ServiceFactory, opts ...grpcserver.OptionFunc) factory.AppServerFactory {
 	grpcOption := []grpcserver.OptionFunc{
 		grpcserver.SetTCPPort(env.BaseEnv().GRPCPort),

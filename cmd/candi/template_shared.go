@@ -9,7 +9,6 @@ package shared
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"{{.LibraryName}}/candishared"
@@ -32,10 +31,12 @@ type DefaultACLPermissionChecker struct {
 
 // CheckPermission implement interfaces.ACLPermissionChecker
 func (a DefaultACLPermissionChecker) CheckPermission(ctx context.Context, userID string, permissionCode string) (role string, err error) {
-	if permissionCode != "resource.public" {
+	/* add check allow permission for user access (is given "userID" can access "permissionCode" ?)
+	if !contains(getAllPermissionFromUser(userID), permissionCode) {
 		return role, errors.New("Forbidden")
 	}
-	fmt.Printf("users with id '%s' can access resource with permission code '%s' (return role for this user is 'superadmin')\n", userID, permissionCode)
+	*/
+	fmt.Printf("checkPermission: users with id '%s' can access resource with permission code '%s' (return role for this user is 'superadmin')\n", userID, permissionCode)
 	return "superadmin", nil
 }
 `

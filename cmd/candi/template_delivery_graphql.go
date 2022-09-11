@@ -9,7 +9,6 @@ import (
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 	
 	"{{.LibraryName}}/codebase/factory/dependency"
-	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
 )
 
@@ -25,15 +24,6 @@ func NewGraphQLHandler(uc usecase.Usecase, deps dependency.Dependency) *GraphQLH
 	return &GraphQLHandler{
 		uc: uc, mw: deps.GetMiddleware(), validator: deps.GetValidator(),
 	}
-}
-
-// RegisterMiddleware register resolver based on schema in "api/graphql/*" path
-func (h *GraphQLHandler) RegisterMiddleware(mwGroup *types.MiddlewareGroup) {
-	mwGroup.Add("{{upper (camel .ModuleName)}}QueryResolver.getAll{{upper (camel .ModuleName)}}", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("resource.public"))
-	mwGroup.Add("{{upper (camel .ModuleName)}}QueryResolver.getDetail{{upper (camel .ModuleName)}}", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("resource.public"))
-	mwGroup.Add("{{upper (camel .ModuleName)}}MutationResolver.create{{upper (camel .ModuleName)}}", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("resource.public"))
-	mwGroup.Add("{{upper (camel .ModuleName)}}MutationResolver.update{{upper (camel .ModuleName)}}", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("resource.public"))
-	mwGroup.Add("{{upper (camel .ModuleName)}}MutationResolver.delete{{upper (camel .ModuleName)}}", h.mw.GraphQLBearerAuth, h.mw.GraphQLPermissionACL("resource.public"))
 }
 
 // Query method
@@ -108,7 +98,7 @@ package graphqlhandler
 
 import (
 	"context"
-	
+
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 
 	"{{.LibraryName}}/tracer"
@@ -175,11 +165,11 @@ import (
 	"context"
 	"time"
 
-	shareddomain "{{.PackagePrefix}}/pkg/shared/domain"` + `
-	
-	{{if and .MongoDeps (not .SQLDeps)}}"go.mongodb.org/mongo-driver/bson/primitive"{{else}}"github.com/google/uuid"{{end}}` + `
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 
 	"{{.LibraryName}}/logger"
+
+	"github.com/google/uuid"
 )
 
 type subscriptionResolver struct {
@@ -187,8 +177,8 @@ type subscriptionResolver struct {
 }
 
 // ListenData resolver, broadcast event to client
-func (s *subscriptionResolver) ListenData(ctx context.Context) <-chan shareddomain.{{upper (camel .ModuleName)}} {
-	output := make(chan shareddomain.{{upper (camel .ModuleName)}})
+func (s *subscriptionResolver) ListenData(ctx context.Context) <-chan domain.Response{{upper (camel .ModuleName)}} {
+	output := make(chan domain.Response{{upper (camel .ModuleName)}})
 
 	go func() {
 		// example send event to client every 5 seconds
@@ -196,13 +186,14 @@ func (s *subscriptionResolver) ListenData(ctx context.Context) <-chan shareddoma
 		for {
 			select {
 			case <-tick.C:
-				data := shareddomain.{{upper (camel .ModuleName)}}{
-					CreatedAt:  time.Now(),
-					UpdatedAt: time.Now(),
+				data := domain.Response{{upper (camel .ModuleName)}}{
+					CreatedAt: time.Now().Format(time.RFC3339),
+					UpdatedAt: time.Now().Format(time.RFC3339),
 				}
-				data.ID = {{if and .MongoDeps (not .SQLDeps)}}primitive.NewObjectID(){{else}}uuid.NewString(){{end}}
+				data.ID = uuid.NewString()
 				output <- data
 			case <-ctx.Done():
+				tick.Stop()
 				logger.LogI("done")
 				return
 			}
@@ -268,6 +259,9 @@ schema {
 	subscription: Subscription
 }
 
+directive @auth(authType: String!) on FIELD_DEFINITION
+directive @permissionACL(permissionCode: String!) on FIELD_DEFINITION
+
 type Query {
 	# @candi:queryRoot
 }
@@ -285,14 +279,14 @@ type Subscription {
 
 # {{upper (camel .ModuleName)}}Module Resolver Area
 type {{upper (camel .ModuleName)}}QueryResolver {
-	getAll{{upper (camel .ModuleName)}}(filter: FilterListInputResolver): {{upper (camel .ModuleName)}}ListResolver!
-	getDetail{{upper (camel .ModuleName)}}(id: String!): {{upper (camel .ModuleName)}}Resolver!
+	getAll{{upper (camel .ModuleName)}}(filter: FilterListInputResolver): {{upper (camel .ModuleName)}}ListResolver! @permissionACL(permissionCode: getAll{{upper (camel .ModuleName)}})
+	getDetail{{upper (camel .ModuleName)}}(id: String!): {{upper (camel .ModuleName)}}Resolver! @permissionACL(permissionCode: getDetail{{upper (camel .ModuleName)}})
 }
 
 type {{upper (camel .ModuleName)}}MutationResolver {
-	create{{upper (camel .ModuleName)}}(data: {{upper (camel .ModuleName)}}InputResolver!): String!
-	update{{upper (camel .ModuleName)}}(id: String!, data: {{upper (camel .ModuleName)}}InputResolver!): String!
-	delete{{upper (camel .ModuleName)}}(id: String!): String!
+	create{{upper (camel .ModuleName)}}(data: {{upper (camel .ModuleName)}}InputResolver!): String! @permissionACL(permissionCode: create{{upper (camel .ModuleName)}})
+	update{{upper (camel .ModuleName)}}(id: String!, data: {{upper (camel .ModuleName)}}InputResolver!): String! @permissionACL(permissionCode: update{{upper (camel .ModuleName)}})
+	delete{{upper (camel .ModuleName)}}(id: String!): String! @permissionACL(permissionCode: delete{{upper (camel .ModuleName)}})
 }
 
 type {{upper (camel .ModuleName)}}SubscriptionResolver {

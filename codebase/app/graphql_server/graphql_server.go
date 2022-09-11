@@ -22,6 +22,7 @@ import (
 	"github.com/golangid/candi/tracer"
 
 	graphql "github.com/golangid/graphql-go"
+	gqltypes "github.com/golangid/graphql-go/types"
 	"github.com/soheilhy/cmux"
 )
 
@@ -32,7 +33,7 @@ const (
 )
 
 type graphqlServer struct {
-	opt        option
+	opt        Option
 	httpEngine *http.Server
 	listener   net.Listener
 }
@@ -48,7 +49,7 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 		opt(&server.opt)
 	}
 
-	httpHandler := NewHandler(service, server.opt.disableIntrospection)
+	httpHandler := NewHandler(service, server.opt)
 
 	mux := http.NewServeMux()
 	mux.Handle("/", server.opt.rootHandler)
@@ -107,18 +108,16 @@ type Handler interface {
 }
 
 // NewHandler for create public graphql handler (maybe inject to rest handler)
-func NewHandler(service factory.ServiceFactory, disableIntrospection bool) Handler {
+func NewHandler(service factory.ServiceFactory, opt Option) Handler {
 
 	// create dynamic struct
 	queryResolverValues := make(map[string]interface{})
 	mutationResolverValues := make(map[string]interface{})
 	subscriptionResolverValues := make(map[string]interface{})
-	middlewareResolvers := make(types.MiddlewareGroup)
 	var queryResolverFields, mutationResolverFields, subscriptionResolverFields []reflect.StructField
 	for _, m := range service.GetModules() {
 		if resolverModule := m.GraphQLHandler(); resolverModule != nil {
 			rootName := string(m.Name())
-			resolverModule.RegisterMiddleware(&middlewareResolvers)
 			query, mutation, subscription := resolverModule.Query(), resolverModule.Mutation(), resolverModule.Subscription()
 
 			appendStructField(rootName, query, &queryResolverFields)
@@ -131,25 +130,35 @@ func NewHandler(service factory.ServiceFactory, disableIntrospection bool) Handl
 		}
 	}
 
-	root.rootQuery = constructStruct(queryResolverFields, queryResolverValues)
-	root.rootMutation = constructStruct(mutationResolverFields, mutationResolverValues)
-	root.rootSubscription = constructStruct(subscriptionResolverFields, subscriptionResolverValues)
+	opt.rootResolver.rootQuery = constructStruct(queryResolverFields, queryResolverValues)
+	opt.rootResolver.rootMutation = constructStruct(mutationResolverFields, mutationResolverValues)
+	opt.rootResolver.rootSubscription = constructStruct(subscriptionResolverFields, subscriptionResolverValues)
 	gqlSchema := candihelper.LoadAllFile(os.Getenv(candihelper.WORKDIR)+"api/graphql", ".graphql")
+
+	// default directive
+	directiveFuncs := map[string]gqltypes.DirectiveFunc{
+		"auth":          service.GetDependency().GetMiddleware().GraphQLAuth,
+		"permissionACL": service.GetDependency().GetMiddleware().GraphQLPermissionACL,
+	}
+	for directive, dirFunc := range opt.directiveFuncs {
+		directiveFuncs[directive] = dirFunc
+	}
 
 	schemaOpts := []graphql.SchemaOpt{
 		graphql.UseStringDescriptions(),
 		graphql.UseFieldResolvers(),
-		graphql.Tracer(newGraphQLMiddleware(middlewareResolvers)),
+		graphql.Tracer(&graphqlTracer{}),
 		graphql.Logger(&panicLogger{}),
+		graphql.DirectiveFuncs(directiveFuncs),
 	}
-	if disableIntrospection {
+	if opt.DisableIntrospection {
 		// handling vulnerabilities exploit schema
 		schemaOpts = append(schemaOpts, graphql.DisableIntrospection())
 	}
-	schema := graphql.MustParseSchema(string(gqlSchema), &root, schemaOpts...)
+	schema := graphql.MustParseSchema(string(gqlSchema), &opt.rootResolver, schemaOpts...)
 
 	return &handlerImpl{
-		disableIntrospection: disableIntrospection,
+		disableIntrospection: opt.DisableIntrospection,
 		schema:               schema,
 	}
 }

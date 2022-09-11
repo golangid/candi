@@ -9,7 +9,7 @@ import (
 	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/tracer"
 	"github.com/golangid/candi/wrapper"
-	gqlerr "github.com/golangid/graphql-go/errors"
+	gqltypes "github.com/golangid/graphql-go/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
@@ -57,25 +57,34 @@ func (m *Middleware) HTTPPermissionACL(permissionCode string) func(http.Handler)
 }
 
 // GraphQLPermissionACL graphql resolver for check acl permission
-func (m *Middleware) GraphQLPermissionACL(permissionCode string) types.MiddlewareFunc {
-	return func(ctx context.Context) context.Context {
-		trace := tracer.StartTrace(ctx, "Middleware:GraphQLPermissionACL")
-		defer trace.Finish()
-		trace.SetTag("permissionCode", permissionCode)
+func (m *Middleware) GraphQLPermissionACL(ctx context.Context, directive *gqltypes.Directive, input interface{}) (context.Context, error) {
+	trace := tracer.StartTrace(ctx, "Middleware:GraphQLPermissionACL")
+	defer trace.Finish()
 
-		tokenClaim, err := m.checkACLPermissionFromContext(trace.Context(), permissionCode)
-		if err != nil {
-			trace.SetError(err)
-			panic(&gqlerr.QueryError{
-				Message: err.Error(),
-				Extensions: map[string]interface{}{
-					"code":    403,
-					"success": false,
-				},
+	permissionCode := directive.Arguments.MustGet("permissionCode")
+	if permissionCode == nil {
+		return ctx, candishared.NewGraphQLErrorResolver(
+			"Missing permissionCode argument in directive @"+directive.Name.Name+" definition",
+			map[string]interface{}{
+				"code":    403,
+				"success": false,
 			})
-		}
-		return candishared.SetToContext(ctx, candishared.ContextKeyTokenClaim, tokenClaim)
 	}
+
+	trace.SetTag("directiveName", directive.Name.Name)
+	trace.SetTag("permissionCode", permissionCode.String())
+
+	tokenClaim, err := m.checkACLPermissionFromContext(trace.Context(), permissionCode.String())
+	if err != nil {
+		trace.SetError(err)
+		return ctx, candishared.NewGraphQLErrorResolver(
+			err.Error(),
+			map[string]interface{}{
+				"code":    403,
+				"success": false,
+			})
+	}
+	return candishared.SetToContext(ctx, candishared.ContextKeyTokenClaim, tokenClaim), nil
 }
 
 // GRPCPermissionACL grpc interceptor for check acl permission

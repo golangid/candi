@@ -272,8 +272,8 @@ func updateGraphQLRoot(flagParam flagParameter, cfg serviceConfig) {
 	}
 	for _, moduleName := range flagParam.modules {
 		cleanMod, cleanUpperMod := candihelper.ToCamelCase(moduleName), strings.Title(candihelper.ToCamelCase(moduleName))
-		b = bytes.Replace(b, []byte("@candi:queryRoot"), []byte(fmt.Sprintf("@candi:queryRoot\n	%s: %sQueryResolver", cleanMod, cleanUpperMod)), -1)
-		b = bytes.Replace(b, []byte("@candi:mutationRoot"), []byte(fmt.Sprintf("@candi:mutationRoot\n	%s: %sMutationResolver", cleanMod, cleanUpperMod)), -1)
+		b = bytes.Replace(b, []byte("@candi:queryRoot"), []byte(fmt.Sprintf("@candi:queryRoot\n	%s: %sQueryResolver @auth(authType: BEARER)", cleanMod, cleanUpperMod)), -1)
+		b = bytes.Replace(b, []byte("@candi:mutationRoot"), []byte(fmt.Sprintf("@candi:mutationRoot\n	%s: %sMutationResolver @auth(authType: BEARER)", cleanMod, cleanUpperMod)), -1)
 		b = bytes.Replace(b, []byte("@candi:subscriptionRoot"), []byte(fmt.Sprintf("@candi:subscriptionRoot\n	%s: %sSubscriptionResolver", cleanMod, cleanUpperMod)), -1)
 	}
 	os.WriteFile(path, b, 0644)

@@ -43,11 +43,11 @@ func (h *RestHandler) Mount(root *echo.Group) {
 	v1Root := root.Group(candihelper.V1)
 
 	{{camel .ModuleName}} := v1Root.Group("/{{kebab .ModuleName}}", echo.WrapMiddleware(h.mw.HTTPBearerAuth))
-	{{camel .ModuleName}}.GET("", h.getAll{{upper (camel .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
-	{{camel .ModuleName}}.GET("/:id", h.getDetail{{upper (camel .ModuleName)}}ByID, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
-	{{camel .ModuleName}}.POST("", h.create{{upper (camel .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
-	{{camel .ModuleName}}.PUT("/:id", h.update{{upper (camel .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
-	{{camel .ModuleName}}.DELETE("/:id", h.delete{{upper (camel .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("resource.public")))
+	{{camel .ModuleName}}.GET("", h.getAll{{upper (camel .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("getAll{{upper (camel .ModuleName)}}")))
+	{{camel .ModuleName}}.GET("/:id", h.getDetail{{upper (camel .ModuleName)}}ByID, echo.WrapMiddleware(h.mw.HTTPPermissionACL("getDetail{{upper (camel .ModuleName)}}")))
+	{{camel .ModuleName}}.POST("", h.create{{upper (camel .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("create{{upper (camel .ModuleName)}}")))
+	{{camel .ModuleName}}.PUT("/:id", h.update{{upper (camel .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("update{{upper (camel .ModuleName)}}")))
+	{{camel .ModuleName}}.DELETE("/:id", h.delete{{upper (camel .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("delete{{upper (camel .ModuleName)}}")))
 }
 
 func (h *RestHandler) getAll{{upper (camel .ModuleName)}}(c echo.Context) error {

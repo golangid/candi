@@ -10,12 +10,12 @@ require (
 	github.com/go-playground/validator/v10 v10.6.0
 	github.com/gojektech/heimdall/v6 v6.1.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/golangid/candi-plugin/task-queue-worker v0.0.0-20220814151434-45a011316f0b
+	github.com/golangid/candi-plugin/task-queue-worker v0.0.0-20220902073919-392c6edc2839
 	github.com/golangid/gojsonschema v0.0.1
-	github.com/golangid/graphql-go v0.0.7
+	github.com/golangid/graphql-go v0.0.9
 	github.com/gomodule/redigo v1.8.4
 	github.com/google/uuid v1.3.0
-	github.com/gorilla/websocket v1.4.2
+	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/consul/api v1.8.1
 	github.com/jarcoal/httpmock v1.0.8
 	github.com/joho/godotenv v1.3.0
@@ -25,7 +25,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/soheilhy/cmux v0.1.5
 	github.com/streadway/amqp v1.0.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	github.com/uber/jaeger-client-go v2.28.0+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/valyala/fasttemplate v1.2.1

@@ -1,4 +1,4 @@
-# Candi, a framework and library for `Membangun Candi` project in Golang
+# Candi, a library and utilities for `Membangun Candi` project in Golang
 
 <a href="https://codeclimate.com/github/golangid/candi/maintainability"><img src="https://api.codeclimate.com/v1/badges/38c8703e672eb53bea87/maintainability" /></a>
 [![Build Status](https://github.com/golangid/candi/workflows/build/badge.svg)](https://github.com/golangid/candi/actions)

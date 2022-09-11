@@ -10,7 +10,7 @@ import (
 	"github.com/golangid/candi/config/env"
 )
 
-// SetupPostgresWorker setup cron worker with default config
+// SetupPostgresWorker setup postgres worker with default config
 func SetupPostgresWorker(service factory.ServiceFactory, opts ...postgresworker.OptionFunc) factory.AppServerFactory {
 	postgresOptions := []postgresworker.OptionFunc{
 		postgresworker.SetPostgresDSN(env.BaseEnv().DbSQLWriteDSN),

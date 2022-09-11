@@ -21,7 +21,6 @@ type GraphQLHandler interface {
 	Query() interface{}
 	Mutation() interface{}
 	Subscription() interface{}
-	RegisterMiddleware(group *types.MiddlewareGroup)
 }
 
 // WorkerHandler delivery factory for all worker handler

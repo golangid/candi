@@ -134,7 +134,7 @@ mutation addJob {
 
 cURL:
 ```
-curl --location --request GET '{{task-queue-worker-host}}/graphql' \
+curl --location --request POST '{{task-queue-worker-host}}/graphql' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "operationName": "addJob",

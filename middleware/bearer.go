@@ -12,7 +12,6 @@ import (
 	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/tracer"
 	"github.com/golangid/candi/wrapper"
-	gqlerr "github.com/golangid/graphql-go/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -73,43 +72,6 @@ func (m *Middleware) HTTPBearerAuth(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, req.WithContext(ctx))
 	})
-}
-
-// GraphQLBearerAuth for graphql resolver
-func (m *Middleware) GraphQLBearerAuth(ctx context.Context) context.Context {
-	trace := tracer.StartTrace(ctx, "Middleware:GraphQLBearerAuth")
-	defer trace.Finish()
-
-	headers := ctx.Value(candishared.ContextKeyHTTPHeader).(http.Header)
-	authorization := headers.Get(candihelper.HeaderAuthorization)
-	trace.SetTag(candihelper.HeaderAuthorization, authorization)
-
-	tokenValue, err := extractAuthType(Bearer, authorization)
-	if err != nil {
-		trace.SetError(err)
-		panic(&gqlerr.QueryError{
-			Message: err.Error(),
-			Extensions: map[string]interface{}{
-				"code":    401,
-				"success": false,
-			},
-		})
-	}
-
-	tokenClaim, err := m.Bearer(trace.Context(), tokenValue)
-	if err != nil {
-		trace.SetError(err)
-		panic(&gqlerr.QueryError{
-			Message: err.Error(),
-			Extensions: map[string]interface{}{
-				"code":    401,
-				"success": false,
-			},
-		})
-	}
-
-	trace.Log("token_claim", tokenClaim)
-	return candishared.SetToContext(ctx, candishared.ContextKeyTokenClaim, tokenClaim)
 }
 
 // GRPCBearerAuth method

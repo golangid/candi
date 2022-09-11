@@ -168,12 +168,11 @@ func InitAppFromEnvironmentConfig(service factory.ServiceFactory) (apps []factor
 
 	if env.BaseEnv().UseREST {
 		apps = append(apps, appfactory.SetupRESTServer(service))
+	} else if env.BaseEnv().UseGraphQL {
+		apps = append(apps, appfactory.SetupGraphQLServer(service))
 	}
 	if env.BaseEnv().UseGRPC {
 		apps = append(apps, appfactory.SetupGRPCServer(service))
-	}
-	if !env.BaseEnv().UseREST && env.BaseEnv().UseGraphQL {
-		apps = append(apps, appfactory.SetupGraphQLServer(service))
 	}
 
 	return

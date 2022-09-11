@@ -77,7 +77,7 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 
 	// inject graphql handler to rest server
 	if server.opt.includeGraphQL {
-		graphqlHandler := graphqlserver.NewHandler(service, server.opt.graphqlDisableIntrospection)
+		graphqlHandler := graphqlserver.NewHandler(service, server.opt.graphqlOption)
 		server.serverEngine.Any(server.opt.rootPath+"/graphql", echo.WrapHandler(graphqlHandler.ServeGraphQL()))
 		server.serverEngine.GET(server.opt.rootPath+"/graphql/playground", echo.WrapHandler(http.HandlerFunc(graphqlHandler.ServePlayground)))
 		server.serverEngine.GET(server.opt.rootPath+"/graphql/voyager", echo.WrapHandler(http.HandlerFunc(graphqlHandler.ServeVoyager)))

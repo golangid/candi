@@ -6,6 +6,7 @@ import (
 
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory/types"
+	gqltypes "github.com/golangid/graphql-go/types"
 )
 
 // Middleware abstraction
@@ -43,13 +44,12 @@ type GRPCMiddleware interface {
 
 // GraphQLMiddleware interface, common middleware for graphql handler, as directive in graphql schema
 type GraphQLMiddleware interface {
-	GraphQLBasicAuth(ctx context.Context) context.Context
-	GraphQLBearerAuth(ctx context.Context) context.Context
+	GraphQLAuth(ctx context.Context, directive *gqltypes.Directive, input interface{}) (context.Context, error)
 
 	// GraphQLPermissionACL method.
-	// This middleware required TokenValidator (GraphQLBearerAuth middleware must executed before) for extract userID
+	// This middleware required TokenValidator (GraphQLAuth middleware with BEARER must executed before) for extract userID
 	// from token (from `Subject` field in token claim payload)
-	GraphQLPermissionACL(permissionCode string) types.MiddlewareFunc
+	GraphQLPermissionACL(ctx context.Context, directive *gqltypes.Directive, input interface{}) (context.Context, error)
 }
 
 // TokenValidator abstract interface for jwt validator

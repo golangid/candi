@@ -3,7 +3,7 @@ package main
 const envTemplate = `# Basic Candi env configuration
 ENVIRONMENT=development #development,staging,production
 DEBUG_MODE=true
-NO_AUTH=true
+NO_AUTH=false
 LOAD_CONFIG_TIMEOUT=20s
 
 # Application Service Handlers

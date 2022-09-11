@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/golangid/candi/candihelper"
-	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/config/env"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/metadata"
@@ -102,30 +101,6 @@ func TestMiddleware_HTTPBasicAuth(t *testing.T) {
 			assert.Equal(t, tt.wantResponseCode, recorder.Code)
 		})
 	}
-}
-
-func TestMiddleware_GraphQLBasicAuth(t *testing.T) {
-	env.SetEnv(env.Env{BasicAuthUsername: basicUsername, BasicAuthPassword: basicPass})
-	mw := &Middleware{}
-
-	t.Run("Testcase #1: Positive", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), candishared.ContextKeyHTTPHeader, http.Header{
-			"Authorization": []string{"Basic " + validBasicAuth},
-		})
-		assert.NotPanics(t, func() { mw.GraphQLBasicAuth(ctx) })
-	})
-	t.Run("Testcase #2: Negative", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), candishared.ContextKeyHTTPHeader, http.Header{
-			"Authorization": []string{},
-		})
-		assert.Panics(t, func() { mw.GraphQLBasicAuth(ctx) })
-	})
-	t.Run("Testcase #3: Negative", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), candishared.ContextKeyHTTPHeader, http.Header{
-			"Authorization": []string{"Basic xxx"},
-		})
-		assert.Panics(t, func() { mw.GraphQLBasicAuth(ctx) })
-	})
 }
 
 func TestMiddleware_GRPCBasicAuth(t *testing.T) {

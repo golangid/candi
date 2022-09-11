@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	graphqlserver "github.com/golangid/candi/codebase/app/graphql_server"
 	"github.com/labstack/echo"
 	"github.com/soheilhy/cmux"
 )
@@ -21,6 +22,7 @@ type (
 		jaegerMaxPacketSize         int
 		sharedListener              cmux.CMux
 		engineOption                func(e *echo.Echo)
+		graphqlOption               graphqlserver.Option
 	}
 
 	// OptionFunc type
@@ -121,5 +123,14 @@ func SetErrorHandler(errorHandler echo.HTTPErrorHandler) OptionFunc {
 func SetEchoEngineOption(echoFunc func(e *echo.Echo)) OptionFunc {
 	return func(o *option) {
 		o.engineOption = echoFunc
+	}
+}
+
+// AddGraphQLOption option func
+func AddGraphQLOption(opts ...graphqlserver.OptionFunc) OptionFunc {
+	return func(o *option) {
+		for _, opt := range opts {
+			opt(&o.graphqlOption)
+		}
 	}
 }

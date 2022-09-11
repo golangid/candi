@@ -6,7 +6,7 @@ import (
 	"github.com/golangid/candi/config/env"
 )
 
-// SetupTaskQueueWorker setup cron worker with default config
+// SetupTaskQueueWorker setup task queue worker with default config
 func SetupTaskQueueWorker(service factory.ServiceFactory, opts ...taskqueueworker.OptionFunc) factory.AppServerFactory {
 
 	workerOpts := []taskqueueworker.OptionFunc{

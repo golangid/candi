@@ -8,11 +8,9 @@ import (
 	"strings"
 
 	"github.com/golangid/candi/candihelper"
-	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/tracer"
 	"github.com/golangid/candi/wrapper"
-	gqlerr "github.com/golangid/graphql-go/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -83,40 +81,6 @@ func (m *Middleware) HTTPBasicAuth(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, req)
 	})
-}
-
-// GraphQLBasicAuth for graphql resolver
-func (m *Middleware) GraphQLBasicAuth(ctx context.Context) context.Context {
-	trace := tracer.StartTrace(ctx, "Middleware:GraphQLBasicAuth")
-	defer trace.Finish()
-
-	headers := ctx.Value(candishared.ContextKeyHTTPHeader).(http.Header)
-	authorization := headers.Get(candihelper.HeaderAuthorization)
-	trace.SetTag(candihelper.HeaderAuthorization, authorization)
-
-	key, err := extractAuthType(Basic, authorization)
-	if err != nil {
-		trace.SetError(err)
-		panic(&gqlerr.QueryError{
-			Message: err.Error(),
-			Extensions: map[string]interface{}{
-				"code":    401,
-				"success": false,
-			},
-		})
-	}
-
-	if err := m.Basic(trace.Context(), key); err != nil {
-		trace.SetError(err)
-		panic(&gqlerr.QueryError{
-			Message: err.Error(),
-			Extensions: map[string]interface{}{
-				"code":    401,
-				"success": false,
-			},
-		})
-	}
-	return ctx
 }
 
 // GRPCBasicAuth method
