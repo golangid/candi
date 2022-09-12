@@ -7,6 +7,8 @@ import (
 
 	candishared "github.com/golangid/candi/candishared"
 
+	graphql_gotypes "github.com/golangid/graphql-go/types"
+
 	http "net/http"
 
 	mock "github.com/stretchr/testify/mock"
@@ -104,52 +106,50 @@ func (_m *Middleware) GRPCPermissionACL(permissionCode string) types.MiddlewareF
 	return r0
 }
 
-// GraphQLBasicAuth provides a mock function with given fields: ctx
-func (_m *Middleware) GraphQLBasicAuth(ctx context.Context) context.Context {
-	ret := _m.Called(ctx)
+// GraphQLAuth provides a mock function with given fields: ctx, directive, input
+func (_m *Middleware) GraphQLAuth(ctx context.Context, directive *graphql_gotypes.Directive, input interface{}) (context.Context, error) {
+	ret := _m.Called(ctx, directive, input)
 
 	var r0 context.Context
-	if rf, ok := ret.Get(0).(func(context.Context) context.Context); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, *graphql_gotypes.Directive, interface{}) context.Context); ok {
+		r0 = rf(ctx, directive, input)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(context.Context)
 		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *graphql_gotypes.Directive, interface{}) error); ok {
+		r1 = rf(ctx, directive, input)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
-// GraphQLBearerAuth provides a mock function with given fields: ctx
-func (_m *Middleware) GraphQLBearerAuth(ctx context.Context) context.Context {
-	ret := _m.Called(ctx)
+// GraphQLPermissionACL provides a mock function with given fields: ctx, directive, input
+func (_m *Middleware) GraphQLPermissionACL(ctx context.Context, directive *graphql_gotypes.Directive, input interface{}) (context.Context, error) {
+	ret := _m.Called(ctx, directive, input)
 
 	var r0 context.Context
-	if rf, ok := ret.Get(0).(func(context.Context) context.Context); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, *graphql_gotypes.Directive, interface{}) context.Context); ok {
+		r0 = rf(ctx, directive, input)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(context.Context)
 		}
 	}
 
-	return r0
-}
-
-// GraphQLPermissionACL provides a mock function with given fields: permissionCode
-func (_m *Middleware) GraphQLPermissionACL(permissionCode string) types.MiddlewareFunc {
-	ret := _m.Called(permissionCode)
-
-	var r0 types.MiddlewareFunc
-	if rf, ok := ret.Get(0).(func(string) types.MiddlewareFunc); ok {
-		r0 = rf(permissionCode)
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *graphql_gotypes.Directive, interface{}) error); ok {
+		r1 = rf(ctx, directive, input)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(types.MiddlewareFunc)
-		}
+		r1 = ret.Error(1)
 	}
 
-	return r0
+	return r0, r1
 }
 
 // HTTPBasicAuth provides a mock function with given fields: next

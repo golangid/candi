@@ -275,9 +275,9 @@ $ make docker
 ` + "```"
 
 	readmeMonorepoTemplate = "# Backend Microservices\n\n" +
-		"## Made with\n" +
+		"## Build with\n" +
 		`<p align="center">` + "\n" +
-		` <img src="https://storage.googleapis.com/agungdp/static/logo/golang.png" width="80" alt="golang logo" />\` + "\n" +
+		` <img src="https://storage.googleapis.com/agungdp/static/logo/golang.png" width="80" alt="golang logo" />` + "\n" +
 		` <img src="https://storage.googleapis.com/agungdp/static/logo/docker.png" width="80" hspace="10" alt="docker logo" />` + "\n" +
 		` <img src="https://storage.googleapis.com/agungdp/static/logo/rest.png" width="80" hspace="10" alt="rest logo" />` + "\n" +
 		` <img src="https://storage.googleapis.com/agungdp/static/logo/graphql.png" width="80" alt="graphql logo" />` + "\n" +

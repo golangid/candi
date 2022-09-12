@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -24,17 +25,14 @@ func (m *Middleware) HTTPMultipleAuth(next http.Handler) http.Handler {
 
 		ctx := req.Context()
 
-		// get auth
 		authorization := req.Header.Get(candihelper.HeaderAuthorization)
 		if authorization == "" {
 			wrapper.NewHTTPResponse(http.StatusUnauthorized, "Invalid authorization").JSON(w)
 			return
 		}
 
-		// get auth type
 		authValues := strings.Split(authorization, " ")
 
-		// validate value
 		if len(authValues) != 2 {
 			wrapper.NewHTTPResponse(http.StatusUnauthorized, "Invalid authorization").JSON(w)
 			return
@@ -42,16 +40,8 @@ func (m *Middleware) HTTPMultipleAuth(next http.Handler) http.Handler {
 
 		authType := strings.ToLower(authValues[0])
 
-		// set token
 		tokenString := authValues[1]
-
-		checkerFunc, ok := m.authTypeCheckerFunc[authType]
-		if !ok {
-			wrapper.NewHTTPResponse(http.StatusUnauthorized, "Invalid authorization type").JSON(w)
-			return
-		}
-
-		claimData, err := checkerFunc(ctx, tokenString)
+		claimData, err := m.checkMultipleAuth(ctx, authType, tokenString)
 		if err != nil {
 			wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(w)
 			return
@@ -103,24 +93,13 @@ func (m *Middleware) GraphQLAuth(ctx context.Context, directive *gqltypes.Direct
 	}
 
 	tokenString := authValues[1]
-	checkerFunc, ok := m.authTypeCheckerFunc[authType]
-	if !ok {
-		return ctx, candishared.NewGraphQLErrorResolver(
-			"Invalid authorization type",
-			map[string]interface{}{
-				"code":    401,
-				"success": false,
-			})
-	}
 
-	claimData, err := checkerFunc(ctx, tokenString)
+	claimData, err := m.checkMultipleAuth(trace.Context(), authType, tokenString)
 	if err != nil {
-		return ctx, candishared.NewGraphQLErrorResolver(
-			err.Error(),
-			map[string]interface{}{
-				"code":    401,
-				"success": false,
-			})
+		return ctx, candishared.NewGraphQLErrorResolver(err.Error(), map[string]interface{}{
+			"code":    401,
+			"success": false,
+		})
 	}
 
 	if claimData != nil {
@@ -129,4 +108,18 @@ func (m *Middleware) GraphQLAuth(ctx context.Context, directive *gqltypes.Direct
 	}
 
 	return ctx, nil
+}
+
+func (m *Middleware) checkMultipleAuth(ctx context.Context, authType, token string) (claimData *candishared.TokenClaim, err error) {
+
+	switch authType {
+	case Bearer:
+		claimData, err = m.Bearer(ctx, token)
+	case Basic:
+		err = m.Basic(ctx, token)
+	default:
+		return nil, errors.New("Invalid authorization type")
+	}
+
+	return claimData, err
 }

@@ -10,3 +10,4 @@ coverage.txt
 example/
 .vscode
 .idea
+.DS_Store
