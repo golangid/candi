@@ -13,6 +13,7 @@ const (
 	configurationRetentionAgeKey        = "retention_age"
 	configurationClientSubscriberAgeKey = "client_subscriber_age"
 	configurationMaxClientSubscriberKey = "max_client_subscriber"
+	configurationTraceDetailURL         = "trace_detail_url"
 )
 
 type configurationUsecase struct {
@@ -24,6 +25,7 @@ func initConfiguration(opt *option) *configurationUsecase {
 		{Key: configurationRetentionAgeKey, Name: "Retention Age", Value: "10m", IsActive: false},
 		{Key: configurationClientSubscriberAgeKey, Name: "Client Subscriber Age", Value: "10m", IsActive: false},
 		{Key: configurationMaxClientSubscriberKey, Name: "Max Client Subscriber", Value: "5", IsActive: false},
+		{Key: configurationTraceDetailURL, Name: "Trace Detail URL", Value: "http://localhost:16686/trace", IsActive: true},
 	}
 	for _, cfg := range defaultConfigs {
 		if _, err := opt.persistent.GetConfiguration(cfg.Key); err != nil {
@@ -61,6 +63,11 @@ func (c *configurationUsecase) getMaxClientSubscriber() int {
 	return max
 }
 
+func (c *configurationUsecase) getTraceDetailURL() string {
+	cfg, _ := c.opt.persistent.GetConfiguration(configurationTraceDetailURL)
+	return cfg.Value
+}
+
 func (c *configurationUsecase) setConfiguration(cfg *Configuration) error {
 
 	switch cfg.Key {
@@ -92,6 +99,8 @@ func (c *configurationUsecase) setConfiguration(cfg *Configuration) error {
 		} else if val <= 0 {
 			return errors.New("Must positive integer")
 		}
+
+	case configurationTraceDetailURL:
 
 	default:
 		return errors.New("Invalid config")

@@ -93,7 +93,7 @@ func NewModules(deps dependency.Dependency) *Module {
 
 ## Add task in each usecase module
 
-* From internal service (same runtime)
+### From internal service (same runtime)
 
 ```go
 package usecase
@@ -115,9 +115,9 @@ func someUsecase(ctx context.Context) {
 }
 ```
 
-* Or if running on a separate server
+### Or if running on a separate server
 
-Via GraphQL API
+- Via GraphQL API:
 
 `POST {{task-queue-worker-host}}/graphql`
 ```
@@ -132,7 +132,7 @@ mutation addJob {
 }
 ```
 
-cURL:
+- cURL:
 ```
 curl --location --request POST '{{task-queue-worker-host}}/graphql' \
 --header 'Content-Type: application/json' \
@@ -149,7 +149,7 @@ curl --location --request POST '{{task-queue-worker-host}}/graphql' \
 }'
 ```
 
-Direct call function
+- Direct call function:
 ```go
 // add task queue for `task-one` via HTTP request
 jobID, err := taskqueueworker.AddJobViaHTTPRequest(context.Background(), "{{task-queue-worker-host}}", &taskqueueworker.AddJobRequest{
@@ -158,5 +158,17 @@ jobID, err := taskqueueworker.AddJobViaHTTPRequest(context.Background(), "{{task
 if err != nil {
 	log.Println(err)
 }
+fmt.Println("Queued job id is ", jobID)
+```
+
+- Auto call to external worker via HTTP request using basic function `AddJob()`, please set configuration:
+```go
+taskqueueworker.SetExternalWorkerHost({{task-queue-worker-host}})
+```
+
+```go
+jobID, err := taskqueueworker.AddJob(context.Background(), &taskqueueworker.AddJobRequest{
+	TaskName: "{{task_name}}", MaxRetry: 1, Args: []byte(`{{arguments/message}}`),
+})
 fmt.Println("Queued job id is ", jobID)
 ```

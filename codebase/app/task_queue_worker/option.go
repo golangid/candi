@@ -10,7 +10,6 @@ type (
 	option struct {
 		queue                    QueueStorage
 		persistent               Persistent
-		tracingDashboard         string
 		maxClientSubscriber      int
 		autoRemoveClientInterval time.Duration
 		dashboardBanner          string
@@ -34,13 +33,6 @@ func SetQueue(q QueueStorage) OptionFunc {
 func SetPersistent(p Persistent) OptionFunc {
 	return func(o *option) {
 		o.persistent = p
-	}
-}
-
-// SetTracingDashboard option func
-func SetTracingDashboard(host string) OptionFunc {
-	return func(o *option) {
-		o.tracingDashboard = host
 	}
 }
 

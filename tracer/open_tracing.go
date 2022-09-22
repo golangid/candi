@@ -26,6 +26,10 @@ func InitOpenTracing(serviceName string, opts ...OptionFunc) error {
 		BuildNumberTag:  env.BaseEnv().BuildNumber,
 		MaxGoroutineTag: env.BaseEnv().MaxGoroutines,
 	}
+	urlAgent, err := url.Parse("//" + env.BaseEnv().JaegerTracingHost)
+	if urlAgent != nil && err == nil {
+		option.TraceDashboard = fmt.Sprintf("http://%s:16686/trace", urlAgent.Hostname())
+	}
 
 	for _, opt := range opts {
 		opt(&option)
@@ -68,11 +72,15 @@ func InitOpenTracing(serviceName string, opts ...OptionFunc) error {
 		return err
 	}
 	opentracing.SetGlobalTracer(tracer)
-	SetTracerPlatformType(&jaegerPlatform{})
+	SetTracerPlatformType(&jaegerPlatform{
+		dashboardURL: option.TraceDashboard,
+	})
 	return nil
 }
 
-type jaegerPlatform struct{}
+type jaegerPlatform struct {
+	dashboardURL string
+}
 
 func (j *jaegerPlatform) StartSpan(ctx context.Context, operationName string) Tracer {
 	span := opentracing.SpanFromContext(ctx)
@@ -125,16 +133,15 @@ func (j *jaegerPlatform) GetTraceID(ctx context.Context) string {
 	return traceID
 }
 func (j *jaegerPlatform) GetTraceURL(ctx context.Context) (u string) {
+	if ctx == nil {
+		return j.dashboardURL
+	}
 	traceID := j.GetTraceID(ctx)
 	if traceID == "" {
 		return
 	}
 
-	urlAgent, err := url.Parse("//" + env.BaseEnv().JaegerTracingHost)
-	if urlAgent != nil && err == nil {
-		u = fmt.Sprintf("http://%s:16686/trace/%s", urlAgent.Hostname(), traceID)
-	}
-	return
+	return fmt.Sprintf("%s/%s", j.dashboardURL, traceID)
 }
 
 type jaegerTraceImpl struct {

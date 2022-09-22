@@ -18,3 +18,10 @@ func OptionAddWriter(w io.Writer) OptionFunc {
 		o.MultiWriter = append(o.MultiWriter, w)
 	}
 }
+
+// OptionSetWriter option func, overide all log writer
+func OptionSetWriter(w ...io.Writer) OptionFunc {
+	return func(o *Option) {
+		o.MultiWriter = w
+	}
+}

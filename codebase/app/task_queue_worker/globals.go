@@ -23,7 +23,6 @@ func initEngine(service factory.ServiceFactory, opts ...OptionFunc) *taskQueueWo
 
 	var opt option
 	// set default value
-	opt.tracingDashboard = "http://127.0.0.1:16686"
 	opt.maxClientSubscriber = 5
 	opt.autoRemoveClientInterval = 30 * time.Minute
 	opt.dashboardPort = 8080

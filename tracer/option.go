@@ -4,6 +4,7 @@ type (
 	// Option for init tracer option
 	Option struct {
 		AgentHost       string
+		TraceDashboard  string
 		Level           string
 		BuildNumberTag  string
 		MaxGoroutineTag int
@@ -47,6 +48,13 @@ func OptionSetBuildNumberTag(number string) OptionFunc {
 func OptionSetMaxGoroutineTag(max int) OptionFunc {
 	return func(o *Option) {
 		o.MaxGoroutineTag = max
+	}
+}
+
+// OptionSetTraceDashboardURL option func
+func OptionSetTraceDashboardURL(dashboardURL string) OptionFunc {
+	return func(o *Option) {
+		o.TraceDashboard = dashboardURL
 	}
 }
 

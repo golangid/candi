@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -74,9 +73,9 @@ type Env struct {
 	BasicAuthPassword string
 
 	// JaegerTracingHost env
-	JaegerTracingHost      string
-	JaegerTracingDashboard string
-	JaegerMaxPacketSize    int
+	JaegerTracingHost string
+	// JaegerMaxPacketSize env
+	JaegerMaxPacketSize int
 
 	// Broker environment
 	Kafka struct {
@@ -215,12 +214,6 @@ func Load(serviceName string) {
 	}
 
 	env.JaegerTracingHost = os.Getenv("JAEGER_TRACING_HOST")
-	env.JaegerTracingDashboard = os.Getenv("JAEGER_TRACING_DASHBOARD")
-	if env.JaegerTracingDashboard == "" {
-		if urlTracerAgent, _ := url.Parse("//" + env.JaegerTracingHost); urlTracerAgent != nil {
-			env.JaegerTracingDashboard = urlTracerAgent.Hostname()
-		}
-	}
 	jaegerMaxpacketSize, err := strconv.Atoi(os.Getenv("JAEGER_MAX_PACKET_SIZE"))
 	if err != nil || jaegerMaxpacketSize < 0 {
 		jaegerMaxpacketSize = 65000 // default max packet size of UDP

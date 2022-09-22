@@ -2,7 +2,6 @@ package taskqueueworker
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"time"
 
@@ -220,9 +219,8 @@ func (j *JobResolver) ParseFromJob(job *Job) {
 	if delay, err := time.ParseDuration(job.Interval); err == nil && job.Status == string(statusQueueing) {
 		j.NextRetryAt = time.Now().Add(delay).In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 	}
-	if job.TraceID != "" && engine.opt.tracingDashboard != "" {
-		j.TraceID = fmt.Sprintf("%s/%s", engine.opt.tracingDashboard, job.TraceID)
-	}
+	traceURL := engine.configuration.getTraceDetailURL()
+	j.TraceID = traceURL + "/" + j.TraceID
 	j.CreatedAt = job.CreatedAt.In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 	j.FinishedAt = job.FinishedAt.In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 	if job.Retries > job.MaxRetry {
@@ -232,10 +230,7 @@ func (j *JobResolver) ParseFromJob(job *Job) {
 	for i := range job.RetryHistories {
 		job.RetryHistories[i].StartAt = job.RetryHistories[i].StartAt.In(candihelper.AsiaJakartaLocalTime)
 		job.RetryHistories[i].EndAt = job.RetryHistories[i].EndAt.In(candihelper.AsiaJakartaLocalTime)
-
-		if job.RetryHistories[i].TraceID != "" && engine.opt.tracingDashboard != "" {
-			job.RetryHistories[i].TraceID = fmt.Sprintf("%s/%s", engine.opt.tracingDashboard, job.RetryHistories[i].TraceID)
-		}
+		job.RetryHistories[i].TraceID = traceURL + "/" + job.RetryHistories[i].TraceID
 	}
 }
 

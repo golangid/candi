@@ -12,7 +12,6 @@ func SetupTaskQueueWorker(service factory.ServiceFactory, opts ...taskqueueworke
 	workerOpts := []taskqueueworker.OptionFunc{
 		taskqueueworker.SetDashboardHTTPPort(env.BaseEnv().TaskQueueDashboardPort),
 		taskqueueworker.SetMaxClientSubscriber(env.BaseEnv().TaskQueueDashboardMaxClientSubscribers),
-		taskqueueworker.SetTracingDashboard(env.BaseEnv().JaegerTracingDashboard + "/trace"),
 		taskqueueworker.SetDebugMode(env.BaseEnv().DebugMode),
 	}
 	workerOpts = append(workerOpts, opts...)
