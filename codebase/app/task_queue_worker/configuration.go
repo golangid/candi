@@ -79,6 +79,9 @@ func (c *configurationUsecase) setConfiguration(cfg *Configuration) error {
 		}
 
 		taskIndex := engine.runningWorkerIndexTask[len(engine.workerChannels)-1]
+		if taskIndex == nil {
+			return errors.New("Missing task for worker")
+		}
 		if cfg.IsActive {
 			taskIndex.activeInterval = time.NewTicker(interval)
 			engine.workerChannels[len(engine.workerChannels)-1].Chan = reflect.ValueOf(taskIndex.activeInterval.C)

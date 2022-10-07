@@ -324,6 +324,7 @@ func (s *SQLPersistent) UpdateJob(ctx context.Context, filter *Filter, updated m
 
 	s.db.QueryRow(`SELECT COUNT(*) FROM ` + jobModelName + ` ` + where).Scan(&matchedCount)
 	var setFields []string
+	updated["updated_at"] = time.Now()
 	for field, value := range updated {
 		if t, ok := value.(time.Time); ok {
 			value = t.Format(time.RFC3339)
@@ -405,7 +406,7 @@ func (s *SQLPersistent) FindAllSummary(ctx context.Context, filter *Filter) (res
 		}
 		where = " WHERE id IN (" + strings.Join(taskNameList, ",") + ")"
 	}
-	query := `SELECT id, success, queueing, retrying, failure, stopped, is_loading FROM ` + jobSummaryModelName + where
+	query := `SELECT id, success, queueing, retrying, failure, stopped, is_loading FROM ` + jobSummaryModelName + where + " ORDER BY id ASC"
 	rows, err := s.db.Query(query)
 	if err != nil {
 		return
@@ -434,13 +435,10 @@ func (s *SQLPersistent) FindAllSummary(ctx context.Context, filter *Filter) (res
 	return
 }
 func (s *SQLPersistent) FindDetailSummary(ctx context.Context, taskName string) (result TaskSummary) {
-	err := s.db.QueryRow(`SELECT id, success, queueing, retrying, failure, stopped, is_loading
+	s.db.QueryRow(`SELECT id, success, queueing, retrying, failure, stopped, is_loading
 		FROM `+jobSummaryModelName+` WHERE id='`+s.queryReplacer.Replace(taskName)+`'`).
 		Scan(&result.TaskName, &result.Success, &result.Queueing, &result.Retrying,
 			&result.Failure, &result.Stopped, &result.IsLoading)
-	if err != nil {
-		logger.LogE(err.Error())
-	}
 	result.ID = result.TaskName
 	return
 }
@@ -502,8 +500,12 @@ func (s *SQLPersistent) IncrementSummary(ctx context.Context, taskName string, i
 	}
 	return
 }
-func (s *SQLPersistent) DeleteAllSummary(ctx context.Context) {
-	_, err := s.db.Exec(`DELETE FROM ` + jobSummaryModelName)
+func (s *SQLPersistent) DeleteAllSummary(ctx context.Context, filter *Filter) {
+	var where string
+	if len(filter.ExcludeTaskNameList) > 0 {
+		where = "WHERE id NOT IN " + s.toMultiParamQuery(filter.ExcludeTaskNameList)
+	}
+	_, err := s.db.Exec(`DELETE FROM ` + jobSummaryModelName + ` ` + where)
 	if err != nil {
 		logger.LogE(err.Error())
 		return
@@ -515,7 +517,10 @@ func (s *SQLPersistent) Type() string {
 	if s.versionFunc == "sqlite_version()" {
 		version = "SQLite " + version
 	}
-	return "SQL Persistent, version: " + version
+	if version != "" {
+		version = ", version: " + version
+	}
+	return "SQL Persistent" + version
 }
 
 func (s *SQLPersistent) toQueryFilter(f *Filter) (where string, err error) {

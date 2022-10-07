@@ -151,25 +151,16 @@ func (s *subscriber) broadcastAllToSubscribers(ctx context.Context) {
 func (s *subscriber) broadcastTaskList(ctx context.Context) {
 
 	var taskRes TaskListResolver
-	taskRes.Data = make([]TaskResolver, len(engine.tasks))
-	mapper := make(map[string]int, len(engine.tasks))
-	for i, task := range engine.tasks {
-		taskRes.Data[i].Name = task
-		taskRes.Data[i].ModuleName = engine.registeredTask[task].moduleName
-		mapper[task] = i
-	}
-
+	taskRes.Data = make([]TaskResolver, 0)
 	for _, summary := range s.opt.persistent.Summary().FindAllSummary(ctx, &Filter{}) {
-		if idx, ok := mapper[summary.TaskName]; ok {
-			res := TaskResolver{
-				Name:       summary.TaskName,
-				ModuleName: engine.registeredTask[summary.TaskName].moduleName,
-				TotalJobs:  summary.CountTotalJob(),
-			}
-			res.Detail = summary.ToSummaryDetail()
-			res.IsLoading = summary.IsLoading
-			taskRes.Data[idx] = res
+		res := TaskResolver{
+			Name:       summary.TaskName,
+			ModuleName: engine.registeredTask[summary.TaskName].moduleName,
+			TotalJobs:  summary.CountTotalJob(),
 		}
+		res.Detail = summary.ToSummaryDetail()
+		res.IsLoading = summary.IsLoading
+		taskRes.Data = append(taskRes.Data, res)
 	}
 
 	sort.Slice(taskRes.Data, func(i, j int) bool {
@@ -245,24 +236,15 @@ func (s *subscriber) broadcastWhenChangeAllJob(ctx context.Context, taskName str
 	})
 
 	var taskRes TaskListResolver
-	taskRes.Data = make([]TaskResolver, len(engine.tasks))
-	mapper := make(map[string]int, len(engine.tasks))
-	for i, task := range engine.tasks {
-		taskRes.Data[i].Name = task
-		taskRes.Data[i].ModuleName = engine.registeredTask[task].moduleName
-		mapper[task] = i
-	}
-
+	taskRes.Data = make([]TaskResolver, 0)
 	for _, summary := range s.opt.persistent.Summary().FindAllSummary(ctx, &Filter{}) {
-		if idx, ok := mapper[summary.TaskName]; ok {
-			res := TaskResolver{
-				Name: summary.TaskName, ModuleName: engine.registeredTask[summary.TaskName].moduleName,
-				TotalJobs: summary.CountTotalJob(),
-			}
-			res.Detail = summary.ToSummaryDetail()
-			res.IsLoading = summary.IsLoading
-			taskRes.Data[idx] = res
+		res := TaskResolver{
+			Name: summary.TaskName, ModuleName: engine.registeredTask[summary.TaskName].moduleName,
+			TotalJobs: summary.CountTotalJob(),
 		}
+		res.Detail = summary.ToSummaryDetail()
+		res.IsLoading = summary.IsLoading
+		taskRes.Data = append(taskRes.Data, res)
 	}
 
 	sort.Slice(taskRes.Data, func(i, j int) bool {

@@ -314,6 +314,7 @@ func (s *MongoPersistent) AggregateAllTaskJob(ctx context.Context, filter *Filte
 func (s *MongoPersistent) SaveJob(ctx context.Context, job *Job, retryHistories ...RetryHistory) (err error) {
 	tracer.Log(ctx, "persistent.mongo:save_job", job.ID)
 
+	job.UpdatedAt = time.Now()
 	if job.ID == "" {
 		job.ID = uuid.New().String()
 		job.CreatedAt = time.Now()
@@ -354,6 +355,7 @@ func (s *MongoPersistent) SaveJob(ctx context.Context, job *Job, retryHistories 
 
 func (s *MongoPersistent) UpdateJob(ctx context.Context, filter *Filter, updated map[string]interface{}, retryHistories ...RetryHistory) (matchedCount, affectedRow int64, err error) {
 
+	updated["updated_at"] = time.Now()
 	updateQuery := bson.M{
 		"$set": bson.M(updated),
 	}
@@ -472,7 +474,6 @@ func (s *MongoPersistent) toBsonFilter(f *Filter) bson.M {
 func (s *MongoPersistent) FindAllSummary(ctx context.Context, filter *Filter) (result []TaskSummary) {
 
 	query := bson.M{}
-
 	if filter.TaskName != "" {
 		query["task_name"] = filter.TaskName
 	} else if len(filter.TaskNameList) > 0 {
@@ -481,7 +482,12 @@ func (s *MongoPersistent) FindAllSummary(ctx context.Context, filter *Filter) (r
 		}
 	}
 
-	cur, err := s.db.Collection(jobSummaryModelName).Find(s.ctx, query)
+	findOptions := &options.FindOptions{}
+	findOptions.SetSort(bson.M{
+		"task_name": 1,
+	})
+
+	cur, err := s.db.Collection(jobSummaryModelName).Find(s.ctx, query, findOptions)
 	if err != nil {
 		logger.LogE(err.Error())
 		return
@@ -566,8 +572,8 @@ func (s *MongoPersistent) UpdateSummary(ctx context.Context, taskName string, up
 	}
 }
 
-func (s *MongoPersistent) DeleteAllSummary(ctx context.Context) {
-	_, err := s.db.Collection(jobSummaryModelName).DeleteMany(ctx, bson.M{})
+func (s *MongoPersistent) DeleteAllSummary(ctx context.Context, filter *Filter) {
+	_, err := s.db.Collection(jobSummaryModelName).DeleteMany(ctx, s.toBsonFilter(filter))
 	if err != nil {
 		logger.LogE(err.Error())
 		return

@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -187,11 +186,9 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 		},
 	}
 
-	configJSON, _ := json.Marshal(cfg)
 	root := FileStructure{
 		Skip: true, Childs: []FileStructure{
 			apiStructure, internalServiceStructure,
-			{Source: string(configJSON), FileName: "candi.json"},
 		},
 	}
 

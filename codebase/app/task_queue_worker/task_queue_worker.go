@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -86,10 +87,7 @@ func (t *taskQueueWorker) prepare() {
 		return
 	}
 
-	for _, taskName := range t.tasks {
-		t.opt.queue.Clear(t.ctx, taskName)
-	}
-	t.opt.persistent.Summary().DeleteAllSummary(t.ctx)
+	t.opt.persistent.Summary().DeleteAllSummary(t.ctx, &Filter{ExcludeTaskNameList: t.tasks})
 	t.opt.persistent.CleanJob(t.ctx, &Filter{ExcludeTaskNameList: t.tasks})
 
 	// get current pending jobs
@@ -101,19 +99,39 @@ func (t *taskQueueWorker) prepare() {
 	}
 	for _, taskName := range t.tasks {
 		t.opt.queue.Clear(t.ctx, taskName)
-		t.opt.persistent.Summary().UpdateSummary(t.ctx, taskName, map[string]interface{}{
+		updated := map[string]interface{}{
 			"is_loading": true,
-		})
+		}
+		if summary := t.opt.persistent.Summary().FindDetailSummary(t.ctx, taskName); summary.ID == "" {
+			for _, status := range []string{
+				statusRetrying.String(), statusFailure.String(), statusSuccess.String(),
+				statusQueueing.String(), statusStopped.String(),
+			} {
+				updated[strings.ToLower(status)] = t.opt.persistent.CountAllJob(t.ctx, &Filter{
+					TaskName: taskName, Status: &status,
+				})
+			}
+		}
+		t.opt.persistent.Summary().UpdateSummary(t.ctx, taskName, updated)
 	}
 	t.subscriber.broadcastTaskList(t.ctx)
 	StreamAllJob(t.ctx, filter, func(job *Job) {
 		// update to queueing
 		if job.Status != string(statusQueueing) {
+			statusBefore := job.Status
 			job.Status = string(statusQueueing)
-			t.opt.persistent.UpdateJob(t.ctx, &Filter{
+			matchedCount, affectedCount, err := t.opt.persistent.UpdateJob(t.ctx, &Filter{
 				JobID: &job.ID,
 			}, map[string]interface{}{
 				"status": job.Status,
+			})
+			if err != nil {
+				logger.LogE(err.Error())
+				return
+			}
+			t.opt.persistent.Summary().IncrementSummary(t.ctx, job.TaskName, map[string]int64{
+				string(job.Status): affectedCount,
+				statusBefore:       -matchedCount,
 			})
 		}
 		if n := t.opt.queue.PushJob(t.ctx, job); n <= 1 {
@@ -121,7 +139,6 @@ func (t *taskQueueWorker) prepare() {
 		}
 	})
 
-	RecalculateSummary(t.ctx)
 	for _, taskName := range t.tasks {
 		t.opt.persistent.Summary().UpdateSummary(t.ctx, taskName, map[string]interface{}{
 			"is_loading": false,
@@ -166,6 +183,7 @@ func (t *taskQueueWorker) Serve() {
 
 		chosen, _, ok := reflect.Select(t.workerChannels)
 		if !ok {
+			logger.LogRed("invalid select worker channels")
 			continue
 		}
 
@@ -211,6 +229,7 @@ func (t *taskQueueWorker) registerJobToWorker(job *Job, workerIndex int) {
 
 	interval, err := time.ParseDuration(job.Interval)
 	if err != nil || interval <= 0 {
+		logger.LogRed("invalid interval " + job.Interval)
 		return
 	}
 
@@ -244,6 +263,7 @@ func (t *taskQueueWorker) stopAllJobInTask(taskName string) {
 			task.cancel()
 		}
 	}
+	<-t.semaphore[regTask.workerIndex-1]
 }
 
 func (t *taskQueueWorker) doRefreshWorker() {

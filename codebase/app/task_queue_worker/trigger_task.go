@@ -32,6 +32,7 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 
 	t.semaphore[workerIndex-1] <- struct{}{}
 	if t.isShutdown {
+		logger.LogRed("worker has been shutdown")
 		return
 	}
 
@@ -46,8 +47,10 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 			}
 			t.registerNextJob(task.taskName)
 			t.wg.Done()
-			<-t.semaphore[workerIndex-1]
-			task.cancel()
+			if ctx.Err() == nil {
+				<-t.semaphore[workerIndex-1]
+				task.cancel()
+			}
 			t.refreshWorkerNotif <- struct{}{}
 		}()
 
@@ -64,6 +67,7 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 	jobID := t.opt.queue.PopJob(t.ctx, runningTask.taskName)
 	if jobID == "" {
+		logger.LogYellow("task_queue_worker > empty queue")
 		return
 	}
 
@@ -77,7 +81,12 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 	selectedTask := t.registeredTask[runningTask.taskName]
 
 	job, err := t.opt.persistent.FindJobByID(ctx, jobID, nil)
-	if err != nil || job.Status != string(statusQueueing) {
+	if err != nil {
+		logger.LogE(err.Error())
+		return
+	}
+	if job.Status != string(statusQueueing) {
+		logger.LogYellow("task_queue_worker > skip exec job, job status: " + job.Status)
 		return
 	}
 
@@ -94,6 +103,10 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 	matchedCount, affectedCount, err := t.opt.persistent.UpdateJob(
 		t.ctx, &Filter{JobID: &job.ID}, job.toMap(),
 	)
+	if err != nil {
+		logger.LogE(err.Error())
+		return
+	}
 	t.opt.persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
 		string(job.Status): affectedCount,
 		statusBefore:       -matchedCount,
@@ -173,6 +186,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 	err = selectedHandler.HandlerFuncs[0](&eventContext)
 
 	if ctx.Err() != nil {
+		logger.LogE(ctx.Err().Error())
 		job.Error = "Job has been stopped when running (context error: " + ctx.Err().Error() + ")."
 		if err != nil {
 			job.Error += " Error: " + err.Error()

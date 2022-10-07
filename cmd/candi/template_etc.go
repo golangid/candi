@@ -448,8 +448,8 @@ mocks: check
 test: check
 	@echo "\x1b[32;1m>>> running unit test and calculate coverage for service $(service)\x1b[0m"
 	@if [ -f services/$(service)/coverage.txt ]; then rm services/$(service)/coverage.txt; fi;
-	@go test -race ./services/$(service)/... -cover -coverprofile=services/$(service)/coverage.txt -covermode=atomic \
-		-coverpkg=$$(go list ./services/$(service)/... | grep -v -e mocks -e codebase | tr '\n' ',')
+	@go test ./services/$(service)/... -cover -coverprofile=services/$(service)/coverage.txt -covermode=count \
+		-coverpkg=$$(go list ./services/$(service)/... | grep -v mocks | tr '\n' ',')
 	@go tool cover -func=services/$(service)/coverage.txt
 
 sonar: check

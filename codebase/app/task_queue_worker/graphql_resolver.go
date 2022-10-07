@@ -166,36 +166,31 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 			input.TaskName, strings.Join(r.engine.tasks, ", "))
 	}
 
-	go func(ctx context.Context) {
+	r.engine.subscriber.broadcastWhenChangeAllJob(r.engine.ctx, input.TaskName, true)
+	r.engine.opt.queue.Clear(ctx, input.TaskName)
+	go r.engine.stopAllJobInTask(input.TaskName)
 
-		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, true)
-
-		r.engine.stopAllJobInTask(input.TaskName)
-		r.engine.opt.queue.Clear(ctx, input.TaskName)
-
-		incrQuery := map[string]int64{}
-		affectedStatus := []string{string(statusQueueing), string(statusRetrying)}
-		for _, status := range affectedStatus {
-			countMatchedFilter, countAffected, err := r.engine.opt.persistent.UpdateJob(ctx,
-				&Filter{
-					TaskName: input.TaskName, Status: &status,
-				},
-				map[string]interface{}{
-					"status": statusStopped,
-				},
-			)
-			if err != nil {
-				continue
-			}
-			incrQuery[strings.ToLower(status)] -= countMatchedFilter
-			incrQuery[strings.ToLower(string(statusStopped))] += countAffected
+	incrQuery := map[string]int64{}
+	affectedStatus := []string{string(statusQueueing), string(statusRetrying)}
+	for _, status := range affectedStatus {
+		countMatchedFilter, countAffected, err := r.engine.opt.persistent.UpdateJob(ctx,
+			&Filter{
+				TaskName: input.TaskName, Status: &status,
+			},
+			map[string]interface{}{
+				"status": statusStopped,
+			},
+		)
+		if err != nil {
+			continue
 		}
+		incrQuery[strings.ToLower(status)] -= countMatchedFilter
+		incrQuery[strings.ToLower(string(statusStopped))] += countAffected
+	}
 
-		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, false)
-		r.engine.opt.persistent.Summary().IncrementSummary(ctx, input.TaskName, incrQuery)
-		r.engine.subscriber.broadcastAllToSubscribers(r.engine.ctx)
-
-	}(r.engine.ctx)
+	r.engine.subscriber.broadcastWhenChangeAllJob(r.engine.ctx, input.TaskName, false)
+	r.engine.opt.persistent.Summary().IncrementSummary(ctx, input.TaskName, incrQuery)
+	r.engine.subscriber.broadcastAllToSubscribers(r.engine.ctx)
 
 	return "Success stop all job in task " + input.TaskName, nil
 }

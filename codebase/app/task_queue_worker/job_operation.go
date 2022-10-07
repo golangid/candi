@@ -12,6 +12,7 @@ import (
 
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candiutils"
+	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
 )
 
@@ -93,8 +94,7 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 		strings.ToLower(newJob.Status): 1,
 	})
 	engine.subscriber.broadcastAllToSubscribers(context.Background())
-	n := engine.opt.queue.PushJob(ctx, &newJob)
-	if n <= 1 {
+	if n := engine.opt.queue.PushJob(ctx, &newJob); n <= 1 {
 		engine.registerJobToWorker(&newJob, task.workerIndex)
 		engine.doRefreshWorker()
 	}
@@ -175,6 +175,7 @@ func RetryJob(ctx context.Context, jobID string) error {
 
 	job, err := engine.opt.persistent.FindJobByID(ctx, jobID, nil)
 	if err != nil {
+		logger.LogE(err.Error())
 		return err
 	}
 
@@ -184,15 +185,24 @@ func RetryJob(ctx context.Context, jobID string) error {
 	if (job.Status == string(statusFailure)) || (job.Retries >= job.MaxRetry) {
 		job.Retries = 0
 	}
-	matched, affected, _ := engine.opt.persistent.UpdateJob(ctx, &Filter{JobID: &job.ID}, map[string]interface{}{
+	matched, affected, err := engine.opt.persistent.UpdateJob(ctx, &Filter{JobID: &job.ID}, map[string]interface{}{
 		"status": job.Status, "interval": job.Interval, "retries": job.Retries,
 	})
+	if err != nil {
+		logger.LogE(err.Error())
+		return err
+	}
 	engine.opt.persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
 		statusBefore: -matched,
 		job.Status:   affected,
 	})
 
-	task := engine.registeredTask[job.TaskName]
+	task, ok := engine.registeredTask[job.TaskName]
+	if !ok {
+		err := errors.New("Task not found")
+		logger.LogE(err.Error())
+		return err
+	}
 	engine.opt.queue.PushJob(ctx, &job)
 	engine.subscriber.broadcastAllToSubscribers(ctx)
 	engine.registerJobToWorker(&job, task.workerIndex)
@@ -218,7 +228,7 @@ func StopJob(ctx context.Context, jobID string) error {
 
 	statusBefore := job.Status
 	if job.Status == string(statusRetrying) {
-		engine.stopAllJobInTask(job.TaskName)
+		go engine.stopAllJobInTask(job.TaskName)
 	}
 
 	job.Status = string(statusStopped)
@@ -227,6 +237,7 @@ func StopJob(ctx context.Context, jobID string) error {
 		map[string]interface{}{"status": job.Status},
 	)
 	if err != nil {
+		logger.LogE(err.Error())
 		return err
 	}
 	engine.opt.persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{

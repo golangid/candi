@@ -54,6 +54,7 @@ type (
 		MaxRetry       int            `bson:"max_retry" json:"max_retry"`
 		Interval       string         `bson:"interval" json:"interval"`
 		CreatedAt      time.Time      `bson:"created_at" json:"created_at"`
+		UpdatedAt      time.Time      `bson:"updated_at" json:"updated_at"`
 		FinishedAt     time.Time      `bson:"finished_at" json:"finished_at"`
 		Status         string         `bson:"status" json:"status"`
 		Error          string         `bson:"error" json:"error"`
@@ -141,6 +142,7 @@ func (job *Job) toMap() map[string]interface{} {
 		"retries":     job.Retries,
 		"max_retry":   job.MaxRetry,
 		"interval":    job.Interval,
+		"updated_at":  job.UpdatedAt,
 		"finished_at": job.FinishedAt,
 		"status":      job.Status,
 		"error":       job.Error,
