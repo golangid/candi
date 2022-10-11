@@ -27,7 +27,11 @@ func initEngine(service factory.ServiceFactory, opts ...OptionFunc) *taskQueueWo
 	opt.autoRemoveClientInterval = 30 * time.Minute
 	opt.dashboardPort = 8080
 	opt.debugMode = true
-	opt.locker = &candiutils.NoopLocker{}
+	if redisPool := service.GetDependency().GetRedisPool(); redisPool != nil {
+		opt.locker = candiutils.NewRedisLocker(redisPool.WritePool())
+	} else {
+		opt.locker = &candiutils.NoopLocker{}
+	}
 	opt.dashboardBanner = `    _________    _   ______  ____
    / ____/   |  / | / / __ \/  _/
   / /   / /| | /  |/ / / / // /  
@@ -41,18 +45,18 @@ func initEngine(service factory.ServiceFactory, opts ...OptionFunc) *taskQueueWo
 
 	// set default persistent & queue if not defined
 	if opt.persistent == nil {
-		if service.GetDependency().GetMongoDatabase() != nil {
-			opt.persistent = NewMongoPersistent(service.GetDependency().GetMongoDatabase().WriteDB())
-		} else if service.GetDependency().GetSQLDatabase() != nil {
-			opt.persistent = NewSQLPersistent(service.GetDependency().GetSQLDatabase().WriteDB())
+		if mongoDB := service.GetDependency().GetMongoDatabase(); mongoDB != nil {
+			opt.persistent = NewMongoPersistent(mongoDB.WriteDB())
+		} else if sqlDB := service.GetDependency().GetSQLDatabase(); sqlDB != nil {
+			opt.persistent = NewSQLPersistent(sqlDB.WriteDB())
 		} else {
 			opt.persistent = NewNoopPersistent()
 		}
 	}
 
 	if opt.queue == nil {
-		if service.GetDependency().GetRedisPool() != nil {
-			opt.queue = NewRedisQueue(service.GetDependency().GetRedisPool().WritePool())
+		if redisPool := service.GetDependency().GetRedisPool(); redisPool != nil {
+			opt.queue = NewRedisQueue(redisPool.WritePool())
 		} else {
 			opt.queue = NewInMemQueue()
 		}

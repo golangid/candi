@@ -41,7 +41,7 @@ type (
 func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
 	worker := &postgresWorker{
 		service:   service,
-		opt:       getDefaultOption(),
+		opt:       getDefaultOption(service),
 		semaphore: make(map[string]chan struct{}),
 		shutdown:  make(chan struct{}, 1),
 	}

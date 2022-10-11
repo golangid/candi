@@ -1,6 +1,9 @@
 package cronworker
 
-import "github.com/golangid/candi/candiutils"
+import (
+	"github.com/golangid/candi/candiutils"
+	"github.com/golangid/candi/codebase/factory"
+)
 
 type (
 	option struct {
@@ -13,12 +16,17 @@ type (
 	OptionFunc func(*option)
 )
 
-func getDefaultOption() option {
-	return option{
+func getDefaultOption(service factory.ServiceFactory) option {
+	opt := option{
 		maxGoroutines: 10,
 		debugMode:     true,
-		locker:        &candiutils.NoopLocker{},
 	}
+	if redisPool := service.GetDependency().GetRedisPool(); redisPool != nil {
+		opt.locker = candiutils.NewRedisLocker(redisPool.WritePool())
+	} else {
+		opt.locker = &candiutils.NoopLocker{}
+	}
+	return opt
 }
 
 // SetMaxGoroutines option func

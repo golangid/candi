@@ -32,7 +32,7 @@ type cronWorker struct {
 func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
 	c := &cronWorker{
 		service:   service,
-		opt:       getDefaultOption(),
+		opt:       getDefaultOption(service),
 		semaphore: make(map[string]chan struct{}),
 	}
 

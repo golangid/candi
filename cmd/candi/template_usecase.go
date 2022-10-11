@@ -106,19 +106,23 @@ type {{camel .ModuleName}}UsecaseImpl struct {
 	{{if not .SQLDeps}}// {{end}}repoSQL       repository.RepoSQL
 	{{if not .MongoDeps}}// {{end}}repoMongo     repository.RepoMongo{{if .ArangoDeps}}
 	repoArango     repository.RepoArango{{end}}
-	{{if not .KafkaHandler}}// {{ end }}kafkaPub      interfaces.Publisher
-	{{if not .RabbitMQHandler}}// {{ end }}rabbitmqPub   interfaces.Publisher
+	kafkaPub       interfaces.Publisher{{if .RabbitMQHandler}}
+	rabbitmqPub    interfaces.Publisher{{ end }}
 }
 
 // New{{upper (camel .ModuleName)}}Usecase usecase impl constructor
 func New{{upper (camel .ModuleName)}}Usecase(deps dependency.Dependency) ({{upper (camel .ModuleName)}}Usecase, func(sharedUsecase common.Usecase)) {
 	uc := &{{camel .ModuleName}}UsecaseImpl{
-		{{if not .RedisDeps}}// {{end}}cache: deps.GetRedisPool().Cache(),
 		{{if not .SQLDeps}}// {{end}}repoSQL:   repository.GetSharedRepoSQL(),
 		{{if not .MongoDeps}}// {{end}}repoMongo: repository.GetSharedRepoMongo(),{{if .ArangoDeps}}
-		repoArango: repository.GetSharedRepoArango(),{{end}}
-		{{if not .KafkaHandler}}// {{ end }}kafkaPub: deps.GetBroker(types.Kafka).GetPublisher(),
-		{{if not .RabbitMQHandler}}// {{ end }}rabbitmqPub: deps.GetBroker(types.RabbitMQ).GetPublisher(),
+		repoArango: repository.GetSharedRepoArango(),{{end}}{{if .RabbitMQHandler}}
+		rabbitmqPub: deps.GetBroker(types.RabbitMQ).GetPublisher(),{{ end }}
+	}
+	if redisPool := deps.GetRedisPool(); redisPool != nil {
+		uc.cache = redisPool.Cache()
+	}
+	if kafkaBroker := deps.GetBroker(types.Kafka); kafkaBroker != nil {
+		uc.kafkaPub = kafkaBroker.GetPublisher()
 	}
 	return uc, func(sharedUsecase common.Usecase) {
 		uc.sharedUsecase = sharedUsecase
