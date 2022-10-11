@@ -23,10 +23,10 @@ type Job struct {
 }
 
 var (
-	activeJobs                                                   []*Job
-	workers                                                      []reflect.SelectCase
-	refreshWorkerNotif, shutdown, startWorkerCh, releaseWorkerCh chan struct{}
-	mutex                                                        sync.Mutex
+	activeJobs                   []*Job
+	workers                      []reflect.SelectCase
+	refreshWorkerNotif, shutdown chan struct{}
+	mutex                        sync.Mutex
 )
 
 const (

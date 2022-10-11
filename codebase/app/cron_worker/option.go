@@ -5,7 +5,6 @@ import "github.com/golangid/candi/candiutils"
 type (
 	option struct {
 		maxGoroutines int
-		consul        *candiutils.Consul
 		debugMode     bool
 		locker        candiutils.Locker
 	}
@@ -26,13 +25,6 @@ func getDefaultOption() option {
 func SetMaxGoroutines(maxGoroutines int) OptionFunc {
 	return func(o *option) {
 		o.maxGoroutines = maxGoroutines
-	}
-}
-
-// SetConsul option func
-func SetConsul(consul *candiutils.Consul) OptionFunc {
-	return func(o *option) {
-		o.consul = consul
 	}
 }
 

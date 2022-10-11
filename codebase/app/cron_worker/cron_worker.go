@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"reflect"
 	"runtime/debug"
 	"sync"
@@ -42,7 +41,6 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 	}
 
 	refreshWorkerNotif, shutdown = make(chan struct{}), make(chan struct{})
-	startWorkerCh, releaseWorkerCh = make(chan struct{}), make(chan struct{})
 
 	// add shutdown channel to first index
 	workers = append(workers, reflect.SelectCase{
@@ -82,84 +80,60 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 }
 
 func (c *cronWorker) Serve() {
-	c.createConsulSession()
 
-START:
-	select {
-	case <-startWorkerCh:
-		startAllJob()
-		totalRunJobs := 0
+	startAllJob()
 
-		// run worker
-		for {
-			chosen, _, ok := reflect.Select(workers)
-			if !ok {
-				continue
-			}
-
-			// if shutdown channel captured, break loop (no more jobs will run)
-			if chosen == 0 {
-				return
-			}
-
-			// notify for refresh worker
-			if chosen == 1 {
-				continue
-			}
-
-			chosen = chosen - 2
-			job := activeJobs[chosen]
-			if job.nextDuration != nil {
-				job.ticker.Stop()
-				job.currentDuration = *job.nextDuration
-				job.ticker = time.NewTicker(*job.nextDuration)
-				workers[job.WorkerIndex].Chan = reflect.ValueOf(job.ticker.C)
-				activeJobs[chosen].nextDuration = nil
-			}
-
-			if len(c.semaphore[job.HandlerName]) >= c.opt.maxGoroutines {
-				continue
-			}
-
-			c.semaphore[job.HandlerName] <- struct{}{}
-			c.wg.Add(1)
-			go func(j *Job) {
-				defer func() {
-					c.wg.Done()
-					<-c.semaphore[j.HandlerName]
-				}()
-
-				if c.ctx.Err() != nil {
-					logger.LogRed("cron_scheduler > ctx root err: " + c.ctx.Err().Error())
-					return
-				}
-				c.processJob(j)
-			}(job)
-
-			if c.opt.consul != nil {
-				totalRunJobs++
-				// if already running n jobs, release lock so that run in another instance
-				if totalRunJobs == c.opt.consul.MaxJobRebalance {
-					// recreate session
-					c.createConsulSession()
-					<-releaseWorkerCh
-					goto START
-				}
-			}
+	// run worker
+	for {
+		chosen, _, ok := reflect.Select(workers)
+		if !ok {
+			continue
 		}
 
-	case <-shutdown:
-		return
+		// if shutdown channel captured, break loop (no more jobs will run)
+		if chosen == 0 {
+			return
+		}
+
+		// notify for refresh worker
+		if chosen == 1 {
+			continue
+		}
+
+		chosen = chosen - 2
+		job := activeJobs[chosen]
+		if job.nextDuration != nil {
+			job.ticker.Stop()
+			job.currentDuration = *job.nextDuration
+			job.ticker = time.NewTicker(*job.nextDuration)
+			workers[job.WorkerIndex].Chan = reflect.ValueOf(job.ticker.C)
+			activeJobs[chosen].nextDuration = nil
+		}
+
+		if len(c.semaphore[job.HandlerName]) >= c.opt.maxGoroutines {
+			continue
+		}
+
+		c.semaphore[job.HandlerName] <- struct{}{}
+		c.wg.Add(1)
+		go func(j *Job) {
+			defer func() {
+				c.wg.Done()
+				<-c.semaphore[j.HandlerName]
+			}()
+
+			if c.ctx.Err() != nil {
+				logger.LogRed("cron_scheduler > ctx root err: " + c.ctx.Err().Error())
+				return
+			}
+			c.processJob(j)
+		}(job)
 	}
+
 }
 
 func (c *cronWorker) Shutdown(ctx context.Context) {
 	defer func() {
-		if c.opt.consul != nil {
-			if err := c.opt.consul.DestroySession(); err != nil {
-				panic(err)
-			}
-		}
 		log.Println("\x1b[33;1mStopping Cron Job Scheduler:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
 	}()
 
@@ -184,20 +158,6 @@ func (c *cronWorker) Shutdown(ctx context.Context) {
 
 func (c *cronWorker) Name() string {
 	return string(types.Scheduler)
-}
-
-func (c *cronWorker) createConsulSession() {
-	if c.opt.consul == nil {
-		go func() { startWorkerCh <- struct{}{} }()
-		return
-	}
-	c.opt.consul.DestroySession()
-	stopAllJob()
-	hostname, _ := os.Hostname()
-	value := map[string]string{
-		"hostname": hostname,
-	}
-	go c.opt.consul.RetryLockAcquire(value, startWorkerCh, releaseWorkerCh)
 }
 
 func (c *cronWorker) processJob(job *Job) {

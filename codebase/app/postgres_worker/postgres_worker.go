@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"runtime/debug"
 	"sync"
 
@@ -23,16 +22,13 @@ Postgres Event Listener Worker
 Listen event from data change from selected table in postgres
 */
 
-var (
-	shutdown, startWorkerCh, releaseWorkerCh chan struct{}
-)
-
 type (
 	postgresWorker struct {
 		ctx           context.Context
 		ctxCancelFunc func()
 		opt           option
 		semaphore     map[string]chan struct{}
+		shutdown      chan struct{}
 
 		service  factory.ServiceFactory
 		listener *pq.Listener
@@ -47,14 +43,12 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 		service:   service,
 		opt:       getDefaultOption(),
 		semaphore: make(map[string]chan struct{}),
+		shutdown:  make(chan struct{}, 1),
 	}
 
 	for _, opt := range opts {
 		opt(&worker.opt)
 	}
-
-	shutdown = make(chan struct{}, 1)
-	startWorkerCh, releaseWorkerCh = make(chan struct{}), make(chan struct{})
 
 	worker.handlers = make(map[string]types.WorkerHandler)
 	db, listener := getListener(worker.opt.postgresDSN)
@@ -87,12 +81,7 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 }
 
 func (p *postgresWorker) Serve() {
-	p.createConsulSession()
-
-START:
-	<-startWorkerCh
 	p.listener.Listen(eventsConst)
-	totalRunJobs := 0
 
 	for {
 		select {
@@ -159,20 +148,7 @@ START:
 				}
 			}(&payload)
 
-			// rebalance worker if run in multiple instance and using consul
-			if p.opt.consul != nil {
-				totalRunJobs++
-				// if already running n jobs, release lock so that run in another instance
-				if totalRunJobs == p.opt.consul.MaxJobRebalance {
-					p.listener.Unlisten(eventsConst)
-					// recreate session
-					p.createConsulSession()
-					<-releaseWorkerCh
-					goto START
-				}
-			}
-
-		case <-shutdown:
+		case <-p.shutdown:
 			return
 		}
 	}
@@ -180,11 +156,6 @@ START:
 
 func (p *postgresWorker) Shutdown(ctx context.Context) {
 	defer func() {
-		if p.opt.consul != nil {
-			if err := p.opt.consul.DestroySession(); err != nil {
-				panic(err)
-			}
-		}
 		log.Println("\x1b[33;1mStopping Postgres Event Listener:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
 	}()
 
@@ -192,7 +163,7 @@ func (p *postgresWorker) Shutdown(ctx context.Context) {
 		return
 	}
 
-	shutdown <- struct{}{}
+	p.shutdown <- struct{}{}
 	runningJob := 0
 	for _, sem := range p.semaphore {
 		runningJob += len(sem)
@@ -210,19 +181,6 @@ func (p *postgresWorker) Shutdown(ctx context.Context) {
 
 func (p *postgresWorker) Name() string {
 	return string(types.PostgresListener)
-}
-
-func (p *postgresWorker) createConsulSession() {
-	if p.opt.consul == nil {
-		go func() { startWorkerCh <- struct{}{} }()
-		return
-	}
-	p.opt.consul.DestroySession()
-	hostname, _ := os.Hostname()
-	value := map[string]string{
-		"hostname": hostname,
-	}
-	go p.opt.consul.RetryLockAcquire(value, startWorkerCh, releaseWorkerCh)
 }
 
 func (p *postgresWorker) getLockKey(eventPayload *EventPayload) string {
