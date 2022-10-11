@@ -34,6 +34,14 @@ const (
 			);
 		END CASE;
 
+		IF LENGTH(data::text) >= 7900 THEN
+			data = json_build_object(
+				'is_too_long_payload', TRUE,
+				'old_id', row_to_json(OLD)::jsonb->>'id',
+				'new_id', row_to_json(NEW)::jsonb->>'id'
+			);
+		END IF;
+
 		-- Construct the notification as a JSON string.
 		notification = json_build_object(
 						'event_id', md5(''||now()::text||random()::text),
@@ -41,10 +49,8 @@ const (
 						'action', TG_OP,
 						'data', data);
 		
-		IF LENGTH(notification::text) < 8000 THEN
-			-- Execute pg_notify(channel, notification)
-			PERFORM pg_notify('events', notification::text); -- error
-		END IF;
+		-- Execute pg_notify(channel, notification)
+		PERFORM pg_notify('events', notification::text);
 		
 		-- Result is ignored since this is an AFTER trigger
 		RETURN NULL; 
@@ -63,10 +69,25 @@ type (
 	}
 	// EventPayloadData event data
 	EventPayloadData struct {
-		Old interface{} `json:"old"`
-		New interface{} `json:"new"`
+		IsTooLongPayload bool        `json:"is_too_long_payload,omitempty"`
+		OldID            string      `json:"old_id"`
+		NewID            string      `json:"new_id"`
+		Old              interface{} `json:"old"`
+		New              interface{} `json:"new"`
 	}
 )
+
+// GetID get id if old/new data is empty, cause from long payload limitation
+func (e EventPayload) GetID() string {
+	if e.Data.IsTooLongPayload {
+		if e.Data.NewID != "" {
+			return e.Data.NewID
+		}
+		return e.Data.OldID
+	}
+
+	return ""
+}
 
 func execCreateFunctionEventQuery(db *sql.DB) {
 	query := `SELECT pg_get_functiondef('notify_event()'::regprocedure);`

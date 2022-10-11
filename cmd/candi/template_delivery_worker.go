@@ -249,6 +249,9 @@ func (h *PostgresListenerHandler) handleDataChangeOn{{upper (camel .ModuleName)}
 	json.Unmarshal(eventContext.Message(), &payload)
 	fmt.Printf("data change on table '%s' with action '%s' detected. \nOld values: %s\nNew Values: %s\n",
 		payload.Table, payload.Action, candihelper.ToBytes(payload.Data.Old), candihelper.ToBytes(payload.Data.New))
+	if payload.Data.IsTooLongPayload {
+		fmt.Printf("Data too long! \nold id: %s\nnew id: %s\n", payload.Data.OldID, payload.Data.NewID)
+	}
 
 	// exec usecase
 	// h.uc.SomethingUsecase()
