@@ -110,10 +110,21 @@ func (r *repoSQLImpl) WithTransaction(ctx context.Context, txFunc func(ctx conte
 	trace, ctx := tracer.StartTraceWithContext(ctx, "RepoSQL:Transaction")
 	defer trace.Finish()
 
-	tx{{if not .SQLUseGORM}}, err{{end}} := r.writeDB.Begin()` + "{{if .SQLUseGORM}}\n	err = tx.Error{{end}}" + `
-	if err != nil {
-		return err
-	}
+	{{if .SQLUseGORM}}tx, ok := candishared.GetValueFromContext(ctx, candishared.ContextKeySQLTransaction).(*gorm.DB)
+	if !ok {
+		tx = r.writeDB.Begin()
+		if tx.Error != nil {
+			return tx.Error
+		}
+		ctx = candishared.SetToContext(ctx, candishared.ContextKeySQLTransaction, tx)
+	}{{else}}tx, ok := candishared.GetValueFromContext(ctx, candishared.ContextKeySQLTransaction).(*sql.Tx)
+	if !ok {
+		tx, err = r.writeDB.Begin()
+		if err != nil {
+			return err
+		}
+		ctx = candishared.SetToContext(ctx, candishared.ContextKeySQLTransaction, tx)
+	}{{end}}
 
 	defer func() {
 		if err != nil {
@@ -136,7 +147,7 @@ func (r *repoSQLImpl) WithTransaction(ctx context.Context, txFunc func(ctx conte
 		if err := txFunc(ctx); err != nil {
 			errChan <- err
 		}
-	}(candishared.SetToContext(ctx, candishared.ContextKeySQLTransaction, tx))
+	}(ctx)
 
 	select {
 	case <-ctx.Done():
