@@ -105,7 +105,7 @@ func (h *RestHandler) create{{upper (camel .ModuleName)}}(c echo.Context) error 
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
 
-	return wrapper.NewHTTPResponse(http.StatusOK, "Success").JSON(c.Response())
+	return wrapper.NewHTTPResponse(http.StatusCreated, "Success").JSON(c.Response())
 }
 
 func (h *RestHandler) update{{upper (camel .ModuleName)}}(c echo.Context) error {
@@ -195,13 +195,13 @@ func TestNewRestHandler(t *testing.T) {
 func TestRestHandler_getAll{{upper (camel .ModuleName)}}(t *testing.T) {
 	tests := []testCase{
 		{
-			name: "Testcase #1: Positive", wantUsecaseError: nil, wantRespCode: 200,
+			name: "Testcase #1: Positive", wantUsecaseError: nil, wantRespCode: http.StatusOK,
 		},
 		{
-			name: "Testcase #2: Negative", reqBody: "?page=str", wantUsecaseError: errFoo, wantRespCode: 400,
+			name: "Testcase #2: Negative", reqBody: "?page=str", wantUsecaseError: errFoo, wantRespCode: http.StatusBadRequest,
 		},
 		{
-			name: "Testcase #3: Negative", wantUsecaseError: errFoo, wantRespCode: 400,
+			name: "Testcase #3: Negative", wantUsecaseError: errFoo, wantRespCode: http.StatusBadRequest,
 		},
 	}
 	for _, tt := range tests {
@@ -233,10 +233,10 @@ func TestRestHandler_getAll{{upper (camel .ModuleName)}}(t *testing.T) {
 func TestRestHandler_getDetail{{upper (camel .ModuleName)}}ByID(t *testing.T) {
 	tests := []testCase{
 		{
-			name: "Testcase #1: Positive", wantUsecaseError: nil, wantRespCode: 200,
+			name: "Testcase #1: Positive", wantUsecaseError: nil, wantRespCode: http.StatusOK,
 		},
 		{
-			name: "Testcase #2: Negative", wantUsecaseError: errFoo, wantRespCode: 400,
+			name: "Testcase #2: Negative", wantUsecaseError: errFoo, wantRespCode: http.StatusBadRequest,
 		},
 	}
 	for _, tt := range tests {
@@ -267,13 +267,13 @@ func TestRestHandler_getDetail{{upper (camel .ModuleName)}}ByID(t *testing.T) {
 func TestRestHandler_create{{upper (camel .ModuleName)}}(t *testing.T) {
 	tests := []testCase{
 		{
-			name: "Testcase #1: Positive", reqBody: ` + "`" + `{"email": "test@test.com"}` + "`" + `, wantUsecaseError: nil, wantRespCode: 200,
+			name: "Testcase #1: Positive", reqBody: ` + "`" + `{"email": "test@test.com"}` + "`" + `, wantUsecaseError: nil, wantRespCode: http.StatusCreated,
 		},
 		{
-			name: "Testcase #2: Negative", reqBody: ` + "`" + `{"email": test@test.com}` + "`" + `, wantUsecaseError: nil, wantRespCode: 400,
+			name: "Testcase #2: Negative", reqBody: ` + "`" + `{"email": test@test.com}` + "`" + `, wantUsecaseError: nil, wantRespCode: http.StatusBadRequest,
 		},
 		{
-			name: "Testcase #3: Negative", reqBody: ` + "`" + `{"email": "test@test.com"}` + "`" + `, wantUsecaseError: errFoo, wantRespCode: 400,
+			name: "Testcase #3: Negative", reqBody: ` + "`" + `{"email": "test@test.com"}` + "`" + `, wantUsecaseError: errFoo, wantRespCode: http.StatusBadRequest,
 		},
 	}
 	for _, tt := range tests {
@@ -305,16 +305,16 @@ func TestRestHandler_create{{upper (camel .ModuleName)}}(t *testing.T) {
 func TestRestHandler_update{{upper (camel .ModuleName)}}(t *testing.T) {
 	tests := []testCase{
 		{
-			name: "Testcase #1: Positive", reqBody: ` + "`" + `{"email": "test@test.com"}` + "`" + `, wantUsecaseError: nil, wantRespCode: 200,
+			name: "Testcase #1: Positive", reqBody: ` + "`" + `{"email": "test@test.com"}` + "`" + `, wantUsecaseError: nil, wantRespCode: http.StatusOK,
 		},
 		{
-			name: "Testcase #2: Negative", reqBody: ` + "`" + `{"email": test@test.com}` + "`" + `, wantValidateError: errFoo, wantRespCode: 400,
+			name: "Testcase #2: Negative", reqBody: ` + "`" + `{"email": test@test.com}` + "`" + `, wantValidateError: errFoo, wantRespCode: http.StatusBadRequest,
 		},
 		{
-			name: "Testcase #3: Negative", reqBody: ` + "`" + `{"email": test@test.com}` + "`" + `, wantUsecaseError: nil, wantRespCode: 400,
+			name: "Testcase #3: Negative", reqBody: ` + "`" + `{"email": test@test.com}` + "`" + `, wantUsecaseError: nil, wantRespCode: http.StatusBadRequest,
 		},
 		{
-			name: "Testcase #4: Negative", reqBody: ` + "`" + `{"email": "test@test.com"}` + "`" + `, wantUsecaseError: errFoo, wantRespCode: 400,
+			name: "Testcase #4: Negative", reqBody: ` + "`" + `{"email": "test@test.com"}` + "`" + `, wantUsecaseError: errFoo, wantRespCode: http.StatusBadRequest,
 		},
 	}
 	for _, tt := range tests {
@@ -345,10 +345,10 @@ func TestRestHandler_update{{upper (camel .ModuleName)}}(t *testing.T) {
 func TestRestHandler_delete{{upper (camel .ModuleName)}}(t *testing.T) {
 	tests := []testCase{
 		{
-			name: "Testcase #1: Positive", wantUsecaseError: nil, wantRespCode: 200,
+			name: "Testcase #1: Positive", wantUsecaseError: nil, wantRespCode: http.StatusOK,
 		},
 		{
-			name: "Testcase #2: Negative", wantUsecaseError: errFoo, wantRespCode: 400,
+			name: "Testcase #2: Negative", wantUsecaseError: errFoo, wantRespCode: http.StatusBadRequest,
 		},
 	}
 	for _, tt := range tests {
