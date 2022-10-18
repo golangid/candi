@@ -11,6 +11,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/gertd/go-pluralize"
 	"github.com/golangid/candi"
 	"github.com/golangid/candi/candihelper"
 )
@@ -66,6 +67,9 @@ func formatTemplate() template.FuncMap {
 			return candihelper.ToCamelCase(v)
 		},
 		"snake": func(v string) string {
+			pluralize := pluralize.NewClient()
+			v = pluralize.Plural(v)
+
 			return candihelper.ToDelimited(v, '_')
 		},
 		"kebab": func(v string) string {

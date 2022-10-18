@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gertd/go-pluralize"
 )
 
 // ParseFromQueryParam parse url query string to struct target (with multiple data type in struct field), target must in pointer
@@ -637,4 +639,11 @@ func ToInt(val interface{}) (i int) {
 	default:
 		return 0
 	}
+}
+
+// Plural
+func Plural(str string) string {
+	pluralize := pluralize.NewClient()
+
+	return pluralize.Plural(str)
 }
