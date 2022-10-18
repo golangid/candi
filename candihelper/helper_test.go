@@ -220,3 +220,28 @@ func TestGetFuncName(t *testing.T) {
 	assert.Equal(t, "MustParseEnv", GetFuncName(MustParseEnv))
 	assert.Equal(t, "LoadAllFile", GetFuncName(LoadAllFile))
 }
+
+func TestPlural(t *testing.T) {
+	type args struct {
+		str string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		// TODO: Add test cases.
+		{
+			name: "Test Plural",
+			args: args{"category"},
+			want: "categories",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Plural(tt.args.str); got != tt.want {
+				t.Errorf("Plural() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
