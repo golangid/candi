@@ -66,6 +66,9 @@ func formatTemplate() template.FuncMap {
 			return candihelper.ToCamelCase(v)
 		},
 		"snake": func(v string) string {
+			return candihelper.ToDelimited(v, '_')
+		},
+		"plural": func(v string) string {
 			v = candihelper.Plural(v)
 
 			return candihelper.ToDelimited(v, '_')

@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
 	github.com/Shopify/sarama v1.29.0
-	github.com/gertd/go-pluralize v0.2.1 // indirect
+	github.com/gertd/go-pluralize v0.2.1
 	github.com/go-playground/locales v0.13.0
 	github.com/go-playground/universal-translator v0.17.0
 	github.com/go-playground/validator/v10 v10.6.0
