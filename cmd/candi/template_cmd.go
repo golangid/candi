@@ -124,7 +124,7 @@ func GetMigrateTables() []interface{} {
 
 	templateCmdMigrationInitModule = `-- +goose Up
 -- +goose StatementBegin
-CREATE TABLE IF NOT EXISTS {{snake .ModuleName}} (
+CREATE TABLE IF NOT EXISTS {{plural .ModuleName}} (
 	"id" VARCHAR(255) NOT NULL PRIMARY KEY,
 	"field" VARCHAR(255),
 	"created_at" TIMESTAMPTZ(6),
@@ -134,7 +134,7 @@ CREATE TABLE IF NOT EXISTS {{snake .ModuleName}} (
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS {{snake .ModuleName}};
+DROP TABLE IF EXISTS {{plural .ModuleName}};
 -- +goose StatementEnd
 `
 )
