@@ -48,7 +48,9 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 			t.registerNextJob(task.taskName)
 			t.wg.Done()
 			if ctx.Err() == nil {
-				<-t.semaphore[workerIndex-1]
+				if len(t.semaphore[workerIndex-1]) > 0 {
+					<-t.semaphore[workerIndex-1]
+				}
 				task.cancel()
 			}
 			t.refreshWorkerNotif <- struct{}{}

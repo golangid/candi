@@ -391,6 +391,38 @@ func (r *rootResolver) SetConfiguration(ctx context.Context, input struct {
 	return "success", nil
 }
 
+func (r *rootResolver) RunQueuedJob(ctx context.Context, input struct {
+	TaskName string
+}) (res string, err error) {
+
+	nextJobID := r.engine.opt.queue.NextJob(ctx, input.TaskName)
+	if nextJobID != "" {
+
+		nextJob, err := r.engine.opt.persistent.FindJobByID(ctx, nextJobID, nil)
+		if err != nil {
+			return "Failed find detail job", err
+		}
+		r.engine.registerJobToWorker(&nextJob, r.engine.registeredTask[input.TaskName].workerIndex)
+		r.engine.doRefreshWorker()
+
+		return "Success with job id " + nextJobID, nil
+	}
+
+	StreamAllJob(ctx, &Filter{
+		Page: 1, Limit: 10,
+		TaskName: input.TaskName,
+		Sort:     "created_at",
+		Status:   candihelper.ToStringPtr(string(statusQueueing)),
+	}, func(job *Job) {
+		if n := r.engine.opt.queue.PushJob(ctx, job); n <= 1 {
+			r.engine.registerJobToWorker(job, r.engine.registeredTask[input.TaskName].workerIndex)
+			r.engine.doRefreshWorker()
+		}
+	})
+
+	return "Success with stream all job", nil
+}
+
 func (r *rootResolver) ListenTaskDashboard(ctx context.Context, input struct {
 	Page, Limit int
 	Search      *string

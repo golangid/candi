@@ -26,6 +26,7 @@ type Mutation {
 	delete_job(job_id: String!): String!
 	recalculate_summary(): String!
 	set_configuration(config: SetConfigurationInputResolver!): String!
+	run_queued_job(task_name: String!): String!
 }
 
 type Subscription {
