@@ -61,7 +61,7 @@ func NewTaskQueueWorker(service factory.ServiceFactory, opts ...OptionFunc) fact
 					handler: handler, workerIndex: workerIndex, moduleName: string(m.Name()),
 				}
 				e.runningWorkerIndexTask[workerIndex] = &Task{
-					taskName: handler.Pattern,
+					taskName: handler.Pattern, workerIndex: workerIndex,
 				}
 				e.tasks = append(e.tasks, handler.Pattern)
 				e.workerChannels = append(e.workerChannels, reflect.SelectCase{Dir: reflect.SelectRecv})
@@ -145,21 +145,7 @@ func (t *taskQueueWorker) prepare() {
 		})
 	}
 
-	retentionBeat := reflect.SelectCase{Dir: reflect.SelectRecv}
-	internalTaskRetention := &Task{
-		isInternalTask:   true,
-		internalTaskName: configurationRetentionAgeKey,
-	}
-	cfg, _ := t.opt.persistent.GetConfiguration(configurationRetentionAgeKey)
-	if cfg.IsActive {
-		dur, _ := time.ParseDuration(cfg.Value)
-		if dur > 0 {
-			internalTaskRetention.activeInterval = time.NewTicker(dur)
-			retentionBeat.Chan = reflect.ValueOf(internalTaskRetention.activeInterval.C)
-		}
-	}
-	t.runningWorkerIndexTask[len(t.workerChannels)] = internalTaskRetention
-	t.workerChannels = append(t.workerChannels, retentionBeat)
+	t.registerInternalTask()
 
 	t.ready <- struct{}{}
 	t.refreshWorkerNotif <- struct{}{}

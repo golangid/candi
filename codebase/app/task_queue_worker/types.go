@@ -13,7 +13,9 @@ type (
 
 		cancel         context.CancelFunc
 		taskName       string
+		workerIndex    int
 		activeInterval *time.Ticker
+		nextInterval   *time.Duration
 	}
 
 	// JobStatusEnum enum status

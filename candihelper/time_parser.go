@@ -1,4 +1,4 @@
-package cronworker
+package candihelper
 
 import (
 	"errors"
@@ -9,19 +9,31 @@ import (
 )
 
 const (
-	oneDay   = 24 * time.Hour
-	oneWeek  = 7 * oneDay
-	oneMonth = 30 * oneDay
-	oneYear  = 12 * oneMonth
+	// OneDay const
+	OneDay = 24 * time.Hour
+	// OneWeek const
+	OneWeek = 7 * OneDay
+	// OneMonth const
+	OneMonth = 30 * OneDay
+	// OneYear const
+	OneYear = 12 * OneMonth
 
-	daily   = "daily"
-	weekly  = "weekly"
-	monthly = "monthly"
-	yearly  = "yearly"
+	// Daily const
+	Daily = "daily"
+	// Weekly const
+	Weekly = "weekly"
+	// Monthly const
+	Monthly = "monthly"
+	// Yearly const
+	Yearly = "yearly"
 )
 
-// parseAtTime with input format HH:mm:ss, will repeat every day (24 hours) in the same time
-func parseAtTime(t string) (duration, nextDuration time.Duration, err error) {
+// ParseAtTime with input format HH:mm:ss
+func ParseAtTime(t string) (duration, nextDuration time.Duration, err error) {
+	interval, err := time.ParseDuration(t)
+	if err == nil {
+		return interval, 0, nil
+	}
 
 	withDescriptors := strings.Split(t, "@")
 
@@ -52,23 +64,23 @@ func parseAtTime(t string) (duration, nextDuration time.Duration, err error) {
 	}
 
 	// default value
-	repeatDuration := oneDay
+	repeatDuration := OneDay
 
 	if len(withDescriptors) > 1 {
 
 		switch withDescriptors[1] {
-		case daily:
-			repeatDuration = oneDay
-		case weekly:
-			repeatDuration = oneWeek
-		case monthly:
-			repeatDuration = oneMonth
-		case yearly:
-			repeatDuration = oneYear
+		case Daily:
+			repeatDuration = OneDay
+		case Weekly:
+			repeatDuration = OneWeek
+		case Monthly:
+			repeatDuration = OneMonth
+		case Yearly:
+			repeatDuration = OneYear
 		default:
 			repeatDuration, err = time.ParseDuration(withDescriptors[1])
 			if err != nil {
-				return 0, 0, fmt.Errorf(`invalid descriptor "%s" (must one of "daily", "weekly", "monthly", "yearly") or duration string`,
+				return 0, 0, fmt.Errorf(`invalid descriptor "%s" (must One of "daily", "weekly", "monthly", "yearly") or duration string`,
 					withDescriptors[1])
 			}
 		}
@@ -79,7 +91,7 @@ func parseAtTime(t string) (duration, nextDuration time.Duration, err error) {
 	if now.Before(atTime) {
 		duration = atTime.Sub(now)
 	} else {
-		duration = repeatDuration - now.Sub(atTime)
+		duration = OneDay - now.Sub(atTime)
 	}
 
 	if duration < 0 {

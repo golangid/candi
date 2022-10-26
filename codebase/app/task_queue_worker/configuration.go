@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/logger"
 )
 
@@ -73,21 +74,32 @@ func (c *configurationUsecase) setConfiguration(cfg *Configuration) error {
 	switch cfg.Key {
 	case configurationRetentionAgeKey:
 
-		interval, err := time.ParseDuration(cfg.Value)
-		if err != nil || interval <= 0 {
-			return errors.New("Invalid value")
+		var detailTask *Task
+		for _, task := range engine.runningWorkerIndexTask {
+			if task.isInternalTask && task.internalTaskName == configurationRetentionAgeKey {
+				detailTask = task
+				break
+			}
 		}
 
-		taskIndex := engine.runningWorkerIndexTask[len(engine.workerChannels)-1]
-		if taskIndex == nil {
+		if detailTask == nil {
 			return errors.New("Missing task for worker")
 		}
+
+		interval, nextInterval, err := candihelper.ParseAtTime(cfg.Value)
+		if err != nil {
+			return err
+		}
+		if nextInterval > 0 {
+			detailTask.nextInterval = &nextInterval
+		}
+
 		if cfg.IsActive {
-			taskIndex.activeInterval = time.NewTicker(interval)
-			engine.workerChannels[len(engine.workerChannels)-1].Chan = reflect.ValueOf(taskIndex.activeInterval.C)
+			detailTask.activeInterval = time.NewTicker(interval)
+			engine.workerChannels[len(engine.workerChannels)-1].Chan = reflect.ValueOf(detailTask.activeInterval.C)
 			engine.doRefreshWorker()
-		} else if taskIndex.activeInterval != nil {
-			taskIndex.activeInterval.Stop()
+		} else if detailTask.activeInterval != nil {
+			detailTask.activeInterval.Stop()
 		}
 
 	case configurationClientSubscriberAgeKey:

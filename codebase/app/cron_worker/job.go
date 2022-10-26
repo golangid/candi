@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/codebase/factory/types"
 )
 
@@ -53,14 +54,12 @@ func UpdateIntervalActiveJob(jobNumber int, newInterval string) (err error) {
 	job.Interval = newInterval
 	job.nextDuration = nil
 
-	duration, errParse := time.ParseDuration(newInterval)
+	duration, nextDuration, errParse := candihelper.ParseAtTime(newInterval)
 	if errParse != nil {
-		durationParser, nextDuration, errParse := parseAtTime(newInterval)
-		if errParse != nil {
-			return errParse
-		}
+		return errParse
+	}
+	if nextDuration > 0 {
 		job.nextDuration = &nextDuration
-		duration = durationParser
 	}
 
 	job.ticker.Stop()
@@ -83,14 +82,12 @@ func AddJob(job Job) error {
 		return errors.New("handler name cannot empty")
 	}
 
-	duration, err := time.ParseDuration(job.Interval)
+	duration, nextDuration, err := candihelper.ParseAtTime(job.Interval)
 	if err != nil {
-		durationParser, nextDuration, err := parseAtTime(job.Interval)
-		if err != nil {
-			return err
-		}
+		return err
+	}
+	if nextDuration > 0 {
 		job.nextDuration = &nextDuration
-		duration = durationParser
 	}
 
 	job.currentDuration = duration

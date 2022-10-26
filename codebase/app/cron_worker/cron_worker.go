@@ -105,7 +105,7 @@ func (c *cronWorker) Serve() {
 		if job.nextDuration != nil {
 			job.ticker.Stop()
 			job.currentDuration = *job.nextDuration
-			job.ticker = time.NewTicker(*job.nextDuration)
+			job.ticker = time.NewTicker(job.currentDuration)
 			workers[job.WorkerIndex].Chan = reflect.ValueOf(job.ticker.C)
 			activeJobs[chosen].nextDuration = nil
 		}

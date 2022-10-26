@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"reflect"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -24,7 +25,7 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 	}
 
 	if runningTask.isInternalTask {
-		t.execInternalTask(runningTask.internalTaskName)
+		t.execInternalTask(runningTask)
 		return
 	}
 
@@ -271,34 +272,45 @@ func (t *taskQueueWorker) registerNextJob(taskName string) {
 
 }
 
-func (t *taskQueueWorker) execInternalTask(internalTaskName string) {
+func (t *taskQueueWorker) execInternalTask(task *Task) {
 
-	logger.LogIf("running internal task: %s", internalTaskName)
+	logger.LogIf("running internal task: %s", task.internalTaskName)
 
-	switch internalTaskName {
+	switch task.internalTaskName {
 	case configurationRetentionAgeKey:
 
 		cfg, _ := t.opt.persistent.GetConfiguration(configurationRetentionAgeKey)
 		if !cfg.IsActive {
 			return
 		}
-		dateDuration, err := time.ParseDuration(cfg.Value)
-		if err != nil || dateDuration <= 0 {
-			return
+
+		if task.nextInterval != nil {
+			task.activeInterval.Stop()
+			task.activeInterval = time.NewTicker(*task.nextInterval)
+			t.workerChannels[task.workerIndex].Chan = reflect.ValueOf(task.activeInterval.C)
+			t.runningWorkerIndexTask[task.workerIndex].nextInterval = nil
+			t.doRefreshWorker()
 		}
 
-		beforeCreatedAt := time.Now().Add(-dateDuration)
-		affectedStatus := []string{string(statusSuccess), string(statusFailure), string(statusStopped)}
+		interval, nextInterval, err := candihelper.ParseAtTime(cfg.Value)
+		if err != nil {
+			return
+		}
+		if nextInterval > 0 {
+			interval = nextInterval
+		}
+		beforeCreatedAt := time.Now().Add(-interval)
+
+		// only remove success job
 		for _, task := range t.tasks {
 			incrQuery := map[string]int64{}
-			for _, status := range affectedStatus {
-				countAffected := t.opt.persistent.CleanJob(t.ctx,
-					&Filter{
-						TaskName: task, Status: &status, BeforeCreatedAt: &beforeCreatedAt,
-					},
-				)
-				incrQuery[strings.ToLower(status)] -= countAffected
-			}
+			countAffected := t.opt.persistent.CleanJob(t.ctx,
+				&Filter{
+					TaskName: task, BeforeCreatedAt: &beforeCreatedAt,
+					Status: candihelper.ToStringPtr(string(statusSuccess)),
+				},
+			)
+			incrQuery[strings.ToLower(string(statusSuccess))] -= countAffected
 			t.opt.persistent.Summary().IncrementSummary(t.ctx, task, incrQuery)
 		}
 		t.subscriber.broadcastAllToSubscribers(t.ctx)
