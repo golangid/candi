@@ -324,8 +324,10 @@ func (s *MongoPersistent) SaveJob(ctx context.Context, job *Job, retryHistories 
 		_, err = s.db.Collection(jobModelName).InsertOne(ctx, job)
 	} else {
 
+		updated := job.toMap()
+		updated["created_at"] = job.CreatedAt
 		updateQuery := bson.M{
-			"$set": bson.M(job.toMap()),
+			"$set": bson.M(updated),
 		}
 		if len(retryHistories) > 0 {
 			updateQuery["$push"] = bson.M{

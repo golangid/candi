@@ -12,6 +12,7 @@ import (
 
 	dashboard "github.com/golangid/candi-plugin/task-queue-worker/dashboard"
 	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/logger"
 	"github.com/golangid/graphql-go"
 	"github.com/golangid/graphql-go/relay"
 	"github.com/golangid/graphql-go/trace"
@@ -63,7 +64,9 @@ func (r *rootResolver) Dashboard(ctx context.Context, input struct{ GC *bool }) 
 	res.StartAt = env.BaseEnv().StartAt
 	res.BuildNumber = env.BaseEnv().BuildNumber
 	res.MemoryStatistics = getMemstats()
-	res.Config.WithPersistent = !isDefaultPersistent()
+
+	_, isType := r.engine.opt.persistent.(*noopPersistent)
+	res.Config.WithPersistent = !isType
 
 	if input.GC != nil && *input.GC {
 		runtime.GC()
@@ -79,6 +82,8 @@ func (r *rootResolver) Dashboard(ctx context.Context, input struct{ GC *bool }) 
 
 	res.DependencyDetail.PersistentType = r.engine.opt.persistent.Type()
 	res.DependencyDetail.QueueType = r.engine.opt.queue.Type()
+	_, isType = r.engine.opt.secondaryPersistent.(*noopPersistent)
+	res.DependencyDetail.UseSecondaryPersistent = !isType
 
 	return
 }
@@ -409,7 +414,6 @@ func (r *rootResolver) RunQueuedJob(ctx context.Context, input struct {
 	}
 
 	StreamAllJob(ctx, &Filter{
-		Page: 1, Limit: 10,
 		TaskName: input.TaskName,
 		Sort:     "created_at",
 		Status:   candihelper.ToStringPtr(string(statusQueueing)),
@@ -421,6 +425,34 @@ func (r *rootResolver) RunQueuedJob(ctx context.Context, input struct {
 	})
 
 	return "Success with stream all job", nil
+}
+
+func (r *rootResolver) RestoreFromSecondary(ctx context.Context) (res RestoreSecondaryResolver, err error) {
+
+	filter := &Filter{
+		Sort:                "created_at",
+		secondaryPersistent: true,
+		Status:              candihelper.ToStringPtr(string(statusQueueing)),
+	}
+	res.TotalData = StreamAllJob(ctx, filter, func(job *Job) {
+
+		if err := r.engine.opt.persistent.SaveJob(ctx, job); err != nil {
+			logger.LogE(err.Error())
+			return
+		}
+		r.engine.opt.persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
+			strings.ToLower(job.Status): 1,
+		})
+		if n := r.engine.opt.queue.PushJob(ctx, job); n <= 1 {
+			r.engine.registerJobToWorker(job, r.engine.registeredTask[job.TaskName].workerIndex)
+			r.engine.doRefreshWorker()
+		}
+	})
+
+	r.engine.opt.secondaryPersistent.CleanJob(ctx, filter)
+	r.engine.subscriber.broadcastAllToSubscribers(context.Background())
+	res.Message = fmt.Sprintf("%d data restored", res.TotalData)
+	return
 }
 
 func (r *rootResolver) ListenTaskDashboard(ctx context.Context, input struct {

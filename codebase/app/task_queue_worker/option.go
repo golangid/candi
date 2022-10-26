@@ -10,6 +10,7 @@ type (
 	option struct {
 		queue                    QueueStorage
 		persistent               Persistent
+		secondaryPersistent      Persistent
 		maxClientSubscriber      int
 		autoRemoveClientInterval time.Duration
 		dashboardBanner          string
@@ -33,6 +34,13 @@ func SetQueue(q QueueStorage) OptionFunc {
 func SetPersistent(p Persistent) OptionFunc {
 	return func(o *option) {
 		o.persistent = p
+	}
+}
+
+// SetSecondaryPersistent option func
+func SetSecondaryPersistent(p Persistent) OptionFunc {
+	return func(o *option) {
+		o.secondaryPersistent = p
 	}
 }
 

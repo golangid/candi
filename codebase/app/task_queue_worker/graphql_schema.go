@@ -27,6 +27,7 @@ type Mutation {
 	recalculate_summary(): String!
 	set_configuration(config: SetConfigurationInputResolver!): String!
 	run_queued_job(task_name: String!): String!
+	restore_from_secondary(): RestoreSecondaryResolver!
 }
 
 type Subscription {
@@ -64,6 +65,7 @@ type DependencyHealth {
 type DependencyDetail {
 	persistent_type: String!
 	queue_type: String!
+	use_secondary_persistent: Boolean!
 }
 
 type MetaType {
@@ -205,6 +207,11 @@ type ConfigurationResolver {
 	name: String!
 	value: String!
 	is_active: Boolean!
+}
+
+type RestoreSecondaryResolver {
+	total_data: Int!
+	message: String!
 }
 `
 

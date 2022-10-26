@@ -86,7 +86,9 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	newJob.direct = req.direct
 
 	if err := engine.opt.persistent.SaveJob(ctx, &newJob); err != nil {
-		return jobID, fmt.Errorf("Cannot save job, error: %s", err.Error())
+		logger.LogE(fmt.Sprintf("Cannot save job, error: %s", err.Error()))
+		newJob.ID = ""
+		return jobID, engine.opt.secondaryPersistent.SaveJob(ctx, &newJob)
 	}
 	trace.SetTag("job_id", newJob.ID)
 
@@ -250,7 +252,7 @@ func StopJob(ctx context.Context, jobID string) error {
 }
 
 // StreamAllJob api func for stream fetch all job
-func StreamAllJob(ctx context.Context, filter *Filter, streamFunc func(job *Job)) {
+func StreamAllJob(ctx context.Context, filter *Filter, streamFunc func(job *Job)) (count int) {
 	if engine == nil {
 		return
 	}
@@ -262,18 +264,24 @@ func StreamAllJob(ctx context.Context, filter *Filter, streamFunc func(job *Job)
 		filter.Limit = 10
 	}
 
-	count := engine.opt.persistent.CountAllJob(ctx, filter)
+	perst := engine.opt.persistent
+	if filter.secondaryPersistent {
+		perst = engine.opt.secondaryPersistent
+	}
+
+	count = perst.CountAllJob(ctx, filter)
 	if count == 0 {
 		return
 	}
 
 	totalPages := int(math.Ceil(float64(count) / float64(filter.Limit)))
 	for filter.Page <= totalPages {
-		for _, job := range engine.opt.persistent.FindAllJob(ctx, filter) {
+		for _, job := range perst.FindAllJob(ctx, filter) {
 			streamFunc(&job)
 		}
 		filter.Page++
 	}
+	return count
 }
 
 // RecalculateSummary func

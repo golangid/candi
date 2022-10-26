@@ -32,6 +32,7 @@ func initEngine(service factory.ServiceFactory, opts ...OptionFunc) *taskQueueWo
 	} else {
 		opt.locker = &candiutils.NoopLocker{}
 	}
+	opt.secondaryPersistent = &noopPersistent{}
 	opt.dashboardBanner = `    _________    _   ______  ____
    / ____/   |  / | / / __ \/  _/
   / /   / /| | /  |/ / / / // /  

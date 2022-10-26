@@ -14,13 +14,3 @@ func convertIncrementMap(mp map[string]int) map[string]interface{} {
 	}
 	return res
 }
-
-func isDefaultPersistent() bool {
-	_, ok := engine.opt.persistent.(*noopPersistent)
-	return ok
-}
-
-func isDefaultQueue() bool {
-	_, ok := engine.opt.queue.(*inMemQueue)
-	return ok
-}

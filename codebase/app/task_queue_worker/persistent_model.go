@@ -31,6 +31,7 @@ type (
 		EndDate             string     `json:"endDate,omitempty"`
 		BeforeCreatedAt     *time.Time `json:"beforeCreatedAt,omitempty"`
 		Count               int        `json:"count,omitempty"`
+		secondaryPersistent bool       `json:"-"`
 	}
 
 	// TaskSummary model

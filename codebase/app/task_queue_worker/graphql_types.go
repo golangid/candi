@@ -24,8 +24,9 @@ type (
 			Queue      *string
 		}
 		DependencyDetail struct {
-			PersistentType string
-			QueueType      string
+			PersistentType         string
+			QueueType              string
+			UseSecondaryPersistent bool
 		}
 	}
 	// MemstatsResolver resolver
@@ -57,6 +58,11 @@ type (
 	TaskListResolver struct {
 		Meta MetaTaskResolver
 		Data []TaskResolver
+	}
+	// RestoreSecondaryResolver resolver
+	RestoreSecondaryResolver struct {
+		TotalData int
+		Message   string
 	}
 
 	// MetaJobList resolver
