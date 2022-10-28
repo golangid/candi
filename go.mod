@@ -3,7 +3,7 @@ module github.com/golangid/candi
 go 1.16
 
 require (
-	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
+	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
 	github.com/Shopify/sarama v1.29.0
 	github.com/gertd/go-pluralize v0.2.1
 	github.com/go-playground/locales v0.13.0
@@ -17,7 +17,6 @@ require (
 	github.com/gomodule/redigo v1.8.4
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.5.0
-	github.com/hashicorp/consul/api v1.8.1
 	github.com/jarcoal/httpmock v1.0.8
 	github.com/joho/godotenv v1.3.0
 	github.com/labstack/echo v3.3.10+incompatible

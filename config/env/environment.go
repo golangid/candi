@@ -60,13 +60,6 @@ type Env struct {
 	// TaskQueueDashboardMaxClientSubscribers Config
 	TaskQueueDashboardMaxClientSubscribers int
 
-	// UseConsul for distributed lock if run in multiple instance
-	UseConsul bool
-	// ConsulAgentHost consul agent host
-	ConsulAgentHost string
-	// ConsulMaxJobRebalance env, if worker execute total job in env config, rebalance worker to another active intance
-	ConsulMaxJobRebalance int
-
 	// BasicAuthUsername config
 	BasicAuthUsername string
 	// BasicAuthPassword config
@@ -171,18 +164,6 @@ func Load(serviceName string) {
 		env.TaskQueueDashboardMaxClientSubscribers, _ = strconv.Atoi(os.Getenv("TASK_QUEUE_DASHBOARD_MAX_CLIENT"))
 		if env.TaskQueueDashboardPort <= 0 || env.TaskQueueDashboardMaxClientSubscribers > 10 {
 			env.TaskQueueDashboardMaxClientSubscribers = 10 // default
-		}
-	}
-
-	env.UseConsul = parseBool("USE_CONSUL")
-	if env.UseConsul {
-		env.ConsulAgentHost, ok = os.LookupEnv("CONSUL_AGENT_HOST")
-		if !ok {
-			mErrs.Append("CONSUL_AGENT_HOST", errors.New("consul is active, missing CONSUL_AGENT_HOST environment"))
-		}
-		env.ConsulMaxJobRebalance = 10
-		if count, err := strconv.Atoi(os.Getenv("CONSUL_MAX_JOB_REBALANCE")); err == nil {
-			env.ConsulMaxJobRebalance = count
 		}
 	}
 
