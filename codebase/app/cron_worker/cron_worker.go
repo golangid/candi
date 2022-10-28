@@ -4,6 +4,7 @@ package cronworker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"reflect"
@@ -11,7 +12,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
+	cronexpr "github.com/golangid/candi/candiutils/cronparser"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
@@ -22,33 +25,36 @@ type cronWorker struct {
 	ctx           context.Context
 	ctxCancelFunc func()
 
-	opt       option
-	service   factory.ServiceFactory
-	wg        sync.WaitGroup
-	semaphore map[string]chan struct{}
+	opt                          option
+	service                      factory.ServiceFactory
+	workers                      []reflect.SelectCase
+	refreshWorkerNotif, shutdown chan struct{}
+	semaphore                    []chan struct{}
+	wg                           sync.WaitGroup
+	activeJobs                   []*Job
 }
 
 // NewWorker create new cron worker
 func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
 	c := &cronWorker{
-		service:   service,
-		opt:       getDefaultOption(service),
-		semaphore: make(map[string]chan struct{}),
+		service: service,
+		opt:     getDefaultOption(service),
+
+		refreshWorkerNotif: make(chan struct{}),
+		shutdown:           make(chan struct{}),
 	}
 
 	for _, opt := range opts {
 		opt(&c.opt)
 	}
 
-	refreshWorkerNotif, shutdown = make(chan struct{}), make(chan struct{})
-
 	// add shutdown channel to first index
-	workers = append(workers, reflect.SelectCase{
-		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(shutdown),
+	c.workers = append(c.workers, reflect.SelectCase{
+		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(c.shutdown),
 	})
 	// add refresh worker channel to second index
-	workers = append(workers, reflect.SelectCase{
-		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(refreshWorkerNotif),
+	c.workers = append(c.workers, reflect.SelectCase{
+		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(c.refreshWorkerNotif),
 	})
 
 	c.opt.locker.Reset(fmt.Sprintf(lockPattern, c.service.Name(), "*"))
@@ -64,16 +70,16 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 				job.Handler = handler
 				job.Interval = interval
 				job.Params = args
-				if err := AddJob(job); err != nil {
+				if err := c.addJob(&job); err != nil {
 					panic(fmt.Errorf(`Cron Worker: "%s" %v`, interval, err))
 				}
 
-				c.semaphore[funcName] = make(chan struct{}, c.opt.maxGoroutines)
+				c.semaphore = append(c.semaphore, make(chan struct{}, c.opt.maxGoroutines))
 				logger.LogYellow(fmt.Sprintf(`[CRON-WORKER] (job name): %s (every): %-8s  --> (module): "%s"`, `"`+funcName+`"`, interval, m.Name()))
 			}
 		}
 	}
-	fmt.Printf("\x1b[34;1m⇨ Cron worker running with %d jobs\x1b[0m\n\n", len(activeJobs))
+	fmt.Printf("\x1b[34;1m⇨ Cron worker running with %d jobs\x1b[0m\n\n", len(c.activeJobs))
 
 	c.ctx, c.ctxCancelFunc = context.WithCancel(context.Background())
 	return c
@@ -81,11 +87,13 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 
 func (c *cronWorker) Serve() {
 
-	startAllJob()
+	for _, job := range c.activeJobs {
+		c.workers[job.WorkerIndex].Chan = reflect.ValueOf(job.ticker.C)
+	}
 
 	// run worker
 	for {
-		chosen, _, ok := reflect.Select(workers)
+		chosen, _, ok := reflect.Select(c.workers)
 		if !ok {
 			continue
 		}
@@ -101,31 +109,25 @@ func (c *cronWorker) Serve() {
 		}
 
 		chosen = chosen - 2
-		job := activeJobs[chosen]
-		if job.nextDuration != nil {
-			job.ticker.Stop()
-			job.currentDuration = *job.nextDuration
-			job.ticker = time.NewTicker(job.currentDuration)
-			workers[job.WorkerIndex].Chan = reflect.ValueOf(job.ticker.C)
-			activeJobs[chosen].nextDuration = nil
-		}
+		job := c.activeJobs[chosen]
+		c.registerNextInterval(job)
 
-		if len(c.semaphore[job.HandlerName]) >= c.opt.maxGoroutines {
+		if len(c.semaphore[job.WorkerIndex-2]) >= c.opt.maxGoroutines {
 			continue
 		}
 
-		c.semaphore[job.HandlerName] <- struct{}{}
+		c.semaphore[job.WorkerIndex-2] <- struct{}{}
 		c.wg.Add(1)
 		go func(j *Job) {
 			defer func() {
 				c.wg.Done()
-				<-c.semaphore[j.HandlerName]
+				<-c.semaphore[j.WorkerIndex-2]
 			}()
-
 			if c.ctx.Err() != nil {
 				logger.LogRed("cron_scheduler > ctx root err: " + c.ctx.Err().Error())
 				return
 			}
+
 			c.processJob(j)
 		}(job)
 	}
@@ -137,12 +139,12 @@ func (c *cronWorker) Shutdown(ctx context.Context) {
 		log.Println("\x1b[33;1mStopping Cron Job Scheduler:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
 	}()
 
-	if len(activeJobs) == 0 {
+	if len(c.activeJobs) == 0 {
 		return
 	}
 
-	stopAllJob()
-	shutdown <- struct{}{}
+	c.stopAllJob()
+	c.shutdown <- struct{}{}
 	runningJob := 0
 	for _, sem := range c.semaphore {
 		runningJob += len(sem)
@@ -168,6 +170,7 @@ func (c *cronWorker) processJob(job *Job) {
 
 	// lock for multiple worker (if running on multiple pods/instance)
 	if c.opt.locker.IsLocked(c.getLockKey(job.HandlerName)) {
+		logger.LogYellow("cron_worker > job " + job.HandlerName + " is locked")
 		return
 	}
 	defer c.opt.locker.Unlock(c.getLockKey(job.HandlerName))
@@ -208,4 +211,65 @@ func (c *cronWorker) processJob(job *Job) {
 
 func (c *cronWorker) getLockKey(handlerName string) string {
 	return fmt.Sprintf("%s:cron-worker-lock:%s", c.service.Name(), handlerName)
+}
+
+func (c *cronWorker) refreshWorker() {
+	go func() { c.refreshWorkerNotif <- struct{}{} }()
+}
+
+func (c *cronWorker) stopAllJob() {
+	for _, job := range c.activeJobs {
+		job.ticker.Stop()
+	}
+}
+
+func (c *cronWorker) registerNextInterval(j *Job) {
+
+	if j.schedule != nil {
+		j.ticker.Stop()
+		j.ticker = time.NewTicker(j.schedule.NextInterval(time.Now()))
+		c.workers[j.WorkerIndex].Chan = reflect.ValueOf(j.ticker.C)
+
+	} else if j.nextDuration != nil {
+		j.ticker.Stop()
+		j.ticker = time.NewTicker(*j.nextDuration)
+		c.workers[j.WorkerIndex].Chan = reflect.ValueOf(j.ticker.C)
+		j.nextDuration = nil
+	}
+
+	c.refreshWorker()
+}
+
+// addJob to cron worker
+func (c *cronWorker) addJob(job *Job) (err error) {
+
+	if len(job.Handler.HandlerFuncs) == 0 {
+		return errors.New("handler func cannot empty")
+	}
+	if job.HandlerName == "" {
+		return errors.New("handler name cannot empty")
+	}
+
+	duration, nextDuration, err := candihelper.ParseDurationExpression(job.Interval)
+	if err != nil {
+		job.schedule, err = cronexpr.Parse(job.Interval)
+		if err != nil {
+			return err
+		}
+		duration = job.schedule.NextInterval(time.Now())
+	}
+
+	if nextDuration > 0 {
+		job.nextDuration = &nextDuration
+	}
+
+	job.ticker = time.NewTicker(duration)
+	job.WorkerIndex = len(c.workers)
+
+	c.activeJobs = append(c.activeJobs, job)
+	c.workers = append(c.workers, reflect.SelectCase{
+		Dir: reflect.SelectRecv, Chan: reflect.ValueOf(job.ticker.C),
+	})
+
+	return nil
 }

@@ -28,8 +28,8 @@ const (
 	Yearly = "yearly"
 )
 
-// ParseAtTime with input format HH:mm:ss
-func ParseAtTime(t string) (duration, nextDuration time.Duration, err error) {
+// ParseDurationExpression with input format HH:mm:ss
+func ParseDurationExpression(t string) (duration, nextDuration time.Duration, err error) {
 	interval, err := time.ParseDuration(t)
 	if err == nil {
 		return interval, 0, nil

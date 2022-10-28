@@ -2,6 +2,10 @@ package cronworker
 
 import "encoding/json"
 
+const (
+	lockPattern = "%s:cron-worker-lock:%s"
+)
+
 // CronJobKey model
 type CronJobKey struct {
 	JobName  string `json:"jobName"`
@@ -18,6 +22,8 @@ func (c CronJobKey) String() string {
 // CreateCronJobKey helper
 /*
 Allowed interval:
+
+* cron expression, example: * * * * *
 
 * standard time duration string, example: 2s, 10m
 
