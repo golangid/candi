@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/golangid/candi/candihelper"
+	cronexpr "github.com/golangid/candi/candiutils/cronparser"
 	"github.com/golangid/candi/logger"
 )
 
@@ -69,7 +69,7 @@ func (c *configurationUsecase) getTraceDetailURL() string {
 	return cfg.Value
 }
 
-func (c *configurationUsecase) setConfiguration(cfg *Configuration) error {
+func (c *configurationUsecase) setConfiguration(cfg *Configuration) (err error) {
 
 	switch cfg.Key {
 	case configurationRetentionAgeKey:
@@ -86,16 +86,13 @@ func (c *configurationUsecase) setConfiguration(cfg *Configuration) error {
 			return errors.New("Missing task for worker")
 		}
 
-		interval, nextInterval, err := candihelper.ParseAtTime(cfg.Value)
+		detailTask.schedule, err = cronexpr.Parse(cfg.Value)
 		if err != nil {
 			return err
 		}
-		if nextInterval > 0 {
-			detailTask.nextInterval = &nextInterval
-		}
 
 		if cfg.IsActive {
-			detailTask.activeInterval = time.NewTicker(interval)
+			detailTask.activeInterval = time.NewTicker(detailTask.schedule.NextInterval(time.Now()))
 			engine.workerChannels[len(engine.workerChannels)-1].Chan = reflect.ValueOf(detailTask.activeInterval.C)
 			engine.doRefreshWorker()
 		} else if detailTask.activeInterval != nil {

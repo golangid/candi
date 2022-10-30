@@ -58,7 +58,7 @@ func Parse(cronLine string) (Schedule, error) {
 	indices := fieldFinder.FindAllStringIndex(cron, -1)
 	fieldCount := len(indices)
 	if fieldCount < 5 {
-		return nil, fmt.Errorf("missing field(s)")
+		return nil, fmt.Errorf("invalid cron expression")
 	}
 	// ignore fields beyond 7th
 	if fieldCount > 7 {

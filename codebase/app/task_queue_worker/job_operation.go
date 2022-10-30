@@ -67,7 +67,7 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	if engine == nil {
 		return jobID, errWorkerInactive
 	}
-	task, ok := engine.registeredTask[req.TaskName]
+	_, ok := engine.registeredTaskWorkerIndex[req.TaskName]
 	if !ok {
 		return jobID, fmt.Errorf("task '%s' unregistered, task must one of [%s]",
 			req.TaskName, strings.Join(engine.tasks, ", "))
@@ -97,7 +97,7 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	})
 	engine.subscriber.broadcastAllToSubscribers(context.Background())
 	if n := engine.opt.queue.PushJob(ctx, &newJob); n <= 1 {
-		engine.registerJobToWorker(&newJob, task.workerIndex)
+		engine.registerJobToWorker(&newJob)
 		engine.doRefreshWorker()
 	}
 
@@ -199,7 +199,7 @@ func RetryJob(ctx context.Context, jobID string) error {
 		job.Status:   affected,
 	})
 
-	task, ok := engine.registeredTask[job.TaskName]
+	_, ok := engine.registeredTaskWorkerIndex[job.TaskName]
 	if !ok {
 		err := errors.New("Task not found")
 		logger.LogE(err.Error())
@@ -207,7 +207,7 @@ func RetryJob(ctx context.Context, jobID string) error {
 	}
 	engine.opt.queue.PushJob(ctx, &job)
 	engine.subscriber.broadcastAllToSubscribers(ctx)
-	engine.registerJobToWorker(&job, task.workerIndex)
+	engine.registerJobToWorker(&job)
 	engine.doRefreshWorker()
 
 	return nil

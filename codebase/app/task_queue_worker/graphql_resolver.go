@@ -166,12 +166,12 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 	TaskName string
 }) (string, error) {
 
-	if _, ok := r.engine.registeredTask[input.TaskName]; !ok {
+	if _, ok := r.engine.registeredTaskWorkerIndex[input.TaskName]; !ok {
 		return "", fmt.Errorf("task '%s' unregistered, task must one of [%s]",
 			input.TaskName, strings.Join(r.engine.tasks, ", "))
 	}
 
-	r.engine.subscriber.broadcastWhenChangeAllJob(r.engine.ctx, input.TaskName, true)
+	r.engine.subscriber.broadcastWhenChangeAllJob(r.engine.ctx, input.TaskName, true, "Stopping...")
 	r.engine.opt.queue.Clear(ctx, input.TaskName)
 	go r.engine.stopAllJobInTask(input.TaskName)
 
@@ -193,7 +193,7 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 		incrQuery[strings.ToLower(string(statusStopped))] += countAffected
 	}
 
-	r.engine.subscriber.broadcastWhenChangeAllJob(r.engine.ctx, input.TaskName, false)
+	r.engine.subscriber.broadcastWhenChangeAllJob(r.engine.ctx, input.TaskName, false, "")
 	r.engine.opt.persistent.Summary().IncrementSummary(ctx, input.TaskName, incrQuery)
 	r.engine.subscriber.broadcastAllToSubscribers(r.engine.ctx)
 
@@ -206,7 +206,7 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 
 	go func(ctx context.Context) {
 
-		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, true)
+		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, true, "Retrying...")
 
 		filter := &Filter{
 			Page: 1, Limit: 10, Sort: "created_at",
@@ -219,7 +219,7 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 			}
 			job.Status = string(statusQueueing)
 			if n := r.engine.opt.queue.PushJob(ctx, job); n <= 1 {
-				r.engine.registerJobToWorker(job, r.engine.registeredTask[job.TaskName].workerIndex)
+				r.engine.registerJobToWorker(job)
 			}
 		})
 
@@ -241,7 +241,7 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 			incr[strings.ToLower(string(statusQueueing))] += countAffected
 		}
 
-		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, false)
+		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, false, "")
 		r.engine.opt.persistent.Summary().IncrementSummary(ctx, input.TaskName, incr)
 		r.engine.subscriber.broadcastAllToSubscribers(r.engine.ctx)
 		r.engine.refreshWorkerNotif <- struct{}{}
@@ -257,7 +257,7 @@ func (r *rootResolver) CleanJob(ctx context.Context, input struct {
 
 	go func(ctx context.Context) {
 
-		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, true)
+		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, true, "Cleaning...")
 
 		incrQuery := map[string]int64{}
 		affectedStatus := []string{string(statusSuccess), string(statusFailure), string(statusStopped)}
@@ -270,7 +270,7 @@ func (r *rootResolver) CleanJob(ctx context.Context, input struct {
 			incrQuery[strings.ToLower(status)] -= countAffected
 		}
 
-		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, false)
+		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, false, "")
 		r.engine.opt.persistent.Summary().IncrementSummary(ctx, input.TaskName, incrQuery)
 		r.engine.subscriber.broadcastAllToSubscribers(r.engine.ctx)
 
@@ -407,7 +407,7 @@ func (r *rootResolver) RunQueuedJob(ctx context.Context, input struct {
 		if err != nil {
 			return "Failed find detail job", err
 		}
-		r.engine.registerJobToWorker(&nextJob, r.engine.registeredTask[input.TaskName].workerIndex)
+		r.engine.registerJobToWorker(&nextJob)
 		r.engine.doRefreshWorker()
 
 		return "Success with job id " + nextJobID, nil
@@ -419,7 +419,7 @@ func (r *rootResolver) RunQueuedJob(ctx context.Context, input struct {
 		Status:   candihelper.ToStringPtr(string(statusQueueing)),
 	}, func(job *Job) {
 		if n := r.engine.opt.queue.PushJob(ctx, job); n <= 1 {
-			r.engine.registerJobToWorker(job, r.engine.registeredTask[input.TaskName].workerIndex)
+			r.engine.registerJobToWorker(job)
 			r.engine.doRefreshWorker()
 		}
 	})
@@ -444,7 +444,7 @@ func (r *rootResolver) RestoreFromSecondary(ctx context.Context) (res RestoreSec
 			strings.ToLower(job.Status): 1,
 		})
 		if n := r.engine.opt.queue.PushJob(ctx, job); n <= 1 {
-			r.engine.registerJobToWorker(job, r.engine.registeredTask[job.TaskName].workerIndex)
+			r.engine.registerJobToWorker(job)
 			r.engine.doRefreshWorker()
 		}
 	})

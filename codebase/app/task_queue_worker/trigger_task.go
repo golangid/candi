@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"reflect"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -24,12 +23,12 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 		return
 	}
 
+	runningTask.activeInterval.Stop()
+
 	if runningTask.isInternalTask {
 		t.execInternalTask(runningTask)
 		return
 	}
-
-	runningTask.activeInterval.Stop()
 
 	t.semaphore[workerIndex-1] <- struct{}{}
 	if t.isShutdown {
@@ -81,8 +80,6 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 	}
 	defer t.opt.locker.Unlock(t.getLockKey(jobID))
 
-	selectedTask := t.registeredTask[runningTask.taskName]
-
 	job, err := t.opt.persistent.FindJobByID(ctx, jobID, nil)
 	if err != nil {
 		logger.LogE(err.Error())
@@ -93,7 +90,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		return
 	}
 
-	selectedHandler := selectedTask.handler
+	selectedHandler := runningTask.handler
 	if selectedHandler.DisableTrace {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
@@ -104,7 +101,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 	statusBefore := strings.ToLower(job.Status)
 	job.Status = string(statusRetrying)
 	matchedCount, affectedCount, err := t.opt.persistent.UpdateJob(
-		t.ctx, &Filter{JobID: &job.ID}, job.toMap(),
+		t.ctx, &Filter{JobID: &job.ID}, map[string]interface{}{"status": job.Status},
 	)
 	if err != nil {
 		logger.LogE(err.Error())
@@ -146,19 +143,29 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish(tracer.FinishWithError(err))
 
-		matchedCount, affectedCount, _ := t.opt.persistent.UpdateJob(
-			t.ctx,
-			&Filter{JobID: &job.ID, Status: candihelper.ToStringPtr(strings.ToUpper(statusBefore))},
-			job.toMap(),
-			retryHistory,
-		)
-		if affectedCount == 0 && matchedCount == 0 {
-			t.opt.persistent.SaveJob(t.ctx, &job, retryHistory)
+		incr := map[string]int64{}
+		if ok, _ := runningTask.handler.Configs[TaskOptionDeleteJobAfterSuccess].(bool); ok && job.Status == string(statusSuccess) {
+			t.opt.persistent.DeleteJob(t.ctx, job.ID)
+			incr = map[string]int64{statusBefore: -1}
+
+		} else {
+			matchedCount, affectedCount, _ := t.opt.persistent.UpdateJob(
+				t.ctx,
+				&Filter{JobID: &job.ID},
+				map[string]interface{}{
+					"retries": job.Retries, "finished_at": job.FinishedAt, "status": job.Status,
+					"interval": job.Interval, "error": job.Error, "trace_id": job.TraceID,
+				},
+				retryHistory,
+			)
+			if affectedCount == 0 && matchedCount == 0 {
+				t.opt.persistent.SaveJob(t.ctx, &job, retryHistory)
+			}
+			incr = map[string]int64{
+				job.Status: affectedCount, statusBefore: -matchedCount,
+			}
 		}
-		t.opt.persistent.Summary().IncrementSummary(ctx, job.TaskName, map[string]int64{
-			job.Status:   affectedCount,
-			statusBefore: -matchedCount,
-		})
+		t.opt.persistent.Summary().IncrementSummary(ctx, job.TaskName, incr)
 		t.subscriber.broadcastAllToSubscribers(t.ctx)
 	}()
 
@@ -252,7 +259,7 @@ func (t *taskQueueWorker) registerNextJob(taskName string) {
 	if nextJobID != "" {
 
 		if nextJob, err := t.opt.persistent.FindJobByID(t.ctx, nextJobID, nil); err == nil {
-			t.registerJobToWorker(&nextJob, t.registeredTask[taskName].workerIndex)
+			t.registerJobToWorker(&nextJob)
 		}
 
 	} else {
@@ -264,56 +271,10 @@ func (t *taskQueueWorker) registerNextJob(taskName string) {
 			Status:   candihelper.ToStringPtr(string(statusQueueing)),
 		}, func(job *Job) {
 			if n := t.opt.queue.PushJob(t.ctx, job); n <= 1 {
-				t.registerJobToWorker(job, t.registeredTask[job.TaskName].workerIndex)
+				t.registerJobToWorker(job)
 			}
 		})
 
-	}
-
-}
-
-func (t *taskQueueWorker) execInternalTask(task *Task) {
-
-	logger.LogIf("running internal task: %s", task.internalTaskName)
-
-	switch task.internalTaskName {
-	case configurationRetentionAgeKey:
-
-		cfg, _ := t.opt.persistent.GetConfiguration(configurationRetentionAgeKey)
-		if !cfg.IsActive {
-			return
-		}
-
-		if task.nextInterval != nil {
-			task.activeInterval.Stop()
-			task.activeInterval = time.NewTicker(*task.nextInterval)
-			t.workerChannels[task.workerIndex].Chan = reflect.ValueOf(task.activeInterval.C)
-			t.runningWorkerIndexTask[task.workerIndex].nextInterval = nil
-			t.doRefreshWorker()
-		}
-
-		interval, nextInterval, err := candihelper.ParseAtTime(cfg.Value)
-		if err != nil {
-			return
-		}
-		if nextInterval > 0 {
-			interval = nextInterval
-		}
-		beforeCreatedAt := time.Now().Add(-interval)
-
-		// only remove success job
-		for _, task := range t.tasks {
-			incrQuery := map[string]int64{}
-			countAffected := t.opt.persistent.CleanJob(t.ctx,
-				&Filter{
-					TaskName: task, BeforeCreatedAt: &beforeCreatedAt,
-					Status: candihelper.ToStringPtr(string(statusSuccess)),
-				},
-			)
-			incrQuery[strings.ToLower(string(statusSuccess))] -= countAffected
-			t.opt.persistent.Summary().IncrementSummary(t.ctx, task, incrQuery)
-		}
-		t.subscriber.broadcastAllToSubscribers(t.ctx)
 	}
 
 }

@@ -83,7 +83,7 @@ func NewCronHandler(uc usecase.Usecase, deps dependency.Dependency) *CronHandler
 
 // MountHandlers mount handler group
 func (h *CronHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	group.Add(cronworker.CreateCronJobKey("{{.ModuleName}}-scheduler", "message", "10s"), h.handle{{upper (camel .ModuleName)}})
+	group.Add(cronworker.CreateCronJobKey("{{.ModuleName}}-scheduler", "message", "* * * * *"), h.handle{{upper (camel .ModuleName)}})
 }
 
 func (h *CronHandler) handle{{upper (camel .ModuleName)}}(eventContext *candishared.EventContext) error {
@@ -158,6 +158,7 @@ import (
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
 	"{{.LibraryName}}/candishared"
+	taskqueueworker "{{.LibraryName}}/codebase/app/task_queue_worker"
 	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
@@ -180,7 +181,9 @@ func NewTaskQueueHandler(uc usecase.Usecase, deps dependency.Dependency) *TaskQu
 
 // MountHandlers mount handler group
 func (h *TaskQueueHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	group.Add("{{.ModuleName}}-task", h.handleTask{{upper (camel .ModuleName)}})
+	group.Add("{{.ModuleName}}-task", h.handleTask{{upper (camel .ModuleName)}},
+		types.WorkerHandlerOptionAddConfig(taskqueueworker.TaskOptionDeleteJobAfterSuccess, false),
+	)
 }
 
 func (h *TaskQueueHandler) handleTask{{upper (camel .ModuleName)}}(eventContext *candishared.EventContext) error {

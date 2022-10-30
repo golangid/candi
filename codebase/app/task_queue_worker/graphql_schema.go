@@ -101,6 +101,7 @@ type TaskResolver {
 	module_name: String!
 	total_jobs: Int!
 	is_loading: Boolean!
+	loading_message: String!
 	detail: TaskDetailResolver!
 }
 

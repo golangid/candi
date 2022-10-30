@@ -36,14 +36,15 @@ type (
 
 	// TaskSummary model
 	TaskSummary struct {
-		ID        string `bson:"_id"`
-		TaskName  string `bson:"task_name"`
-		Success   int    `bson:"success"`
-		Queueing  int    `bson:"queueing"`
-		Retrying  int    `bson:"retrying"`
-		Failure   int    `bson:"failure"`
-		Stopped   int    `bson:"stopped"`
-		IsLoading bool   `bson:"is_loading"`
+		ID             string `bson:"_id"`
+		TaskName       string `bson:"task_name"`
+		Success        int    `bson:"success"`
+		Queueing       int    `bson:"queueing"`
+		Retrying       int    `bson:"retrying"`
+		Failure        int    `bson:"failure"`
+		Stopped        int    `bson:"stopped"`
+		IsLoading      bool   `bson:"is_loading"`
+		LoadingMessage string `bson:"loading_message"`
 	}
 
 	// Job model
@@ -113,6 +114,22 @@ func (s *TaskSummary) ToSummaryDetail() (detail SummaryDetail) {
 	detail.Success = s.Success
 	detail.Queueing = s.Queueing
 	detail.Stopped = s.Stopped
+	return
+}
+
+// ToTaskResolver method
+func (s *TaskSummary) ToTaskResolver() (res TaskResolver) {
+	res = TaskResolver{
+		Name:       s.TaskName,
+		ModuleName: engine.runningWorkerIndexTask[engine.registeredTaskWorkerIndex[s.TaskName]].moduleName,
+		TotalJobs:  s.CountTotalJob(),
+	}
+	res.Detail = s.ToSummaryDetail()
+	res.IsLoading = s.IsLoading
+	res.LoadingMessage = s.LoadingMessage
+	if res.LoadingMessage == "" {
+		res.LoadingMessage = "Processing..."
+	}
 	return
 }
 

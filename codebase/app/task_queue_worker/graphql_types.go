@@ -48,11 +48,12 @@ type (
 	}
 	// TaskResolver resolver
 	TaskResolver struct {
-		Name       string
-		ModuleName string
-		TotalJobs  int
-		IsLoading  bool
-		Detail     SummaryDetail
+		Name           string
+		ModuleName     string
+		TotalJobs      int
+		IsLoading      bool
+		LoadingMessage string
+		Detail         SummaryDetail
 	}
 	// TaskListResolver resolver
 	TaskListResolver struct {
@@ -226,17 +227,21 @@ func (j *JobResolver) ParseFromJob(job *Job) {
 		j.NextRetryAt = time.Now().Add(delay).In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 	}
 	traceURL := engine.configuration.getTraceDetailURL()
-	j.TraceID = traceURL + "/" + j.TraceID
+	if j.TraceID != "" {
+		j.TraceID = traceURL + "/" + j.TraceID
+	}
 	j.CreatedAt = job.CreatedAt.In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 	j.FinishedAt = job.FinishedAt.In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 	if job.Retries > job.MaxRetry {
 		j.Retries = job.MaxRetry
 	}
 
-	for i := range job.RetryHistories {
+	for i, history := range job.RetryHistories {
 		job.RetryHistories[i].StartAt = job.RetryHistories[i].StartAt.In(candihelper.AsiaJakartaLocalTime)
 		job.RetryHistories[i].EndAt = job.RetryHistories[i].EndAt.In(candihelper.AsiaJakartaLocalTime)
-		job.RetryHistories[i].TraceID = traceURL + "/" + job.RetryHistories[i].TraceID
+		if history.TraceID != "" {
+			job.RetryHistories[i].TraceID = traceURL + "/" + job.RetryHistories[i].TraceID
+		}
 	}
 }
 

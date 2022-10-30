@@ -30,13 +30,9 @@ type taskQueueWorker struct {
 	subscriber    *subscriber
 	opt           *option
 
-	registeredTask map[string]struct {
-		handler     types.WorkerHandler
-		workerIndex int
-		moduleName  string
-	}
-	runningWorkerIndexTask map[int]*Task
-	tasks                  []string
+	registeredTaskWorkerIndex map[string]int
+	runningWorkerIndexTask    map[int]*Task
+	tasks                     []string
 }
 
 // NewTaskQueueWorker create new task queue worker
@@ -48,19 +44,14 @@ func NewTaskQueueWorker(service factory.ServiceFactory, opts ...OptionFunc) fact
 			var handlerGroup types.WorkerHandlerGroup
 			h.MountHandlers(&handlerGroup)
 			for _, handler := range handlerGroup.Handlers {
-				if _, ok := e.registeredTask[handler.Pattern]; ok {
+				if _, ok := e.registeredTaskWorkerIndex[handler.Pattern]; ok {
 					panic("Task Queue Worker: task \"" + handler.Pattern + "\" has been registered")
 				}
 
 				workerIndex := len(e.workerChannels)
-				e.registeredTask[handler.Pattern] = struct {
-					handler     types.WorkerHandler
-					workerIndex int
-					moduleName  string
-				}{
-					handler: handler, workerIndex: workerIndex, moduleName: string(m.Name()),
-				}
+				e.registeredTaskWorkerIndex[handler.Pattern] = workerIndex
 				e.runningWorkerIndexTask[workerIndex] = &Task{
+					handler: handler, moduleName: string(m.Name()),
 					taskName: handler.Pattern, workerIndex: workerIndex,
 				}
 				e.tasks = append(e.tasks, handler.Pattern)
@@ -75,7 +66,7 @@ func NewTaskQueueWorker(service factory.ServiceFactory, opts ...OptionFunc) fact
 	go e.prepare()
 
 	fmt.Printf("\x1b[34;1m⇨ Task Queue Worker running with %d task. Open [::]:%d for dashboard\x1b[0m\n\n",
-		len(e.registeredTask), e.opt.dashboardPort)
+		len(e.registeredTaskWorkerIndex), e.opt.dashboardPort)
 
 	return e
 }
@@ -92,7 +83,7 @@ func (t *taskQueueWorker) prepare() {
 
 	// get current pending jobs
 	filter := &Filter{
-		Page: 1, Limit: 10,
+		Page: 1, Limit: 50,
 		TaskNameList: t.tasks,
 		Sort:         "created_at",
 		Statuses:     []string{string(statusRetrying), string(statusQueueing)},
@@ -100,7 +91,7 @@ func (t *taskQueueWorker) prepare() {
 	for _, taskName := range t.tasks {
 		t.opt.queue.Clear(t.ctx, taskName)
 		updated := map[string]interface{}{
-			"is_loading": true,
+			"is_loading": true, "loading_message": "Requeueing...",
 		}
 		if summary := t.opt.persistent.Summary().FindDetailSummary(t.ctx, taskName); summary.ID == "" {
 			for _, status := range []string{
@@ -135,13 +126,13 @@ func (t *taskQueueWorker) prepare() {
 			})
 		}
 		if n := t.opt.queue.PushJob(t.ctx, job); n <= 1 {
-			t.registerJobToWorker(job, t.registeredTask[job.TaskName].workerIndex)
+			t.registerJobToWorker(job)
 		}
 	})
 
 	for _, taskName := range t.tasks {
 		t.opt.persistent.Summary().UpdateSummary(t.ctx, taskName, map[string]interface{}{
-			"is_loading": false,
+			"is_loading": false, "loading_message": "",
 		})
 	}
 
@@ -185,13 +176,10 @@ func (t *taskQueueWorker) Serve() {
 func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 	defer log.Println("\x1b[33;1mStopping Task Queue Worker:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
 
-	if len(t.registeredTask) == 0 {
+	if len(t.registeredTaskWorkerIndex) == 0 {
 		return
 	}
 
-	for _, task := range t.tasks {
-		t.opt.queue.Clear(ctx, task)
-	}
 	t.stopAllJob()
 	t.shutdown <- struct{}{}
 	t.isShutdown = true
@@ -204,6 +192,9 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 	}
 
 	t.wg.Wait()
+	for _, task := range t.tasks {
+		t.opt.queue.Clear(ctx, task)
+	}
 	t.ctxCancelFunc()
 }
 
@@ -211,7 +202,7 @@ func (t *taskQueueWorker) Name() string {
 	return string(types.TaskQueue)
 }
 
-func (t *taskQueueWorker) registerJobToWorker(job *Job, workerIndex int) {
+func (t *taskQueueWorker) registerJobToWorker(job *Job) {
 
 	interval, err := time.ParseDuration(job.Interval)
 	if err != nil || interval <= 0 {
@@ -222,6 +213,7 @@ func (t *taskQueueWorker) registerJobToWorker(job *Job, workerIndex int) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
+	workerIndex := t.registeredTaskWorkerIndex[job.TaskName]
 	taskIndex := t.runningWorkerIndexTask[workerIndex]
 	taskIndex.activeInterval = time.NewTicker(interval)
 	t.workerChannels[workerIndex].Chan = reflect.ValueOf(taskIndex.activeInterval.C)
@@ -236,12 +228,12 @@ func (t *taskQueueWorker) stopAllJob() {
 }
 
 func (t *taskQueueWorker) stopAllJobInTask(taskName string) {
-	regTask, ok := t.registeredTask[taskName]
+	workerIndex, ok := t.registeredTaskWorkerIndex[taskName]
 	if !ok {
 		return
 	}
 
-	if task := t.runningWorkerIndexTask[regTask.workerIndex]; task != nil {
+	if task := t.runningWorkerIndexTask[workerIndex]; task != nil {
 		if task.activeInterval != nil {
 			task.activeInterval.Stop()
 		}
@@ -249,8 +241,8 @@ func (t *taskQueueWorker) stopAllJobInTask(taskName string) {
 			task.cancel()
 		}
 	}
-	if len(t.semaphore[regTask.workerIndex-1]) > 0 {
-		<-t.semaphore[regTask.workerIndex-1]
+	if len(t.semaphore[workerIndex-1]) > 0 {
+		<-t.semaphore[workerIndex-1]
 	}
 }
 

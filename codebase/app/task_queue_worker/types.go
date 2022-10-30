@@ -3,6 +3,9 @@ package taskqueueworker
 import (
 	"context"
 	"time"
+
+	cronexpr "github.com/golangid/candi/candiutils/cronparser"
+	"github.com/golangid/candi/codebase/factory/types"
 )
 
 type (
@@ -11,11 +14,13 @@ type (
 		isInternalTask   bool
 		internalTaskName string
 
+		handler        types.WorkerHandler
 		cancel         context.CancelFunc
 		taskName       string
+		moduleName     string
 		workerIndex    int
 		activeInterval *time.Ticker
-		nextInterval   *time.Duration
+		schedule       cronexpr.Schedule
 	}
 
 	// JobStatusEnum enum status
@@ -35,4 +40,9 @@ const (
 	statusStopped  JobStatusEnum = "STOPPED"
 
 	defaultInterval = 500 * time.Millisecond
+)
+
+const (
+	// TaskOptionDeleteJobAfterSuccess const
+	TaskOptionDeleteJobAfterSuccess = "delAfterSuccess"
 )

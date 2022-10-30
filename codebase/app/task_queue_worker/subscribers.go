@@ -153,14 +153,7 @@ func (s *subscriber) broadcastTaskList(ctx context.Context) {
 	var taskRes TaskListResolver
 	taskRes.Data = make([]TaskResolver, 0)
 	for _, summary := range s.opt.persistent.Summary().FindAllSummary(ctx, &Filter{}) {
-		res := TaskResolver{
-			Name:       summary.TaskName,
-			ModuleName: engine.registeredTask[summary.TaskName].moduleName,
-			TotalJobs:  summary.CountTotalJob(),
-		}
-		res.Detail = summary.ToSummaryDetail()
-		res.IsLoading = summary.IsLoading
-		taskRes.Data = append(taskRes.Data, res)
+		taskRes.Data = append(taskRes.Data, summary.ToTaskResolver())
 	}
 
 	sort.Slice(taskRes.Data, func(i, j int) bool {
@@ -229,22 +222,16 @@ func (s *subscriber) broadcastJobDetail(ctx context.Context) {
 	}
 }
 
-func (s *subscriber) broadcastWhenChangeAllJob(ctx context.Context, taskName string, isLoading bool) {
+func (s *subscriber) broadcastWhenChangeAllJob(ctx context.Context, taskName string, isLoading bool, loadingMessage string) {
 
 	s.opt.persistent.Summary().UpdateSummary(ctx, taskName, map[string]interface{}{
-		"is_loading": isLoading,
+		"is_loading": isLoading, "loading_message": loadingMessage,
 	})
 
 	var taskRes TaskListResolver
 	taskRes.Data = make([]TaskResolver, 0)
 	for _, summary := range s.opt.persistent.Summary().FindAllSummary(ctx, &Filter{}) {
-		res := TaskResolver{
-			Name: summary.TaskName, ModuleName: engine.registeredTask[summary.TaskName].moduleName,
-			TotalJobs: summary.CountTotalJob(),
-		}
-		res.Detail = summary.ToSummaryDetail()
-		res.IsLoading = summary.IsLoading
-		taskRes.Data = append(taskRes.Data, res)
+		taskRes.Data = append(taskRes.Data, summary.ToTaskResolver())
 	}
 
 	sort.Slice(taskRes.Data, func(i, j int) bool {

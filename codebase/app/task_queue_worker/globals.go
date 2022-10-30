@@ -8,7 +8,6 @@ import (
 
 	"github.com/golangid/candi/candiutils"
 	"github.com/golangid/candi/codebase/factory"
-	"github.com/golangid/candi/codebase/factory/types"
 )
 
 var (
@@ -64,18 +63,14 @@ func initEngine(service factory.ServiceFactory, opts ...OptionFunc) *taskQueueWo
 	}
 
 	engine = &taskQueueWorker{
-		service:            service,
-		ready:              make(chan struct{}),
-		shutdown:           make(chan struct{}, 1),
-		refreshWorkerNotif: make(chan struct{}),
-		opt:                &opt,
-		configuration:      initConfiguration(&opt),
-		registeredTask: make(map[string]struct {
-			handler     types.WorkerHandler
-			workerIndex int
-			moduleName  string
-		}),
-		runningWorkerIndexTask: make(map[int]*Task),
+		service:                   service,
+		ready:                     make(chan struct{}),
+		shutdown:                  make(chan struct{}, 1),
+		refreshWorkerNotif:        make(chan struct{}),
+		opt:                       &opt,
+		configuration:             initConfiguration(&opt),
+		registeredTaskWorkerIndex: make(map[string]int),
+		runningWorkerIndexTask:    make(map[int]*Task),
 	}
 	engine.subscriber = initSubscriber(engine.configuration, &opt)
 	engine.ctx, engine.ctxCancelFunc = context.WithCancel(context.Background())
