@@ -95,7 +95,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
 
-	isRetry, startAt := false, time.Now()
+	isRetry, isUpdateArgs, startAt := false, false, time.Now()
 
 	job.Retries++
 	statusBefore := strings.ToLower(job.Status)
@@ -149,13 +149,17 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			incr = map[string]int64{statusBefore: -1}
 
 		} else {
+			updated := map[string]interface{}{
+				"retries": job.Retries, "finished_at": job.FinishedAt, "status": job.Status,
+				"interval": job.Interval, "error": job.Error, "trace_id": job.TraceID,
+			}
+			if isUpdateArgs {
+				updated["arguments"] = job.Arguments
+			}
 			matchedCount, affectedCount, _ := t.opt.persistent.UpdateJob(
 				t.ctx,
 				&Filter{JobID: &job.ID},
-				map[string]interface{}{
-					"retries": job.Retries, "finished_at": job.FinishedAt, "status": job.Status,
-					"interval": job.Interval, "error": job.Error, "trace_id": job.TraceID,
-				},
+				updated,
 				retryHistory,
 			)
 			if affectedCount == 0 && matchedCount == 0 {
@@ -230,6 +234,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 				// update job arguments if in error retry contains new args payload
 				if len(e.NewArgsPayload) > 0 {
 					job.Arguments = string(e.NewArgsPayload)
+					isUpdateArgs = true
 				}
 
 				t.opt.queue.PushJob(ctx, &job)
