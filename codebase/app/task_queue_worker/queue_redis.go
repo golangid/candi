@@ -2,7 +2,6 @@ package taskqueueworker
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 
 	"github.com/golangid/candi/tracer"
@@ -22,20 +21,6 @@ func NewRedisQueue(redisPool *redis.Pool) QueueStorage {
 	return &redisQueue{pool: redisPool}
 }
 
-func (r *redisQueue) GetAllJobs(ctx context.Context, taskName string) (jobs []*Job) {
-	conn := r.pool.Get()
-	defer conn.Close()
-
-	str, _ := conn.Do("LRANGE", taskName, 0, -1)
-	results, _ := str.([]interface{})
-	for _, result := range results {
-		b, _ := result.([]byte)
-		var job Job
-		json.Unmarshal(b, &job)
-		jobs = append(jobs, &job)
-	}
-	return
-}
 func (r *redisQueue) PushJob(ctx context.Context, job *Job) (n int64) {
 	tracer.Log(ctx, "redis.queue:push_job", job.ID)
 

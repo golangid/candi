@@ -45,15 +45,15 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 			if r := recover(); r != nil {
 				logger.LogRed(fmt.Sprintf("task_queue_worker > panic: %v", r))
 			}
-			t.registerNextJob(task.taskName)
+			isCtxErr := ctx.Err() != nil
+			t.registerNextJob(!isCtxErr, task.taskName)
 			t.wg.Done()
-			if ctx.Err() == nil {
+			if !isCtxErr {
 				if len(t.semaphore[workerIndex-1]) > 0 {
 					<-t.semaphore[workerIndex-1]
 				}
 				task.cancel()
 			}
-			t.refreshWorkerNotif <- struct{}{}
 		}()
 
 		if t.ctx.Err() != nil {
@@ -69,13 +69,13 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 	jobID := t.opt.queue.PopJob(t.ctx, runningTask.taskName)
 	if jobID == "" {
-		logger.LogYellow("task_queue_worker > empty queue")
+		logger.LogI("task_queue_worker > empty queue")
 		return
 	}
 
 	// lock for multiple worker (if running on multiple pods/instance)
 	if t.opt.locker.IsLocked(t.getLockKey(jobID)) {
-		logger.LogYellow("task_queue_worker > job " + jobID + " is locked")
+		logger.LogI("task_queue_worker > job " + jobID + " is locked")
 		return
 	}
 	defer t.opt.locker.Unlock(t.getLockKey(jobID))
@@ -86,7 +86,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		return
 	}
 	if job.Status != string(statusQueueing) {
-		logger.LogYellow("task_queue_worker > skip exec job, job status: " + job.Status)
+		logger.LogI("task_queue_worker > skip exec job, job status: " + job.Status)
 		return
 	}
 
@@ -157,10 +157,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 				updated["arguments"] = job.Arguments
 			}
 			matchedCount, affectedCount, _ := t.opt.persistent.UpdateJob(
-				t.ctx,
-				&Filter{JobID: &job.ID},
-				updated,
-				retryHistory,
+				t.ctx, &Filter{JobID: &job.ID, Status: candihelper.ToStringPtr(strings.ToUpper(statusBefore))}, updated, retryHistory,
 			)
 			if affectedCount == 0 && matchedCount == 0 {
 				t.opt.persistent.SaveJob(t.ctx, &job, retryHistory)
@@ -258,7 +255,7 @@ func (t *taskQueueWorker) getLockKey(jobID string) string {
 	return fmt.Sprintf("%s:task-queue-worker-lock:%s", t.service.Name(), jobID)
 }
 
-func (t *taskQueueWorker) registerNextJob(taskName string) {
+func (t *taskQueueWorker) registerNextJob(withStream bool, taskName string) {
 
 	nextJobID := t.opt.queue.NextJob(t.ctx, taskName)
 	if nextJobID != "" {
@@ -267,18 +264,16 @@ func (t *taskQueueWorker) registerNextJob(taskName string) {
 			t.registerJobToWorker(&nextJob)
 		}
 
-	} else {
+	} else if withStream {
 
 		StreamAllJob(t.ctx, &Filter{
-			Page: 1, Limit: 10,
 			TaskName: taskName,
 			Sort:     "created_at",
 			Status:   candihelper.ToStringPtr(string(statusQueueing)),
 		}, func(job *Job) {
-			if n := t.opt.queue.PushJob(t.ctx, job); n <= 1 {
-				t.registerJobToWorker(job)
-			}
+			t.opt.queue.PushJob(t.ctx, job)
 		})
+		t.registerNextJob(false, taskName)
 
 	}
 

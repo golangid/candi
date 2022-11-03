@@ -470,6 +470,10 @@ func (s *SQLPersistent) UpdateSummary(ctx context.Context, taskName string, upda
 	return
 }
 func (s *SQLPersistent) IncrementSummary(ctx context.Context, taskName string, incr map[string]int64) {
+	if len(incr) == 0 {
+		return
+	}
+
 	var setFields []string
 	for field, value := range incr {
 		if field == "" {

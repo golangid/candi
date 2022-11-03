@@ -125,21 +125,18 @@ func (t *taskQueueWorker) prepare() {
 				statusBefore:       -matchedCount,
 			})
 		}
-		if n := t.opt.queue.PushJob(t.ctx, job); n <= 1 {
-			t.registerJobToWorker(job)
-		}
+		t.opt.queue.PushJob(t.ctx, job)
 	})
+
+	t.registerInternalTask()
+	t.ready <- struct{}{}
 
 	for _, taskName := range t.tasks {
 		t.opt.persistent.Summary().UpdateSummary(t.ctx, taskName, map[string]interface{}{
 			"is_loading": false, "loading_message": "",
 		})
+		t.registerNextJob(false, taskName)
 	}
-
-	t.registerInternalTask()
-
-	t.ready <- struct{}{}
-	t.refreshWorkerNotif <- struct{}{}
 	t.subscriber.broadcastTaskList(t.ctx)
 }
 
@@ -217,6 +214,7 @@ func (t *taskQueueWorker) registerJobToWorker(job *Job) {
 	taskIndex := t.runningWorkerIndexTask[workerIndex]
 	taskIndex.activeInterval = time.NewTicker(interval)
 	t.workerChannels[workerIndex].Chan = reflect.ValueOf(taskIndex.activeInterval.C)
+	t.doRefreshWorker()
 }
 
 func (t *taskQueueWorker) stopAllJob() {

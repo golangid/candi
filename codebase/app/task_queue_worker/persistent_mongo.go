@@ -521,6 +521,9 @@ func (s *MongoPersistent) FindDetailSummary(ctx context.Context, taskName string
 }
 
 func (s *MongoPersistent) IncrementSummary(ctx context.Context, taskName string, incr map[string]int64) {
+	if len(incr) == 0 {
+		return
+	}
 
 	opt := options.UpdateOptions{
 		Upsert: candihelper.ToBoolPtr(true),

@@ -2,7 +2,6 @@ package taskqueueworker
 
 import (
 	"context"
-	"fmt"
 	"runtime"
 	"sort"
 	"sync"
@@ -215,7 +214,7 @@ func (s *subscriber) broadcastJobDetail(ctx context.Context) {
 			continue
 		}
 		var jobResolver JobResolver
-		jobResolver.ParseFromJob(&detail)
+		jobResolver.ParseFromJob(&detail, 200)
 		jobResolver.Meta.Page = subscriber.filter.Page
 		jobResolver.Meta.TotalHistory = subscriber.filter.Count
 		subscriber.writeDataToChannel(jobResolver)
@@ -254,13 +253,8 @@ func (s *subscriber) broadcastWhenChangeAllJob(ctx context.Context, taskName str
 func getMemstats() (res MemstatsResolver) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	res.Alloc = fmt.Sprintf("%d MB", m.Alloc/candihelper.MByte)
-
-	if m.TotalAlloc > candihelper.GByte {
-		res.TotalAlloc = fmt.Sprintf("%.2f GB", float64(m.TotalAlloc)/float64(candihelper.GByte))
-	} else {
-		res.TotalAlloc = fmt.Sprintf("%d MB", m.TotalAlloc/candihelper.MByte)
-	}
+	res.Alloc = m.Alloc
+	res.TotalAlloc = m.TotalAlloc
 	res.NumGC = int(m.NumGC)
 	res.NumGoroutines = runtime.NumGoroutine()
 	return

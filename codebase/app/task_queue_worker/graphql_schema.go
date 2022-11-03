@@ -12,6 +12,7 @@ type Query {
 	get_all_active_subscriber(): [ClientSubscriber!]!
 	get_all_job(filter: GetAllJobInputResolver): JobListResolver!
 	get_all_configuration(): [ConfigurationResolver!]!
+	get_detail_configuration(key: String!): ConfigurationResolver!
 }
 
 type Mutation {
@@ -90,8 +91,8 @@ type MetaTaskResolver {
 }
 
 type MemstatsResolver {
-	alloc: String!
-	total_alloc: String!
+	alloc: Int!
+	total_alloc: Int!
 	num_gc: Int!
 	num_goroutines: Int!
 }
@@ -144,6 +145,8 @@ type JoDetailMetaResolver {
 	is_close_session: Boolean!
 	page: Int!
 	total_history: Int!
+	is_show_more_args: Boolean!
+	is_show_more_error: Boolean!
 }
 
 type JobRetryHistory {

@@ -64,11 +64,6 @@ func (c *configurationUsecase) getMaxClientSubscriber() int {
 	return max
 }
 
-func (c *configurationUsecase) getTraceDetailURL() string {
-	cfg, _ := c.opt.persistent.GetConfiguration(configurationTraceDetailURL)
-	return cfg.Value
-}
-
 func (c *configurationUsecase) setConfiguration(cfg *Configuration) (err error) {
 
 	switch cfg.Key {

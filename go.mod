@@ -11,7 +11,7 @@ require (
 	github.com/go-playground/validator/v10 v10.6.0
 	github.com/gojektech/heimdall/v6 v6.1.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/golangid/candi-plugin/task-queue-worker v0.0.0-20221030162809-8938999d4f8a
+	github.com/golangid/candi-plugin/task-queue-worker v0.0.0-20221103053929-e50f71f43ce9
 	github.com/golangid/gojsonschema v0.0.1
 	github.com/golangid/graphql-go v0.0.9
 	github.com/gomodule/redigo v1.8.4
@@ -20,7 +20,7 @@ require (
 	github.com/jarcoal/httpmock v1.0.8
 	github.com/joho/godotenv v1.3.0
 	github.com/labstack/echo v3.3.10+incompatible
-	github.com/labstack/gommon v0.3.0
+	github.com/labstack/gommon v0.4.0
 	github.com/lib/pq v1.10.4
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/soheilhy/cmux v0.1.5

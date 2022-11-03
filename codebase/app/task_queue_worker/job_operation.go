@@ -88,7 +88,8 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	if err := engine.opt.persistent.SaveJob(ctx, &newJob); err != nil {
 		logger.LogE(fmt.Sprintf("Cannot save job, error: %s", err.Error()))
 		newJob.ID = ""
-		return jobID, engine.opt.secondaryPersistent.SaveJob(ctx, &newJob)
+		err = engine.opt.secondaryPersistent.SaveJob(ctx, &newJob)
+		return newJob.ID, err
 	}
 	trace.SetTag("job_id", newJob.ID)
 
@@ -98,7 +99,6 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	engine.subscriber.broadcastAllToSubscribers(context.Background())
 	if n := engine.opt.queue.PushJob(ctx, &newJob); n <= 1 {
 		engine.registerJobToWorker(&newJob)
-		engine.doRefreshWorker()
 	}
 
 	return newJob.ID, nil
@@ -208,7 +208,6 @@ func RetryJob(ctx context.Context, jobID string) error {
 	engine.opt.queue.PushJob(ctx, &job)
 	engine.subscriber.broadcastAllToSubscribers(ctx)
 	engine.registerJobToWorker(&job)
-	engine.doRefreshWorker()
 
 	return nil
 }
@@ -247,6 +246,7 @@ func StopJob(ctx context.Context, jobID string) error {
 		statusBefore: -matchedCount,
 	})
 	engine.subscriber.broadcastAllToSubscribers(ctx)
+	engine.registerNextJob(false, job.TaskName)
 
 	return nil
 }

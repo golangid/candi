@@ -31,8 +31,8 @@ type (
 	}
 	// MemstatsResolver resolver
 	MemstatsResolver struct {
-		Alloc         string
-		TotalAlloc    string
+		Alloc         uint64
+		TotalAlloc    uint64
 		NumGC         int
 		NumGoroutines int
 	}
@@ -106,9 +106,11 @@ type (
 		RetryHistories []RetryHistory
 		NextRetryAt    string
 		Meta           struct {
-			IsCloseSession bool
-			Page           int
-			TotalHistory   int
+			IsCloseSession  bool
+			Page            int
+			TotalHistory    int
+			IsShowMoreArgs  bool
+			IsShowMoreError bool
 		}
 	}
 
@@ -205,20 +207,35 @@ func (i *GetAllJobHistoryInputResolver) ToFilter() (filter Filter) {
 	return
 }
 
-func (j *JobResolver) ParseFromJob(job *Job) {
+func (j *JobResolver) ParseFromJob(job *Job, maxArgsLength int) {
 	j.ID = job.ID
 	j.TaskName = job.TaskName
-	j.Arguments = job.Arguments
+
+	if maxArgsLength > 0 {
+		if len(job.Arguments) > maxArgsLength {
+			j.Arguments = job.Arguments[:maxArgsLength]
+			j.Meta.IsShowMoreArgs = true
+		} else {
+			j.Arguments = job.Arguments
+		}
+		if len(job.Error) > maxArgsLength {
+			j.Error = job.Error[:maxArgsLength]
+			j.Meta.IsShowMoreError = true
+		} else {
+			j.Error = job.Error
+		}
+	} else {
+		j.Arguments = job.Arguments
+		j.Error = job.Error
+	}
 	j.Retries = job.Retries
 	j.MaxRetry = job.MaxRetry
 	j.Interval = job.Interval
 	j.Status = job.Status
-	j.Error = job.Error
 	j.ErrorStack = job.ErrorStack
 	j.TraceID = job.TraceID
 	j.RetryHistories = job.RetryHistories
 	j.NextRetryAt = job.NextRetryAt
-	j.Arguments = job.Arguments
 	j.RetryHistories = job.RetryHistories
 	if job.Status == string(statusSuccess) {
 		j.Error = ""
@@ -226,28 +243,19 @@ func (j *JobResolver) ParseFromJob(job *Job) {
 	if delay, err := time.ParseDuration(job.Interval); err == nil && job.Status == string(statusQueueing) {
 		j.NextRetryAt = time.Now().Add(delay).In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 	}
-	traceURL := engine.configuration.getTraceDetailURL()
-	if j.TraceID != "" {
-		j.TraceID = traceURL + "/" + j.TraceID
-	}
 	j.CreatedAt = job.CreatedAt.In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 	j.FinishedAt = job.FinishedAt.In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 	if job.Retries > job.MaxRetry {
 		j.Retries = job.MaxRetry
 	}
 
-	for i, history := range job.RetryHistories {
+	for i := range job.RetryHistories {
 		job.RetryHistories[i].StartAt = job.RetryHistories[i].StartAt.In(candihelper.AsiaJakartaLocalTime)
 		job.RetryHistories[i].EndAt = job.RetryHistories[i].EndAt.In(candihelper.AsiaJakartaLocalTime)
-		if history.TraceID != "" {
-			job.RetryHistories[i].TraceID = traceURL + "/" + job.RetryHistories[i].TraceID
-		}
 	}
 }
 
 func (j *JobListResolver) GetAllJob(ctx context.Context, filter *Filter) {
-
-	jobs := engine.opt.persistent.FindAllJob(ctx, filter)
 
 	var meta MetaJobList
 	var taskDetailSummary []TaskSummary
@@ -274,9 +282,9 @@ func (j *JobListResolver) GetAllJob(ctx context.Context, filter *Filter) {
 
 	j.Meta = meta
 
-	for _, job := range jobs {
+	for _, job := range engine.opt.persistent.FindAllJob(ctx, filter) {
 		var jobResolver JobResolver
-		jobResolver.ParseFromJob(&job)
+		jobResolver.ParseFromJob(&job, 100)
 		j.Data = append(j.Data, jobResolver)
 	}
 }

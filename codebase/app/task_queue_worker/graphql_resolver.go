@@ -112,7 +112,7 @@ func (r *rootResolver) GetDetailJob(ctx context.Context, input struct {
 	if err != nil {
 		return res, err
 	}
-	res.ParseFromJob(&job)
+	res.ParseFromJob(&job, -1)
 	res.Meta.Page = filter.Page
 	res.Meta.TotalHistory = filter.Count
 	return
@@ -213,14 +213,7 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 			Statuses: []string{string(statusFailure), string(statusStopped)}, TaskName: input.TaskName,
 		}
 		StreamAllJob(ctx, filter, func(job *Job) {
-			job.Retries = 0
-			if job.Interval == "" {
-				job.Interval = defaultInterval.String()
-			}
-			job.Status = string(statusQueueing)
-			if n := r.engine.opt.queue.PushJob(ctx, job); n <= 1 {
-				r.engine.registerJobToWorker(job)
-			}
+			r.engine.opt.queue.PushJob(ctx, job)
 		})
 
 		incr := map[string]int64{}
@@ -244,7 +237,7 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, false, "")
 		r.engine.opt.persistent.Summary().IncrementSummary(ctx, input.TaskName, incr)
 		r.engine.subscriber.broadcastAllToSubscribers(r.engine.ctx)
-		r.engine.refreshWorkerNotif <- struct{}{}
+		r.engine.registerNextJob(false, input.TaskName)
 
 	}(r.engine.ctx)
 
@@ -384,6 +377,17 @@ func (r *rootResolver) GetAllConfiguration(ctx context.Context) (res []Configura
 	return
 }
 
+func (r *rootResolver) GetDetailConfiguration(ctx context.Context, input struct{ Key string }) (res ConfigurationResolver, err error) {
+	cfg, err := r.engine.opt.persistent.GetConfiguration(input.Key)
+	if err != nil {
+		return res, err
+	}
+	res = ConfigurationResolver{
+		Key: cfg.Key, Name: cfg.Name, Value: cfg.Value, IsActive: cfg.IsActive,
+	}
+	return
+}
+
 func (r *rootResolver) SetConfiguration(ctx context.Context, input struct {
 	Config ConfigurationResolver
 }) (res string, err error) {
@@ -408,7 +412,6 @@ func (r *rootResolver) RunQueuedJob(ctx context.Context, input struct {
 			return "Failed find detail job", err
 		}
 		r.engine.registerJobToWorker(&nextJob)
-		r.engine.doRefreshWorker()
 
 		return "Success with job id " + nextJobID, nil
 	}
@@ -418,12 +421,10 @@ func (r *rootResolver) RunQueuedJob(ctx context.Context, input struct {
 		Sort:     "created_at",
 		Status:   candihelper.ToStringPtr(string(statusQueueing)),
 	}, func(job *Job) {
-		if n := r.engine.opt.queue.PushJob(ctx, job); n <= 1 {
-			r.engine.registerJobToWorker(job)
-			r.engine.doRefreshWorker()
-		}
+		r.engine.opt.queue.PushJob(ctx, job)
 	})
 
+	r.engine.registerNextJob(false, input.TaskName)
 	return "Success with stream all job", nil
 }
 
@@ -445,7 +446,6 @@ func (r *rootResolver) RestoreFromSecondary(ctx context.Context) (res RestoreSec
 		})
 		if n := r.engine.opt.queue.PushJob(ctx, job); n <= 1 {
 			r.engine.registerJobToWorker(job)
-			r.engine.doRefreshWorker()
 		}
 	})
 
