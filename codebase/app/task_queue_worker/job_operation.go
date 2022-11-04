@@ -67,7 +67,7 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	if engine == nil {
 		return jobID, errWorkerInactive
 	}
-	_, ok := engine.registeredTaskWorkerIndex[req.TaskName]
+	workerIndex, ok := engine.registeredTaskWorkerIndex[req.TaskName]
 	if !ok {
 		return jobID, fmt.Errorf("task '%s' unregistered, task must one of [%s]",
 			req.TaskName, strings.Join(engine.tasks, ", "))
@@ -97,7 +97,7 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 		strings.ToLower(newJob.Status): 1,
 	})
 	engine.subscriber.broadcastAllToSubscribers(context.Background())
-	if n := engine.opt.queue.PushJob(ctx, &newJob); n <= 1 {
+	if n := engine.opt.queue.PushJob(ctx, &newJob); n <= 1 && len(engine.semaphore[workerIndex-1]) == 0 {
 		engine.registerJobToWorker(&newJob)
 	}
 

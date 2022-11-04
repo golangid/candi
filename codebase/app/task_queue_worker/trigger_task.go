@@ -45,15 +45,12 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 			if r := recover(); r != nil {
 				logger.LogRed(fmt.Sprintf("task_queue_worker > panic: %v", r))
 			}
-			isCtxErr := ctx.Err() != nil
-			t.registerNextJob(!isCtxErr, task.taskName)
+
 			t.wg.Done()
-			if !isCtxErr {
-				if len(t.semaphore[workerIndex-1]) > 0 {
-					<-t.semaphore[workerIndex-1]
-				}
-				task.cancel()
-			}
+			<-t.semaphore[workerIndex-1]
+			task.cancel()
+
+			t.registerNextJob(true, task.taskName)
 		}()
 
 		if t.ctx.Err() != nil {
@@ -86,7 +83,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		return
 	}
 	if job.Status != string(statusQueueing) {
-		logger.LogI("task_queue_worker > skip exec job, job status: " + job.Status)
+		logger.LogI("task_queue_worker > skip exec job, job status: " + job.Status + ", job id: " + job.ID)
 		return
 	}
 
@@ -139,7 +136,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			job.Status = string(statusQueueing)
 		}
 
-		logger.LogGreen("task_queue > trace_url: " + tracer.GetTraceURL(ctx))
+		logger.LogGreen("task_queue_worker > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish(tracer.FinishWithError(err))
 
@@ -194,60 +191,72 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		return
 	}
 
-	err = selectedHandler.HandlerFuncs[0](&eventContext)
+	errChan := make(chan error)
+	go func(e *candishared.EventContext) {
+		defer func() {
+			if r := recover(); r != nil {
+				errChan <- fmt.Errorf("panic: %v", r)
+			}
+			close(errChan)
+		}()
 
-	if ctx.Err() != nil {
-		logger.LogE(ctx.Err().Error())
-		job.Error = "Job has been stopped when running (context error: " + ctx.Err().Error() + ")."
-		if err != nil {
-			job.Error += " Error: " + err.Error()
-		}
+		errChan <- selectedHandler.HandlerFuncs[0](e)
+	}(&eventContext)
+
+	select {
+	case <-ctx.Done():
+
+		job.Error = "Job has been stopped when running (context canceled)"
 		job.Status = string(statusStopped)
 		return
-	}
 
-	if err != nil {
-		eventContext.SetError(err)
+	case err := <-errChan:
 
-		job.Error = err.Error()
-		job.Status = string(statusFailure)
+		if err != nil {
+			eventContext.SetError(err)
 
-		switch e := err.(type) {
-		case *candishared.ErrorRetrier:
-			job.ErrorStack = e.StackTrace
+			job.Error = err.Error()
+			job.Status = string(statusFailure)
 
-			if job.Retries < job.MaxRetry {
+			switch e := err.(type) {
+			case *candishared.ErrorRetrier:
+				job.ErrorStack = e.StackTrace
 
-				if e.Delay <= 0 {
-					e.Delay = defaultInterval
+				if job.Retries < job.MaxRetry {
+
+					if e.Delay <= 0 {
+						e.Delay = defaultInterval
+					}
+
+					isRetry = true
+					job.Interval = e.Delay.String()
+					if e.NewRetryIntervalFunc != nil {
+						job.Interval = e.NewRetryIntervalFunc(job.Retries).String()
+					}
+
+					// update job arguments if in error retry contains new args payload
+					if len(e.NewArgsPayload) > 0 {
+						job.Arguments = string(e.NewArgsPayload)
+						isUpdateArgs = true
+					}
+
+					t.opt.queue.PushJob(ctx, &job)
+					return
 				}
 
-				isRetry = true
-				job.Interval = e.Delay.String()
-				if e.NewRetryIntervalFunc != nil {
-					job.Interval = e.NewRetryIntervalFunc(job.Retries).String()
-				}
-
-				// update job arguments if in error retry contains new args payload
-				if len(e.NewArgsPayload) > 0 {
-					job.Arguments = string(e.NewArgsPayload)
-					isUpdateArgs = true
-				}
-
-				t.opt.queue.PushJob(ctx, &job)
-				return
+				logger.LogRed("TaskQueueWorker: Still error for task '" + job.TaskName + "' (job id: " + job.ID + ")")
 			}
 
-			logger.LogRed("TaskQueueWorker: GIVE UP: " + job.TaskName)
+		} else {
+			job.Status = string(statusSuccess)
+			job.Error = ""
 		}
 
-	} else {
-		job.Status = string(statusSuccess)
-		job.Error = ""
-	}
+		for _, h := range selectedHandler.HandlerFuncs[1:] {
+			h(&eventContext)
+		}
+		return
 
-	for _, h := range selectedHandler.HandlerFuncs[1:] {
-		h(&eventContext)
 	}
 }
 

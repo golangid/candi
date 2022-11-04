@@ -239,9 +239,6 @@ func (t *taskQueueWorker) stopAllJobInTask(taskName string) {
 			task.cancel()
 		}
 	}
-	if len(t.semaphore[workerIndex-1]) > 0 {
-		<-t.semaphore[workerIndex-1]
-	}
 }
 
 func (t *taskQueueWorker) doRefreshWorker() {
