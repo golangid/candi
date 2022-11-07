@@ -57,6 +57,13 @@ func (t *taskQueueWorker) execInternalTask(task *Task) {
 		t.workerChannels[task.workerIndex].Chan = reflect.ValueOf(task.activeInterval.C)
 		t.doRefreshWorker()
 
+		lockKey := t.getLockKey("internal_task:" + task.internalTaskName)
+		if t.opt.locker.IsLocked(lockKey) {
+			logger.LogI("task_queue_worker > internal task " + task.internalTaskName + " is locked")
+			return
+		}
+		defer t.opt.locker.Unlock(lockKey)
+
 		beforeCreatedAt := now.Add(-interval)
 
 		// only remove success job

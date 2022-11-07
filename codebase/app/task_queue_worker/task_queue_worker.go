@@ -72,26 +72,11 @@ func NewTaskQueueWorker(service factory.ServiceFactory, opts ...OptionFunc) fact
 }
 
 func (t *taskQueueWorker) prepare() {
-
-	defer func() {
-		t.registerInternalTask()
-		t.ready <- struct{}{}
-	}()
-
 	if len(t.tasks) == 0 {
 		logger.LogYellow("Task Queue Worker: warning, no task provided")
+		t.ready <- struct{}{}
 		return
 	}
-
-	lockKey := t.getLockKey("prepare")
-	if t.opt.locker.IsLocked(lockKey) {
-		logger.LogI("task_queue_worker > prepare is locked")
-		return
-	}
-	defer func() {
-		t.opt.locker.Unlock(lockKey)
-		t.opt.locker.Reset(t.getLockKey("*"))
-	}()
 
 	t.opt.persistent.Summary().DeleteAllSummary(t.ctx, &Filter{ExcludeTaskNameList: t.tasks})
 	t.opt.persistent.CleanJob(t.ctx, &Filter{ExcludeTaskNameList: t.tasks})
@@ -123,6 +108,10 @@ func (t *taskQueueWorker) prepare() {
 	t.subscriber.broadcastTaskList(t.ctx)
 
 	StreamAllJob(t.ctx, filter, func(job *Job) {
+		if t.opt.locker.HasBeenLocked(t.getLockKey(job.ID)) {
+			return
+		}
+
 		// update to queueing
 		if job.Status != string(statusQueueing) {
 			statusBefore := job.Status
@@ -143,6 +132,9 @@ func (t *taskQueueWorker) prepare() {
 		}
 		t.opt.queue.PushJob(t.ctx, job)
 	})
+
+	t.registerInternalTask()
+	t.ready <- struct{}{}
 
 	for _, taskName := range t.tasks {
 		t.opt.persistent.Summary().UpdateSummary(t.ctx, taskName, map[string]interface{}{
@@ -193,6 +185,8 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 	t.stopAllJob()
 	t.shutdown <- struct{}{}
 	t.isShutdown = true
+	t.opt.locker.Reset(t.getLockKey("*"))
+
 	var runningJob int
 	for _, sem := range t.semaphore {
 		runningJob += len(sem)
@@ -206,7 +200,6 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 		t.opt.queue.Clear(ctx, task)
 	}
 	t.ctxCancelFunc()
-	t.opt.locker.Reset(t.getLockKey("*"))
 }
 
 func (t *taskQueueWorker) Name() string {
