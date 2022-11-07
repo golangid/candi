@@ -2,7 +2,6 @@ package taskqueueworker
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"time"
 
@@ -74,7 +73,6 @@ func initEngine(service factory.ServiceFactory, opts ...OptionFunc) *taskQueueWo
 	}
 	engine.subscriber = initSubscriber(engine.configuration, &opt)
 	engine.ctx, engine.ctxCancelFunc = context.WithCancel(context.Background())
-	engine.opt.locker.Reset(fmt.Sprintf("%s:task-queue-worker-lock:*", service.Name()))
 
 	// add refresh worker channel to first index
 	engine.workerChannels = append(engine.workerChannels, reflect.SelectCase{

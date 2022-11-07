@@ -92,7 +92,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
 
-	isRetry, isUpdateArgs, startAt := false, false, time.Now()
+	isContextCanceled, isUpdateArgs, startAt := false, false, time.Now()
 
 	job.Retries++
 	statusBefore := strings.ToLower(job.Status)
@@ -131,11 +131,6 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			ErrorStack: job.ErrorStack,
 		}
 
-		trace.SetTag("is_retry", isRetry)
-		if isRetry {
-			job.Status = string(statusQueueing)
-		}
-
 		logger.LogGreen("task_queue_worker > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish(tracer.FinishWithError(err))
@@ -153,14 +148,19 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			if isUpdateArgs {
 				updated["arguments"] = job.Arguments
 			}
-			matchedCount, affectedCount, _ := t.opt.persistent.UpdateJob(
-				t.ctx, &Filter{JobID: &job.ID, Status: candihelper.ToStringPtr(strings.ToUpper(statusBefore))}, updated, retryHistory,
-			)
-			if affectedCount == 0 && matchedCount == 0 {
-				t.opt.persistent.SaveJob(t.ctx, &job, retryHistory)
+			if isContextCanceled {
+				updated = map[string]interface{}{
+					"error": job.Error, "trace_id": job.TraceID,
+				}
 			}
-			incr = map[string]int64{
-				job.Status: affectedCount, statusBefore: -matchedCount,
+
+			matchedCount, affectedCount, _ := t.opt.persistent.UpdateJob(
+				t.ctx, &Filter{JobID: &job.ID}, updated, retryHistory,
+			)
+			if !isContextCanceled {
+				incr = map[string]int64{
+					job.Status: affectedCount, statusBefore: -matchedCount,
+				}
 			}
 		}
 		t.opt.persistent.Summary().IncrementSummary(ctx, job.TaskName, incr)
@@ -208,6 +208,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 
 		job.Error = "Job has been stopped when running (context canceled)"
 		job.Status = string(statusStopped)
+		isContextCanceled = true
 		return
 
 	case err := <-errChan:
@@ -228,7 +229,8 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 						e.Delay = defaultInterval
 					}
 
-					isRetry = true
+					job.Status = string(statusQueueing)
+					trace.SetTag("is_retry", true)
 					job.Interval = e.Delay.String()
 					if e.NewRetryIntervalFunc != nil {
 						job.Interval = e.NewRetryIntervalFunc(job.Retries).String()

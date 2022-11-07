@@ -78,6 +78,17 @@ func (t *taskQueueWorker) prepare() {
 		return
 	}
 
+	lockKey := t.getLockKey("prepare")
+	if t.opt.locker.IsLocked(lockKey) {
+		logger.LogI("task_queue_worker > prepare is locked")
+		return
+	}
+	defer func() {
+		t.opt.locker.Unlock(lockKey)
+		t.opt.locker.Reset(t.getLockKey("*"))
+		t.ready <- struct{}{}
+	}()
+
 	t.opt.persistent.Summary().DeleteAllSummary(t.ctx, &Filter{ExcludeTaskNameList: t.tasks})
 	t.opt.persistent.CleanJob(t.ctx, &Filter{ExcludeTaskNameList: t.tasks})
 
@@ -129,7 +140,6 @@ func (t *taskQueueWorker) prepare() {
 	})
 
 	t.registerInternalTask()
-	t.ready <- struct{}{}
 
 	for _, taskName := range t.tasks {
 		t.opt.persistent.Summary().UpdateSummary(t.ctx, taskName, map[string]interface{}{
@@ -193,6 +203,7 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 		t.opt.queue.Clear(ctx, task)
 	}
 	t.ctxCancelFunc()
+	t.opt.locker.Reset(t.getLockKey("*"))
 }
 
 func (t *taskQueueWorker) Name() string {
