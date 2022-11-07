@@ -8,6 +8,7 @@ type (
 	// Locker abstraction, lock concurrent processs
 	Locker interface {
 		IsLocked(key string) bool
+		HasBeenLocked(key string) bool
 		Unlock(key string)
 		Reset(key string)
 	}
@@ -33,6 +34,14 @@ func (r *redisLocker) IsLocked(key string) bool {
 	return incr > 1
 }
 
+func (r *redisLocker) HasBeenLocked(key string) bool {
+	conn := r.pool.Get()
+	incr, _ := redis.Int64(conn.Do("GET", key))
+	conn.Close()
+
+	return incr > 0
+}
+
 // Unlock method
 func (r *redisLocker) Unlock(key string) {
 	conn := r.pool.Get()
@@ -53,6 +62,11 @@ func (r *redisLocker) Reset(key string) {
 
 // IsLocked method
 func (NoopLocker) IsLocked(key string) bool {
+	return false
+}
+
+// HasBeenLocked method
+func (NoopLocker) HasBeenLocked(key string) bool {
 	return false
 }
 
