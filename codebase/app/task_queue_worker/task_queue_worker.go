@@ -72,9 +72,14 @@ func NewTaskQueueWorker(service factory.ServiceFactory, opts ...OptionFunc) fact
 }
 
 func (t *taskQueueWorker) prepare() {
+
+	defer func() {
+		t.registerInternalTask()
+		t.ready <- struct{}{}
+	}()
+
 	if len(t.tasks) == 0 {
 		logger.LogYellow("Task Queue Worker: warning, no task provided")
-		t.ready <- struct{}{}
 		return
 	}
 
@@ -86,7 +91,6 @@ func (t *taskQueueWorker) prepare() {
 	defer func() {
 		t.opt.locker.Unlock(lockKey)
 		t.opt.locker.Reset(t.getLockKey("*"))
-		t.ready <- struct{}{}
 	}()
 
 	t.opt.persistent.Summary().DeleteAllSummary(t.ctx, &Filter{ExcludeTaskNameList: t.tasks})
@@ -117,6 +121,7 @@ func (t *taskQueueWorker) prepare() {
 		t.opt.persistent.Summary().UpdateSummary(t.ctx, taskName, updated)
 	}
 	t.subscriber.broadcastTaskList(t.ctx)
+
 	StreamAllJob(t.ctx, filter, func(job *Job) {
 		// update to queueing
 		if job.Status != string(statusQueueing) {
@@ -138,8 +143,6 @@ func (t *taskQueueWorker) prepare() {
 		}
 		t.opt.queue.PushJob(t.ctx, job)
 	})
-
-	t.registerInternalTask()
 
 	for _, taskName := range t.tasks {
 		t.opt.persistent.Summary().UpdateSummary(t.ctx, taskName, map[string]interface{}{
