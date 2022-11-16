@@ -125,11 +125,6 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		}
 
 		job.FinishedAt = time.Now()
-		retryHistory := RetryHistory{
-			Status: job.Status, Error: job.Error, TraceID: job.TraceID,
-			StartAt: startAt, EndAt: job.FinishedAt,
-			ErrorStack: job.ErrorStack,
-		}
 
 		logger.LogGreen("task_queue_worker > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
@@ -154,6 +149,14 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 				}
 			}
 
+			retryHistory := RetryHistory{
+				Status: job.Status, Error: job.Error, TraceID: job.TraceID,
+				StartAt: startAt, EndAt: job.FinishedAt,
+				ErrorStack: job.ErrorStack,
+			}
+			if err != nil {
+				retryHistory.Status = statusFailure.String()
+			}
 			matchedCount, affectedCount, _ := t.opt.persistent.UpdateJob(
 				t.ctx, &Filter{JobID: &job.ID}, updated, retryHistory,
 			)
@@ -211,7 +214,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		isContextCanceled = true
 		return
 
-	case err := <-errChan:
+	case err = <-errChan:
 
 		if err != nil {
 			eventContext.SetError(err)
