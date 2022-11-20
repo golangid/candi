@@ -8,6 +8,13 @@ import (
 )
 
 const (
+	// ActionInsert const
+	ActionInsert = "INSERT"
+	// ActionUpdate const
+	ActionUpdate = "UPDATE"
+	// ActionDelete const
+	ActionDelete = "DELETE"
+
 	eventsConst              = "events"
 	notifyEventFunctionQuery = `CREATE OR REPLACE FUNCTION notify_event() RETURNS TRIGGER AS $$
 

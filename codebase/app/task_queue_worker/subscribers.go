@@ -159,9 +159,13 @@ func (s *subscriber) broadcastTaskList(ctx context.Context) {
 		return taskRes.Data[i].ModuleName < taskRes.Data[i].ModuleName
 	})
 
+	taskRes.Meta.TotalRecords = len(taskRes.Data)
 	taskRes.Meta.TotalClientSubscriber = s.getTotalSubscriber()
 
 	for clientID, subscriber := range s.clientTaskSubscribers {
+		taskRes.Meta.Page = subscriber.filter.Page
+		taskRes.Meta.Limit = subscriber.filter.Limit
+		taskRes.Meta.CalculatePage()
 		taskRes.Meta.ClientID = clientID
 		subscriber.writeDataToChannel(taskRes)
 	}

@@ -33,10 +33,10 @@ func (t *taskQueueWorker) serveGraphQLAPI() {
 	schema := graphql.MustParseSchema(schema, &rootResolver{engine: t}, schemaOpts...)
 
 	mux := http.NewServeMux()
-	mux.Handle("/", http.StripPrefix("/", http.FileServer(dashboard.Dashboard)))
-	mux.Handle("/task", http.StripPrefix("/", http.FileServer(dashboard.Dashboard)))
-	mux.Handle("/job", http.StripPrefix("/", http.FileServer(dashboard.Dashboard)))
-	mux.Handle("/expired", http.StripPrefix("/", http.FileServer(dashboard.Dashboard)))
+	mux.Handle("/", t.opt.basicAuth(http.StripPrefix("/", http.FileServer(dashboard.Dashboard))))
+	mux.Handle("/task", t.opt.basicAuth(http.StripPrefix("/", http.FileServer(dashboard.Dashboard))))
+	mux.Handle("/job", t.opt.basicAuth(http.StripPrefix("/", http.FileServer(dashboard.Dashboard))))
+	mux.Handle("/expired", t.opt.basicAuth(http.StripPrefix("/", http.FileServer(dashboard.Dashboard))))
 
 	mux.HandleFunc("/graphql", ws.NewHandlerFunc(schema, &relay.Handler{Schema: schema}))
 	mux.HandleFunc("/voyager", func(rw http.ResponseWriter, r *http.Request) { rw.Write([]byte(static.VoyagerAsset)) })

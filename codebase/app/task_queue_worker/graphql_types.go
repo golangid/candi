@@ -207,6 +207,10 @@ func (i *GetAllJobHistoryInputResolver) ToFilter() (filter Filter) {
 	return
 }
 
+func (m *MetaTaskResolver) CalculatePage() {
+	m.TotalPages = int(math.Ceil(float64(m.TotalRecords) / float64(m.Limit)))
+}
+
 func (j *JobResolver) ParseFromJob(job *Job, maxArgsLength int) {
 	j.ID = job.ID
 	j.TaskName = job.TaskName

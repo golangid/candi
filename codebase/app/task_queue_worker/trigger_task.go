@@ -58,6 +58,13 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 			return
 		}
 
+		isLocked := t.opt.locker.IsLocked(t.getLockKey(runningTask.taskName))
+		if isLocked {
+			logger.LogI("task_queue_worker > task " + runningTask.taskName + " is locked")
+			return
+		}
+		defer t.opt.locker.Unlock(t.getLockKey(runningTask.taskName))
+
 		t.execJob(ctx, task)
 
 	}(workerIndex, runningTask)

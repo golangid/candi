@@ -1,6 +1,9 @@
 package taskqueueworker
 
 import (
+	"encoding/base64"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/golangid/candi/candiutils"
@@ -15,6 +18,7 @@ type (
 		autoRemoveClientInterval time.Duration
 		dashboardBanner          string
 		dashboardPort            uint16
+		dashboardAuthKey         string
 		debugMode                bool
 		locker                   candiutils.Locker
 	}
@@ -91,5 +95,39 @@ func SetExternalWorkerHost(host string) OptionFunc {
 	externalWorkerHost = host
 	return func(o *option) {
 		externalWorkerHost = host
+	}
+}
+
+// SetDashboardBasicAuth option func
+func SetDashboardBasicAuth(username, password string) OptionFunc {
+	return func(o *option) {
+		o.dashboardAuthKey = base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
+	}
+}
+
+func (o *option) basicAuth(next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if o.dashboardAuthKey == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		w.Header().Set("WWW-Authenticate", `Basic realm=""`)
+
+		auth := r.Header.Get("Authorization")
+		const prefix = "Basic "
+		if len(auth) < len(prefix) || !strings.EqualFold(auth[:len(prefix)], prefix) {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Invalid authorization"))
+			return
+		}
+
+		if auth[len(prefix):] != o.dashboardAuthKey {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Invalid authorization"))
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	}
 }
