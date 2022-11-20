@@ -22,7 +22,9 @@ const (
 func TestBasicAuth(t *testing.T) {
 
 	env.SetEnv(env.Env{BasicAuthUsername: basicUsername, BasicAuthPassword: basicPass})
-	midd := &Middleware{}
+	midd := &Middleware{
+		BasicAuthValidator: defaultMiddleware{},
+	}
 
 	t.Run("Test With Valid Auth", func(t *testing.T) {
 
@@ -63,7 +65,9 @@ func TestBasicAuth(t *testing.T) {
 
 func TestMiddleware_HTTPBasicAuth(t *testing.T) {
 	env.SetEnv(env.Env{BasicAuthUsername: basicUsername, BasicAuthPassword: basicPass})
-	mw := &Middleware{}
+	mw := &Middleware{
+		BasicAuthValidator: defaultMiddleware{},
+	}
 
 	tests := []struct {
 		name             string
@@ -105,7 +109,9 @@ func TestMiddleware_HTTPBasicAuth(t *testing.T) {
 
 func TestMiddleware_GRPCBasicAuth(t *testing.T) {
 	env.SetEnv(env.Env{BasicAuthUsername: basicUsername, BasicAuthPassword: basicPass})
-	mw := &Middleware{}
+	mw := &Middleware{
+		BasicAuthValidator: defaultMiddleware{},
+	}
 
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
 		ctx := metadata.NewIncomingContext(context.Background(), metadata.MD{

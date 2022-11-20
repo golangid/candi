@@ -24,7 +24,6 @@ type Env struct {
 	LoadConfigTimeout time.Duration
 
 	useSQL, useMongo, useRedis, useRSAKey bool
-	NoAuth                                bool
 	UseSharedListener                     bool
 
 	// UseREST env
@@ -172,10 +171,6 @@ func Load(serviceName string) {
 	env.DebugMode, err = strconv.ParseBool(os.Getenv("DEBUG_MODE"))
 	if err != nil {
 		env.DebugMode = true
-	}
-	env.NoAuth = parseBool("NO_AUTH")
-	if env.NoAuth {
-		fmt.Println("\x1b[33;1mWARNING: env NO_AUTH is true (basic & bearer auth middleware checker is inactive)\x1b[0m")
 	}
 	env.UseSharedListener = parseBool("USE_SHARED_LISTENER")
 	if env.UseSharedListener && env.HTTPPort <= 0 {

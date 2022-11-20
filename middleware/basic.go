@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/golangid/candi/candihelper"
-	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/tracer"
 	"github.com/golangid/candi/wrapper"
 	"google.golang.org/grpc"
@@ -23,10 +22,6 @@ const (
 
 // Basic function basic auth
 func (m *Middleware) Basic(ctx context.Context, key string) error {
-	if env.BaseEnv().NoAuth {
-		return nil
-	}
-
 	isValid := func() bool {
 		data, err := base64.StdEncoding.DecodeString(key)
 		if err != nil {
@@ -39,7 +34,7 @@ func (m *Middleware) Basic(ctx context.Context, key string) error {
 		}
 		username, password := decoded[0], decoded[1]
 
-		if username != env.BaseEnv().BasicAuthUsername || password != env.BaseEnv().BasicAuthPassword {
+		if err := m.BasicAuthValidator.ValidateBasic(username, password); err != nil {
 			return false
 		}
 

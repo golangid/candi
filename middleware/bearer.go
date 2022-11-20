@@ -6,10 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/golang-jwt/jwt"
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
-	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/tracer"
 	"github.com/golangid/candi/wrapper"
 	"google.golang.org/grpc"
@@ -24,15 +22,6 @@ const (
 
 // Bearer token validator
 func (m *Middleware) Bearer(ctx context.Context, tokenString string) (*candishared.TokenClaim, error) {
-	if env.BaseEnv().NoAuth {
-		return &candishared.TokenClaim{
-			StandardClaims: jwt.StandardClaims{
-				Audience: "ANONYMOUS",
-				Subject:  "USER_ID_DUMMY",
-			},
-		}, nil
-	}
-
 	tokenClaim, err := m.TokenValidator.ValidateToken(ctx, tokenString)
 	if err != nil {
 		return nil, err

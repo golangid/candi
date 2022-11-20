@@ -181,6 +181,7 @@ func RetryJob(ctx context.Context, jobID string) error {
 		return err
 	}
 
+	engine.opt.locker.Unlock(engine.getLockKey(job.TaskName))
 	engine.opt.locker.Unlock(engine.getLockKey(job.ID))
 
 	statusBefore := job.Status

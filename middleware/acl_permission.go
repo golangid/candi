@@ -2,11 +2,11 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory/types"
-	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/tracer"
 	"github.com/golangid/candi/wrapper"
 	gqltypes "github.com/golangid/graphql-go/types"
@@ -14,13 +14,14 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-func (m *Middleware) checkACLPermissionFromContext(ctx context.Context, permissionCode string) (*candishared.TokenClaim, error) {
-	tokenClaim := candishared.ParseTokenClaimFromContext(ctx)
-	if env.BaseEnv().NoAuth {
-		tokenClaim.Role = "GUEST"
-		return tokenClaim, nil
-	}
+func (m *Middleware) checkACLPermissionFromContext(ctx context.Context, permissionCode string) (tokenClaim *candishared.TokenClaim, err error) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			err = errors.New("Missing token claim in context")
+		}
+	}()
 
+	tokenClaim = candishared.ParseTokenClaimFromContext(ctx)
 	role, err := m.ACLPermissionChecker.CheckPermission(ctx, tokenClaim.Subject, permissionCode)
 	if err != nil {
 		return tokenClaim, err

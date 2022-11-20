@@ -61,3 +61,8 @@ type TokenValidator interface {
 type ACLPermissionChecker interface {
 	CheckPermission(ctx context.Context, userID string, permissionCode string) (role string, err error)
 }
+
+// BasicAuthValidator abstract interface for basic auth validator
+type BasicAuthValidator interface {
+	ValidateBasic(username, password string) error
+}

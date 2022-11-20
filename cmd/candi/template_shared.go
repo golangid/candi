@@ -5,38 +5,36 @@ const (
 
 package shared
 
-// WARNING, this file only for example
+// this file only for example
 
 import (
 	"context"
-	"fmt"
 
 	"{{.LibraryName}}/candishared"
+	"{{.LibraryName}}/logger"
 )
 
-// DefaultTokenValidator for token validator example
-type DefaultTokenValidator struct {
+// DefaultMiddleware for middleware validator example
+type DefaultMiddleware struct {
 }
 
 // ValidateToken implement TokenValidator
-func (v DefaultTokenValidator) ValidateToken(ctx context.Context, token string) (*candishared.TokenClaim, error) {
+func (DefaultMiddleware) ValidateToken(ctx context.Context, token string) (*candishared.TokenClaim, error) {
 	var tokenClaim candishared.TokenClaim
 	tokenClaim.Subject = "USER_ID"
+
+	logger.LogI("validate token: allowed")
 	return &tokenClaim, nil
 }
 
-// DefaultACLPermissionChecker for acl permission checker example
-type DefaultACLPermissionChecker struct {
-}
-
 // CheckPermission implement interfaces.ACLPermissionChecker
-func (a DefaultACLPermissionChecker) CheckPermission(ctx context.Context, userID string, permissionCode string) (role string, err error) {
+func (DefaultMiddleware) CheckPermission(ctx context.Context, userID string, permissionCode string) (role string, err error) {
 	/* add check allow permission for user access (is given "userID" can access "permissionCode" ?)
 	if !contains(getAllPermissionFromUser(userID), permissionCode) {
 		return role, errors.New("Forbidden")
 	}
 	*/
-	fmt.Printf("checkPermission: users with id '%s' can access resource with permission code '%s' (return role for this user is 'superadmin')\n", userID, permissionCode)
+	logger.LogIf("check permission: users with id '%s' can access resource with permission code '%s' (return role for this user is 'superadmin')\n", userID, permissionCode)
 	return "superadmin", nil
 }
 `
