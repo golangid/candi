@@ -22,7 +22,16 @@ func (m *Middleware) checkACLPermissionFromContext(ctx context.Context, permissi
 	}()
 
 	tokenClaim = candishared.ParseTokenClaimFromContext(ctx)
-	role, err := m.ACLPermissionChecker.CheckPermission(ctx, tokenClaim.Subject, permissionCode)
+
+	if m.aclPermissionChecker == nil {
+		return tokenClaim, errors.New("Missing acl permission checker")
+	}
+
+	userID := tokenClaim.Subject
+	if m.extractUserIDFunc != nil {
+		userID = m.extractUserIDFunc(tokenClaim)
+	}
+	role, err := m.aclPermissionChecker.CheckPermission(ctx, userID, permissionCode)
 	if err != nil {
 		return tokenClaim, err
 	}

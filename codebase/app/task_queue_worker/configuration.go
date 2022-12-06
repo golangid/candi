@@ -23,7 +23,7 @@ type configurationUsecase struct {
 
 func initConfiguration(opt *option) *configurationUsecase {
 	defaultConfigs := []Configuration{
-		{Key: configurationRetentionAgeKey, Name: "Retention Age", Value: "10m", IsActive: false},
+		{Key: configurationRetentionAgeKey, Name: "Retention Age", Value: "0 0 * * *", IsActive: false},
 		{Key: configurationClientSubscriberAgeKey, Name: "Client Subscriber Age", Value: "10m", IsActive: false},
 		{Key: configurationMaxClientSubscriberKey, Name: "Max Client Subscriber", Value: "5", IsActive: false},
 		{Key: configurationTraceDetailURL, Name: "Trace Detail URL", Value: "http://localhost:16686/trace", IsActive: true},

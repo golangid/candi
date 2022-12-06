@@ -22,26 +22,22 @@ const (
 
 // Basic function basic auth
 func (m *Middleware) Basic(ctx context.Context, key string) error {
-	isValid := func() bool {
-		data, err := base64.StdEncoding.DecodeString(key)
-		if err != nil {
-			return false
-		}
-
-		decoded := strings.Split(string(data), ":")
-		if len(decoded) < 2 {
-			return false
-		}
-		username, password := decoded[0], decoded[1]
-
-		if err := m.BasicAuthValidator.ValidateBasic(username, password); err != nil {
-			return false
-		}
-
-		return true
+	if m.basicAuthValidator == nil {
+		return errors.New("Missing basic auth implementor")
 	}
 
-	if !isValid() {
+	data, err := base64.StdEncoding.DecodeString(key)
+	if err != nil {
+		return errors.New("Unauthorized")
+	}
+
+	decoded := strings.Split(string(data), ":")
+	if len(decoded) < 2 {
+		return errors.New("Unauthorized")
+	}
+	username, password := decoded[0], decoded[1]
+
+	if err := m.basicAuthValidator.ValidateBasic(username, password); err != nil {
 		return errors.New("Unauthorized")
 	}
 

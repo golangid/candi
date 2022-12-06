@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -28,8 +29,8 @@ func New(service factory.ServiceFactory) *App {
 // Run start app
 func (a *App) Run() {
 
-	if len(a.service.GetApplications()) == 0 {
-		panic("No server/worker running")
+	if err := a.checkRequired(); err != nil {
+		panic(err)
 	}
 
 	errServe := make(chan error)
@@ -82,4 +83,13 @@ func (a *App) shutdown(forceShutdown chan os.Signal) {
 	case <-ctx.Done():
 		log.Println("\x1b[31;1mContext timeout\x1b[0m")
 	}
+}
+
+func (a *App) checkRequired() (err error) {
+
+	if len(a.service.GetApplications()) == 0 {
+		return errors.New("No server/worker running")
+	}
+
+	return
 }

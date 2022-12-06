@@ -12,16 +12,21 @@ import (
 
 // Middleware impl
 type Middleware struct {
-	TokenValidator       interfaces.TokenValidator
-	ACLPermissionChecker interfaces.ACLPermissionChecker
-	BasicAuthValidator   interfaces.BasicAuthValidator
+	tokenValidator       interfaces.TokenValidator
+	aclPermissionChecker interfaces.ACLPermissionChecker
+	basicAuthValidator   interfaces.BasicAuthValidator
+
+	extractUserIDFunc func(tokenClaim *candishared.TokenClaim) (userID string)
 }
 
-// NewMiddleware create new middleware instance
+// NewMiddleware create new middleware instance (DEPRECATED, use NewMiddlewareWithOption)
 func NewMiddleware(tokenValidator interfaces.TokenValidator, aclPermissionChecker interfaces.ACLPermissionChecker) *Middleware {
 	mw := &Middleware{
-		TokenValidator: tokenValidator, ACLPermissionChecker: aclPermissionChecker,
-		BasicAuthValidator: &defaultMiddleware{},
+		tokenValidator: tokenValidator, aclPermissionChecker: aclPermissionChecker,
+		basicAuthValidator: &defaultMiddleware{},
+		extractUserIDFunc: func(tokenClaim *candishared.TokenClaim) (userID string) {
+			return tokenClaim.Subject
+		},
 	}
 
 	return mw
@@ -31,7 +36,10 @@ func NewMiddleware(tokenValidator interfaces.TokenValidator, aclPermissionChecke
 func NewMiddlewareWithOption(opts ...OptionFunc) *Middleware {
 	defaultMw := &defaultMiddleware{}
 	mw := &Middleware{
-		TokenValidator: defaultMw, ACLPermissionChecker: defaultMw, BasicAuthValidator: defaultMw,
+		tokenValidator: defaultMw, aclPermissionChecker: defaultMw, basicAuthValidator: defaultMw,
+		extractUserIDFunc: func(tokenClaim *candishared.TokenClaim) (userID string) {
+			return tokenClaim.Subject
+		},
 	}
 	for _, opt := range opts {
 		opt(mw)
@@ -56,21 +64,28 @@ type OptionFunc func(*Middleware)
 // SetTokenValidator option func
 func SetTokenValidator(tokenValidator interfaces.TokenValidator) OptionFunc {
 	return func(mw *Middleware) {
-		mw.TokenValidator = tokenValidator
+		mw.tokenValidator = tokenValidator
 	}
 }
 
 // SetACLPermissionChecker option func
 func SetACLPermissionChecker(aclPermissionChecker interfaces.ACLPermissionChecker) OptionFunc {
 	return func(mw *Middleware) {
-		mw.ACLPermissionChecker = aclPermissionChecker
+		mw.aclPermissionChecker = aclPermissionChecker
 	}
 }
 
 // SetBasicAuthValidator option func
 func SetBasicAuthValidator(basicAuth interfaces.BasicAuthValidator) OptionFunc {
 	return func(mw *Middleware) {
-		mw.BasicAuthValidator = basicAuth
+		mw.basicAuthValidator = basicAuth
+	}
+}
+
+// SetUserIDExtractor option func, custom extract user id from token claim for acl permission checker
+func SetUserIDExtractor(extractor func(tokenClaim *candishared.TokenClaim) (userID string)) OptionFunc {
+	return func(mw *Middleware) {
+		mw.extractUserIDFunc = extractor
 	}
 }
 

@@ -118,7 +118,7 @@ func (m *Middleware) checkMultipleAuth(ctx context.Context, authType, token stri
 	case Basic:
 		err = m.Basic(ctx, token)
 	default:
-		return nil, errors.New("Invalid authorization type")
+		return nil, errors.New("Invalid authorization type, must BEARER or BASIC")
 	}
 
 	return claimData, err

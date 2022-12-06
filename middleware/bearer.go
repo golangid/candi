@@ -22,7 +22,11 @@ const (
 
 // Bearer token validator
 func (m *Middleware) Bearer(ctx context.Context, tokenString string) (*candishared.TokenClaim, error) {
-	tokenClaim, err := m.TokenValidator.ValidateToken(ctx, tokenString)
+	if m.tokenValidator == nil {
+		return nil, errors.New("Missing token validator")
+	}
+
+	tokenClaim, err := m.tokenValidator.ValidateToken(ctx, tokenString)
 	if err != nil {
 		return nil, err
 	}

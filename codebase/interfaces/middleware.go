@@ -27,7 +27,8 @@ type HTTPMiddleware interface {
 
 	// HTTPPermissionACL method.
 	// This middleware required TokenValidator (HTTPBearerAuth middleware must executed before) for extract userID
-	// from token (from `Subject` field in token claim payload)
+	// default from `Subject` field in token claim payload
+	// or you can custom extract user id with `SetUserIDExtractor` option when construct middleware in configs
 	HTTPPermissionACL(permissionCode string) func(http.Handler) http.Handler
 }
 
@@ -38,7 +39,8 @@ type GRPCMiddleware interface {
 
 	// GRPCPermissionACL method.
 	// This middleware required TokenValidator (GRPCBearerAuth middleware must executed before) for extract userID
-	// from token (from `Subject` field in token claim payload)
+	// default from `Subject` field in token claim payload
+	// or you can custom extract user id with `SetUserIDExtractor` option when construct middleware in configs
 	GRPCPermissionACL(permissionCode string) types.MiddlewareFunc
 }
 
@@ -48,7 +50,8 @@ type GraphQLMiddleware interface {
 
 	// GraphQLPermissionACL method.
 	// This middleware required TokenValidator (GraphQLAuth middleware with BEARER must executed before) for extract userID
-	// from token (from `Subject` field in token claim payload)
+	// default from `Subject` field in token claim payload
+	// or you can custom extract user id with `SetUserIDExtractor` option when construct middleware in configs
 	GraphQLPermissionACL(ctx context.Context, directive *gqltypes.Directive, input interface{}) (context.Context, error)
 }
 

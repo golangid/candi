@@ -17,3 +17,18 @@ func (f *Filter) CalculateOffset() int {
 	f.Offset = (f.Page - 1) * f.Limit
 	return f.Offset
 }
+
+// GetPage method
+func (f *Filter) GetPage() int {
+	return f.Page
+}
+
+// IncrPage method
+func (f *Filter) IncrPage() {
+	f.Page++
+}
+
+// GetLimit method
+func (f *Filter) GetLimit() int {
+	return f.Limit
+}
