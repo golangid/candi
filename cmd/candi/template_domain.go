@@ -34,9 +34,10 @@ import "{{.LibraryName}}/candishared"
 // Filter{{upper (camel .ModuleName)}} model
 type Filter{{upper (camel .ModuleName)}} struct {
 	candishared.Filter
-	ID        string ` + "`json:\"id\"`" + `
+	ID        *string ` + "`json:\"id\"`" + `
 	StartDate string ` + "`json:\"startDate\"`" + `
-	EndDate   string ` + "`json:\"endDate\"`" + `
+	EndDate   string ` + "`json:\"endDate\"`{{if .SQLUseGORM}}" + `
+	Preloads  []string ` + "`json:\"-\"`" + `{{end}}
 }
 `
 	templateModuleRequestDomain = `package domain

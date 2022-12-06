@@ -240,7 +240,7 @@ func (uc *{{camel .ModuleName}}UsecaseImpl) GetDetail{{upper (camel .ModuleName)
 	defer trace.Finish()
 
 	var data shareddomain.{{upper (camel .ModuleName)}}
-	{{if or .SQLDeps .MongoDeps .ArangoDeps}}repoFilter := domain.Filter{{upper (camel .ModuleName)}}{ID: id}
+	{{if or .SQLDeps .MongoDeps .ArangoDeps}}repoFilter := domain.Filter{{upper (camel .ModuleName)}}{ID: &id}
 	data, err = uc.repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().Find(ctx, &repoFilter){{end}}
 	if err != nil {
 		return result, err
@@ -354,7 +354,7 @@ func (uc *{{camel .ModuleName}}UsecaseImpl) Update{{upper (camel .ModuleName)}}(
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}Usecase:Update{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	{{if or .SQLDeps .MongoDeps .ArangoDeps}}repoFilter := domain.Filter{{upper (camel .ModuleName)}}{ID: data.ID}
+	{{if or .SQLDeps .MongoDeps .ArangoDeps}}repoFilter := domain.Filter{{upper (camel .ModuleName)}}{ID: &data.ID}
 	existing, err := uc.repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().Find(ctx, &repoFilter)
 	if err != nil {
 		return err

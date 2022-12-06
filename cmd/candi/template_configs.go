@@ -14,6 +14,7 @@ import (
 
 	"{{.LibraryName}}/broker"
 	"{{.LibraryName}}/candihelper"
+	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/interfaces"
 	"{{.LibraryName}}/config"
@@ -48,10 +49,6 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 		// inject all service dependencies
 		// See all option in dependency package
 		deps = dependency.InitDependency(
-			dependency.SetMiddleware(middleware.NewMiddlewareWithOption(
-				middleware.SetTokenValidator(&shared.DefaultMiddleware{}),
-				middleware.SetACLPermissionChecker(&shared.DefaultMiddleware{}),
-			)),
 			dependency.SetValidator(validator.NewValidator()),
 			dependency.SetBrokers(brokerDeps.GetBrokers()),
 			{{if not .RedisDeps}}// {{end}}dependency.SetRedisPool(redisDeps),
@@ -71,6 +68,14 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 
 	repository.SetSharedRepository(deps)
 	usecase.SetSharedUsecase(deps)
+
+	deps.SetMiddleware(middleware.NewMiddlewareWithOption(
+		middleware.SetTokenValidator(&shared.DefaultMiddleware{}),
+		middleware.SetACLPermissionChecker(&shared.DefaultMiddleware{}),
+		middleware.SetUserIDExtractor(func(tokenClaim *candishared.TokenClaim) (userID string) {
+			return tokenClaim.Subject
+		}),
+	))
 
 	return deps
 }
