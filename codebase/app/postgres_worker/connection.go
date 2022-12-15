@@ -26,7 +26,5 @@ func getListener(dsn string) (*sql.DB, *pq.Listener) {
 }
 
 func eventCallback(ev pq.ListenerEventType, err error) {
-	if err != nil {
-		logger.LogRed(err.Error())
-	}
+	logger.LogIfError(err)
 }

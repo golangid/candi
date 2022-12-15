@@ -41,7 +41,7 @@ const (
 			);
 		END CASE;
 
-		IF LENGTH(data::text) >= 7900 THEN
+		IF LENGTH(data::text) >= 7500 THEN
 			data = json_build_object(
 				'is_too_long_payload', TRUE,
 				'old_id', row_to_json(OLD)::jsonb->>'id',
@@ -136,4 +136,34 @@ func execTriggerQuery(db *sql.DB, tableName string) {
 			panic(fmt.Errorf("failed when create trigger for table %s: %s", tableName, err))
 		}
 	}
+}
+
+func findDetailData(db *sql.DB, tableName, id string) interface{} {
+
+	rows, err := db.Query(`SELECT * FROM ` + tableName + ` WHERE id='` + id + `'`)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil
+	}
+
+	results := make(map[string]interface{}, len(columns))
+	if rows.Next() {
+		values := make([]string, len(columns))
+		columnVals := make([]interface{}, len(columns))
+		for i := range values {
+			columnVals[i] = &values[i]
+		}
+
+		rows.Scan(columnVals...)
+		for i, colName := range columns {
+			results[colName] = values[i]
+		}
+	}
+
+	return results
 }

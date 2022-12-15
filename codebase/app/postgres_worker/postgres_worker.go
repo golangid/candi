@@ -2,6 +2,7 @@ package postgresworker
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -31,6 +32,7 @@ type (
 		shutdown      chan struct{}
 
 		service  factory.ServiceFactory
+		db       *sql.DB
 		listener *pq.Listener
 		handlers map[string]types.WorkerHandler
 		wg       sync.WaitGroup
@@ -76,6 +78,7 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 	}
 
 	worker.listener = listener
+	worker.db = db
 	worker.ctx, worker.ctxCancelFunc = context.WithCancel(context.Background())
 	return worker
 }
@@ -100,52 +103,8 @@ func (p *postgresWorker) Serve() {
 					return
 				}
 
-				ctx := p.ctx
+				p.execEvent(p.ctx, data)
 
-				// lock for multiple worker (if running on multiple pods/instance)
-				if p.opt.locker.IsLocked(p.getLockKey(data)) {
-					return
-				}
-				defer p.opt.locker.Unlock(p.getLockKey(data))
-
-				handler := p.handlers[data.Table]
-				if handler.DisableTrace {
-					ctx = tracer.SkipTraceContext(ctx)
-				}
-				trace, ctx := tracer.StartTraceFromHeader(ctx, "PostgresEventListener", map[string]string{})
-				defer func() {
-					if r := recover(); r != nil {
-						trace.SetError(fmt.Errorf("panic: %v", r))
-						trace.Log("stacktrace", string(debug.Stack()))
-					}
-					logger.LogGreen("postgres_listener > trace_url: " + tracer.GetTraceURL(ctx))
-					trace.SetTag("trace_id", tracer.GetTraceID(ctx))
-					trace.Finish()
-				}()
-
-				if p.opt.debugMode {
-					log.Printf("\x1b[35;3mPostgres Event Listener: executing event from table: '%s' and action: '%s'\x1b[0m", data.Table, data.Action)
-				}
-
-				trace.SetTag("database", candihelper.MaskingPasswordURL(p.opt.postgresDSN))
-				trace.SetTag("table_name", data.Table)
-				trace.SetTag("action", data.Action)
-				trace.Log("payload", data)
-				message, _ := json.Marshal(data)
-
-				var eventContext candishared.EventContext
-				eventContext.SetContext(ctx)
-				eventContext.SetWorkerType(string(types.PostgresListener))
-				eventContext.SetHandlerRoute(data.Table)
-				eventContext.SetKey(data.EventID)
-				eventContext.Write(message)
-
-				for _, handlerFunc := range handler.HandlerFuncs {
-					if err := handlerFunc(&eventContext); err != nil {
-						eventContext.SetError(err)
-						trace.SetError(err)
-					}
-				}
 			}(&payload)
 
 		case <-p.shutdown:
@@ -185,4 +144,67 @@ func (p *postgresWorker) Name() string {
 
 func (p *postgresWorker) getLockKey(eventPayload *EventPayload) string {
 	return fmt.Sprintf("%s:postgres-worker-lock:%s-%s-%s", p.service.Name(), eventPayload.Table, eventPayload.Action, eventPayload.EventID)
+}
+
+func (p *postgresWorker) execEvent(ctx context.Context, data *EventPayload) {
+
+	// lock for multiple worker (if running on multiple pods/instance)
+	if p.opt.locker.IsLocked(p.getLockKey(data)) {
+		return
+	}
+	defer p.opt.locker.Unlock(p.getLockKey(data))
+
+	handler := p.handlers[data.Table]
+	if handler.DisableTrace {
+		ctx = tracer.SkipTraceContext(ctx)
+	}
+
+	trace, ctx := tracer.StartTraceFromHeader(ctx, "PostgresEventListener", map[string]string{})
+	defer func() {
+		if r := recover(); r != nil {
+			trace.SetError(fmt.Errorf("panic: %v", r))
+			trace.Log("stacktrace", string(debug.Stack()))
+		}
+		logger.LogGreen("postgres_listener > trace_url: " + tracer.GetTraceURL(ctx))
+		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
+		trace.Finish()
+	}()
+
+	if p.opt.debugMode {
+		log.Printf("\x1b[35;3mPostgres Event Listener: executing event from table: '%s' and action: '%s'\x1b[0m", data.Table, data.Action)
+	}
+
+	if data.Data.IsTooLongPayload {
+		detailData := findDetailData(p.db, data.Table, data.GetID())
+
+		switch data.Action {
+		case ActionInsert:
+			data.Data.New = detailData
+		case ActionUpdate:
+			data.Data.New = detailData
+			data.Data.Old = detailData
+		case ActionDelete:
+			data.Data.Old = detailData
+		}
+	}
+
+	trace.SetTag("database", candihelper.MaskingPasswordURL(p.opt.postgresDSN))
+	trace.SetTag("table_name", data.Table)
+	trace.SetTag("action", data.Action)
+	trace.Log("payload", data)
+	message, _ := json.Marshal(data)
+
+	var eventContext candishared.EventContext
+	eventContext.SetContext(ctx)
+	eventContext.SetWorkerType(string(types.PostgresListener))
+	eventContext.SetHandlerRoute(data.Table)
+	eventContext.SetKey(data.EventID)
+	eventContext.Write(message)
+
+	for _, handlerFunc := range handler.HandlerFuncs {
+		if err := handlerFunc(&eventContext); err != nil {
+			eventContext.SetError(err)
+			trace.SetError(err)
+		}
+	}
 }
