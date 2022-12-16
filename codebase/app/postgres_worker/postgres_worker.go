@@ -2,11 +2,12 @@ package postgresworker
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
+	"reflect"
 	"runtime/debug"
+	"strconv"
 	"sync"
 
 	"github.com/golangid/candi/candihelper"
@@ -28,33 +29,47 @@ type (
 		ctx           context.Context
 		ctxCancelFunc func()
 		opt           option
-		semaphore     map[string]chan struct{}
+		semaphores    map[string]chan struct{}
 		shutdown      chan struct{}
 
-		service  factory.ServiceFactory
-		db       *sql.DB
-		listener *pq.Listener
-		handlers map[string]types.WorkerHandler
-		wg       sync.WaitGroup
+		workerSourceIndex []string
+		workers           []reflect.SelectCase
+		service           factory.ServiceFactory
+		wg                sync.WaitGroup
 	}
 )
 
 // NewWorker create new postgres event listener
 func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
 	worker := &postgresWorker{
-		service:   service,
-		opt:       getDefaultOption(service),
-		semaphore: make(map[string]chan struct{}),
-		shutdown:  make(chan struct{}, 1),
+		service:    service,
+		opt:        getDefaultOption(service),
+		semaphores: make(map[string]chan struct{}),
+		shutdown:   make(chan struct{}, 1),
 	}
 
 	for _, opt := range opts {
 		opt(&worker.opt)
 	}
 
-	worker.handlers = make(map[string]types.WorkerHandler)
-	db, listener := getListener(worker.opt.postgresDSN)
-	execCreateFunctionEventQuery(db)
+	if len(worker.opt.sources) == 0 {
+		panic("No data sources in postgres listener worker")
+	}
+
+	for _, source := range worker.opt.sources {
+		source.db, source.listener = getListener(source.dsn)
+		source.handlers = make(map[string]types.WorkerHandler)
+		source.workerIndex = len(worker.workerSourceIndex)
+
+		worker.workerSourceIndex = append(worker.workerSourceIndex, source.name)
+		worker.workers = append(worker.workers, reflect.SelectCase{
+			Dir: reflect.SelectRecv, Chan: reflect.ValueOf(source.listener.Notify),
+		})
+
+		if err := source.execCreateFunctionEventQuery(); err != nil {
+			panic(fmt.Errorf("failed when create event function: %s%s", err, source.getLogForSourceName()))
+		}
+	}
 
 	worker.opt.locker.Reset(fmt.Sprintf("%s:postgres-worker-lock:*", service.Name()))
 	for _, m := range service.GetModules() {
@@ -62,53 +77,76 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 			var handlerGroup types.WorkerHandlerGroup
 			h.MountHandlers(&handlerGroup)
 			for _, handler := range handlerGroup.Handlers {
-				logger.LogYellow(fmt.Sprintf(`[POSTGRES-LISTENER] (table): %-15s  --> (module): "%s"`, `"`+handler.Pattern+`"`, m.Name()))
-				worker.handlers[handler.Pattern] = handler
-				worker.semaphore[handler.Pattern] = make(chan struct{}, worker.opt.maxGoroutines)
-				execTriggerQuery(db, handler.Pattern)
+
+				sourceName, tableName := ParseHandlerRoute(handler.Pattern)
+				postgresSource, ok := worker.opt.sources[sourceName]
+				if !ok || postgresSource == nil {
+					panic(fmt.Errorf("Postgres Event Listener: source name '%s' unregistered (when register table '%s' in module '%s')",
+						sourceName, tableName, m.Name()))
+				}
+
+				if err := postgresSource.execTriggerQuery(tableName); err != nil {
+					panic(fmt.Errorf("failed when create trigger for table %s%s: %s", tableName, postgresSource.getLogForSourceName(), err))
+				}
+
+				postgresSource.handlers[tableName] = handler
+
+				worker.semaphores[strconv.Itoa(postgresSource.workerIndex)+tableName] = make(chan struct{}, worker.opt.maxGoroutines)
+				worker.opt.sources[sourceName] = postgresSource
+				logger.LogYellow(fmt.Sprintf(`[POSTGRES-LISTENER] (table): "%s"%s  --> (module): "%s"`,
+					tableName, postgresSource.getLogForSourceName(), m.Name()))
 			}
 		}
 	}
 
-	if len(worker.handlers) == 0 {
+	if len(worker.workerSourceIndex) == 0 {
 		log.Println("postgres listener: no table event provided")
 	} else {
-		fmt.Printf("\x1b[34;1m⇨ Postgres Event Listener running with %d table. DSN: %s\x1b[0m\n\n",
-			len(worker.handlers), candihelper.MaskingPasswordURL(worker.opt.postgresDSN))
+		fmt.Printf("\x1b[34;1m⇨ Postgres Event Listener running with %d handlers\x1b[0m\n\n", len(worker.workerSourceIndex))
 	}
 
-	worker.listener = listener
-	worker.db = db
 	worker.ctx, worker.ctxCancelFunc = context.WithCancel(context.Background())
 	return worker
 }
 
 func (p *postgresWorker) Serve() {
-	p.listener.Listen(eventsConst)
 
+	for _, source := range p.opt.sources {
+		source.listener.Listen(eventsConst)
+	}
+
+	// run worker
 	for {
 		select {
-		case e := <-p.listener.Notify:
+		case <-p.shutdown:
+			return
 
+		default:
+		}
+
+		chosen, value, ok := reflect.Select(p.workers)
+		if !ok {
+			continue
+		}
+
+		// exec handler
+		if e, ok := value.Interface().(*pq.Notification); ok {
 			var payload EventPayload
 			json.Unmarshal([]byte(e.Extra), &payload)
 
-			p.semaphore[payload.Table] <- struct{}{}
+			p.semaphores[strconv.Itoa(chosen)+payload.Table] <- struct{}{}
 			p.wg.Add(1)
-			go func(data *EventPayload) {
-				defer func() { p.wg.Done(); <-p.semaphore[data.Table] }()
+			go func(data *EventPayload, workerIndex int) {
+				defer func() { p.wg.Done(); <-p.semaphores[strconv.Itoa(workerIndex)+data.Table] }()
 
 				if p.ctx.Err() != nil {
 					logger.LogRed("postgres_listener > ctx root err: " + p.ctx.Err().Error())
 					return
 				}
 
-				p.execEvent(p.ctx, data)
+				p.execEvent(workerIndex, data)
 
-			}(&payload)
-
-		case <-p.shutdown:
-			return
+			}(&payload, chosen)
 		}
 	}
 }
@@ -118,21 +156,19 @@ func (p *postgresWorker) Shutdown(ctx context.Context) {
 		log.Println("\x1b[33;1mStopping Postgres Event Listener:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
 	}()
 
-	if len(p.handlers) == 0 {
-		return
-	}
-
 	p.shutdown <- struct{}{}
 	runningJob := 0
-	for _, sem := range p.semaphore {
+	for _, sem := range p.semaphores {
 		runningJob += len(sem)
 	}
 	if runningJob != 0 {
 		fmt.Printf("\x1b[34;1mPostgres Event Listener:\x1b[0m waiting %d job until done...\n", runningJob)
 	}
 
-	p.listener.Unlisten(eventsConst)
-	p.listener.Close()
+	for _, source := range p.opt.sources {
+		source.listener.Unlisten(eventsConst)
+		source.listener.Close()
+	}
 	p.wg.Wait()
 	p.ctxCancelFunc()
 	p.opt.locker.Reset(fmt.Sprintf("%s:postgres-worker-lock:*", p.service.Name()))
@@ -146,7 +182,12 @@ func (p *postgresWorker) getLockKey(eventPayload *EventPayload) string {
 	return fmt.Sprintf("%s:postgres-worker-lock:%s-%s-%s", p.service.Name(), eventPayload.Table, eventPayload.Action, eventPayload.EventID)
 }
 
-func (p *postgresWorker) execEvent(ctx context.Context, data *EventPayload) {
+func (p *postgresWorker) execEvent(workerIndex int, data *EventPayload) {
+
+	source, ok := p.opt.sources[p.workerSourceIndex[workerIndex]]
+	if !ok || source == nil {
+		return
+	}
 
 	// lock for multiple worker (if running on multiple pods/instance)
 	if p.opt.locker.IsLocked(p.getLockKey(data)) {
@@ -154,7 +195,12 @@ func (p *postgresWorker) execEvent(ctx context.Context, data *EventPayload) {
 	}
 	defer p.opt.locker.Unlock(p.getLockKey(data))
 
-	handler := p.handlers[data.Table]
+	ctx := p.ctx
+	handler, ok := source.handlers[data.Table]
+	if !ok {
+		return
+	}
+
 	if handler.DisableTrace {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
@@ -171,11 +217,15 @@ func (p *postgresWorker) execEvent(ctx context.Context, data *EventPayload) {
 	}()
 
 	if p.opt.debugMode {
-		log.Printf("\x1b[35;3mPostgres Event Listener: executing event from table: '%s' and action: '%s'\x1b[0m", data.Table, data.Action)
+		var sourceLog string
+		if source.name != "" {
+			sourceLog = fmt.Sprintf(" (from source name '%s')", source.name)
+		}
+		log.Printf("\x1b[35;3mPostgres Event Listener: executing event from table: '%s'%s and action: '%s'\x1b[0m", data.Table, sourceLog, data.Action)
 	}
 
 	if data.Data.IsTooLongPayload {
-		detailData := findDetailData(p.db, data.Table, data.GetID())
+		detailData := source.findDetailData(data.Table, data.GetID())
 
 		switch data.Action {
 		case ActionInsert:
@@ -188,10 +238,6 @@ func (p *postgresWorker) execEvent(ctx context.Context, data *EventPayload) {
 		}
 	}
 
-	trace.SetTag("database", candihelper.MaskingPasswordURL(p.opt.postgresDSN))
-	trace.SetTag("table_name", data.Table)
-	trace.SetTag("action", data.Action)
-	trace.Log("payload", data)
 	message, _ := json.Marshal(data)
 
 	var eventContext candishared.EventContext
@@ -200,6 +246,17 @@ func (p *postgresWorker) execEvent(ctx context.Context, data *EventPayload) {
 	eventContext.SetHandlerRoute(data.Table)
 	eventContext.SetKey(data.EventID)
 	eventContext.Write(message)
+
+	if source.name != "" {
+		trace.SetTag("source_name", source.name)
+		eventContext.SetHeader(map[string]string{
+			"source_name": source.name,
+		})
+	}
+	trace.SetTag("table_name", data.Table)
+	trace.SetTag("action", data.Action)
+	trace.Log("dsn", candihelper.MaskingPasswordURL(source.dsn))
+	trace.Log("payload", data)
 
 	for _, handlerFunc := range handler.HandlerFuncs {
 		if err := handlerFunc(&eventContext); err != nil {

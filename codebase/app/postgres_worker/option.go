@@ -3,14 +3,16 @@ package postgresworker
 import (
 	"github.com/golangid/candi/candiutils"
 	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/config/env"
 )
 
 type (
 	option struct {
-		postgresDSN   string
 		maxGoroutines int
 		debugMode     bool
 		locker        candiutils.Locker
+
+		sources map[string]*PostgresSource
 	}
 
 	// OptionFunc type
@@ -19,21 +21,23 @@ type (
 
 func getDefaultOption(service factory.ServiceFactory) option {
 	opt := option{
-		maxGoroutines: 10,
+		maxGoroutines: 1,
 		debugMode:     true,
+		sources:       make(map[string]*PostgresSource),
 	}
 	if redisPool := service.GetDependency().GetRedisPool(); redisPool != nil {
 		opt.locker = candiutils.NewRedisLocker(redisPool.WritePool())
 	} else {
 		opt.locker = &candiutils.NoopLocker{}
 	}
+	opt.sources[""] = &PostgresSource{dsn: env.BaseEnv().DbSQLWriteDSN} // default source
 	return opt
 }
 
 // SetPostgresDSN option func
 func SetPostgresDSN(dsn string) OptionFunc {
 	return func(o *option) {
-		o.postgresDSN = dsn
+		o.sources[""] = &PostgresSource{dsn: dsn}
 	}
 }
 
@@ -55,5 +59,14 @@ func SetDebugMode(debugMode bool) OptionFunc {
 func SetLocker(locker candiutils.Locker) OptionFunc {
 	return func(o *option) {
 		o.locker = locker
+	}
+}
+
+// AddPostgresDSN option func for add multple postgres source to be listen
+func AddPostgresDSN(sourceName, dsn string) OptionFunc {
+	return func(o *option) {
+		o.sources[sourceName] = &PostgresSource{
+			name: sourceName, dsn: dsn,
+		}
 	}
 }

@@ -9,8 +9,6 @@ import (
 // SetupPostgresWorker setup postgres worker with default config
 func SetupPostgresWorker(service factory.ServiceFactory, opts ...postgresworker.OptionFunc) factory.AppServerFactory {
 	postgresOptions := []postgresworker.OptionFunc{
-		postgresworker.SetPostgresDSN(env.BaseEnv().DbSQLWriteDSN),
-		postgresworker.SetMaxGoroutines(env.BaseEnv().MaxGoroutines),
 		postgresworker.SetDebugMode(env.BaseEnv().DebugMode),
 	}
 	postgresOptions = append(postgresOptions, opts...)

@@ -1,12 +1,5 @@
 package postgresworker
 
-import (
-	"database/sql"
-	"fmt"
-
-	"github.com/golangid/candi/logger"
-)
-
 const (
 	// ActionInsert const
 	ActionInsert = "INSERT"
@@ -94,76 +87,4 @@ func (e EventPayload) GetID() string {
 	}
 
 	return ""
-}
-
-func execCreateFunctionEventQuery(db *sql.DB) {
-	query := `SELECT pg_get_functiondef('notify_event()'::regprocedure);`
-	var tmp string
-	err := db.QueryRow(query).Scan(&tmp)
-	if err != nil {
-		stmt, err := db.Prepare(notifyEventFunctionQuery)
-		if err != nil {
-			logger.LogYellow("Postgres Listener: warning, cannot create notify_event function. Error: " + err.Error())
-			return
-		}
-		defer stmt.Close()
-
-		if _, err = stmt.Exec(); err != nil {
-			panic(fmt.Errorf("failed when create event function: %s", err))
-		}
-	}
-}
-
-func execTriggerQuery(db *sql.DB, tableName string) {
-	query := `SELECT event_object_table AS table_name
-		FROM information_schema.triggers
-		WHERE event_object_table=$1
-		GROUP BY table_name`
-
-	var existingTable string
-	err := db.QueryRow(query, tableName).Scan(&existingTable)
-	if err != nil {
-		stmt, err := db.Prepare(`CREATE TRIGGER ` + tableName + `_notify_event
-		AFTER INSERT OR UPDATE OR DELETE ON ` + tableName + `
-		FOR EACH ROW EXECUTE PROCEDURE notify_event();`)
-		if err != nil {
-			logger.LogYellow("Postgres Listener: warning, cannot exec trigger for table " + tableName + ". Error: " + err.Error())
-			return
-		}
-		defer stmt.Close()
-
-		if _, err = stmt.Exec(); err != nil {
-			panic(fmt.Errorf("failed when create trigger for table %s: %s", tableName, err))
-		}
-	}
-}
-
-func findDetailData(db *sql.DB, tableName, id string) interface{} {
-
-	rows, err := db.Query(`SELECT * FROM ` + tableName + ` WHERE id='` + id + `'`)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-
-	columns, err := rows.Columns()
-	if err != nil {
-		return nil
-	}
-
-	results := make(map[string]interface{}, len(columns))
-	if rows.Next() {
-		values := make([]string, len(columns))
-		columnVals := make([]interface{}, len(columns))
-		for i := range values {
-			columnVals[i] = &values[i]
-		}
-
-		rows.Scan(columnVals...)
-		for i, colName := range columns {
-			results[colName] = values[i]
-		}
-	}
-
-	return results
 }
