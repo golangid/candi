@@ -3,6 +3,7 @@ package validator
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/golangid/candi/candihelper"
@@ -34,7 +35,9 @@ func (v *JSONSchemaValidator) ValidateDocument(schemaID string, documentSource i
 		return err
 	}
 
-	schema, err := gojsonschema.NewSchema(gojsonschema.NewStringLoader(s))
+	schema, err := gojsonschema.NewSchema(gojsonschema.NewStringLoader(
+		strings.ReplaceAll(s, "{{WORKDIR}}", os.Getenv(candihelper.WORKDIR)),
+	))
 	if err != nil {
 		return err
 	}
