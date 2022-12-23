@@ -166,7 +166,6 @@ func (p *postgresWorker) Shutdown(ctx context.Context) {
 	}
 
 	for _, source := range p.opt.sources {
-		source.listener.Unlisten(eventsConst)
 		source.listener.Close()
 	}
 	p.wg.Wait()
