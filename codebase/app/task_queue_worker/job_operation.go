@@ -312,3 +312,31 @@ func RecalculateSummary(ctx context.Context) {
 		})
 	}
 }
+
+// UpdateProgressJob api for update progress job
+func UpdateProgressJob(ctx context.Context, jobID string, numProcessed, maxProcess int) error {
+	if engine == nil {
+		return errWorkerInactive
+	}
+
+	if numProcessed > maxProcess {
+		return errors.New("Num processed cannot greater than max process")
+	}
+
+	job, err := engine.opt.persistent.FindJobByID(ctx, jobID, nil)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = engine.opt.persistent.UpdateJob(ctx, &Filter{
+		JobID: &job.ID,
+	}, map[string]interface{}{
+		"current_progress": numProcessed, "max_progress": maxProcess,
+	})
+	if err != nil {
+		return err
+	}
+
+	engine.subscriber.broadcastJobDetail(ctx)
+	return nil
+}

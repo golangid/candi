@@ -91,21 +91,23 @@ type (
 
 	// JobResolver resolver
 	JobResolver struct {
-		ID             string
-		TaskName       string
-		Arguments      string
-		Retries        int
-		MaxRetry       int
-		Interval       string
-		CreatedAt      string
-		FinishedAt     string
-		Status         string
-		Error          string
-		ErrorStack     string
-		TraceID        string
-		RetryHistories []RetryHistory
-		NextRetryAt    string
-		Meta           struct {
+		ID              string
+		TaskName        string
+		Arguments       string
+		Retries         int
+		MaxRetry        int
+		Interval        string
+		CreatedAt       string
+		FinishedAt      string
+		Status          string
+		Error           string
+		ErrorStack      string
+		TraceID         string
+		RetryHistories  []RetryHistory
+		NextRetryAt     string
+		CurrentProgress int
+		MaxProgress     int
+		Meta            struct {
 			IsCloseSession  bool
 			Page            int
 			TotalHistory    int
@@ -153,6 +155,16 @@ type (
 		Name     string
 		Value    string
 		IsActive bool
+	}
+
+	// FilterMutateJobInputResolver resolver
+	FilterMutateJobInputResolver struct {
+		TaskName  string
+		Search    *string
+		JobID     *string
+		Statuses  []string
+		StartDate *string
+		EndDate   *string
 	}
 )
 
@@ -207,6 +219,29 @@ func (i *GetAllJobHistoryInputResolver) ToFilter() (filter Filter) {
 	return
 }
 
+// ToFilter method
+func (i *FilterMutateJobInputResolver) ToFilter() (filter Filter) {
+
+	filter = Filter{
+		Page: 1, Limit: 10,
+		Search: i.Search, TaskName: i.TaskName,
+		JobID: i.JobID,
+	}
+
+	filter.Page = 1
+	filter.Limit = 10
+	filter.Statuses = i.Statuses
+
+	if i.StartDate != nil {
+		filter.StartDate = *i.StartDate
+	}
+	if i.EndDate != nil {
+		filter.EndDate = *i.EndDate
+	}
+
+	return
+}
+
 func (m *MetaTaskResolver) CalculatePage() {
 	m.TotalPages = int(math.Ceil(float64(m.TotalRecords) / float64(m.Limit)))
 }
@@ -240,6 +275,8 @@ func (j *JobResolver) ParseFromJob(job *Job, maxArgsLength int) {
 	j.TraceID = job.TraceID
 	j.RetryHistories = job.RetryHistories
 	j.NextRetryAt = job.NextRetryAt
+	j.CurrentProgress = job.CurrentProgress
+	j.MaxProgress = job.MaxProgress
 	j.RetryHistories = job.RetryHistories
 	if job.Status == string(statusSuccess) {
 		j.Error = ""

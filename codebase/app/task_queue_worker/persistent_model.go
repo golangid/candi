@@ -49,22 +49,24 @@ type (
 
 	// Job model
 	Job struct {
-		ID             string         `bson:"_id" json:"_id"`
-		TaskName       string         `bson:"task_name" json:"task_name"`
-		Arguments      string         `bson:"arguments" json:"arguments"`
-		Retries        int            `bson:"retries" json:"retries"`
-		MaxRetry       int            `bson:"max_retry" json:"max_retry"`
-		Interval       string         `bson:"interval" json:"interval"`
-		CreatedAt      time.Time      `bson:"created_at" json:"created_at"`
-		UpdatedAt      time.Time      `bson:"updated_at" json:"updated_at"`
-		FinishedAt     time.Time      `bson:"finished_at" json:"finished_at"`
-		Status         string         `bson:"status" json:"status"`
-		Error          string         `bson:"error" json:"error"`
-		ErrorStack     string         `bson:"-" json:"error_stack"`
-		TraceID        string         `bson:"trace_id" json:"trace_id"`
-		RetryHistories []RetryHistory `bson:"retry_histories" json:"retry_histories"`
-		NextRetryAt    string         `bson:"-" json:"-"`
-		direct         bool           `bson:"-" json:"-"`
+		ID              string         `bson:"_id" json:"_id"`
+		TaskName        string         `bson:"task_name" json:"task_name"`
+		Arguments       string         `bson:"arguments" json:"arguments"`
+		Retries         int            `bson:"retries" json:"retries"`
+		MaxRetry        int            `bson:"max_retry" json:"max_retry"`
+		Interval        string         `bson:"interval" json:"interval"`
+		CreatedAt       time.Time      `bson:"created_at" json:"created_at"`
+		UpdatedAt       time.Time      `bson:"updated_at" json:"updated_at"`
+		FinishedAt      time.Time      `bson:"finished_at" json:"finished_at"`
+		Status          string         `bson:"status" json:"status"`
+		Error           string         `bson:"error" json:"error"`
+		ErrorStack      string         `bson:"-" json:"error_stack"`
+		TraceID         string         `bson:"trace_id" json:"trace_id"`
+		CurrentProgress int            `bson:"current_progress" json:"current_progress"`
+		MaxProgress     int            `bson:"max_progress" json:"max_progress"`
+		RetryHistories  []RetryHistory `bson:"retry_histories" json:"retry_histories"`
+		NextRetryAt     string         `bson:"-" json:"-"`
+		direct          bool           `bson:"-" json:"-"`
 	}
 
 	// RetryHistory model
@@ -119,9 +121,14 @@ func (s *TaskSummary) ToSummaryDetail() (detail SummaryDetail) {
 
 // ToTaskResolver method
 func (s *TaskSummary) ToTaskResolver() (res TaskResolver) {
+	regTask, ok := engine.registeredTaskWorkerIndex[s.TaskName]
+	if !ok {
+		return
+	}
+
 	res = TaskResolver{
 		Name:       s.TaskName,
-		ModuleName: engine.runningWorkerIndexTask[engine.registeredTaskWorkerIndex[s.TaskName]].moduleName,
+		ModuleName: engine.runningWorkerIndexTask[regTask].moduleName,
 		TotalJobs:  s.CountTotalJob(),
 	}
 	res.Detail = s.ToSummaryDetail()

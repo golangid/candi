@@ -99,6 +99,17 @@ func (r *rootResolver) GetAllJob(ctx context.Context, input struct{ Filter *GetA
 	return
 }
 
+func (r *rootResolver) GetCountJob(ctx context.Context, input struct{ Filter *GetAllJobInputResolver }) (result int, err error) {
+
+	if input.Filter == nil {
+		input.Filter = &GetAllJobInputResolver{}
+	}
+
+	filter := input.Filter.ToFilter()
+	result = r.engine.opt.persistent.CountAllJob(ctx, &filter)
+	return
+}
+
 func (r *rootResolver) GetDetailJob(ctx context.Context, input struct {
 	JobID  string
 	Filter *GetAllJobHistoryInputResolver
@@ -201,18 +212,20 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 }
 
 func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
-	TaskName string
+	Filter FilterMutateJobInputResolver
 }) (string, error) {
 
-	go func(ctx context.Context) {
+	go func(ctx context.Context, req *FilterMutateJobInputResolver) {
 
-		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, true, "Retrying...")
+		filter := req.ToFilter()
+		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, filter.TaskName, true, "Retrying...")
 
-		filter := &Filter{
-			Page: 1, Limit: 10, Sort: "created_at",
-			Statuses: []string{string(statusFailure), string(statusStopped)}, TaskName: input.TaskName,
+		filter.Sort = "created_at"
+		if len(filter.Statuses) == 0 {
+			filter.Statuses = []string{string(statusFailure), string(statusStopped)}
 		}
-		StreamAllJob(ctx, filter, func(job *Job) {
+
+		StreamAllJob(ctx, &filter, func(job *Job) {
 			r.engine.opt.queue.PushJob(ctx, job)
 		})
 
@@ -220,7 +233,8 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 		for _, status := range filter.Statuses {
 			countMatchedFilter, countAffected, err := r.engine.opt.persistent.UpdateJob(ctx,
 				&Filter{
-					TaskName: input.TaskName, Status: &status,
+					TaskName: filter.TaskName, Status: &status,
+					Search: filter.Search, StartDate: filter.StartDate, EndDate: filter.EndDate,
 				},
 				map[string]interface{}{
 					"status":  statusQueueing,
@@ -234,42 +248,47 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 			incr[strings.ToLower(string(statusQueueing))] += countAffected
 		}
 
-		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, false, "")
-		r.engine.opt.persistent.Summary().IncrementSummary(ctx, input.TaskName, incr)
+		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, filter.TaskName, false, "")
+		r.engine.opt.persistent.Summary().IncrementSummary(ctx, filter.TaskName, incr)
 		r.engine.subscriber.broadcastAllToSubscribers(r.engine.ctx)
-		r.engine.registerNextJob(false, input.TaskName)
+		r.engine.registerNextJob(false, filter.TaskName)
 
-	}(r.engine.ctx)
+	}(r.engine.ctx, &input.Filter)
 
-	return "Success retry all failure job in task " + input.TaskName, nil
+	return "Success retry all job in task " + input.Filter.TaskName, nil
 }
 
 func (r *rootResolver) CleanJob(ctx context.Context, input struct {
-	TaskName string
+	Filter FilterMutateJobInputResolver
 }) (string, error) {
 
-	go func(ctx context.Context) {
+	go func(ctx context.Context, req *FilterMutateJobInputResolver) {
 
-		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, true, "Cleaning...")
+		filter := req.ToFilter()
+		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, filter.TaskName, true, "Cleaning...")
 
+		filter.Sort = "created_at"
+		if len(filter.Statuses) == 0 {
+			filter.Statuses = []string{string(statusFailure), string(statusStopped)}
+		}
 		incrQuery := map[string]int64{}
-		affectedStatus := []string{string(statusSuccess), string(statusFailure), string(statusStopped)}
-		for _, status := range affectedStatus {
+		for _, status := range req.Statuses {
 			countAffected := r.engine.opt.persistent.CleanJob(ctx,
 				&Filter{
-					TaskName: input.TaskName, Status: &status,
+					TaskName: filter.TaskName, Status: &status,
+					Search: filter.Search, StartDate: filter.StartDate, EndDate: filter.EndDate,
 				},
 			)
 			incrQuery[strings.ToLower(status)] -= countAffected
 		}
 
-		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, false, "")
-		r.engine.opt.persistent.Summary().IncrementSummary(ctx, input.TaskName, incrQuery)
+		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, req.TaskName, false, "")
+		r.engine.opt.persistent.Summary().IncrementSummary(ctx, req.TaskName, incrQuery)
 		r.engine.subscriber.broadcastAllToSubscribers(r.engine.ctx)
 
-	}(r.engine.ctx)
+	}(r.engine.ctx, &input.Filter)
 
-	return "Success clean all job in task " + input.TaskName, nil
+	return "Success clean all job in task " + input.Filter.TaskName, nil
 }
 
 func (r *rootResolver) RecalculateSummary(ctx context.Context) (string, error) {

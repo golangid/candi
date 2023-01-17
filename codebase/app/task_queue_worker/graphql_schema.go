@@ -11,6 +11,7 @@ type Query {
 	get_detail_job(job_id: String!, filter: GetAllJobHistoryInputResolver): JobResolver!
 	get_all_active_subscriber(): [ClientSubscriber!]!
 	get_all_job(filter: GetAllJobInputResolver): JobListResolver!
+	get_count_job(filter: GetAllJobInputResolver): Int!
 	get_all_configuration(): [ConfigurationResolver!]!
 	get_detail_configuration(key: String!): ConfigurationResolver!
 }
@@ -20,8 +21,8 @@ type Mutation {
 	stop_job(job_id: String!): String!
 	stop_all_job(task_name: String!): String!
 	retry_job(job_id: String!): String!
-	clean_job(task_name: String!): String!
-	retry_all_job(task_name: String!): String!
+	clean_job(filter: FilterMutateJobInputResolver!): String!
+	retry_all_job(filter: FilterMutateJobInputResolver!): String!
 	clear_all_client_subscriber(): String!
 	kill_client_subscriber(client_id: String!): String!
 	delete_job(job_id: String!): String!
@@ -138,6 +139,8 @@ type JobResolver {
 	created_at: String!
 	finished_at: String!
 	next_retry_at: String!
+	current_progress: Int!
+	max_progress: Int!
 	meta: JoDetailMetaResolver!
 }
 
@@ -216,6 +219,15 @@ type ConfigurationResolver {
 type RestoreSecondaryResolver {
 	total_data: Int!
 	message: String!
+}
+
+input FilterMutateJobInputResolver {
+	task_name: String!
+	search: String
+	job_id: String
+	statuses: [String!]!
+	start_date: String
+	end_date: String
 }
 `
 
