@@ -7,6 +7,7 @@ import (
 
 	"github.com/golangid/candi/candiutils"
 	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/config/env"
 )
 
 var (
@@ -70,6 +71,7 @@ func initEngine(service factory.ServiceFactory, opts ...OptionFunc) *taskQueueWo
 		configuration:             initConfiguration(&opt),
 		registeredTaskWorkerIndex: make(map[string]int),
 		runningWorkerIndexTask:    make(map[int]*Task),
+		globalSemaphore:           make(chan struct{}, env.BaseEnv().MaxGoroutines),
 	}
 	engine.subscriber = initSubscriber(engine.configuration, &opt)
 	engine.ctx, engine.ctxCancelFunc = context.WithCancel(context.Background())

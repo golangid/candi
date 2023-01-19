@@ -337,6 +337,12 @@ func UpdateProgressJob(ctx context.Context, jobID string, numProcessed, maxProce
 		return err
 	}
 
-	engine.subscriber.broadcastJobDetail(ctx)
+	if len(engine.subscriber.clientJobDetailSubscribers) > 0 {
+		engine.globalSemaphore <- struct{}{}
+		go func() {
+			defer func() { <-engine.globalSemaphore }()
+			engine.subscriber.broadcastJobDetail(context.Background())
+		}()
+	}
 	return nil
 }

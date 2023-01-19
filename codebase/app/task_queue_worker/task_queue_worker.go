@@ -33,6 +33,8 @@ type taskQueueWorker struct {
 	registeredTaskWorkerIndex map[string]int
 	runningWorkerIndexTask    map[int]*Task
 	tasks                     []string
+
+	globalSemaphore chan struct{}
 }
 
 // NewTaskQueueWorker create new task queue worker
