@@ -21,7 +21,7 @@ import (
 )
 
 // ParseFromQueryParam parse url query string to struct target (with multiple data type in struct field), target must in pointer
-func ParseFromQueryParam(query url.Values, target interface{}) (err error) {
+func ParseFromQueryParam(query URLQueryGetter, target interface{}) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("%v", r)
@@ -62,8 +62,8 @@ func ParseFromQueryParam(query url.Values, target interface{}) (err error) {
 		}
 
 		var v string
-		if val := query[key]; len(val) > 0 && val[0] != "" {
-			v = val[0]
+		if val := query.Get(key); val != "" {
+			v = val
 		} else {
 			v = typ.Tag.Get("default")
 		}

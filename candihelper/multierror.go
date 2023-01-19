@@ -8,17 +8,6 @@ import (
 )
 
 type (
-	// MultiError abstract interface
-	MultiError interface {
-		Append(key string, err error) MultiError
-		HasError() bool
-		IsNil() bool
-		Clear()
-		ToMap() map[string]string
-		Merge(MultiError) MultiError
-		Error() string
-	}
-
 	multiError struct {
 		lock sync.Mutex
 		errs map[string]string
