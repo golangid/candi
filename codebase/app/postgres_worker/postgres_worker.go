@@ -130,7 +130,7 @@ func (p *postgresWorker) Serve() {
 		}
 
 		// exec handler
-		if e, ok := value.Interface().(*pq.Notification); ok {
+		if e, ok := value.Interface().(*pq.Notification); ok && e != nil {
 			var payload EventPayload
 			json.Unmarshal([]byte(e.Extra), &payload)
 
