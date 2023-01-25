@@ -3,7 +3,6 @@ package postgresworker
 import (
 	"github.com/golangid/candi/candiutils"
 	"github.com/golangid/candi/codebase/factory"
-	"github.com/golangid/candi/config/env"
 )
 
 type (
@@ -30,7 +29,6 @@ func getDefaultOption(service factory.ServiceFactory) option {
 	} else {
 		opt.locker = &candiutils.NoopLocker{}
 	}
-	opt.sources[""] = &PostgresSource{dsn: env.BaseEnv().DbSQLWriteDSN} // default source
 	return opt
 }
 

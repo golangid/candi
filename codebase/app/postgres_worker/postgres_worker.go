@@ -14,6 +14,7 @@ import (
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
 	"github.com/lib/pq"
@@ -53,7 +54,7 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 	}
 
 	if len(worker.opt.sources) == 0 {
-		panic("No data sources in postgres listener worker")
+		worker.opt.sources[""] = &PostgresSource{dsn: env.BaseEnv().DbSQLWriteDSN} // default source
 	}
 
 	for _, source := range worker.opt.sources {
