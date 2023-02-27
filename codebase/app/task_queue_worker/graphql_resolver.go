@@ -423,28 +423,8 @@ func (r *rootResolver) RunQueuedJob(ctx context.Context, input struct {
 	TaskName string
 }) (res string, err error) {
 
-	nextJobID := r.engine.opt.queue.NextJob(ctx, input.TaskName)
-	if nextJobID != "" {
-
-		nextJob, err := r.engine.opt.persistent.FindJobByID(ctx, nextJobID, nil)
-		if err != nil {
-			return "Failed find detail job", err
-		}
-		r.engine.registerJobToWorker(&nextJob)
-
-		return "Success with job id " + nextJobID, nil
-	}
-
-	StreamAllJob(ctx, &Filter{
-		TaskName: input.TaskName,
-		Sort:     "created_at",
-		Status:   candihelper.ToStringPtr(string(statusQueueing)),
-	}, func(job *Job) {
-		r.engine.opt.queue.PushJob(ctx, job)
-	})
-
-	r.engine.registerNextJob(false, input.TaskName)
-	return "Success with stream all job", nil
+	r.engine.registerNextJob(true, input.TaskName)
+	return "Success", nil
 }
 
 func (r *rootResolver) RestoreFromSecondary(ctx context.Context) (res RestoreSecondaryResolver, err error) {

@@ -283,7 +283,11 @@ func (t *taskQueueWorker) registerNextJob(withStream bool, taskName string) {
 
 		if nextJob, err := t.opt.persistent.FindJobByID(t.ctx, nextJobID, nil); err == nil {
 			t.registerJobToWorker(&nextJob)
+			return
 		}
+
+		t.opt.queue.PopJob(t.ctx, taskName) // remove unused job (job not found maybe if not save job after success)
+		t.registerNextJob(false, taskName)
 
 	} else if withStream {
 
@@ -295,7 +299,6 @@ func (t *taskQueueWorker) registerNextJob(withStream bool, taskName string) {
 			t.opt.queue.PushJob(t.ctx, job)
 		})
 		t.registerNextJob(false, taskName)
-
 	}
 
 }
