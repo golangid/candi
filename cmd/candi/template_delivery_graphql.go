@@ -28,17 +28,17 @@ func NewGraphQLHandler(uc usecase.Usecase, deps dependency.Dependency) *GraphQLH
 
 // Query method
 func (h *GraphQLHandler) Query() interface{} {
-	return &queryResolver{root: h}
+	return h
 }
 
 // Mutation method
 func (h *GraphQLHandler) Mutation() interface{} {
-	return &mutationResolver{root: h}
+	return h
 }
 
 // Subscription method
 func (h *GraphQLHandler) Subscription() interface{} {
-	return &subscriptionResolver{root: h}
+	return h
 }
 `
 
@@ -54,12 +54,8 @@ import (
 	"{{.LibraryName}}/tracer"
 )
 
-type queryResolver struct {
-	root *GraphQLHandler
-}
-
 // GetAll{{upper (camel .ModuleName)}} resolver
-func (q *queryResolver) GetAll{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ Filter *CommonFilter }) (results {{upper (camel .ModuleName)}}ListResolver, err error) {
+func (q *GraphQLHandler) GetAll{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ Filter *CommonFilter }) (results {{upper (camel .ModuleName)}}ListResolver, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryGraphQL:GetAll{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
@@ -69,10 +65,10 @@ func (q *queryResolver) GetAll{{upper (camel .ModuleName)}}(ctx context.Context,
 		input.Filter = new(CommonFilter)
 	}
 	filter := input.Filter.toSharedFilter()
-	if err := q.root.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/get_all", filter); err != nil {
+	if err := q.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/get_all", filter); err != nil {
 		return results, err
 	}
-	data, meta, err := q.root.uc.{{upper (camel .ModuleName)}}().GetAll{{upper (camel .ModuleName)}}(ctx, &filter)
+	data, meta, err := q.uc.{{upper (camel .ModuleName)}}().GetAll{{upper (camel .ModuleName)}}(ctx, &filter)
 	if err != nil {
 		return results, err
 	}
@@ -83,13 +79,13 @@ func (q *queryResolver) GetAll{{upper (camel .ModuleName)}}(ctx context.Context,
 }
 
 // GetDetail{{upper (camel .ModuleName)}} resolver
-func (q *queryResolver) GetDetail{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ ID string }) (data domain.Response{{upper (camel .ModuleName)}}, err error) {
+func (q *GraphQLHandler) GetDetail{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ ID string }) (data domain.Response{{upper (camel .ModuleName)}}, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryGraphQL:GetDetail{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
-	return q.root.uc.{{upper (camel .ModuleName)}}().GetDetail{{upper (camel .ModuleName)}}(ctx, input.ID)
+	return q.uc.{{upper (camel .ModuleName)}}().GetDetail{{upper (camel .ModuleName)}}(ctx, input.ID)
 }
 `
 	deliveryGraphqlMutationTemplate = `// {{.Header}}
@@ -104,28 +100,24 @@ import (
 	"{{.LibraryName}}/tracer"
 )
 
-type mutationResolver struct {
-	root *GraphQLHandler
-}
-
 // Create{{upper (camel .ModuleName)}} resolver
-func (m *mutationResolver) Create{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ Data domain.Request{{upper (camel .ModuleName)}} }) (ok string, err error) {
+func (m *GraphQLHandler) Create{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ Data domain.Request{{upper (camel .ModuleName)}} }) (ok string, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryGraphQL:Create{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
-	if err := m.root.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/save", input.Data); err != nil {
+	if err := m.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/save", input.Data); err != nil {
 		return "", err
 	}
-	if err := m.root.uc.{{upper (camel .ModuleName)}}().Create{{upper (camel .ModuleName)}}(ctx, &input.Data); err != nil {
+	if err := m.uc.{{upper (camel .ModuleName)}}().Create{{upper (camel .ModuleName)}}(ctx, &input.Data); err != nil {
 		return ok, err
 	}
 	return "Success", nil
 }
 
 // Update{{upper (camel .ModuleName)}} resolver
-func (m *mutationResolver) Update{{upper (camel .ModuleName)}}(ctx context.Context, input struct {
+func (m *GraphQLHandler) Update{{upper (camel .ModuleName)}}(ctx context.Context, input struct {
 	ID   string
 	Data domain.Request{{upper (camel .ModuleName)}}
 }) (ok string, err error) {
@@ -135,23 +127,23 @@ func (m *mutationResolver) Update{{upper (camel .ModuleName)}}(ctx context.Conte
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
 	input.Data.ID = input.ID
-	if err := m.root.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/save", input.Data); err != nil {
+	if err := m.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/save", input.Data); err != nil {
 		return "", err
 	}
-	if err := m.root.uc.{{upper (camel .ModuleName)}}().Update{{upper (camel .ModuleName)}}(ctx, &input.Data); err != nil {
+	if err := m.uc.{{upper (camel .ModuleName)}}().Update{{upper (camel .ModuleName)}}(ctx, &input.Data); err != nil {
 		return ok, err
 	}
 	return "Success", nil
 }
 
 // Delete{{upper (camel .ModuleName)}} resolver
-func (m *mutationResolver) Delete{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ ID string }) (ok string, err error) {
+func (m *GraphQLHandler) Delete{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ ID string }) (ok string, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryGraphQL:Delete{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
-	if err := m.root.uc.{{upper (camel .ModuleName)}}().Delete{{upper (camel .ModuleName)}}(ctx, input.ID); err != nil {
+	if err := m.uc.{{upper (camel .ModuleName)}}().Delete{{upper (camel .ModuleName)}}(ctx, input.ID); err != nil {
 		return ok, err
 	}
 	return "Success", nil
@@ -172,12 +164,8 @@ import (
 	"github.com/google/uuid"
 )
 
-type subscriptionResolver struct {
-	root *GraphQLHandler
-}
-
 // ListenData resolver, broadcast event to client
-func (s *subscriptionResolver) ListenData(ctx context.Context) <-chan domain.Response{{upper (camel .ModuleName)}} {
+func (s *GraphQLHandler) ListenData(ctx context.Context) <-chan domain.Response{{upper (camel .ModuleName)}} {
 	output := make(chan domain.Response{{upper (camel .ModuleName)}})
 
 	go func() {
