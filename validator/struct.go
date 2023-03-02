@@ -8,7 +8,7 @@ import (
 
 	idLocales "github.com/go-playground/locales/id"
 	ut "github.com/go-playground/universal-translator"
-	"github.com/go-playground/validator/v10"
+	validatorEngine "github.com/go-playground/validator/v10"
 	idTranslations "github.com/go-playground/validator/v10/translations/id"
 	"github.com/golangid/candi/candihelper"
 )
@@ -37,11 +37,6 @@ const (
 	Dash = "strip"
 )
 
-// custom error list
-var errorList = map[string]string{
-	customTagRegexp: fmt.Sprintf("Parameter %s harus berupa =", validateValue),
-}
-
 // regex replace
 var regexList = map[string]string{
 	RegexAlphabetLower: fmt.Sprintf("%s[%s]", AlphabetLower, RegexAlphabetLower),
@@ -50,93 +45,78 @@ var regexList = map[string]string{
 	RegexDash:          fmt.Sprintf("%s[%s]", Dash, RegexDash),
 }
 
-// custom function
-var funcList = map[string]validator.Func{
-	customTagRegexp: checkRegex,
+// StructValidatorOptionFunc type
+type StructValidatorOptionFunc func(*StructValidator)
+
+// SetTranslatorStructValidatorOption option func
+func SetTranslatorStructValidatorOption(translator ut.Translator) StructValidatorOptionFunc {
+	return func(v *StructValidator) {
+		v.translator = translator
+	}
+}
+
+// SetCoreStructValidatorOption option func
+func SetCoreStructValidatorOption(additionalConfigFunc ...func(*validatorEngine.Validate)) StructValidatorOptionFunc {
+
+	ve := validatorEngine.New()
+	for _, additionalFunc := range additionalConfigFunc {
+		additionalFunc(ve)
+	}
+	return func(v *StructValidator) {
+		v.validator = ve
+	}
 }
 
 // StructValidator struct
 type StructValidator struct {
 	translator ut.Translator
-	validator  *validator.Validate
+	validator  *validatorEngine.Validate
 }
 
 // NewStructValidator using go library
 // https://github.com/go-playground/validator (all struct tags will be here)
 // https://godoc.org/github.com/go-playground/validator (documentation using it)
 // NewStructValidator function
-func NewStructValidator() *StructValidator {
+func NewStructValidator(opts ...StructValidatorOptionFunc) *StructValidator {
+
+	// set default option
 	// set lang id locales
 	id := idLocales.New()
-
 	// set universal translator
 	uni := ut.New(id, id)
-
 	// set translator
 	translator, _ := uni.GetTranslator("id")
 
 	// set validator
-	validator := validator.New()
+	vv := validatorEngine.New()
+	vv.RegisterValidation(customTagRegexp, checkRegex, false)
+	if err := vv.RegisterTranslation(customTagRegexp, translator,
+		func(ut ut.Translator) error {
+			return ut.Add(customTagRegexp, fmt.Sprintf("Parameter %s harus berupa =", validateValue), true) // see universal-translator for details
+		},
+		func(ut ut.Translator, fe validatorEngine.FieldError) string {
+			t, _ := ut.T(customTagRegexp, fe.Field())
+			return t
+		},
+	); err != nil {
+		log.Println(candihelper.StringYellow(fmt.Sprintf("Struct Validator: warning, failed set translation validator on tag [%s]", customTagRegexp)))
+	}
 
 	// register id translations
-	idTranslations.RegisterDefaultTranslations(validator, translator)
+	idTranslations.RegisterDefaultTranslations(vv, translator)
 
 	// set struct validator
-	structValidator := &StructValidator{
+	sv := &StructValidator{
 		translator: translator,
-		validator:  validator,
+		validator:  vv,
 	}
 
-	// add custom function
-	if len(funcList) > 0 {
-		for tag, function := range funcList {
-			structValidator.customFunc(tag, function)
-		}
+	// overide with custom option
+	for _, opt := range opts {
+		opt(sv)
 	}
 
-	// override translation
-	if len(errorList) > 0 {
-		for tag, message := range errorList {
-			structValidator.setTranslationOverride(tag, message)
-		}
-	}
-
-	return &StructValidator{
-		translator: translator,
-		validator:  validator,
-	}
-}
-
-// setTranslationOverride function
-func (v *StructValidator) setTranslationOverride(tag string, message string) {
-	// override error
-	err := v.validator.RegisterTranslation(tag, v.translator, v.registerFunc(tag, message), v.translationFunc(tag))
-	if err != nil {
-		log.Println(candihelper.StringYellow(fmt.Sprintf("Struct Validator: warning, failed set translation validator on tag [%s]", tag)))
-	}
-}
-
-// registerFunc function
-func (v *StructValidator) registerFunc(tag string, message string) validator.RegisterTranslationsFunc {
-	register := func(ut ut.Translator) error {
-		return ut.Add(tag, message, true) // see universal-translator for details
-	}
-	return register
-}
-
-// translationFunc function
-func (v *StructValidator) translationFunc(tag string) validator.TranslationFunc {
-	trans := func(ut ut.Translator, fe validator.FieldError) string {
-		t, _ := ut.T(tag, fe.Field())
-
-		return t
-	}
-	return trans
-}
-
-// customFunc function
-func (v *StructValidator) customFunc(tag string, function validator.Func) {
-	v.validator.RegisterValidation(tag, function, false)
+	return sv
 }
 
 // regexError function
@@ -158,7 +138,7 @@ func (v *StructValidator) regexError(errString string) string {
 
 // CUSTOM FUNCTION SECTION
 // checkRegex function
-func checkRegex(fl validator.FieldLevel) bool {
+func checkRegex(fl validatorEngine.FieldLevel) bool {
 	var (
 		param  = fl.Param()
 		value  = fl.Field().String()
@@ -182,7 +162,7 @@ func (v *StructValidator) ValidateStruct(data interface{}) error {
 	err := v.validator.Struct(data)
 	if err != nil {
 		switch errs := err.(type) {
-		case validator.ValidationErrors:
+		case validatorEngine.ValidationErrors:
 			for _, e := range errs {
 				message := e.Translate(v.translator)
 
