@@ -1,11 +1,5 @@
 package validator
 
-import (
-	"os"
-
-	"github.com/golangid/candi/candihelper"
-)
-
 // OptionFunc type
 type OptionFunc func(*Validator)
 
@@ -33,7 +27,7 @@ type Validator struct {
 // jsonschema source file load from "api/jsonschema" directory
 func NewValidator(opts ...OptionFunc) *Validator {
 	v := &Validator{
-		jsonSchema:      NewJSONSchemaValidator(os.Getenv(candihelper.WORKDIR) + "api/jsonschema"),
+		jsonSchema:      NewJSONSchemaValidator(),
 		structValidator: NewStructValidator(),
 	}
 

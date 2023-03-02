@@ -10,19 +10,43 @@ import (
 	"github.com/golangid/gojsonschema"
 )
 
+// JSONSchemaValidatorOptionFunc type
+type JSONSchemaValidatorOptionFunc func(*JSONSchemaValidator)
+
+// SetSchemaStorageJSONSchemaValidatorOption option func
+func SetSchemaStorageJSONSchemaValidatorOption(s Storage) JSONSchemaValidatorOptionFunc {
+	return func(v *JSONSchemaValidator) {
+		v.schemaStorage = s
+	}
+}
+
+// AddHideErrorListTypeJSONSchemaValidatorOption option func
+func AddHideErrorListTypeJSONSchemaValidatorOption(descType ...string) JSONSchemaValidatorOptionFunc {
+	return func(v *JSONSchemaValidator) {
+		for _, e := range descType {
+			v.notShowErrorListType[e] = struct{}{}
+		}
+	}
+}
+
 // JSONSchemaValidator validator
 type JSONSchemaValidator struct {
-	SchemaStorage        Storage
-	NotShowErrorListType map[string]bool
+	schemaStorage        Storage
+	notShowErrorListType map[string]struct{}
 }
 
 // NewJSONSchemaValidator constructor
-func NewJSONSchemaValidator(schemaRootPath string) *JSONSchemaValidator {
+func NewJSONSchemaValidator(opts ...JSONSchemaValidatorOptionFunc) *JSONSchemaValidator {
 	v := &JSONSchemaValidator{
-		SchemaStorage: NewInMemStorage(schemaRootPath),
+		schemaStorage: NewInMemStorage(os.Getenv(candihelper.WORKDIR) + "api/jsonschema"),
+		notShowErrorListType: map[string]struct{}{
+			"condition_else": {}, "condition_then": {},
+		},
 	}
-	v.NotShowErrorListType = map[string]bool{
-		"condition_else": true, "condition_then": true,
+
+	// overide with custom option
+	for _, opt := range opts {
+		opt(v)
 	}
 	return v
 }
@@ -30,7 +54,7 @@ func NewJSONSchemaValidator(schemaRootPath string) *JSONSchemaValidator {
 // ValidateDocument based on schema id
 func (v *JSONSchemaValidator) ValidateDocument(schemaID string, documentSource interface{}) error {
 
-	s, err := v.SchemaStorage.Get(schemaID)
+	s, err := v.schemaStorage.Get(schemaID)
 	if err != nil {
 		return err
 	}
@@ -51,7 +75,7 @@ func (v *JSONSchemaValidator) ValidateDocument(schemaID string, documentSource i
 	if !result.Valid() {
 		multiError := candihelper.NewMultiError()
 		for _, desc := range result.Errors() {
-			if v.NotShowErrorListType[desc.Type()] {
+			if _, ok := v.notShowErrorListType[desc.Type()]; ok {
 				continue
 			}
 			var field = desc.Field()

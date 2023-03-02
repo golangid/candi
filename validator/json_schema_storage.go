@@ -16,7 +16,7 @@ type Storage interface {
 }
 
 type (
-	localStorage struct {
+	fileLocalStorage struct {
 		kv map[string]string
 	}
 
@@ -29,12 +29,12 @@ type (
 	}
 )
 
-// NewLocalStorage read from file
-func NewLocalStorage(rootDir string) Storage {
-	ls := &localStorage{
+// NewFileLocalStorage read from file
+func NewFileLocalStorage(schemaLocationDir string) Storage {
+	ls := &fileLocalStorage{
 		kv: make(map[string]string),
 	}
-	filepath.Walk(rootDir, func(p string, info os.FileInfo, err error) error {
+	filepath.Walk(schemaLocationDir, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -55,7 +55,7 @@ func NewLocalStorage(rootDir string) Storage {
 			}
 			id, ok := data["$id"].(string)
 			if !ok {
-				id = strings.Trim(strings.TrimSuffix(strings.TrimPrefix(p, rootDir), ".json"), "/") // take filename without extension
+				id = strings.Trim(strings.TrimSuffix(strings.TrimPrefix(p, schemaLocationDir), ".json"), "/") // take filename without extension
 			}
 			ls.Store(id, p)
 		}
@@ -65,7 +65,7 @@ func NewLocalStorage(rootDir string) Storage {
 	return ls
 }
 
-func (l *localStorage) Get(schemaID string) (string, error) {
+func (l *fileLocalStorage) Get(schemaID string) (string, error) {
 	path, ok := l.kv[schemaID]
 	if !ok {
 		return "", fmt.Errorf("schema '%s' not found", schemaID)
@@ -77,18 +77,18 @@ func (l *localStorage) Get(schemaID string) (string, error) {
 	return string(schema), nil
 }
 
-func (l *localStorage) Store(schemaID string, schema string) error {
+func (l *fileLocalStorage) Store(schemaID string, schema string) error {
 	l.kv[schemaID] = schema
 	return nil
 }
 
 // NewInMemStorage constructor
-func NewInMemStorage(rootDir string) Storage {
+func NewInMemStorage(schemaLocationDir string) Storage {
 	inMem := &inMemStorage{
 		storage: make(map[string]string),
 	}
 
-	filepath.Walk(rootDir, func(p string, info os.FileInfo, err error) error {
+	filepath.Walk(schemaLocationDir, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -109,7 +109,7 @@ func NewInMemStorage(rootDir string) Storage {
 			}
 			id, ok := data["$id"].(string)
 			if !ok {
-				id = strings.Trim(strings.TrimSuffix(strings.TrimPrefix(p, rootDir), ".json"), "/") // take filename without extension
+				id = strings.Trim(strings.TrimSuffix(strings.TrimPrefix(p, schemaLocationDir), ".json"), "/") // take filename without extension
 			}
 			inMem.Store(id, string(s))
 		}
