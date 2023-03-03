@@ -55,9 +55,9 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 		echo.WrapMiddleware(service.GetDependency().GetMiddleware().HTTPBasicAuth),
 	)
 
-	restRootPath := server.serverEngine.Group(server.opt.rootPath, server.echoRestTracerMiddleware)
+	restRootPath := server.serverEngine.Group(server.opt.rootPath, server.tracerMiddleware)
 	if server.opt.debugMode {
-		restRootPath.Use(echoLogger())
+		restRootPath.Use(EchoLoggerMiddleware())
 	}
 	for _, m := range service.GetModules() {
 		if h := m.RESTHandler(); h != nil {

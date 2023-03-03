@@ -34,7 +34,7 @@ func getDefaultOption() option {
 		httpPort:        ":8000",
 		rootPath:        "",
 		debugMode:       true,
-		rootMiddlewares: []echo.MiddlewareFunc{defaultCORS()},
+		rootMiddlewares: []echo.MiddlewareFunc{EchoDefaultCORSMiddleware()},
 		rootHandler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			rw.Write([]byte("REST Server up and running"))
 		}),
