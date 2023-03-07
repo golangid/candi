@@ -13,7 +13,14 @@ type EventContext struct {
 	key                      string
 	err                      error
 
-	buff *bytes.Buffer
+	messageBuff *bytes.Buffer
+}
+
+// NewEventContext event context constructor
+func NewEventContext(buff *bytes.Buffer) *EventContext {
+	return &EventContext{
+		messageBuff: buff,
+	}
 }
 
 // SetContext setter
@@ -73,7 +80,7 @@ func (e *EventContext) Key() string {
 
 // Message get context
 func (e *EventContext) Message() []byte {
-	return e.buff.Bytes()
+	return e.messageBuff.Bytes()
 }
 
 // Err get error
@@ -83,21 +90,10 @@ func (e *EventContext) Err() error {
 
 // Read implement io.Reader
 func (e *EventContext) Read(p []byte) (n int, err error) {
-	return e.buff.Read(p)
+	return e.messageBuff.Read(p)
 }
 
 // Write implement io.Writer
 func (e *EventContext) Write(p []byte) (n int, err error) {
-	if e.buff == nil {
-		e.buff = &bytes.Buffer{}
-	}
-	return e.buff.Write(p)
-}
-
-// WriteString method
-func (e *EventContext) WriteString(s string) (n int, err error) {
-	if e.buff == nil {
-		e.buff = &bytes.Buffer{}
-	}
-	return e.buff.WriteString(s)
+	return e.messageBuff.Write(p)
 }

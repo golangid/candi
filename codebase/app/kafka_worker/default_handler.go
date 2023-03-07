@@ -1,6 +1,7 @@
 package kafkaworker
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"runtime/debug"
@@ -90,7 +91,7 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 		log.Printf("\x1b[35;3mKafka Consumer: message consumed, timestamp = %v, topic = %s\x1b[0m", message.Timestamp, message.Topic)
 	}
 
-	var eventContext candishared.EventContext
+	eventContext := candishared.NewEventContext(bytes.NewBuffer(make([]byte, 256)))
 	eventContext.SetContext(ctx)
 	eventContext.SetWorkerType(string(types.Kafka))
 	eventContext.SetHandlerRoute(message.Topic)
@@ -99,7 +100,7 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 	eventContext.Write(message.Value)
 
 	for _, handlerFunc := range handler.HandlerFuncs {
-		if err := handlerFunc(&eventContext); err != nil {
+		if err := handlerFunc(eventContext); err != nil {
 			eventContext.SetError(err)
 			trace.SetError(err)
 		}

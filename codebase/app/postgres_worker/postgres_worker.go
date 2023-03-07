@@ -1,6 +1,7 @@
 package postgresworker
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -238,13 +239,13 @@ func (p *postgresWorker) execEvent(workerIndex int, data *EventPayload) {
 		}
 	}
 
-	message, _ := json.Marshal(data)
-
-	var eventContext candishared.EventContext
+	eventContext := candishared.NewEventContext(bytes.NewBuffer(make([]byte, 256)))
 	eventContext.SetContext(ctx)
 	eventContext.SetWorkerType(string(types.PostgresListener))
 	eventContext.SetHandlerRoute(data.Table)
 	eventContext.SetKey(data.EventID)
+
+	message, _ := json.Marshal(data)
 	eventContext.Write(message)
 
 	if source.name != "" {
@@ -259,7 +260,7 @@ func (p *postgresWorker) execEvent(workerIndex int, data *EventPayload) {
 	trace.Log("payload", data)
 
 	for _, handlerFunc := range handler.HandlerFuncs {
-		if err := handlerFunc(&eventContext); err != nil {
+		if err := handlerFunc(eventContext); err != nil {
 			eventContext.SetError(err)
 			trace.SetError(err)
 		}

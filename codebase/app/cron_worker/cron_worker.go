@@ -3,6 +3,7 @@ package cronworker
 // cron scheduler worker, create with 100% pure internal go library (using reflect select channel)
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -181,28 +182,28 @@ func (c *cronWorker) processJob(job *Job) {
 			trace.SetError(fmt.Errorf("%v", r))
 			trace.Log("stacktrace", string(debug.Stack()))
 		}
-		logger.LogGreen("cron scheduler > trace_url: " + tracer.GetTraceURL(ctx))
+		logger.LogGreen("cron_scheduler > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish()
 	}()
 	trace.SetTag("job_name", job.HandlerName)
-	trace.SetTag("job_param", job.Params)
+	trace.Log("job_param", job.Params)
 
 	if c.opt.debugMode {
 		log.Printf("\x1b[35;3mCron Scheduler: executing task '%s' (interval: %s)\x1b[0m", job.HandlerName, job.Interval)
 	}
 
-	var eventContext candishared.EventContext
+	eventContext := candishared.NewEventContext(bytes.NewBuffer(make([]byte, 256)))
 	eventContext.SetContext(ctx)
 	eventContext.SetWorkerType(string(types.Scheduler))
 	eventContext.SetHandlerRoute(job.HandlerName)
 	eventContext.SetHeader(map[string]string{
 		"interval": job.Interval,
 	})
-	eventContext.WriteString(job.Params)
+	eventContext.Write([]byte(job.Params))
 
 	for _, handlerFunc := range job.Handler.HandlerFuncs {
-		if err := handlerFunc(&eventContext); err != nil {
+		if err := handlerFunc(eventContext); err != nil {
 			eventContext.SetError(err)
 			trace.SetError(err)
 		}

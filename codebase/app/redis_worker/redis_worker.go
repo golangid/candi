@@ -3,6 +3,7 @@ package redisworker
 // Redis subscriber worker codebase
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -202,15 +203,15 @@ func (r *redisWorker) processMessage(param RedisMessage) {
 	trace.SetTag("event_id", param.EventID)
 	trace.Log("message", param.Message)
 
-	var eventContext candishared.EventContext
+	eventContext := candishared.NewEventContext(bytes.NewBuffer(make([]byte, 256)))
 	eventContext.SetContext(ctx)
 	eventContext.SetWorkerType(string(types.RedisSubscriber))
 	eventContext.SetHandlerRoute(param.HandlerName)
 	eventContext.SetKey(param.EventID)
-	eventContext.WriteString(param.Message)
+	eventContext.Write([]byte(param.Message))
 
 	for _, handlerFunc := range selectedHandler.HandlerFuncs {
-		if err := handlerFunc(&eventContext); err != nil {
+		if err := handlerFunc(eventContext); err != nil {
 			eventContext.SetError(err)
 			trace.SetError(err)
 		}
