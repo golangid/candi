@@ -2,140 +2,34 @@ package restserver
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"net/http"
-	"net/http/httputil"
-	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/golangid/candi/candihelper"
-	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/logger"
-	"github.com/golangid/candi/tracer"
-	"github.com/golangid/candi/wrapper"
 	"github.com/labstack/echo"
 )
 
-// tracerMiddleware for wrap from http inbound (request from client)
-func (h *restServer) tracerMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		req := c.Request()
-
-		isDisableTrace, _ := strconv.ParseBool(req.Header.Get(candihelper.HeaderDisableTrace))
-		if isDisableTrace {
-			c.SetRequest(req.WithContext(tracer.SkipTraceContext(req.Context())))
-			return next(c)
-		}
-
-		operationName := fmt.Sprintf("%s %s", req.Method, req.Host)
-
-		header := map[string]string{}
-		for key := range c.Request().Header {
-			header[key] = c.Request().Header.Get(key)
-		}
-
-		trace, ctx := tracer.StartTraceFromHeader(req.Context(), operationName, header)
-		defer func() {
-			trace.SetTag("trace_id", tracer.GetTraceID(ctx))
-			trace.Finish()
-			logger.LogGreen("rest_api > trace_url: " + tracer.GetTraceURL(ctx))
-		}()
-
-		httpDump, _ := httputil.DumpRequest(req, false)
-		trace.SetTag("http.url_path", req.URL.Path)
-		trace.SetTag("http.method", req.Method)
-		trace.Log("http.request", httpDump)
-
-		body, _ := io.ReadAll(req.Body)
-		if len(body) < h.opt.jaegerMaxPacketSize { // limit request body size to 65000 bytes (if higher tracer cannot show root span)
-			trace.Log("request.body", body)
-		} else {
-			trace.Log("request.body.size", len(body))
-		}
-		req.Body = io.NopCloser(bytes.NewBuffer(body)) // reuse body
-
-		resBody := new(bytes.Buffer)
-		mw := io.MultiWriter(c.Response().Writer, resBody)
-		c.Response().Writer = wrapper.NewWrapHTTPResponseWriter(mw, c.Response().Writer)
-		c.SetRequest(req.WithContext(ctx))
-
-		err := next(c)
-		statusCode := c.Response().Status
-		trace.SetTag("http.status_code", c.Response().Status)
-		if statusCode >= http.StatusBadRequest {
-			trace.SetError(fmt.Errorf("resp.code:%d", statusCode))
-		}
-
-		if resBody.Len() < h.opt.jaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
-			trace.Log("response.body", resBody.String())
-		} else {
-			trace.Log("response.body.size", resBody.Len())
-		}
-		return err
-	}
-}
-
-// EchoDefaultCORSMiddleware middleware
-func EchoDefaultCORSMiddleware() echo.MiddlewareFunc {
-	allowMethods := strings.Join(env.BaseEnv().CORSAllowMethods, ",")
-	allowHeaders := strings.Join(env.BaseEnv().CORSAllowHeaders, ",")
-	exposeHeaders := ""
-
+// EchoWrapMiddleware wraps `func(http.Handler) http.Handler` into `echo.MiddlewareFunc`
+func EchoWrapMiddleware(m func(http.Handler) http.Handler) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c echo.Context) (err error) {
 
-			req := c.Request()
-			res := c.Response()
-			origin := req.Header.Get(echo.HeaderOrigin)
-			allowOrigin := ""
+			m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				c.SetRequest(r)
+				c.Response().Writer = w
+				err = next(c)
+			})).ServeHTTP(c.Response().Writer, c.Request())
 
-			// Check allowed origins
-			for _, o := range env.BaseEnv().CORSAllowOrigins {
-				if o == "*" && env.BaseEnv().CORSAllowCredential {
-					allowOrigin = origin
-					break
-				}
-				if o == "*" || o == origin {
-					allowOrigin = o
-					break
-				}
-			}
-
-			// Simple request
-			if req.Method != http.MethodOptions {
-				res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
-				res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowOrigin)
-				if exposeHeaders != "" {
-					res.Header().Set(echo.HeaderAccessControlExposeHeaders, exposeHeaders)
-				}
-				return next(c)
-			}
-
-			// Preflight request
-			res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
-			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestMethod)
-			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestHeaders)
-			res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowOrigin)
-			res.Header().Set(echo.HeaderAccessControlAllowMethods, allowMethods)
-			if allowHeaders != "" {
-				res.Header().Set(echo.HeaderAccessControlAllowHeaders, allowHeaders)
-			} else {
-				h := req.Header.Get(echo.HeaderAccessControlRequestHeaders)
-				if h != "" {
-					res.Header().Set(echo.HeaderAccessControlAllowHeaders, h)
-				}
-			}
-			return c.NoContent(http.StatusNoContent)
+			return
 		}
 	}
 }
 
 // EchoLoggerMiddleware middleware
-func EchoLoggerMiddleware() echo.MiddlewareFunc {
+func EchoLoggerMiddleware(isActive bool, writer io.Writer) echo.MiddlewareFunc {
 	bPool := &sync.Pool{
 		New: func() interface{} {
 			return bytes.NewBuffer(make([]byte, 256))
@@ -143,14 +37,22 @@ func EchoLoggerMiddleware() echo.MiddlewareFunc {
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) (err error) {
+		return func(c echo.Context) error {
+
+			start := time.Now()
+
+			errNext := next(c)
+			if errNext != nil {
+				c.Error(errNext)
+			}
+
+			if !isActive {
+				return nil
+			}
 
 			req := c.Request()
 			res := c.Response()
-			start := time.Now()
-			if err = next(c); err != nil {
-				c.Error(err)
-			}
+
 			stop := time.Now()
 			buf := bPool.Get().(*bytes.Buffer)
 			buf.Reset()
@@ -195,8 +97,8 @@ func EchoLoggerMiddleware() echo.MiddlewareFunc {
 			buf.WriteString(s)
 
 			buf.WriteString(`,"error":"`)
-			if err != nil {
-				buf.WriteString(err.Error())
+			if errNext != nil {
+				buf.WriteString(logger.RedColor(errNext.Error()))
 			}
 
 			buf.WriteString(`","latency":`)
@@ -218,8 +120,8 @@ func EchoLoggerMiddleware() echo.MiddlewareFunc {
 
 			buf.WriteString("}\n")
 
-			_, err = os.Stdout.Write(buf.Bytes())
-			return
+			io.Copy(writer, buf)
+			return nil
 		}
 	}
 }

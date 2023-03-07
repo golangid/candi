@@ -3,8 +3,11 @@ package restserver
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	graphqlserver "github.com/golangid/candi/codebase/app/graphql_server"
+	"github.com/golangid/candi/config/env"
+	"github.com/golangid/candi/wrapper"
 	"github.com/labstack/echo"
 	"github.com/soheilhy/cmux"
 )
@@ -31,10 +34,17 @@ type (
 
 func getDefaultOption() option {
 	return option{
-		httpPort:        ":8000",
-		rootPath:        "",
-		debugMode:       true,
-		rootMiddlewares: []echo.MiddlewareFunc{EchoDefaultCORSMiddleware()},
+		httpPort:  ":8000",
+		rootPath:  "",
+		debugMode: true,
+		rootMiddlewares: []echo.MiddlewareFunc{
+			echo.WrapMiddleware(wrapper.HTTPMiddlewareCORS(
+				env.BaseEnv().CORSAllowMethods, env.BaseEnv().CORSAllowHeaders,
+				env.BaseEnv().CORSAllowOrigins, nil, env.BaseEnv().CORSAllowCredential,
+			)),
+			EchoWrapMiddleware(wrapper.HTTPMiddlewareTracer(env.BaseEnv().JaegerMaxPacketSize)),
+			EchoLoggerMiddleware(env.BaseEnv().DebugMode, os.Stdout),
+		},
 		rootHandler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			rw.Write([]byte("REST Server up and running"))
 		}),
