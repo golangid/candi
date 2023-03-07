@@ -88,7 +88,7 @@ func (t *taskQueueWorker) prepare() {
 		Page: 1, Limit: 50,
 		TaskNameList: t.tasks,
 		Sort:         "created_at",
-		Statuses:     []string{string(statusRetrying), string(statusQueueing)},
+		Statuses:     []string{string(StatusRetrying), string(StatusQueueing)},
 	}
 	for _, taskName := range t.tasks {
 		t.opt.queue.Clear(t.ctx, taskName)
@@ -97,8 +97,8 @@ func (t *taskQueueWorker) prepare() {
 		}
 		if summary := t.opt.persistent.Summary().FindDetailSummary(t.ctx, taskName); summary.ID == "" {
 			for _, status := range []string{
-				statusRetrying.String(), statusFailure.String(), statusSuccess.String(),
-				statusQueueing.String(), statusStopped.String(),
+				StatusRetrying.String(), StatusFailure.String(), StatusSuccess.String(),
+				StatusQueueing.String(), StatusStopped.String(),
 			} {
 				updated[strings.ToLower(status)] = t.opt.persistent.CountAllJob(t.ctx, &Filter{
 					TaskName: taskName, Status: &status,
@@ -115,9 +115,9 @@ func (t *taskQueueWorker) prepare() {
 		}
 
 		// update to queueing
-		if job.Status != string(statusQueueing) {
+		if job.Status != string(StatusQueueing) {
 			statusBefore := job.Status
-			job.Status = string(statusQueueing)
+			job.Status = string(StatusQueueing)
 			matchedCount, affectedCount, err := t.opt.persistent.UpdateJob(t.ctx, &Filter{
 				JobID: &job.ID,
 			}, map[string]interface{}{

@@ -1,6 +1,7 @@
 package taskqueueworker
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -89,7 +90,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		logger.LogE(err.Error())
 		return
 	}
-	if job.Status != string(statusQueueing) {
+	if job.Status != string(StatusQueueing) {
 		logger.LogI("task_queue_worker > skip exec job, job status: " + job.Status + ", job id: " + job.ID)
 		return
 	}
@@ -103,7 +104,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 
 	job.Retries++
 	statusBefore := strings.ToLower(job.Status)
-	job.Status = string(statusRetrying)
+	job.Status = string(StatusRetrying)
 	matchedCount, affectedCount, err := t.opt.persistent.UpdateJob(
 		t.ctx, &Filter{JobID: &job.ID}, map[string]interface{}{"status": job.Status},
 	)
@@ -127,7 +128,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
 			job.Error = err.Error()
-			job.Status = string(statusFailure)
+			job.Status = string(StatusFailure)
 			trace.Log("stacktrace", string(debug.Stack()))
 		}
 
@@ -138,7 +139,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		trace.Finish(tracer.FinishWithError(err))
 
 		incr := map[string]int64{}
-		if ok, _ := runningTask.handler.Configs[TaskOptionDeleteJobAfterSuccess].(bool); ok && job.Status == string(statusSuccess) {
+		if ok, _ := runningTask.handler.Configs[TaskOptionDeleteJobAfterSuccess].(bool); ok && job.Status == string(StatusSuccess) {
 			t.opt.persistent.DeleteJob(t.ctx, job.ID)
 			incr = map[string]int64{statusBefore: -1}
 
@@ -162,7 +163,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 				ErrorStack: job.ErrorStack,
 			}
 			if err != nil {
-				retryHistory.Status = statusFailure.String()
+				retryHistory.Status = StatusFailure.String()
 			}
 			matchedCount, affectedCount, _ := t.opt.persistent.UpdateJob(
 				t.ctx, &Filter{JobID: &job.ID}, updated, retryHistory,
@@ -183,21 +184,23 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 
 	job.TraceID = tracer.GetTraceID(ctx)
 
-	var eventContext candishared.EventContext
+	eventContext := candishared.NewEventContext(bytes.NewBuffer(make([]byte, 256)))
 	eventContext.SetContext(ctx)
 	eventContext.SetWorkerType(string(types.TaskQueue))
 	eventContext.SetHandlerRoute(job.TaskName)
 	eventContext.SetHeader(map[string]string{
-		"retries":   strconv.Itoa(job.Retries),
-		"max_retry": strconv.Itoa(job.MaxRetry),
-		"interval":  job.Interval,
+		HeaderRetries:         strconv.Itoa(job.Retries),
+		HeaderMaxRetries:      strconv.Itoa(job.MaxRetry),
+		HeaderInterval:        job.Interval,
+		HeaderCurrentProgress: strconv.Itoa(job.CurrentProgress),
+		HeaderMaxProgress:     strconv.Itoa(job.MaxProgress),
 	})
 	eventContext.SetKey(job.ID)
-	eventContext.WriteString(job.Arguments)
+	eventContext.Write([]byte(job.Arguments))
 
 	if len(selectedHandler.HandlerFuncs) == 0 {
 		job.Error = "No handler found for exec this job"
-		job.Status = string(statusFailure)
+		job.Status = string(StatusFailure)
 		return
 	}
 
@@ -211,13 +214,13 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		}()
 
 		errChan <- selectedHandler.HandlerFuncs[0](e)
-	}(&eventContext)
+	}(eventContext)
 
 	select {
 	case <-ctx.Done():
 
 		job.Error = "Job has been stopped when running (context canceled)"
-		job.Status = string(statusStopped)
+		job.Status = string(StatusStopped)
 		isContextCanceled = true
 		return
 
@@ -227,7 +230,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			eventContext.SetError(err)
 
 			job.Error = err.Error()
-			job.Status = string(statusFailure)
+			job.Status = string(StatusFailure)
 
 			switch e := err.(type) {
 			case *candishared.ErrorRetrier:
@@ -239,7 +242,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 						e.Delay = defaultInterval
 					}
 
-					job.Status = string(statusQueueing)
+					job.Status = string(StatusQueueing)
 					trace.SetTag("is_retry", true)
 					job.Interval = e.Delay.String()
 					if e.NewRetryIntervalFunc != nil {
@@ -260,12 +263,12 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			}
 
 		} else {
-			job.Status = string(statusSuccess)
+			job.Status = string(StatusSuccess)
 			job.Error = ""
 		}
 
 		for _, h := range selectedHandler.HandlerFuncs[1:] {
-			h(&eventContext)
+			h(eventContext)
 		}
 		return
 
@@ -294,7 +297,7 @@ func (t *taskQueueWorker) registerNextJob(withStream bool, taskName string) {
 		StreamAllJob(t.ctx, &Filter{
 			TaskName: taskName,
 			Sort:     "created_at",
-			Status:   candihelper.ToStringPtr(string(statusQueueing)),
+			Status:   candihelper.ToStringPtr(string(StatusQueueing)),
 		}, func(job *Job) {
 			t.opt.queue.PushJob(t.ctx, job)
 		})

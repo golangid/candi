@@ -187,21 +187,21 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 	go r.engine.stopAllJobInTask(input.TaskName)
 
 	incrQuery := map[string]int64{}
-	affectedStatus := []string{string(statusQueueing), string(statusRetrying)}
+	affectedStatus := []string{string(StatusQueueing), string(StatusRetrying)}
 	for _, status := range affectedStatus {
 		countMatchedFilter, countAffected, err := r.engine.opt.persistent.UpdateJob(ctx,
 			&Filter{
 				TaskName: input.TaskName, Status: &status,
 			},
 			map[string]interface{}{
-				"status": statusStopped,
+				"status": StatusStopped,
 			},
 		)
 		if err != nil {
 			continue
 		}
 		incrQuery[strings.ToLower(status)] -= countMatchedFilter
-		incrQuery[strings.ToLower(string(statusStopped))] += countAffected
+		incrQuery[strings.ToLower(string(StatusStopped))] += countAffected
 	}
 
 	r.engine.subscriber.broadcastWhenChangeAllJob(r.engine.ctx, input.TaskName, false, "")
@@ -222,7 +222,7 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 
 		filter.Sort = "created_at"
 		if len(filter.Statuses) == 0 {
-			filter.Statuses = []string{string(statusFailure), string(statusStopped)}
+			filter.Statuses = []string{string(StatusFailure), string(StatusStopped)}
 		}
 
 		StreamAllJob(ctx, &filter, func(job *Job) {
@@ -237,7 +237,7 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 					Search: filter.Search, StartDate: filter.StartDate, EndDate: filter.EndDate,
 				},
 				map[string]interface{}{
-					"status":  statusQueueing,
+					"status":  StatusQueueing,
 					"retries": 0,
 				},
 			)
@@ -245,7 +245,7 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 				continue
 			}
 			incr[strings.ToLower(status)] -= countMatchedFilter
-			incr[strings.ToLower(string(statusQueueing))] += countAffected
+			incr[strings.ToLower(string(StatusQueueing))] += countAffected
 		}
 
 		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, filter.TaskName, false, "")
@@ -269,7 +269,7 @@ func (r *rootResolver) CleanJob(ctx context.Context, input struct {
 
 		filter.Sort = "created_at"
 		if len(filter.Statuses) == 0 {
-			filter.Statuses = []string{string(statusFailure), string(statusStopped)}
+			filter.Statuses = []string{string(StatusFailure), string(StatusStopped)}
 		}
 		incrQuery := map[string]int64{}
 		for _, status := range req.Statuses {
@@ -432,7 +432,7 @@ func (r *rootResolver) RestoreFromSecondary(ctx context.Context) (res RestoreSec
 	filter := &Filter{
 		Sort:                "created_at",
 		secondaryPersistent: true,
-		Status:              candihelper.ToStringPtr(string(statusQueueing)),
+		Status:              candihelper.ToStringPtr(string(StatusQueueing)),
 	}
 	res.TotalData = StreamAllJob(ctx, filter, func(job *Job) {
 

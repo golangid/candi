@@ -238,15 +238,15 @@ func (s *SQLPersistent) AggregateAllTaskJob(ctx context.Context, filter *Filter)
 		rows.Scan(&count, &status, &taskName)
 		summary := mapSummary[taskName]
 		switch status {
-		case string(statusSuccess):
+		case string(StatusSuccess):
 			summary.Success += count
-		case string(statusQueueing):
+		case string(StatusQueueing):
 			summary.Queueing += count
-		case string(statusRetrying):
+		case string(StatusRetrying):
 			summary.Retrying += count
-		case string(statusFailure):
+		case string(StatusFailure):
 			summary.Failure += count
-		case string(statusStopped):
+		case string(StatusStopped):
 			summary.Stopped += count
 		}
 		mapSummary[taskName] = summary

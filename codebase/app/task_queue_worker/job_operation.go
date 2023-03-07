@@ -81,7 +81,7 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	if req.RetryInterval > 0 {
 		newJob.Interval = req.RetryInterval.String()
 	}
-	newJob.Status = string(statusQueueing)
+	newJob.Status = string(StatusQueueing)
 	newJob.CreatedAt = time.Now()
 	newJob.direct = req.direct
 
@@ -186,8 +186,8 @@ func RetryJob(ctx context.Context, jobID string) error {
 
 	statusBefore := job.Status
 	job.Interval = defaultInterval.String()
-	job.Status = string(statusQueueing)
-	if (job.Status == string(statusFailure)) || (job.Retries >= job.MaxRetry) {
+	job.Status = string(StatusQueueing)
+	if (job.Status == string(StatusFailure)) || (job.Retries >= job.MaxRetry) {
 		job.Retries = 0
 	}
 	matched, affected, err := engine.opt.persistent.UpdateJob(ctx, &Filter{JobID: &job.ID}, map[string]interface{}{
@@ -231,11 +231,11 @@ func StopJob(ctx context.Context, jobID string) error {
 	}
 
 	statusBefore := job.Status
-	if job.Status == string(statusRetrying) {
+	if job.Status == string(StatusRetrying) {
 		go engine.stopAllJobInTask(job.TaskName)
 	}
 
-	job.Status = string(statusStopped)
+	job.Status = string(StatusStopped)
 	matchedCount, countAffected, err := engine.opt.persistent.UpdateJob(
 		ctx, &Filter{JobID: &job.ID, Status: &statusBefore},
 		map[string]interface{}{"status": job.Status},

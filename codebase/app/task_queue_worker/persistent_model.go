@@ -143,21 +143,21 @@ func (s *TaskSummary) ToTaskResolver() (res TaskResolver) {
 // ToMapResult method
 func (s *TaskSummary) ToMapResult() map[string]int {
 	return map[string]int{
-		strings.ToUpper(string(statusFailure)):  s.Failure,
-		strings.ToUpper(string(statusRetrying)): s.Retrying,
-		strings.ToUpper(string(statusSuccess)):  s.Success,
-		strings.ToUpper(string(statusQueueing)): s.Queueing,
-		strings.ToUpper(string(statusStopped)):  s.Stopped,
+		strings.ToUpper(string(StatusFailure)):  s.Failure,
+		strings.ToUpper(string(StatusRetrying)): s.Retrying,
+		strings.ToUpper(string(StatusSuccess)):  s.Success,
+		strings.ToUpper(string(StatusQueueing)): s.Queueing,
+		strings.ToUpper(string(StatusStopped)):  s.Stopped,
 	}
 }
 
 // SetValue method
 func (s *TaskSummary) SetValue(source map[string]int) {
-	s.Failure = source[strings.ToUpper(string(statusFailure))]
-	s.Retrying = source[strings.ToUpper(string(statusRetrying))]
-	s.Success = source[strings.ToUpper(string(statusSuccess))]
-	s.Queueing = source[strings.ToUpper(string(statusQueueing))]
-	s.Stopped = source[strings.ToUpper(string(statusStopped))]
+	s.Failure = source[strings.ToUpper(string(StatusFailure))]
+	s.Retrying = source[strings.ToUpper(string(StatusRetrying))]
+	s.Success = source[strings.ToUpper(string(StatusSuccess))]
+	s.Queueing = source[strings.ToUpper(string(StatusQueueing))]
+	s.Stopped = source[strings.ToUpper(string(StatusStopped))]
 }
 
 func (job *Job) toMap() map[string]interface{} {

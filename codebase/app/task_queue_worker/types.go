@@ -33,16 +33,30 @@ func (j JobStatusEnum) String() string {
 }
 
 const (
-	statusRetrying JobStatusEnum = "RETRYING"
-	statusFailure  JobStatusEnum = "FAILURE"
-	statusSuccess  JobStatusEnum = "SUCCESS"
-	statusQueueing JobStatusEnum = "QUEUEING"
-	statusStopped  JobStatusEnum = "STOPPED"
-
 	defaultInterval = 500 * time.Millisecond
-)
 
-const (
+	// StatusRetrying const
+	StatusRetrying JobStatusEnum = "RETRYING"
+	// StatusFailure const
+	StatusFailure JobStatusEnum = "FAILURE"
+	// StatusSuccess const
+	StatusSuccess JobStatusEnum = "SUCCESS"
+	// StatusQueueing const
+	StatusQueueing JobStatusEnum = "QUEUEING"
+	// StatusStopped const
+	StatusStopped JobStatusEnum = "STOPPED"
+
+	// HeaderRetries const
+	HeaderRetries = "retries"
+	// HeaderMaxRetries const
+	HeaderMaxRetries = "max_retry"
+	// HeaderInterval const
+	HeaderInterval = "interval"
+	// HeaderCurrentProgress const
+	HeaderCurrentProgress = "current_progress"
+	// HeaderMaxProgress const
+	HeaderMaxProgress = "max_progress"
+
 	// TaskOptionDeleteJobAfterSuccess const
 	TaskOptionDeleteJobAfterSuccess = "delAfterSuccess"
 )

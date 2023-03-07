@@ -270,11 +270,11 @@ func (s *MongoPersistent) AggregateAllTaskJob(ctx context.Context, filter *Filte
 		{
 			"$project": bson.M{
 				"task_name": "$task_name",
-				"success":   bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", statusSuccess}}, "then": 1, "else": 0}},
-				"queueing":  bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", statusQueueing}}, "then": 1, "else": 0}},
-				"retrying":  bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", statusRetrying}}, "then": 1, "else": 0}},
-				"failure":   bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", statusFailure}}, "then": 1, "else": 0}},
-				"stopped":   bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", statusStopped}}, "then": 1, "else": 0}},
+				"success":   bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", StatusSuccess}}, "then": 1, "else": 0}},
+				"queueing":  bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", StatusQueueing}}, "then": 1, "else": 0}},
+				"retrying":  bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", StatusRetrying}}, "then": 1, "else": 0}},
+				"failure":   bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", StatusFailure}}, "then": 1, "else": 0}},
+				"stopped":   bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", StatusStopped}}, "then": 1, "else": 0}},
 			},
 		},
 		{

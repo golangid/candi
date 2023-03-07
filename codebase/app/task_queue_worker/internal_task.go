@@ -72,10 +72,10 @@ func (t *taskQueueWorker) execInternalTask(task *Task) {
 			countAffected := t.opt.persistent.CleanJob(t.ctx,
 				&Filter{
 					TaskName: task, BeforeCreatedAt: &beforeCreatedAt,
-					Status: candihelper.ToStringPtr(string(statusSuccess)),
+					Status: candihelper.ToStringPtr(string(StatusSuccess)),
 				},
 			)
-			incrQuery[strings.ToLower(string(statusSuccess))] -= countAffected
+			incrQuery[strings.ToLower(string(StatusSuccess))] -= countAffected
 			t.opt.persistent.Summary().IncrementSummary(t.ctx, task, incrQuery)
 		}
 		t.subscriber.broadcastAllToSubscribers(t.ctx)

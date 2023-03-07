@@ -278,10 +278,10 @@ func (j *JobResolver) ParseFromJob(job *Job, maxArgsLength int) {
 	j.CurrentProgress = job.CurrentProgress
 	j.MaxProgress = job.MaxProgress
 	j.RetryHistories = job.RetryHistories
-	if job.Status == string(statusSuccess) {
+	if job.Status == string(StatusSuccess) {
 		j.Error = ""
 	}
-	if delay, err := time.ParseDuration(job.Interval); err == nil && job.Status == string(statusQueueing) {
+	if delay, err := time.ParseDuration(job.Interval); err == nil && job.Status == string(StatusQueueing) {
 		j.NextRetryAt = time.Now().Add(delay).In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 	}
 	j.CreatedAt = job.CreatedAt.In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)

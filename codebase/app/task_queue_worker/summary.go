@@ -87,15 +87,15 @@ func (i *inMemSummary) UpdateSummary(ctx context.Context, taskName string, updat
 			summary.IsLoading = c
 		}
 		switch strings.ToUpper(k) {
-		case string(statusFailure):
+		case string(StatusFailure):
 			summary.Failure = count
-		case string(statusRetrying):
+		case string(StatusRetrying):
 			summary.Retrying = count
-		case string(statusSuccess):
+		case string(StatusSuccess):
 			summary.Success = count
-		case string(statusQueueing):
+		case string(StatusQueueing):
 			summary.Queueing = count
-		case string(statusStopped):
+		case string(StatusStopped):
 			summary.Stopped = count
 		}
 	}
@@ -112,15 +112,15 @@ func (i *inMemSummary) IncrementSummary(ctx context.Context, taskName string, in
 	}
 	for k, v := range incr {
 		switch strings.ToUpper(k) {
-		case string(statusFailure):
+		case string(StatusFailure):
 			summary.Failure += int(v)
-		case string(statusRetrying):
+		case string(StatusRetrying):
 			summary.Retrying += int(v)
-		case string(statusSuccess):
+		case string(StatusSuccess):
 			summary.Success += int(v)
-		case string(statusQueueing):
+		case string(StatusQueueing):
 			summary.Queueing += int(v)
-		case string(statusStopped):
+		case string(StatusStopped):
 			summary.Stopped += int(v)
 		}
 	}
