@@ -34,7 +34,7 @@ func (DefaultMiddleware) CheckPermission(ctx context.Context, userID string, per
 		return role, errors.New("Forbidden")
 	}
 	*/
-	logger.LogIf("check permission: users with id '%s' can access resource with permission code '%s' (return role for this user is 'superadmin')\n", userID, permissionCode)
+	logger.LogIf("check permission: users with id '%s' can access resource with permission code '%s' (return role for this user is 'superadmin')", userID, permissionCode)
 	return "superadmin", nil
 }
 `

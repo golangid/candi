@@ -368,8 +368,8 @@ func (r *{{camel .ModuleName}}RepoMongo) FetchAll(ctx context.Context, filter *d
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoMongo:FetchAll")
 	defer func() { trace.Finish(tracer.FinishWithError(err)) }()
 
-	where := bson.M{}
-	trace.SetTag("query", where)
+	query := r.setFilter{{upper (camel .ModuleName)}}(filter)
+	trace.Log("query", query)
 
 	findOptions := options.Find()
 	if len(filter.OrderBy) > 0 {
@@ -380,7 +380,7 @@ func (r *{{camel .ModuleName}}RepoMongo) FetchAll(ctx context.Context, filter *d
 		findOptions.SetLimit(int64(filter.Limit))
 		findOptions.SetSkip(int64(filter.CalculateOffset()))
 	}
-	cur, err := r.readDB.Collection(r.collection).Find(ctx, where, findOptions)
+	cur, err := r.readDB.Collection(r.collection).Find(ctx, query, findOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -394,13 +394,10 @@ func (r *{{camel .ModuleName}}RepoMongo) Find(ctx context.Context, filter *domai
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoMongo:Find")
 	defer func() { trace.Finish(tracer.FinishWithError(err)) }()
 
-	bsonWhere := make(bson.M)
-	if filter.ID != nil {
-		bsonWhere["_id"], _ = primitive.ObjectIDFromHex(*filter.ID)
-	}
-	trace.SetTag("query", bsonWhere)
+	query := r.setFilter{{upper (camel .ModuleName)}}(filter)
+	trace.Log("query", query)
 
-	err = r.readDB.Collection(r.collection).FindOne(ctx, bsonWhere).Decode(&result)
+	err = r.readDB.Collection(r.collection).FindOne(ctx, query).Decode(&result)
 	return
 }
 
@@ -408,8 +405,10 @@ func (r *{{camel .ModuleName}}RepoMongo) Count(ctx context.Context, filter *doma
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoMongo:Count")
 	defer trace.Finish()
 
-	where := bson.M{}
-	count, err := r.readDB.Collection(r.collection).CountDocuments(trace.Context(), where)
+	query := r.setFilter{{upper (camel .ModuleName)}}(filter)
+	trace.Log("query", query)
+
+	count, err := r.readDB.Collection(r.collection).CountDocuments(ctx, query)
 	trace.SetError(err)
 	return int(count)
 }
@@ -446,6 +445,20 @@ func (r *{{camel .ModuleName}}RepoMongo) Delete(ctx context.Context, data *share
 
 	_, err = r.writeDB.Collection(r.collection).DeleteOne(ctx, bson.M{"_id": data.ID})
 	return
+}
+
+func (r *{{camel .ModuleName}}RepoMongo) setFilter{{upper (camel .ModuleName)}}(filter *domain.Filter{{upper (camel .ModuleName)}}) bson.M {
+
+	query := make(bson.M)
+
+	if filter.ID != nil {
+		query["_id"], _ = primitive.ObjectIDFromHex(*filter.ID)
+	}
+	if filter.Search != "" {
+		query["field"] = bson.M{"$regex": filter.Search}
+	}
+
+	return query
 }
 `
 

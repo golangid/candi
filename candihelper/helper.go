@@ -16,8 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/gertd/go-pluralize"
+	"unsafe"
 )
 
 // ParseFromQueryParam parse url query string to struct target (with multiple data type in struct field), target must in pointer
@@ -283,7 +282,7 @@ func TimeRemoveNanosecond(t time.Time) time.Time {
 		0, t.Location())
 }
 
-// ToBytes convert all types to bytes
+// ToBytes convert all types to json bytes
 func ToBytes(i interface{}) (b []byte) {
 	switch t := i.(type) {
 	case []byte:
@@ -641,9 +640,17 @@ func ToInt(val interface{}) (i int) {
 	}
 }
 
-// Plural
-func Plural(str string) string {
-	pluralize := pluralize.NewClient()
+// ByteToString helper with zero allocation
+func ByteToString(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
+}
 
-	return pluralize.Plural(str)
+// StringToByte helper with zero allocation
+func StringToByte(s string) (b []byte) {
+	bh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
+	sh := (*reflect.StringHeader)(unsafe.Pointer(&s))
+	bh.Data = sh.Data
+	bh.Cap = sh.Len
+	bh.Len = sh.Len
+	return b
 }

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/gertd/go-pluralize"
 	"github.com/golangid/candi"
 	"github.com/golangid/candi/candihelper"
 )
@@ -69,9 +70,7 @@ func formatTemplate() template.FuncMap {
 			return candihelper.ToDelimited(v, '_')
 		},
 		"plural": func(v string) string {
-			v = candihelper.Plural(v)
-
-			return candihelper.ToDelimited(v, '_')
+			return candihelper.ToDelimited(pluralize.NewClient().Plural(v), '_')
 		},
 		"kebab": func(v string) string {
 			return candihelper.ToDelimited(v, '-')
