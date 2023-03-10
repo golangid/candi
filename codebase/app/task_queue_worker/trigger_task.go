@@ -165,9 +165,15 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			if err != nil {
 				retryHistory.Status = StatusFailure.String()
 			}
-			matchedCount, affectedCount, _ := t.opt.persistent.UpdateJob(
+			matchedCount, affectedCount, err := t.opt.persistent.UpdateJob(
 				t.ctx, &Filter{JobID: &job.ID}, updated, retryHistory,
 			)
+			if err != nil {
+				updated["error"] = fmt.Sprintf("[Internal Worker Error]: %s", err.Error())
+				matchedCount, affectedCount, _ = t.opt.persistent.UpdateJob(
+					t.ctx, &Filter{JobID: &job.ID}, updated, retryHistory,
+				)
+			}
 			if !isContextCanceled {
 				incr = map[string]int64{
 					job.Status: affectedCount, statusBefore: -matchedCount,
@@ -184,7 +190,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 
 	job.TraceID = tracer.GetTraceID(ctx)
 
-	eventContext := candishared.NewEventContext(bytes.NewBuffer(make([]byte, 256)))
+	eventContext := candishared.NewEventContext(&bytes.Buffer{})
 	eventContext.SetContext(ctx)
 	eventContext.SetWorkerType(string(types.TaskQueue))
 	eventContext.SetHandlerRoute(job.TaskName)
