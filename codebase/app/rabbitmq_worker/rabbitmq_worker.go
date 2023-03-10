@@ -174,7 +174,7 @@ func (r *rabbitmqWorker) processMessage(message amqp.Delivery) {
 		log.Printf("\x1b[35;3mRabbitMQ Consumer: message consumed, topic = %s\x1b[0m", message.RoutingKey)
 	}
 
-	eventContext := candishared.NewEventContext(bytes.NewBuffer(make([]byte, 256)))
+	eventContext := candishared.NewEventContext(&bytes.Buffer{})
 	eventContext.SetContext(ctx)
 	eventContext.SetWorkerType(string(types.RabbitMQ))
 	eventContext.SetHandlerRoute(message.RoutingKey)

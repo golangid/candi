@@ -91,7 +91,7 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 		log.Printf("\x1b[35;3mKafka Consumer: message consumed, timestamp = %v, topic = %s\x1b[0m", message.Timestamp, message.Topic)
 	}
 
-	eventContext := candishared.NewEventContext(bytes.NewBuffer(make([]byte, 256)))
+	eventContext := candishared.NewEventContext(&bytes.Buffer{})
 	eventContext.SetContext(ctx)
 	eventContext.SetWorkerType(string(types.Kafka))
 	eventContext.SetHandlerRoute(message.Topic)

@@ -239,7 +239,7 @@ func (p *postgresWorker) execEvent(workerIndex int, data *EventPayload) {
 		}
 	}
 
-	eventContext := candishared.NewEventContext(bytes.NewBuffer(make([]byte, 256)))
+	eventContext := candishared.NewEventContext(&bytes.Buffer{})
 	eventContext.SetContext(ctx)
 	eventContext.SetWorkerType(string(types.PostgresListener))
 	eventContext.SetHandlerRoute(data.Table)

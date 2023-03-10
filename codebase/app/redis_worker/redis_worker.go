@@ -203,7 +203,7 @@ func (r *redisWorker) processMessage(param RedisMessage) {
 	trace.SetTag("event_id", param.EventID)
 	trace.Log("message", param.Message)
 
-	eventContext := candishared.NewEventContext(bytes.NewBuffer(make([]byte, 256)))
+	eventContext := candishared.NewEventContext(&bytes.Buffer{})
 	eventContext.SetContext(ctx)
 	eventContext.SetWorkerType(string(types.RedisSubscriber))
 	eventContext.SetHandlerRoute(param.HandlerName)
