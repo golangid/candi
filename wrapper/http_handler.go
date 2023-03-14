@@ -20,7 +20,7 @@ func HTTPMiddlewareTracer(maxLogSize int) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 
 			isDisableTrace, _ := strconv.ParseBool(req.Header.Get(candihelper.HeaderDisableTrace))
-			if isDisableTrace {
+			if isDisableTrace || req.URL.Path == "/" {
 				next.ServeHTTP(rw, req.WithContext(tracer.SkipTraceContext(req.Context())))
 				return
 			}

@@ -2,5 +2,5 @@ package candi
 
 const (
 	// Version of this library
-	Version = "v1.14.1"
+	Version = "v1.14.2"
 )

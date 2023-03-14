@@ -47,6 +47,7 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 	}
 
 	server.serverEngine.HTTPErrorHandler = server.opt.errorHandler
+	server.serverEngine.Use(server.opt.rootMiddlewares...)
 
 	server.serverEngine.GET("/", echo.WrapHandler(server.opt.rootHandler))
 	server.serverEngine.GET("/memstats",
@@ -54,7 +55,7 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 		echo.WrapMiddleware(service.GetDependency().GetMiddleware().HTTPBasicAuth),
 	)
 
-	restRootPath := server.serverEngine.Group(server.opt.rootPath, server.opt.rootMiddlewares...)
+	restRootPath := server.serverEngine.Group(server.opt.rootPath)
 	for _, m := range service.GetModules() {
 		if h := m.RESTHandler(); h != nil {
 			h.Mount(restRootPath)
