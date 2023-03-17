@@ -42,12 +42,13 @@ func getDefaultOption() option {
 				env.BaseEnv().CORSAllowMethods, env.BaseEnv().CORSAllowHeaders,
 				env.BaseEnv().CORSAllowOrigins, nil, env.BaseEnv().CORSAllowCredential,
 			)),
-			EchoWrapMiddleware(wrapper.HTTPMiddlewareTracer(env.BaseEnv().JaegerMaxPacketSize)),
+			EchoWrapMiddleware(wrapper.HTTPMiddlewareTracer(wrapper.HTTPMiddlewareTracerConfig{
+				MaxLogSize:  env.BaseEnv().JaegerMaxPacketSize,
+				ExcludePath: map[string]struct{}{"/": {}, "/graphql": {}},
+			})),
 			EchoLoggerMiddleware(env.BaseEnv().DebugMode, os.Stdout),
 		},
-		rootHandler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			rw.Write([]byte("REST Server up and running"))
-		}),
+		rootHandler:  http.HandlerFunc(wrapper.HTTPHandlerDefaultRoot),
 		errorHandler: CustomHTTPErrorHandler,
 	}
 }
@@ -115,7 +116,7 @@ func SetRootMiddlewares(middlewares ...echo.MiddlewareFunc) OptionFunc {
 	}
 }
 
-// AddRootMiddlewares option func
+// AddRootMiddlewares option func, overide root middleware
 func AddRootMiddlewares(middlewares ...echo.MiddlewareFunc) OptionFunc {
 	return func(o *option) {
 		o.rootMiddlewares = append(o.rootMiddlewares, middlewares...)

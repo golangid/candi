@@ -13,11 +13,11 @@ import (
 	"github.com/soheilhy/cmux"
 
 	"github.com/golangid/candi/candihelper"
-	"github.com/golangid/candi/candishared"
 	graphqlserver "github.com/golangid/candi/codebase/app/graphql_server"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
+	"github.com/golangid/candi/wrapper"
 )
 
 type restServer struct {
@@ -51,7 +51,7 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 
 	server.serverEngine.GET("/", echo.WrapHandler(server.opt.rootHandler))
 	server.serverEngine.GET("/memstats",
-		echo.WrapHandler(http.HandlerFunc(candishared.HTTPMemstatsHandler)),
+		echo.WrapHandler(http.HandlerFunc(wrapper.HTTPHandlerMemstats)),
 		echo.WrapMiddleware(service.GetDependency().GetMiddleware().HTTPBasicAuth),
 	)
 

@@ -43,7 +43,9 @@ func (t *graphqlTracer) TraceQuery(ctx context.Context, queryString string, oper
 
 	trace, ctx := tracer.StartTraceFromHeader(ctx, strings.TrimSuffix(fmt.Sprintf("GraphQL-Root:%s", operationName), ":"), header)
 
-	trace.SetTag("graphql.operationName", operationName)
+	if operationName != "" {
+		trace.SetTag("graphql.operationName", operationName)
+	}
 	if len(headers) > 0 {
 		trace.Log("http.headers", headers)
 	}

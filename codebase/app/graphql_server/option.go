@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/golangid/candi/wrapper"
 	"github.com/golangid/graphql-go/types"
 	"github.com/soheilhy/cmux"
 )
@@ -29,12 +30,10 @@ type (
 
 func getDefaultOption() Option {
 	return Option{
-		httpPort:  ":8000",
-		rootPath:  "",
-		debugMode: true,
-		rootHandler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			rw.Write([]byte("REST Server up and running"))
-		}),
+		httpPort:    ":8000",
+		rootPath:    "",
+		debugMode:   true,
+		rootHandler: http.HandlerFunc(wrapper.HTTPHandlerDefaultRoot),
 	}
 }
 

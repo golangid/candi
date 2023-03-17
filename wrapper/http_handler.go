@@ -2,25 +2,39 @@ package wrapper
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httputil"
+	"os"
+	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
 )
 
+type HTTPMiddlewareTracerConfig struct {
+	MaxLogSize  int
+	ExcludePath map[string]struct{}
+}
+
 // HTTPMiddlewareTracer middleware wrapper for tracer
-func HTTPMiddlewareTracer(maxLogSize int) func(http.Handler) http.Handler {
+func HTTPMiddlewareTracer(cfg HTTPMiddlewareTracerConfig) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 
+			if _, isExcludePath := cfg.ExcludePath[req.URL.Path]; isExcludePath {
+				next.ServeHTTP(rw, req)
+				return
+			}
 			isDisableTrace, _ := strconv.ParseBool(req.Header.Get(candihelper.HeaderDisableTrace))
-			if isDisableTrace || req.URL.Path == "/" {
+			if isDisableTrace {
 				next.ServeHTTP(rw, req.WithContext(tracer.SkipTraceContext(req.Context())))
 				return
 			}
@@ -45,7 +59,7 @@ func HTTPMiddlewareTracer(maxLogSize int) func(http.Handler) http.Handler {
 			trace.Log("http.request", httpDump)
 
 			body, _ := io.ReadAll(req.Body)
-			if len(body) < maxLogSize {
+			if len(body) < cfg.MaxLogSize {
 				trace.Log("request.body", body)
 			} else {
 				trace.Log("request.body.size", len(body))
@@ -62,7 +76,7 @@ func HTTPMiddlewareTracer(maxLogSize int) func(http.Handler) http.Handler {
 				trace.SetError(fmt.Errorf("resp.code:%d", respWriter.statusCode))
 			}
 
-			if resBody.Len() < maxLogSize {
+			if resBody.Len() < cfg.MaxLogSize {
 				trace.Log("response.body", resBody.String())
 			} else {
 				trace.Log("response.body.size", resBody.Len())
@@ -133,4 +147,47 @@ func HTTPMiddlewareCORS(
 			res.WriteHeader(http.StatusNoContent)
 		})
 	}
+}
+
+// HTTPHandlerDefaultRoot default root http handler
+func HTTPHandlerDefaultRoot(w http.ResponseWriter, r *http.Request) {
+	now := time.Now()
+	payload := struct {
+		BuildNumber string `json:"build_number,omitempty"`
+		Message     string `json:"message,omitempty"`
+		Hostname    string `json:"hostname,omitempty"`
+		Timestamp   string `json:"timestamp,omitempty"`
+		StartAt     string `json:"start_at,omitempty"`
+		Uptime      string `json:"uptime,omitempty"`
+	}{
+		Message:   fmt.Sprintf("Service %s up and running", env.BaseEnv().ServiceName),
+		Timestamp: now.Format(time.RFC3339Nano),
+	}
+
+	if startAt, err := time.Parse(time.RFC3339, env.BaseEnv().StartAt); err == nil {
+		payload.StartAt = env.BaseEnv().StartAt
+		payload.Uptime = now.Sub(startAt).String()
+	}
+	if env.BaseEnv().BuildNumber != "" {
+		payload.BuildNumber = env.BaseEnv().BuildNumber
+	}
+	if hostname, err := os.Hostname(); err == nil {
+		payload.Hostname = hostname
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(payload)
+}
+
+// HTTPHandlerMemstats calculate runtime statistic
+func HTTPHandlerMemstats(w http.ResponseWriter, r *http.Request) {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	data := struct {
+		NumGoroutine int         `json:"num_goroutine"`
+		Memstats     interface{} `json:"memstats"`
+	}{
+		runtime.NumGoroutine(), m,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(data)
 }

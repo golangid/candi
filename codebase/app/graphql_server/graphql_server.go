@@ -20,6 +20,7 @@ import (
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
+	"github.com/golangid/candi/wrapper"
 
 	graphql "github.com/golangid/graphql-go"
 	gqltypes "github.com/golangid/graphql-go/types"
@@ -44,6 +45,7 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 	httpEngine := new(http.Server)
 	server := &graphqlServer{
 		httpEngine: httpEngine,
+		opt:        getDefaultOption(),
 	}
 	for _, opt := range opts {
 		opt(&server.opt)
@@ -53,7 +55,7 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 
 	mux := http.NewServeMux()
 	mux.Handle("/", server.opt.rootHandler)
-	mux.HandleFunc("/memstats", candishared.HTTPMemstatsHandler)
+	mux.Handle("/memstats", service.GetDependency().GetMiddleware().HTTPBasicAuth(http.HandlerFunc(wrapper.HTTPHandlerMemstats)))
 	mux.HandleFunc(server.opt.rootPath+rootGraphQLPath, httpHandler.ServeGraphQL())
 	mux.HandleFunc(server.opt.rootPath+rootGraphQLPlayground, httpHandler.ServePlayground)
 	mux.HandleFunc(server.opt.rootPath+rootGraphQLVoyager, httpHandler.ServeVoyager)
@@ -67,7 +69,7 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 	fmt.Printf("\x1b[34;1m⇨ GraphQL HTTP server run at port [::]%s\x1b[0m\n\n", httpEngine.Addr)
 
 	if server.opt.sharedListener != nil {
-		server.listener = server.opt.sharedListener.Match(cmux.HTTP1Fast())
+		server.listener = server.opt.sharedListener.Match(cmux.HTTP1Fast(http.MethodPatch))
 	}
 
 	return server
