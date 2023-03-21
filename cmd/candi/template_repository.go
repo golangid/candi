@@ -263,7 +263,7 @@ func GetSharedRepoArango() RepoArango{
 // WithTransaction run transaction for each repository with context, include handle canceled or timeout context
 func (r *repoArangoImpl) WithTransaction(ctx context.Context, txFunc func(ctx context.Context) error, models ...ArangoModels) (err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "RepoSQL:Transaction")
-	defer trace.Finish()
+	defer trace.Finish(tracer.FinishWithError(err))
 
 	var cols []string
 	for _, value := range models {
@@ -286,11 +286,16 @@ func (r *repoArangoImpl) WithTransaction(ctx context.Context, txFunc func(ctx co
 	defer func() {
 		if err != nil {
 			errAbort := r.writeDB.AbortTransaction(ctx, txID, nil)
-			trace.SetError(err)
-			trace.SetError(errAbort)
+			trace.Log("transaction", fmt.Sprintf("transactionId %s is aborted", txID))
+			if errAbort != nil {
+				trace.Log("transaction_abort", fmt.Sprintf("transactionId %s err %s", txID, errAbort.Error()))
+			}
 		} else {
 			errCommit := r.writeDB.CommitTransaction(ctx, txID, nil)
-			trace.SetError(errCommit)
+			if errCommit == nil {
+				trace.Log("transaction", fmt.Sprintf("transactionId %s is committed", txID))
+			}
+			err = errCommit
 		}
 	}()
 
