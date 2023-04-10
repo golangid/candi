@@ -2,7 +2,6 @@
 
 # mocks all interfaces
 mocks:
-	@rm -rf mocks/cmd;
 	@mockery --all --keeptree
 	@if [ -f mocks/candiutils/HTTPRequestOption.go ]; then rm mocks/candiutils/HTTPRequestOption.go; fi;
 	@if [ -f mocks/candiutils/httpClientDo.go ]; then rm mocks/candiutils/httpClientDo.go; fi;
@@ -17,6 +16,9 @@ mocks:
 	@if [ -f mocks/codebase/app/rest_server/OptionFunc.go ]; then rm mocks/codebase/app/rest_server/OptionFunc.go; fi;
 	@if [ -f mocks/codebase/app/task_queue_worker/OptionFunc.go ]; then rm mocks/codebase/app/task_queue_worker/OptionFunc.go; fi;
 	@if [ -f mocks/codebase/factory/dependency/Option.go ]; then rm mocks/codebase/factory/dependency/Option.go; fi;
+	@if [ -f mocks/validator/JSONSchemaValidatorOptionFunc.go ]; then rm mocks/validator/JSONSchemaValidatorOptionFunc.go; fi;
+	@if [ -f mocks/validator/StructValidatorOptionFunc.go ]; then rm mocks/validator/StructValidatorOptionFunc.go; fi;
+	@rm -rf mocks/cmd;
 
 # unit test & calculate code coverage
 test:

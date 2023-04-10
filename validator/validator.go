@@ -4,14 +4,14 @@ package validator
 type OptionFunc func(*Validator)
 
 // SetJSONSchemaValidator option func
-func SetJSONSchemaValidator(jsonSchema *JSONSchemaValidator) OptionFunc {
+func SetJSONSchemaValidator(jsonSchema JSONSchemaValidator) OptionFunc {
 	return func(v *Validator) {
 		v.jsonSchema = jsonSchema
 	}
 }
 
 // SetStructValidator option func
-func SetStructValidator(structValidator *StructValidator) OptionFunc {
+func SetStructValidator(structValidator StructValidator) OptionFunc {
 	return func(v *Validator) {
 		v.structValidator = structValidator
 	}
@@ -19,8 +19,8 @@ func SetStructValidator(structValidator *StructValidator) OptionFunc {
 
 // Validator instance
 type Validator struct {
-	jsonSchema      *JSONSchemaValidator
-	structValidator *StructValidator
+	jsonSchema      JSONSchemaValidator
+	structValidator StructValidator
 }
 
 // NewValidator constructor, using jsonschema & struct validator (github.com/go-playground/validator),

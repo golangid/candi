@@ -10,34 +10,39 @@ import (
 	"github.com/golangid/gojsonschema"
 )
 
+// JSONSchemaValidator abstraction
+type JSONSchemaValidator interface {
+	ValidateDocument(schemaID string, documentSource interface{}) error
+}
+
 // JSONSchemaValidatorOptionFunc type
-type JSONSchemaValidatorOptionFunc func(*JSONSchemaValidator)
+type JSONSchemaValidatorOptionFunc func(*jsonSchemaValidator)
 
 // SetSchemaStorageJSONSchemaValidatorOption option func
 func SetSchemaStorageJSONSchemaValidatorOption(s Storage) JSONSchemaValidatorOptionFunc {
-	return func(v *JSONSchemaValidator) {
+	return func(v *jsonSchemaValidator) {
 		v.schemaStorage = s
 	}
 }
 
 // AddHideErrorListTypeJSONSchemaValidatorOption option func
 func AddHideErrorListTypeJSONSchemaValidatorOption(descType ...string) JSONSchemaValidatorOptionFunc {
-	return func(v *JSONSchemaValidator) {
+	return func(v *jsonSchemaValidator) {
 		for _, e := range descType {
 			v.notShowErrorListType[e] = struct{}{}
 		}
 	}
 }
 
-// JSONSchemaValidator validator
-type JSONSchemaValidator struct {
+// jsonSchemaValidator validator
+type jsonSchemaValidator struct {
 	schemaStorage        Storage
 	notShowErrorListType map[string]struct{}
 }
 
 // NewJSONSchemaValidator constructor
-func NewJSONSchemaValidator(opts ...JSONSchemaValidatorOptionFunc) *JSONSchemaValidator {
-	v := &JSONSchemaValidator{
+func NewJSONSchemaValidator(opts ...JSONSchemaValidatorOptionFunc) JSONSchemaValidator {
+	v := &jsonSchemaValidator{
 		schemaStorage: NewInMemStorage(os.Getenv(candihelper.WORKDIR) + "api/jsonschema"),
 		notShowErrorListType: map[string]struct{}{
 			"condition_else": {}, "condition_then": {},
@@ -52,7 +57,7 @@ func NewJSONSchemaValidator(opts ...JSONSchemaValidatorOptionFunc) *JSONSchemaVa
 }
 
 // ValidateDocument based on schema id
-func (v *JSONSchemaValidator) ValidateDocument(schemaID string, documentSource interface{}) error {
+func (v *jsonSchemaValidator) ValidateDocument(schemaID string, documentSource interface{}) error {
 
 	s, err := v.schemaStorage.Get(schemaID)
 	if err != nil {
