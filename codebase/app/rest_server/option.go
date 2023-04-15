@@ -1,7 +1,6 @@
 package restserver
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 
@@ -14,18 +13,17 @@ import (
 
 type (
 	option struct {
-		rootMiddlewares             []echo.MiddlewareFunc
-		rootHandler                 http.Handler
-		errorHandler                echo.HTTPErrorHandler
-		httpPort                    string
-		rootPath                    string
-		debugMode                   bool
-		includeGraphQL              bool
-		graphqlDisableIntrospection bool
-		jaegerMaxPacketSize         int
-		sharedListener              cmux.CMux
-		engineOption                func(e *echo.Echo)
-		graphqlOption               graphqlserver.Option
+		rootMiddlewares     []echo.MiddlewareFunc
+		rootHandler         http.Handler
+		errorHandler        echo.HTTPErrorHandler
+		httpPort            uint16
+		rootPath            string
+		debugMode           bool
+		includeGraphQL      bool
+		jaegerMaxPacketSize int
+		sharedListener      cmux.CMux
+		engineOption        func(e *echo.Echo)
+		graphqlOption       graphqlserver.Option
 	}
 
 	// OptionFunc type
@@ -34,7 +32,7 @@ type (
 
 func getDefaultOption() option {
 	return option{
-		httpPort:  ":8000",
+		httpPort:  8000,
 		rootPath:  "",
 		debugMode: true,
 		rootMiddlewares: []echo.MiddlewareFunc{
@@ -56,7 +54,7 @@ func getDefaultOption() option {
 // SetHTTPPort option func
 func SetHTTPPort(port uint16) OptionFunc {
 	return func(o *option) {
-		o.httpPort = fmt.Sprintf(":%d", port)
+		o.httpPort = port
 	}
 }
 
@@ -92,13 +90,6 @@ func SetDebugMode(debugMode bool) OptionFunc {
 func SetIncludeGraphQL(includeGraphQL bool) OptionFunc {
 	return func(o *option) {
 		o.includeGraphQL = includeGraphQL
-	}
-}
-
-// SetGraphQLDisableIntrospection option func
-func SetGraphQLDisableIntrospection(graphqlDisableIntrospection bool) OptionFunc {
-	return func(o *option) {
-		o.graphqlDisableIntrospection = graphqlDisableIntrospection
 	}
 }
 

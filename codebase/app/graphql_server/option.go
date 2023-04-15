@@ -1,7 +1,6 @@
 package graphqlserver
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/golangid/candi/wrapper"
@@ -9,12 +8,18 @@ import (
 	"github.com/soheilhy/cmux"
 )
 
+const (
+	rootGraphQLPath       = "/graphql"
+	rootGraphQLPlayground = "/graphql/playground"
+	rootGraphQLVoyager    = "/graphql/voyager"
+)
+
 type (
 	// Option gql server
 	Option struct {
 		DisableIntrospection bool
 
-		httpPort            string
+		httpPort            uint16
 		rootPath            string
 		debugMode           bool
 		jaegerMaxPacketSize int
@@ -30,7 +35,7 @@ type (
 
 func getDefaultOption() Option {
 	return Option{
-		httpPort:    ":8000",
+		httpPort:    8000,
 		rootPath:    "",
 		debugMode:   true,
 		rootHandler: http.HandlerFunc(wrapper.HTTPHandlerDefaultRoot),
@@ -40,7 +45,7 @@ func getDefaultOption() Option {
 // SetHTTPPort option func
 func SetHTTPPort(port uint16) OptionFunc {
 	return func(o *Option) {
-		o.httpPort = fmt.Sprintf(":%d", port)
+		o.httpPort = port
 	}
 }
 
@@ -110,11 +115,11 @@ func SetRootSubscription(resolver interface{}) OptionFunc {
 }
 
 // AddDirectiveFunc option func
-func AddDirectiveFunc(directiveName string, dirFuncs types.DirectiveFunc) OptionFunc {
+func AddDirectiveFunc(directiveName string, handlerFunc types.DirectiveFunc) OptionFunc {
 	return func(o *Option) {
 		if o.directiveFuncs == nil {
 			o.directiveFuncs = make(map[string]types.DirectiveFunc)
 		}
-		o.directiveFuncs[directiveName] = dirFuncs
+		o.directiveFuncs[directiveName] = handlerFunc
 	}
 }

@@ -74,17 +74,13 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 
 	// inject graphql handler to rest server
 	if server.opt.includeGraphQL {
-		graphqlHandler := graphqlserver.NewHandler(service, server.opt.graphqlOption)
+		graphqlHandler := graphqlserver.ConstructHandlerFromService(service, server.opt.graphqlOption)
 		server.serverEngine.Any(server.opt.rootPath+"/graphql", echo.WrapHandler(graphqlHandler.ServeGraphQL()))
 		server.serverEngine.GET(server.opt.rootPath+"/graphql/playground", echo.WrapHandler(http.HandlerFunc(graphqlHandler.ServePlayground)))
 		server.serverEngine.GET(server.opt.rootPath+"/graphql/voyager", echo.WrapHandler(http.HandlerFunc(graphqlHandler.ServeVoyager)))
-
-		logger.LogYellow("[GraphQL] endpoint : " + server.opt.rootPath + "/graphql")
-		logger.LogYellow("[GraphQL] playground : " + server.opt.rootPath + "/graphql/playground")
-		logger.LogYellow("[GraphQL] voyager : " + server.opt.rootPath + "/graphql/voyager")
 	}
 
-	fmt.Printf("\x1b[34;1m⇨ HTTP server run at port [::]%s\x1b[0m\n\n", server.opt.httpPort)
+	fmt.Printf("\x1b[34;1m⇨ HTTP server run at port [::]:%d\x1b[0m\n\n", server.opt.httpPort)
 
 	return server
 }
@@ -99,12 +95,11 @@ func (h *restServer) Serve() {
 		h.serverEngine.Listener = h.listener
 		err = h.serverEngine.Start("")
 	} else {
-		err = h.serverEngine.Start(h.opt.httpPort)
+		err = h.serverEngine.Start(fmt.Sprintf(":%d", h.opt.httpPort))
 	}
 
-	switch e := err.(type) {
-	case *net.OpError:
-		panic(fmt.Errorf("rest server: %v", e))
+	if err != nil {
+		log.Panicf("REST Server: Unexpected Error: %v", err)
 	}
 }
 

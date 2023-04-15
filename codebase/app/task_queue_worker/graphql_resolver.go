@@ -4,24 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"runtime"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/golangid/candi"
 	dashboard "github.com/golangid/candi-plugin/task-queue-worker/dashboard"
 	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
+	graphqlserver "github.com/golangid/candi/codebase/app/graphql_server"
+	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/logger"
 	"github.com/golangid/graphql-go"
-	"github.com/golangid/graphql-go/relay"
 	"github.com/golangid/graphql-go/trace"
-
-	"github.com/golangid/candi"
-	"github.com/golangid/candi/candishared"
-	"github.com/golangid/candi/codebase/app/graphql_server/static"
-	"github.com/golangid/candi/codebase/app/graphql_server/ws"
-	"github.com/golangid/candi/config/env"
 )
 
 func (t *taskQueueWorker) serveGraphQLAPI() {
@@ -38,16 +36,17 @@ func (t *taskQueueWorker) serveGraphQLAPI() {
 	mux.Handle("/job", t.opt.basicAuth(http.StripPrefix("/", http.FileServer(dashboard.Dashboard))))
 	mux.Handle("/expired", t.opt.basicAuth(http.StripPrefix("/", http.FileServer(dashboard.Dashboard))))
 
-	mux.HandleFunc("/graphql", ws.NewHandlerFunc(schema, &relay.Handler{Schema: schema}))
-	mux.HandleFunc("/voyager", func(rw http.ResponseWriter, r *http.Request) { rw.Write([]byte(static.VoyagerAsset)) })
-	mux.HandleFunc("/playground", func(rw http.ResponseWriter, r *http.Request) { rw.Write([]byte(static.PlaygroundAsset)) })
+	gqlHandler := graphqlserver.NewHandler(false, schema)
+	mux.HandleFunc("/graphql", gqlHandler.ServeGraphQL())
+	mux.HandleFunc("/playground", gqlHandler.ServePlayground)
+	mux.HandleFunc("/voyager", gqlHandler.ServeVoyager)
 
 	httpEngine := new(http.Server)
 	httpEngine.Addr = fmt.Sprintf(":%d", engine.opt.dashboardPort)
 	httpEngine.Handler = mux
 
 	if err := httpEngine.ListenAndServe(); err != nil {
-		panic(fmt.Errorf("task queue worker dashboard: %v", err))
+		log.Panicf("task queue worker dashboard: %v", err)
 	}
 }
 
