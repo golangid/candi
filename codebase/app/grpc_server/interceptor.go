@@ -178,19 +178,11 @@ func (i *interceptor) streamMiddlewareInterceptor(srv interface{}, stream grpc.S
 
 func (i *interceptor) middlewareInterceptor(ctx context.Context, fullMethod string) (context.Context, error) {
 	if middFunc, ok := i.middleware[fullMethod]; ok {
-		execMiddleware := func() (err error) {
-			defer func() {
-				if r := recover(); r != nil {
-					err = grpc.Errorf(codes.Unauthenticated, "%v", r)
-				}
-			}()
-			for _, mw := range middFunc {
-				ctx = mw(ctx)
+		for _, mw := range middFunc {
+			ctx, err := mw(ctx)
+			if err != nil {
+				return ctx, err
 			}
-			return nil
-		}
-		if err := execMiddleware(); err != nil {
-			return ctx, err
 		}
 	}
 

@@ -85,7 +85,7 @@ func HTTPMiddlewareTracer(cfg HTTPMiddlewareTracerConfig) func(http.Handler) htt
 	}
 }
 
-// HTTPMiddlewareCORS middleware wrapper for tracer
+// HTTPMiddlewareCORS middleware wrapper for cors
 func HTTPMiddlewareCORS(
 	allowMethods, allowHeaders, allowOrigins []string,
 	exposeHeaders []string,

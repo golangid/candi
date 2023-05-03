@@ -24,6 +24,7 @@ type HTTPMiddleware interface {
 	HTTPBasicAuth(next http.Handler) http.Handler
 	HTTPBearerAuth(next http.Handler) http.Handler
 	HTTPMultipleAuth(next http.Handler) http.Handler
+	HTTPCache(next http.Handler) http.Handler
 
 	// HTTPPermissionACL method.
 	// This middleware required TokenValidator (HTTPBearerAuth middleware must executed before) for extract userID
@@ -34,8 +35,9 @@ type HTTPMiddleware interface {
 
 // GRPCMiddleware interface, common middleware for grpc handler
 type GRPCMiddleware interface {
-	GRPCBasicAuth(ctx context.Context) context.Context
-	GRPCBearerAuth(ctx context.Context) context.Context
+	GRPCBasicAuth(ctx context.Context) (context.Context, error)
+	GRPCBearerAuth(ctx context.Context) (context.Context, error)
+	GRPCMultipleAuth(ctx context.Context) (context.Context, error)
 
 	// GRPCPermissionACL method.
 	// This middleware required TokenValidator (GRPCBearerAuth middleware must executed before) for extract userID
@@ -67,5 +69,5 @@ type ACLPermissionChecker interface {
 
 // BasicAuthValidator abstract interface for basic auth validator
 type BasicAuthValidator interface {
-	ValidateBasic(username, password string) error
+	ValidateBasic(ctx context.Context, username, password string) error
 }

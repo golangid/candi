@@ -59,7 +59,7 @@ func (_m *Middleware) Bearer(ctx context.Context, token string) (*candishared.To
 }
 
 // GRPCBasicAuth provides a mock function with given fields: ctx
-func (_m *Middleware) GRPCBasicAuth(ctx context.Context) context.Context {
+func (_m *Middleware) GRPCBasicAuth(ctx context.Context) (context.Context, error) {
 	ret := _m.Called(ctx)
 
 	var r0 context.Context
@@ -71,11 +71,18 @@ func (_m *Middleware) GRPCBasicAuth(ctx context.Context) context.Context {
 		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GRPCBearerAuth provides a mock function with given fields: ctx
-func (_m *Middleware) GRPCBearerAuth(ctx context.Context) context.Context {
+func (_m *Middleware) GRPCBearerAuth(ctx context.Context) (context.Context, error) {
 	ret := _m.Called(ctx)
 
 	var r0 context.Context
@@ -87,7 +94,37 @@ func (_m *Middleware) GRPCBearerAuth(ctx context.Context) context.Context {
 		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GRPCMultipleAuth provides a mock function with given fields: ctx
+func (_m *Middleware) GRPCMultipleAuth(ctx context.Context) (context.Context, error) {
+	ret := _m.Called(ctx)
+
+	var r0 context.Context
+	if rf, ok := ret.Get(0).(func(context.Context) context.Context); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(context.Context)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GRPCPermissionACL provides a mock function with given fields: permissionCode
@@ -170,6 +207,22 @@ func (_m *Middleware) HTTPBasicAuth(next http.Handler) http.Handler {
 
 // HTTPBearerAuth provides a mock function with given fields: next
 func (_m *Middleware) HTTPBearerAuth(next http.Handler) http.Handler {
+	ret := _m.Called(next)
+
+	var r0 http.Handler
+	if rf, ok := ret.Get(0).(func(http.Handler) http.Handler); ok {
+		r0 = rf(next)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(http.Handler)
+		}
+	}
+
+	return r0
+}
+
+// HTTPCache provides a mock function with given fields: next
+func (_m *Middleware) HTTPCache(next http.Handler) http.Handler {
 	ret := _m.Called(next)
 
 	var r0 http.Handler

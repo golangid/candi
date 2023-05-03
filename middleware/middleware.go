@@ -3,7 +3,7 @@ package middleware
 import (
 	"context"
 	"errors"
-	"strings"
+	"time"
 
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/interfaces"
@@ -16,6 +16,9 @@ type Middleware struct {
 	aclPermissionChecker interfaces.ACLPermissionChecker
 	basicAuthValidator   interfaces.BasicAuthValidator
 
+	cache           interfaces.Cache
+	defaultCacheAge time.Duration
+
 	extractUserIDFunc func(tokenClaim *candishared.TokenClaim) (userID string)
 }
 
@@ -23,10 +26,13 @@ type Middleware struct {
 func NewMiddleware(tokenValidator interfaces.TokenValidator, aclPermissionChecker interfaces.ACLPermissionChecker) *Middleware {
 	mw := &Middleware{
 		tokenValidator: tokenValidator, aclPermissionChecker: aclPermissionChecker,
-		basicAuthValidator: &defaultMiddleware{},
+		basicAuthValidator: &defaultMiddleware{
+			username: env.BaseEnv().BasicAuthUsername, password: env.BaseEnv().BasicAuthPassword,
+		},
 		extractUserIDFunc: func(tokenClaim *candishared.TokenClaim) (userID string) {
 			return tokenClaim.Subject
 		},
+		defaultCacheAge: defaultCacheAge,
 	}
 
 	return mw
@@ -34,28 +40,21 @@ func NewMiddleware(tokenValidator interfaces.TokenValidator, aclPermissionChecke
 
 // NewMiddlewareWithOption create new middleware instance with option
 func NewMiddlewareWithOption(opts ...OptionFunc) *Middleware {
-	defaultMw := &defaultMiddleware{}
+	defaultMw := &defaultMiddleware{
+		username: env.BaseEnv().BasicAuthUsername, password: env.BaseEnv().BasicAuthPassword,
+	}
 	mw := &Middleware{
 		tokenValidator: defaultMw, aclPermissionChecker: defaultMw, basicAuthValidator: defaultMw,
 		extractUserIDFunc: func(tokenClaim *candishared.TokenClaim) (userID string) {
 			return tokenClaim.Subject
 		},
+		defaultCacheAge: defaultCacheAge,
 	}
 	for _, opt := range opts {
 		opt(mw)
 	}
 
 	return mw
-}
-
-func extractAuthType(prefix, authorization string) (string, error) {
-
-	authValues := strings.Split(authorization, " ")
-	if len(authValues) == 2 && strings.ToLower(authValues[0]) == prefix {
-		return authValues[1], nil
-	}
-
-	return "", errors.New("Invalid authorization")
 }
 
 // OptionFunc type
@@ -82,6 +81,14 @@ func SetBasicAuthValidator(basicAuth interfaces.BasicAuthValidator) OptionFunc {
 	}
 }
 
+// SetCache option func
+func SetCache(cache interfaces.Cache, defaultCacheAge time.Duration) OptionFunc {
+	return func(mw *Middleware) {
+		mw.cache = cache
+		mw.defaultCacheAge = defaultCacheAge
+	}
+}
+
 // SetUserIDExtractor option func, custom extract user id from token claim for acl permission checker
 func SetUserIDExtractor(extractor func(tokenClaim *candishared.TokenClaim) (userID string)) OptionFunc {
 	return func(mw *Middleware) {
@@ -89,7 +96,9 @@ func SetUserIDExtractor(extractor func(tokenClaim *candishared.TokenClaim) (user
 	}
 }
 
-type defaultMiddleware struct{}
+type defaultMiddleware struct {
+	username, password string
+}
 
 func (defaultMiddleware) ValidateToken(ctx context.Context, token string) (*candishared.TokenClaim, error) {
 	return &candishared.TokenClaim{}, nil
@@ -97,8 +106,8 @@ func (defaultMiddleware) ValidateToken(ctx context.Context, token string) (*cand
 func (defaultMiddleware) CheckPermission(ctx context.Context, userID string, permissionCode string) (role string, err error) {
 	return
 }
-func (defaultMiddleware) ValidateBasic(username, password string) error {
-	if username != env.BaseEnv().BasicAuthUsername || password != env.BaseEnv().BasicAuthPassword {
+func (d *defaultMiddleware) ValidateBasic(ctx context.Context, username, password string) error {
+	if username != d.username || password != d.password {
 		return errors.New("Invalid credentials")
 	}
 	return nil

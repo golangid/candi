@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/golangid/candi/candihelper"
-	"github.com/golangid/candi/config/env"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/metadata"
 )
@@ -21,9 +20,10 @@ const (
 
 func TestBasicAuth(t *testing.T) {
 
-	env.SetEnv(env.Env{BasicAuthUsername: basicUsername, BasicAuthPassword: basicPass})
 	midd := &Middleware{
-		basicAuthValidator: defaultMiddleware{},
+		basicAuthValidator: &defaultMiddleware{
+			username: basicUsername, password: basicPass,
+		},
 	}
 
 	t.Run("Test With Valid Auth", func(t *testing.T) {
@@ -64,9 +64,11 @@ func TestBasicAuth(t *testing.T) {
 }
 
 func TestMiddleware_HTTPBasicAuth(t *testing.T) {
-	env.SetEnv(env.Env{BasicAuthUsername: basicUsername, BasicAuthPassword: basicPass})
+
 	mw := &Middleware{
-		basicAuthValidator: defaultMiddleware{},
+		basicAuthValidator: &defaultMiddleware{
+			username: basicUsername, password: basicPass,
+		},
 	}
 
 	tests := []struct {
@@ -108,9 +110,11 @@ func TestMiddleware_HTTPBasicAuth(t *testing.T) {
 }
 
 func TestMiddleware_GRPCBasicAuth(t *testing.T) {
-	env.SetEnv(env.Env{BasicAuthUsername: basicUsername, BasicAuthPassword: basicPass})
+
 	mw := &Middleware{
-		basicAuthValidator: defaultMiddleware{},
+		basicAuthValidator: &defaultMiddleware{
+			username: basicUsername, password: basicPass,
+		},
 	}
 
 	t.Run("Testcase #1: Positive", func(t *testing.T) {

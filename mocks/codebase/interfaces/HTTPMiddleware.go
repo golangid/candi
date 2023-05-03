@@ -45,6 +45,22 @@ func (_m *HTTPMiddleware) HTTPBearerAuth(next http.Handler) http.Handler {
 	return r0
 }
 
+// HTTPCache provides a mock function with given fields: next
+func (_m *HTTPMiddleware) HTTPCache(next http.Handler) http.Handler {
+	ret := _m.Called(next)
+
+	var r0 http.Handler
+	if rf, ok := ret.Get(0).(func(http.Handler) http.Handler); ok {
+		r0 = rf(next)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(http.Handler)
+		}
+	}
+
+	return r0
+}
+
 // HTTPMultipleAuth provides a mock function with given fields: next
 func (_m *HTTPMiddleware) HTTPMultipleAuth(next http.Handler) http.Handler {
 	ret := _m.Called(next)

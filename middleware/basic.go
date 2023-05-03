@@ -10,14 +10,6 @@ import (
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/tracer"
 	"github.com/golangid/candi/wrapper"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
-)
-
-const (
-	// Basic constanta
-	Basic = "basic"
 )
 
 // Basic function basic auth
@@ -36,12 +28,7 @@ func (m *Middleware) Basic(ctx context.Context, key string) error {
 		return errors.New("Unauthorized")
 	}
 	username, password := decoded[0], decoded[1]
-
-	if err := m.basicAuthValidator.ValidateBasic(username, password); err != nil {
-		return errors.New("Unauthorized")
-	}
-
-	return nil
+	return m.basicAuthValidator.ValidateBasic(ctx, username, password)
 }
 
 // HTTPBasicAuth http basic auth middleware
@@ -54,7 +41,7 @@ func (m *Middleware) HTTPBasicAuth(next http.Handler) http.Handler {
 			w.Header().Set("WWW-Authenticate", `Basic realm=""`)
 			authorization := req.Header.Get(candihelper.HeaderAuthorization)
 			trace.SetTag(candihelper.HeaderAuthorization, authorization)
-			key, err := extractAuthType(Basic, authorization)
+			key, err := extractAuthType(BASIC, authorization)
 			if err != nil {
 				trace.SetError(err)
 				return err
@@ -75,35 +62,27 @@ func (m *Middleware) HTTPBasicAuth(next http.Handler) http.Handler {
 }
 
 // GRPCBasicAuth method
-func (m *Middleware) GRPCBasicAuth(ctx context.Context) context.Context {
+func (m *Middleware) GRPCBasicAuth(ctx context.Context) (context.Context, error) {
 	trace := tracer.StartTrace(ctx, "Middleware:GRPCBasicAuth")
 	defer trace.Finish()
 
-	meta, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		err := errors.New("missing context metadata")
-		trace.SetError(err)
-		panic(err)
-	}
-
-	authorizationMap := meta[strings.ToLower(candihelper.HeaderAuthorization)]
-	trace.SetTag(candihelper.HeaderAuthorization, authorizationMap)
-	if len(authorizationMap) != 1 {
-		err := grpc.Errorf(codes.Unauthenticated, "Invalid authorization")
-		trace.SetError(err)
-		panic(err)
-	}
-
-	key, err := extractAuthType(Basic, authorizationMap[0])
+	auth, err := extractAuthorizationGRPCMetadata(ctx)
 	if err != nil {
 		trace.SetError(err)
-		panic(err)
+		return ctx, err
+	}
+	trace.Log(candihelper.HeaderAuthorization, auth)
+
+	key, err := extractAuthType(BASIC, auth)
+	if err != nil {
+		trace.SetError(err)
+		return ctx, err
 	}
 
 	if err := m.Basic(trace.Context(), key); err != nil {
 		trace.SetError(err)
-		panic(err)
+		return ctx, err
 	}
 
-	return ctx
+	return ctx, nil
 }

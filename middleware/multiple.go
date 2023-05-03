@@ -12,6 +12,8 @@ import (
 	"github.com/golangid/candi/tracer"
 	"github.com/golangid/candi/wrapper"
 	gqltypes "github.com/golangid/graphql-go/types"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 // HTTPMultipleAuth mix basic & bearer auth
@@ -25,23 +27,21 @@ func (m *Middleware) HTTPMultipleAuth(next http.Handler) http.Handler {
 
 		ctx := req.Context()
 
+		trace := tracer.StartTrace(ctx, "Middleware:HTTPMultipleAuth")
+		defer trace.Finish()
+
 		authorization := req.Header.Get(candihelper.HeaderAuthorization)
 		if authorization == "" {
 			wrapper.NewHTTPResponse(http.StatusUnauthorized, "Invalid authorization").JSON(w)
 			return
 		}
 
-		authValues := strings.Split(authorization, " ")
-
-		if len(authValues) != 2 {
+		authType, authVal, ok := strings.Cut(authorization, " ")
+		if !ok {
 			wrapper.NewHTTPResponse(http.StatusUnauthorized, "Invalid authorization").JSON(w)
 			return
 		}
-
-		authType := strings.ToLower(authValues[0])
-
-		tokenString := authValues[1]
-		claimData, err := m.checkMultipleAuth(ctx, authType, tokenString)
+		claimData, err := m.checkMultipleAuth(trace.Context(), authType, authVal)
 		if err != nil {
 			wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(w)
 			return
@@ -55,6 +55,34 @@ func (m *Middleware) HTTPMultipleAuth(next http.Handler) http.Handler {
 	})
 }
 
+// GRPCMultipleAuth method
+func (m *Middleware) GRPCMultipleAuth(ctx context.Context) (context.Context, error) {
+	trace := tracer.StartTrace(ctx, "Middleware:GRPCMultipleAuth")
+	defer trace.Finish()
+
+	auth, err := extractAuthorizationGRPCMetadata(ctx)
+	if err != nil {
+		trace.SetError(err)
+		return ctx, err
+	}
+	trace.Log(candihelper.HeaderAuthorization, auth)
+
+	authType, authVal, ok := strings.Cut(auth, " ")
+	if !ok {
+		return ctx, grpc.Errorf(codes.Unauthenticated, "Invalid authorization")
+	}
+	claimData, err := m.checkMultipleAuth(trace.Context(), authType, authVal)
+	if err != nil {
+		return ctx, grpc.Errorf(codes.Unauthenticated, err.Error())
+	}
+
+	if claimData != nil {
+		ctx = candishared.SetToContext(ctx, candishared.ContextKeyTokenClaim, claimData)
+		trace.Log("token_claim", claimData)
+	}
+	return ctx, nil
+}
+
 // GraphQLAuth for graphql resolver
 func (m *Middleware) GraphQLAuth(ctx context.Context, directive *gqltypes.Directive, input interface{}) (context.Context, error) {
 	trace := tracer.StartTrace(ctx, "Middleware:GraphQLAuthDirective")
@@ -65,11 +93,10 @@ func (m *Middleware) GraphQLAuth(ctx context.Context, directive *gqltypes.Direct
 	trace.Log(candihelper.HeaderAuthorization, authorization)
 	trace.SetTag("directiveName", directive.Name.Name)
 
-	authValues := strings.Split(authorization, " ")
-	if len(authValues) != 2 {
+	headerAuthType, headerAuthVal, ok := strings.Cut(authorization, " ")
+	if !ok {
 		return ctx, candishared.NewGraphQLErrorResolver("Invalid authorization", map[string]interface{}{
-			"code":    401,
-			"success": false,
+			"code": 401, "success": false,
 		})
 	}
 
@@ -77,28 +104,29 @@ func (m *Middleware) GraphQLAuth(ctx context.Context, directive *gqltypes.Direct
 	if authTypeValue == nil {
 		return ctx, candishared.NewGraphQLErrorResolver(
 			"Missing authType argument in directive @"+directive.Name.Name+" definition",
-			map[string]interface{}{
-				"code":    401,
-				"success": false,
-			})
+			map[string]interface{}{"code": 401, "success": false},
+		)
 	}
-	authType := strings.ToLower(authTypeValue.String())
-	if authType != strings.ToLower(authValues[0]) {
+
+	authType := authTypeValue.String()
+	if _, ok := map[string]struct{}{BEARER: {}, BASIC: {}, MULTIPLE: {}}[authType]; !ok {
 		return ctx, candishared.NewGraphQLErrorResolver(
-			"Mismatch authType definition from directive @"+directive.Name.Name+" (required: "+authType+", given: "+strings.ToLower(authValues[0])+")",
-			map[string]interface{}{
-				"code":    401,
-				"success": false,
-			})
+			"Invalid authType direction name. Must BASIC, BEARER, or MULTIPLE",
+			map[string]interface{}{"code": 401, "success": false},
+		)
 	}
 
-	tokenString := authValues[1]
+	if authType != MULTIPLE && authType != strings.ToUpper(headerAuthType) {
+		return ctx, candishared.NewGraphQLErrorResolver(
+			"Mismatch authType definition from directive @"+directive.Name.Name+" (required: "+authType+", given: "+strings.ToUpper(headerAuthType)+")",
+			map[string]interface{}{"code": 401, "success": false},
+		)
+	}
 
-	claimData, err := m.checkMultipleAuth(trace.Context(), authType, tokenString)
+	claimData, err := m.checkMultipleAuth(trace.Context(), headerAuthType, headerAuthVal)
 	if err != nil {
 		return ctx, candishared.NewGraphQLErrorResolver(err.Error(), map[string]interface{}{
-			"code":    401,
-			"success": false,
+			"code": 401, "success": false,
 		})
 	}
 
@@ -112,10 +140,10 @@ func (m *Middleware) GraphQLAuth(ctx context.Context, directive *gqltypes.Direct
 
 func (m *Middleware) checkMultipleAuth(ctx context.Context, authType, token string) (claimData *candishared.TokenClaim, err error) {
 
-	switch authType {
-	case Bearer:
+	switch strings.ToUpper(authType) {
+	case BEARER:
 		claimData, err = m.Bearer(ctx, token)
-	case Basic:
+	case BASIC:
 		err = m.Basic(ctx, token)
 	default:
 		return nil, errors.New("Invalid authorization type, must BEARER or BASIC")

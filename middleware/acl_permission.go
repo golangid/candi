@@ -99,15 +99,15 @@ func (m *Middleware) GraphQLPermissionACL(ctx context.Context, directive *gqltyp
 
 // GRPCPermissionACL grpc interceptor for check acl permission
 func (m *Middleware) GRPCPermissionACL(permissionCode string) types.MiddlewareFunc {
-	return func(ctx context.Context) context.Context {
+	return func(ctx context.Context) (context.Context, error) {
 		trace := tracer.StartTrace(ctx, "Middleware:GRPCPermissionACL")
 		defer trace.Finish()
 		trace.SetTag("permissionCode", permissionCode)
 
 		tokenClaim, err := m.checkACLPermissionFromContext(trace.Context(), permissionCode)
 		if err != nil {
-			panic(grpc.Errorf(codes.PermissionDenied, err.Error()))
+			return ctx, grpc.Errorf(codes.PermissionDenied, err.Error())
 		}
-		return candishared.SetToContext(ctx, candishared.ContextKeyTokenClaim, tokenClaim)
+		return candishared.SetToContext(ctx, candishared.ContextKeyTokenClaim, tokenClaim), nil
 	}
 }

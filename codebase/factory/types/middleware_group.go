@@ -9,7 +9,7 @@ import (
 )
 
 // MiddlewareFunc type
-type MiddlewareFunc func(context.Context) context.Context
+type MiddlewareFunc func(context.Context) (context.Context, error)
 
 // MiddlewareGroup type
 type MiddlewareGroup map[string][]MiddlewareFunc

@@ -4,20 +4,11 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/tracer"
 	"github.com/golangid/candi/wrapper"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
-)
-
-const (
-	// Bearer constanta
-	Bearer = "bearer"
 )
 
 // Bearer token validator
@@ -44,7 +35,7 @@ func (m *Middleware) HTTPBearerAuth(next http.Handler) http.Handler {
 
 			authorization := req.Header.Get(candihelper.HeaderAuthorization)
 			trace.SetTag(candihelper.HeaderAuthorization, authorization)
-			tokenValue, err := extractAuthType(Bearer, authorization)
+			tokenValue, err := extractAuthType(BEARER, authorization)
 			if err != nil {
 				trace.SetError(err)
 				return err
@@ -68,31 +59,23 @@ func (m *Middleware) HTTPBearerAuth(next http.Handler) http.Handler {
 }
 
 // GRPCBearerAuth method
-func (m *Middleware) GRPCBearerAuth(ctx context.Context) context.Context {
+func (m *Middleware) GRPCBearerAuth(ctx context.Context) (context.Context, error) {
 	trace := tracer.StartTrace(ctx, "Middleware:GRPCBearerAuth")
 	defer trace.Finish()
 
-	meta, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		err := errors.New("missing context metadata")
-		trace.SetError(err)
-		panic(err)
-	}
-
-	authorizationMap := meta[strings.ToLower(candihelper.HeaderAuthorization)]
-	trace.SetTag(candihelper.HeaderAuthorization, authorizationMap)
-	if len(authorizationMap) != 1 {
-		err := grpc.Errorf(codes.Unauthenticated, "Invalid authorization")
-		trace.SetError(err)
-		panic(err)
-	}
-
-	tokenClaim, err := m.Bearer(trace.Context(), authorizationMap[0])
+	auth, err := extractAuthorizationGRPCMetadata(ctx)
 	if err != nil {
 		trace.SetError(err)
-		panic(err)
+		return ctx, err
+	}
+	trace.Log(candihelper.HeaderAuthorization, auth)
+
+	tokenClaim, err := m.Bearer(trace.Context(), auth)
+	if err != nil {
+		trace.SetError(err)
+		return ctx, err
 	}
 
 	trace.Log("token_claim", tokenClaim)
-	return candishared.SetToContext(ctx, candishared.ContextKeyTokenClaim, tokenClaim)
+	return candishared.SetToContext(ctx, candishared.ContextKeyTokenClaim, tokenClaim), nil
 }
