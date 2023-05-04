@@ -159,7 +159,7 @@ coverage.txt
 	"type": "object",
 	"properties": {
 		"id": {
-			"type": "string"
+			"type": "{{if and .MongoDeps (not .SQLDeps)}}string{{else}}integer{{end}}"
 		},
 		"field": {
 			"type": "string",

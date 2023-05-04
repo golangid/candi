@@ -75,8 +75,8 @@ func main() {
 	switch args[0] {
 	case "create":
 		migrationType := "sql"
-		if len(args) > 2 && args[2] == "init_table" {
-			migrationType = "go"
+		if len(args) > 2 {
+			migrationType = args[2]
 		}
 		if err := goose.Create(sqlDeps.WriteDB(), dir, args[1], migrationType); err != nil {
 			log.Fatalf("goose %v: %v", args[1], err)
@@ -99,7 +99,7 @@ func main() {
 				log.Fatal(err)
 			}
 			tx := gormWrite.Begin()
-			if err := gormWrite.AutoMigrate(migrateTables...); err != nil {
+			if err := tx.AutoMigrate(migrateTables...); err != nil {
 				tx.Rollback()
 				log.Fatal(err)
 			}
@@ -125,7 +125,7 @@ func GetMigrateTables() []interface{} {
 	templateCmdMigrationInitModule = `-- +goose Up
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS {{plural .ModuleName}} (
-	"id" VARCHAR(255) NOT NULL PRIMARY KEY,
+	"id" SERIAL NOT NULL PRIMARY KEY,
 	"field" VARCHAR(255),
 	"created_at" TIMESTAMPTZ(6),
 	"updated_at" TIMESTAMPTZ(6)

@@ -8,7 +8,8 @@ package resthandler
 import (
 	"encoding/json"
 	"io"
-	"net/http"
+	"net/http"{{if and .MongoDeps (not .SQLDeps)}}{{else}}
+	"strconv"{{end}}
 
 	"github.com/labstack/echo"
 
@@ -17,6 +18,7 @@ import (
 
 	"{{.LibraryName}}/candihelper"
 	"{{.LibraryName}}/candishared"
+	restserver "{{.LibraryName}}/codebase/app/rest_server"
 	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/interfaces"
 	"{{.LibraryName}}/tracer"
@@ -42,12 +44,12 @@ func NewRestHandler(uc usecase.Usecase, deps dependency.Dependency) *RestHandler
 func (h *RestHandler) Mount(root *echo.Group) {
 	v1Root := root.Group(candihelper.V1)
 
-	{{camel .ModuleName}} := v1Root.Group("/{{kebab .ModuleName}}", echo.WrapMiddleware(h.mw.HTTPBearerAuth))
-	{{camel .ModuleName}}.GET("", h.getAll{{upper (camel .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("getAll{{upper (camel .ModuleName)}}")))
-	{{camel .ModuleName}}.GET("/:id", h.getDetail{{upper (camel .ModuleName)}}ByID, echo.WrapMiddleware(h.mw.HTTPPermissionACL("getDetail{{upper (camel .ModuleName)}}")))
-	{{camel .ModuleName}}.POST("", h.create{{upper (camel .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("create{{upper (camel .ModuleName)}}")))
-	{{camel .ModuleName}}.PUT("/:id", h.update{{upper (camel .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("update{{upper (camel .ModuleName)}}")))
-	{{camel .ModuleName}}.DELETE("/:id", h.delete{{upper (camel .ModuleName)}}, echo.WrapMiddleware(h.mw.HTTPPermissionACL("delete{{upper (camel .ModuleName)}}")))
+	{{camel .ModuleName}} := v1Root.Group("/{{kebab .ModuleName}}", restserver.EchoWrapMiddleware(h.mw.HTTPBearerAuth))
+	{{camel .ModuleName}}.GET("", h.getAll{{upper (camel .ModuleName)}}, restserver.EchoWrapMiddleware(h.mw.HTTPPermissionACL("getAll{{upper (camel .ModuleName)}}")))
+	{{camel .ModuleName}}.GET("/:id", h.getDetail{{upper (camel .ModuleName)}}ByID, restserver.EchoWrapMiddleware(h.mw.HTTPPermissionACL("getDetail{{upper (camel .ModuleName)}}")))
+	{{camel .ModuleName}}.POST("", h.create{{upper (camel .ModuleName)}}, restserver.EchoWrapMiddleware(h.mw.HTTPPermissionACL("create{{upper (camel .ModuleName)}}")))
+	{{camel .ModuleName}}.PUT("/:id", h.update{{upper (camel .ModuleName)}}, restserver.EchoWrapMiddleware(h.mw.HTTPPermissionACL("update{{upper (camel .ModuleName)}}")))
+	{{camel .ModuleName}}.DELETE("/:id", h.delete{{upper (camel .ModuleName)}}, restserver.EchoWrapMiddleware(h.mw.HTTPPermissionACL("delete{{upper (camel .ModuleName)}}")))
 }
 
 func (h *RestHandler) getAll{{upper (camel .ModuleName)}}(c echo.Context) error {
@@ -78,7 +80,8 @@ func (h *RestHandler) getDetail{{upper (camel .ModuleName)}}ByID(c echo.Context)
 	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{upper (camel .ModuleName)}}DeliveryREST:GetDetail{{upper (camel .ModuleName)}}ByID")
 	defer trace.Finish()
 
-	data, err := h.uc.{{upper (camel .ModuleName)}}().GetDetail{{upper (camel .ModuleName)}}(ctx, c.Param("id"))
+	{{if and .MongoDeps (not .SQLDeps)}}id := c.Param("id"){{else}}id, _ := strconv.Atoi(c.Param("id")){{end}}
+	data, err := h.uc.{{upper (camel .ModuleName)}}().GetDetail{{upper (camel .ModuleName)}}(ctx, id)
 	if err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
@@ -100,12 +103,12 @@ func (h *RestHandler) create{{upper (camel .ModuleName)}}(c echo.Context) error 
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
 
-	err := h.uc.{{upper (camel .ModuleName)}}().Create{{upper (camel .ModuleName)}}(ctx, &payload)
+	res, err := h.uc.{{upper (camel .ModuleName)}}().Create{{upper (camel .ModuleName)}}(ctx, &payload)
 	if err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
 
-	return wrapper.NewHTTPResponse(http.StatusCreated, "Success").JSON(c.Response())
+	return wrapper.NewHTTPResponse(http.StatusCreated, "Success", res).JSON(c.Response())
 }
 
 func (h *RestHandler) update{{upper (camel .ModuleName)}}(c echo.Context) error {
@@ -122,7 +125,7 @@ func (h *RestHandler) update{{upper (camel .ModuleName)}}(c echo.Context) error 
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
 
-	payload.ID = c.Param("id")
+	{{if and .MongoDeps (not .SQLDeps)}}payload.ID = c.Param("id"){{else}}payload.ID, _ = strconv.Atoi(c.Param("id")){{end}}
 	err := h.uc.{{upper (camel .ModuleName)}}().Update{{upper (camel .ModuleName)}}(ctx, &payload)
 	if err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
@@ -134,8 +137,9 @@ func (h *RestHandler) update{{upper (camel .ModuleName)}}(c echo.Context) error 
 func (h *RestHandler) delete{{upper (camel .ModuleName)}}(c echo.Context) error {
 	trace, ctx := tracer.StartTraceWithContext(c.Request().Context(), "{{upper (camel .ModuleName)}}DeliveryREST:Delete{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
-
-	if err := h.uc.{{upper (camel .ModuleName)}}().Delete{{upper (camel .ModuleName)}}(ctx, c.Param("id")); err != nil {
+	
+	{{if and .MongoDeps (not .SQLDeps)}}id := c.Param("id"){{else}}id, _ := strconv.Atoi(c.Param("id")){{end}}
+	if err := h.uc.{{upper (camel .ModuleName)}}().Delete{{upper (camel .ModuleName)}}(ctx, id); err != nil {
 		return wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(c.Response())
 	}
 

@@ -11,7 +11,7 @@ import (
 
 // {{upper (camel .ModuleName)}} model
 type {{upper (camel .ModuleName)}} struct {
-	ID         {{if and .MongoDeps (not .SQLDeps)}}primitive.ObjectID{{else}}string{{end}}    ` + "`" + `{{if .SQLUseGORM}}gorm:"column:id;type:varchar(255);primary_key" {{end}}` + `{{if .MongoDeps}}bson:"_id" {{end}}` + `json:"id"` + "`" + `
+	ID         {{if and .MongoDeps (not .SQLDeps)}}primitive.ObjectID{{else}}int{{end}}    ` + "`" + `{{if .SQLUseGORM}}gorm:"column:id;primary_key" {{end}}` + `{{if .MongoDeps}}bson:"_id" {{end}}` + `json:"id"` + "`" + `
 	Field      string    ` + "`" + `{{if .SQLUseGORM}}gorm:"column:field;type:varchar(255)" {{end}}` + `{{if .MongoDeps}}bson:"field" {{end}}` + `json:"field"` + "`" + `
 	CreatedAt  time.Time ` + "`" + `{{if .SQLUseGORM}}gorm:"column:created_at" {{end}}` + `{{if .MongoDeps}}bson:"created_at" {{end}}` + `json:"created_at"` + "`" + `
 	UpdatedAt  time.Time ` + "`" + `{{if .SQLUseGORM}}gorm:"column:updated_at" {{end}}` + `{{if .MongoDeps}}bson:"updated_at" {{end}}` + `json:"updated_at"` + "`" + `
@@ -34,7 +34,7 @@ import "{{.LibraryName}}/candishared"
 // Filter{{upper (camel .ModuleName)}} model
 type Filter{{upper (camel .ModuleName)}} struct {
 	candishared.Filter
-	ID        *string ` + "`json:\"id\"`" + `
+	ID        *{{if and .MongoDeps (not .SQLDeps)}}string{{else}}int{{end}} ` + "`json:\"id\"`" + `
 	StartDate string ` + "`json:\"startDate\"`" + `
 	EndDate   string ` + "`json:\"endDate\"`{{if .SQLUseGORM}}" + `
 	Preloads  []string ` + "`json:\"-\"`" + `{{end}}
@@ -44,18 +44,31 @@ type Filter{{upper (camel .ModuleName)}} struct {
 
 // Request{{upper (camel .ModuleName)}} model
 type Request{{upper (camel .ModuleName)}} struct {
-	ID    string ` + "`json:\"id\"`" + `
+	ID    {{if and .MongoDeps (not .SQLDeps)}}string{{else}}int{{end}} ` + "`json:\"id\"`" + `
 	Field string ` + "`json:\"field\"`" + `
 }
 `
 	templateModuleResponseDomain = `package domain
 
+import (
+	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
+	"time"
+)
+
 // Response{{upper (camel .ModuleName)}} model
 type Response{{upper (camel .ModuleName)}} struct {
-	ID        string ` + "`json:\"id\"`" + `
+	ID        {{if and .MongoDeps (not .SQLDeps)}}string{{else}}int{{end}} ` + "`json:\"id\"`" + `
 	Field     string ` + "`json:\"field\"`" + `
 	CreatedAt string ` + "`json:\"createdAt\"`" + `
 	UpdatedAt string ` + "`json:\"updatedAt\"`" + `
+}
+
+// Serialize from db model
+func (r *Response{{upper (camel .ModuleName)}}) Serialize(source *shareddomain.{{upper (camel .ModuleName)}}) {
+	r.ID = source.ID{{if and .MongoDeps (not .SQLDeps)}}.Hex(){{end}}
+	r.Field = source.Field
+	r.CreatedAt = source.CreatedAt.Format(time.RFC3339)
+	r.UpdatedAt = source.UpdatedAt.Format(time.RFC3339)
 }
 `
 )

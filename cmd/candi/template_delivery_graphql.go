@@ -79,7 +79,7 @@ func (q *GraphQLHandler) GetAll{{upper (camel .ModuleName)}}(ctx context.Context
 }
 
 // GetDetail{{upper (camel .ModuleName)}} resolver
-func (q *GraphQLHandler) GetDetail{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ ID string }) (data domain.Response{{upper (camel .ModuleName)}}, err error) {
+func (q *GraphQLHandler) GetDetail{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ ID {{if and .MongoDeps (not .SQLDeps)}}string{{else}}int{{end}} }) (data domain.Response{{upper (camel .ModuleName)}}, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryGraphQL:GetDetail{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
@@ -101,24 +101,21 @@ import (
 )
 
 // Create{{upper (camel .ModuleName)}} resolver
-func (m *GraphQLHandler) Create{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ Data domain.Request{{upper (camel .ModuleName)}} }) (ok string, err error) {
+func (m *GraphQLHandler) Create{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ Data domain.Request{{upper (camel .ModuleName)}} }) (data domain.Response{{upper (camel .ModuleName)}}, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryGraphQL:Create{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
 	if err := m.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/save", input.Data); err != nil {
-		return "", err
+		return data, err
 	}
-	if err := m.uc.{{upper (camel .ModuleName)}}().Create{{upper (camel .ModuleName)}}(ctx, &input.Data); err != nil {
-		return ok, err
-	}
-	return "Success", nil
+	return m.uc.{{upper (camel .ModuleName)}}().Create{{upper (camel .ModuleName)}}(ctx, &input.Data)
 }
 
 // Update{{upper (camel .ModuleName)}} resolver
 func (m *GraphQLHandler) Update{{upper (camel .ModuleName)}}(ctx context.Context, input struct {
-	ID   string
+	ID   {{if and .MongoDeps (not .SQLDeps)}}string{{else}}int{{end}}
 	Data domain.Request{{upper (camel .ModuleName)}}
 }) (ok string, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryGraphQL:Update{{upper (camel .ModuleName)}}")
@@ -137,7 +134,7 @@ func (m *GraphQLHandler) Update{{upper (camel .ModuleName)}}(ctx context.Context
 }
 
 // Delete{{upper (camel .ModuleName)}} resolver
-func (m *GraphQLHandler) Delete{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ ID string }) (ok string, err error) {
+func (m *GraphQLHandler) Delete{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ ID {{if and .MongoDeps (not .SQLDeps)}}string{{else}}int{{end}} }) (ok string, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryGraphQL:Delete{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
@@ -159,9 +156,9 @@ import (
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 
-	"{{.LibraryName}}/logger"
+	"{{.LibraryName}}/logger"{{if and .MongoDeps (not .SQLDeps)}}
 
-	"github.com/google/uuid"
+	"github.com/google/uuid"{{end}}
 )
 
 // ListenData resolver, broadcast event to client
@@ -178,7 +175,7 @@ func (s *GraphQLHandler) ListenData(ctx context.Context) <-chan domain.Response{
 					CreatedAt: time.Now().Format(time.RFC3339),
 					UpdatedAt: time.Now().Format(time.RFC3339),
 				}
-				data.ID = uuid.NewString()
+				data.ID = {{if and .MongoDeps (not .SQLDeps)}}uuid.NewString(){{else}}1{{end}}
 				output <- data
 			case <-ctx.Done():
 				tick.Stop()
@@ -247,7 +244,12 @@ schema {
 	subscription: Subscription
 }
 
-directive @auth(authType: String!) on FIELD_DEFINITION
+enum AuthTypeDirective {
+	BASIC
+	BEARER
+	MULTIPLE
+}
+directive @auth(authType: AuthTypeDirective!) on FIELD_DEFINITION
 directive @permissionACL(permissionCode: String!) on FIELD_DEFINITION
 
 type Query {
@@ -268,13 +270,13 @@ type Subscription {
 # {{upper (camel .ModuleName)}}Module Resolver Area
 type {{upper (camel .ModuleName)}}QueryResolver {
 	getAll{{upper (camel .ModuleName)}}(filter: FilterListInputResolver): {{upper (camel .ModuleName)}}ListResolver! @permissionACL(permissionCode: getAll{{upper (camel .ModuleName)}})
-	getDetail{{upper (camel .ModuleName)}}(id: String!): {{upper (camel .ModuleName)}}Resolver! @permissionACL(permissionCode: getDetail{{upper (camel .ModuleName)}})
+	getDetail{{upper (camel .ModuleName)}}(id: {{if and .MongoDeps (not .SQLDeps)}}String{{else}}Int{{end}}!): {{upper (camel .ModuleName)}}Resolver! @permissionACL(permissionCode: getDetail{{upper (camel .ModuleName)}})
 }
 
 type {{upper (camel .ModuleName)}}MutationResolver {
-	create{{upper (camel .ModuleName)}}(data: {{upper (camel .ModuleName)}}InputResolver!): String! @permissionACL(permissionCode: create{{upper (camel .ModuleName)}})
-	update{{upper (camel .ModuleName)}}(id: String!, data: {{upper (camel .ModuleName)}}InputResolver!): String! @permissionACL(permissionCode: update{{upper (camel .ModuleName)}})
-	delete{{upper (camel .ModuleName)}}(id: String!): String! @permissionACL(permissionCode: delete{{upper (camel .ModuleName)}})
+	create{{upper (camel .ModuleName)}}(data: {{upper (camel .ModuleName)}}InputResolver!): {{upper (camel .ModuleName)}}Resolver! @permissionACL(permissionCode: create{{upper (camel .ModuleName)}})
+	update{{upper (camel .ModuleName)}}(id: {{if and .MongoDeps (not .SQLDeps)}}String{{else}}Int{{end}}!, data: {{upper (camel .ModuleName)}}InputResolver!): String! @permissionACL(permissionCode: update{{upper (camel .ModuleName)}})
+	delete{{upper (camel .ModuleName)}}(id: {{if and .MongoDeps (not .SQLDeps)}}String{{else}}Int{{end}}!): String! @permissionACL(permissionCode: delete{{upper (camel .ModuleName)}})
 }
 
 type {{upper (camel .ModuleName)}}SubscriptionResolver {
@@ -287,7 +289,7 @@ type {{upper (camel .ModuleName)}}ListResolver {
 }
 
 type {{upper (camel .ModuleName)}}Resolver {
-	id: String!
+	id: {{if and .MongoDeps (not .SQLDeps)}}String{{else}}Int{{end}}!
 	field: String!
 	createdAt: String!
 	updatedAt: String!

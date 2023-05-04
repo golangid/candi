@@ -75,6 +75,7 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 		middleware.SetUserIDExtractor(func(tokenClaim *candishared.TokenClaim) (userID string) {
 			return tokenClaim.Subject
 		}),
+		{{if not .RedisDeps}}// {{end}}middleware.SetCache(deps.GetRedisPool().Cache(), middleware.DefaultCacheAge),
 	))
 
 	return deps

@@ -36,11 +36,11 @@ MONGODB_HOST_WRITE=mongodb://user:pass@localhost:27017/{{.ServiceName}}?authSour
 MONGODB_HOST_READ=mongodb://user:pass@localhost:27017/{{.ServiceName}}?authSource=admin
 
 SQL_DB_READ_DSN={{ if .SQLDeps }}{{.SQLDriver}}://` +
-	"{{if eq .SQLDriver \"postgres\"}}user:pass@localhost:5432/db_name?sslmode=disable{{else if eq .SQLDriver \"mysql\"}}" +
+	"{{if eq .SQLDriver \"postgres\"}}user:pass@localhost:5432/db_name?sslmode=disable&TimeZone=Asia/Jakarta{{else if eq .SQLDriver \"mysql\"}}" +
 	"root:pass@tcp(127.0.0.1:3306)/db_name{{end}}" +
 	`{{ end }}
 SQL_DB_WRITE_DSN={{ if .SQLDeps }}{{.SQLDriver}}://` +
-	"{{if eq .SQLDriver \"postgres\"}}user:pass@localhost:5432/db_name?sslmode=disable{{else if eq .SQLDriver \"mysql\"}}" +
+	"{{if eq .SQLDriver \"postgres\"}}user:pass@localhost:5432/db_name?sslmode=disable&TimeZone=Asia/Jakarta{{else if eq .SQLDriver \"mysql\"}}" +
 	"root:pass@tcp(127.0.0.1:3306)/db_name{{end}}" +
 	`{{ end }}
 {{if .ArangoDeps}}

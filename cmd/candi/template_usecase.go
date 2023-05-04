@@ -94,10 +94,10 @@ import (
 // {{upper (camel .ModuleName)}}Usecase abstraction
 type {{upper (camel .ModuleName)}}Usecase interface {
 	GetAll{{upper (camel .ModuleName)}}(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (data []domain.Response{{upper (camel .ModuleName)}}, meta candishared.Meta, err error)
-	GetDetail{{upper (camel .ModuleName)}}(ctx context.Context, id string) (data domain.Response{{upper (camel .ModuleName)}}, err error)
-	Create{{upper (camel .ModuleName)}}(ctx context.Context, data *domain.Request{{upper (camel .ModuleName)}}) (err error)
+	GetDetail{{upper (camel .ModuleName)}}(ctx context.Context, id {{if and .MongoDeps (not .SQLDeps)}}string{{else}}int{{end}}) (data domain.Response{{upper (camel .ModuleName)}}, err error)
+	Create{{upper (camel .ModuleName)}}(ctx context.Context, data *domain.Request{{upper (camel .ModuleName)}}) (res domain.Response{{upper (camel .ModuleName)}}, err error) 
 	Update{{upper (camel .ModuleName)}}(ctx context.Context, data *domain.Request{{upper (camel .ModuleName)}}) (err error)
-	Delete{{upper (camel .ModuleName)}}(ctx context.Context, id string) (err error)
+	Delete{{upper (camel .ModuleName)}}(ctx context.Context, id {{if and .MongoDeps (not .SQLDeps)}}string{{else}}int{{end}}) (err error)
 }
 
 type {{camel .ModuleName}}UsecaseImpl struct {
@@ -136,10 +136,8 @@ func New{{upper (camel .ModuleName)}}Usecase(deps dependency.Dependency) ({{uppe
 
 import (
 	"context"
-	"time"
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
-	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 
 	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/tracer"
@@ -149,8 +147,7 @@ func (uc *{{camel .ModuleName}}UsecaseImpl) GetAll{{upper (camel .ModuleName)}}(
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}Usecase:GetAll{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	var data []shareddomain.{{upper (camel .ModuleName)}}
-	{{if or .SQLDeps .MongoDeps .ArangoDeps}}data, err = uc.repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().FetchAll(ctx, filter)
+	{{if or .SQLDeps .MongoDeps .ArangoDeps}}data, err := uc.repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().FetchAll(ctx, filter)
 	if err != nil {
 		return results, meta, err
 	}
@@ -158,12 +155,9 @@ func (uc *{{camel .ModuleName}}UsecaseImpl) GetAll{{upper (camel .ModuleName)}}(
 	meta = candishared.NewMeta(filter.Page, filter.Limit, count){{end}}
 
 	for _, detail := range data {
-		results = append(results, domain.Response{{upper (camel .ModuleName)}}{
-			ID: detail.ID{{if and .MongoDeps (not .SQLDeps)}}.Hex(){{end}},
-			Field: detail.Field,
-			CreatedAt: detail.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: detail.UpdatedAt.Format(time.RFC3339),
-		})
+		var res domain.Response{{upper (camel .ModuleName)}}
+		res.Serialize(&detail)
+		results = append(results, res)
 	}
 
 	return
@@ -227,29 +221,23 @@ func Test_{{camel .ModuleName}}UsecaseImpl_GetAll{{upper (camel .ModuleName)}}(t
 
 import (
 	"context"
-	"time"
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
-	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 
 	"{{.LibraryName}}/tracer"
 )
 
-func (uc *{{camel .ModuleName}}UsecaseImpl) GetDetail{{upper (camel .ModuleName)}}(ctx context.Context, id string) (result domain.Response{{upper (camel .ModuleName)}}, err error) {
+func (uc *{{camel .ModuleName}}UsecaseImpl) GetDetail{{upper (camel .ModuleName)}}(ctx context.Context, id {{if and .MongoDeps (not .SQLDeps)}}string{{else}}int{{end}}) (result domain.Response{{upper (camel .ModuleName)}}, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}Usecase:GetDetail{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	var data shareddomain.{{upper (camel .ModuleName)}}
 	{{if or .SQLDeps .MongoDeps .ArangoDeps}}repoFilter := domain.Filter{{upper (camel .ModuleName)}}{ID: &id}
-	data, err = uc.repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().Find(ctx, &repoFilter){{end}}
+	data, err := uc.repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().Find(ctx, &repoFilter){{end}}
 	if err != nil {
 		return result, err
 	}
 
-	result.ID = data.ID{{if and .MongoDeps (not .SQLDeps)}}.Hex(){{end}}
-	result.Field = data.Field
-	result.CreatedAt = data.CreatedAt.Format(time.RFC3339)
-	result.UpdatedAt = data.UpdatedAt.Format(time.RFC3339)
+	result.Serialize(&data)
 	return
 }
 `
@@ -281,7 +269,7 @@ func Test_{{camel .ModuleName}}UsecaseImpl_GetDetail{{upper (camel .ModuleName)}
 			repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}: repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}},
 		}
 
-		_, err := uc.GetDetail{{upper (camel .ModuleName)}}(context.Background(), "id")
+		_, err := uc.GetDetail{{upper (camel .ModuleName)}}(context.Background(), {{if and .MongoDeps (not .SQLDeps)}}"1"{{else}}1{{end}})
 		assert.NoError(t, err)
 	})
 }
@@ -298,13 +286,16 @@ import (
 	"{{.LibraryName}}/tracer"
 )
 
-func (uc *{{camel .ModuleName}}UsecaseImpl) Create{{upper (camel .ModuleName)}}(ctx context.Context, req *domain.Request{{upper (camel .ModuleName)}}) (err error) {
+func (uc *{{camel .ModuleName}}UsecaseImpl) Create{{upper (camel .ModuleName)}}(ctx context.Context, req *domain.Request{{upper (camel .ModuleName)}}) (result domain.Response{{upper (camel .ModuleName)}}, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}Usecase:Create{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	return{{if or .SQLDeps .MongoDeps .ArangoDeps}} uc.repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().Save(ctx, &shareddomain.{{upper (camel .ModuleName)}}{
+	data := shareddomain.{{upper (camel .ModuleName)}}{
 		Field: req.Field,
-	}){{end}}
+	}
+	err = {{if or .SQLDeps .MongoDeps .ArangoDeps}}uc.repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().Save(ctx, &data){{end}}
+	result.Serialize(&data)
+	return
 }
 `
 
@@ -335,7 +326,7 @@ func Test_{{camel .ModuleName}}UsecaseImpl_Create{{upper (camel .ModuleName)}}(t
 			repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}: repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}},
 		}
 
-		err := uc.Create{{upper (camel .ModuleName)}}(context.Background(), &domain.Request{{upper (camel .ModuleName)}}{})
+		_, err := uc.Create{{upper (camel .ModuleName)}}(context.Background(), &domain.Request{{upper (camel .ModuleName)}}{})
 		assert.NoError(t, err)
 	})
 }
@@ -422,21 +413,17 @@ func Test_{{camel .ModuleName}}UsecaseImpl_Update{{upper (camel .ModuleName)}}(t
 import (
 	"context"{{if or .SQLDeps .MongoDeps .ArangoDeps}}
 	
-	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"{{end}}{{if and .MongoDeps (not .SQLDeps)}}
-
-	"go.mongodb.org/mongo-driver/bson/primitive"{{end}}
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"{{end}}
 
 	"{{.LibraryName}}/tracer"
 )
 
-func (uc *{{camel .ModuleName}}UsecaseImpl) Delete{{upper (camel .ModuleName)}}(ctx context.Context, id string) (err error) {
+func (uc *{{camel .ModuleName}}UsecaseImpl) Delete{{upper (camel .ModuleName)}}(ctx context.Context, id {{if and .MongoDeps (not .SQLDeps)}}string{{else}}int{{end}}) (err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}Usecase:Delete{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	{{if and .MongoDeps (not .SQLDeps)}}objID, _ := primitive.ObjectIDFromHex(id){{end}}
-	return {{if or .SQLDeps .MongoDeps .ArangoDeps}}uc.repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().Delete(ctx, &shareddomain.{{upper (camel .ModuleName)}}{
-		ID: {{if and .MongoDeps (not .SQLDeps)}}objID{{else}}id{{end}},
-	}){{end}}
+	repoFilter := domain.Filter{{upper (camel .ModuleName)}}{ID: &id}
+	return {{if or .SQLDeps .MongoDeps .ArangoDeps}}uc.repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().Delete(ctx, &repoFilter){{end}}
 }
 `
 
@@ -466,7 +453,7 @@ func Test_{{camel .ModuleName}}UsecaseImpl_Delete{{upper (camel .ModuleName)}}(t
 			repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}: repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}},
 		}
 
-		err := uc.Delete{{upper (camel .ModuleName)}}(context.Background(), "id")
+		err := uc.Delete{{upper (camel .ModuleName)}}(context.Background(), {{if and .MongoDeps (not .SQLDeps)}}"1"{{else}}1{{end}})
 		assert.NoError(t, err)
 	})
 }
