@@ -121,18 +121,21 @@ func TestMiddleware_GRPCBasicAuth(t *testing.T) {
 		ctx := metadata.NewIncomingContext(context.Background(), metadata.MD{
 			strings.ToLower(candihelper.HeaderAuthorization): []string{"Basic " + validBasicAuth},
 		})
-		assert.NotPanics(t, func() { mw.GRPCBasicAuth(ctx) })
+		_, err := mw.GRPCBasicAuth(ctx)
+		assert.NoError(t, err)
 	})
 	t.Run("Testcase #2: Negative", func(t *testing.T) {
 		ctx := metadata.NewIncomingContext(context.Background(), metadata.MD{
 			strings.ToLower(candihelper.HeaderAuthorization): []string{},
 		})
-		assert.Panics(t, func() { mw.GRPCBasicAuth(ctx) })
+		_, err := mw.GRPCBasicAuth(ctx)
+		assert.Error(t, err)
 	})
 	t.Run("Testcase #3: Negative", func(t *testing.T) {
 		ctx := metadata.NewIncomingContext(context.Background(), metadata.MD{
 			strings.ToLower(candihelper.HeaderAuthorization): []string{"Basic xxx"},
 		})
-		assert.Panics(t, func() { mw.GRPCBasicAuth(ctx) })
+		_, err := mw.GRPCBasicAuth(ctx)
+		assert.Error(t, err)
 	})
 }
