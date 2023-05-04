@@ -32,7 +32,7 @@ func NewMiddleware(tokenValidator interfaces.TokenValidator, aclPermissionChecke
 		extractUserIDFunc: func(tokenClaim *candishared.TokenClaim) (userID string) {
 			return tokenClaim.Subject
 		},
-		defaultCacheAge: defaultCacheAge,
+		defaultCacheAge: DefaultCacheAge,
 	}
 
 	return mw
@@ -48,7 +48,7 @@ func NewMiddlewareWithOption(opts ...OptionFunc) *Middleware {
 		extractUserIDFunc: func(tokenClaim *candishared.TokenClaim) (userID string) {
 			return tokenClaim.Subject
 		},
-		defaultCacheAge: defaultCacheAge,
+		defaultCacheAge: DefaultCacheAge,
 	}
 	for _, opt := range opts {
 		opt(mw)

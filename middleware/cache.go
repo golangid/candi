@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	defaultCacheAge = 1 * time.Minute
+	// DefaultCacheAge const
+	DefaultCacheAge = 1 * time.Minute
 )
 
 // HTTPCache middleware for cache
@@ -28,8 +29,10 @@ func (m *Middleware) HTTPCache(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 
-		trace, ctx := tracer.StartTraceWithContext(req.Context(), "Middleware:HTTPCache")
-		defer trace.Finish()
+		if m.cache == nil {
+			next.ServeHTTP(res, req)
+			return
+		}
 
 		cacheControl := req.Header.Get(HeaderCacheControl)
 
@@ -55,20 +58,28 @@ func (m *Middleware) HTTPCache(next http.Handler) http.Handler {
 			}
 		}
 
-		trace.Log("no-cache", noCache)
 		if noCache || maxAge <= 0 {
 			next.ServeHTTP(res, req)
 			return
 		}
 
-		cacheKey := req.URL.String()
+		trace, ctx := tracer.StartTraceWithContext(req.Context(), "Middleware:HTTPCache")
+		defer trace.Finish()
+
+		cacheKey := req.Method + ":" + req.URL.String()
 		if cacheVal, err := m.cache.Get(ctx, cacheKey); err == nil {
 
-			ttl, _ := m.cache.GetTTL(ctx, cacheKey)
-			res.Header().Add(HeaderExpires, time.Now().In(time.UTC).Add(ttl).Format(time.RFC1123))
+			if ttl, err := m.cache.GetTTL(ctx, cacheKey); err == nil {
+				res.Header().Add(HeaderExpires, time.Now().In(time.UTC).Add(ttl).Format(time.RFC1123))
+			}
 
 			var data cacheData
-			json.Unmarshal(cacheVal, &data)
+			if err := json.Unmarshal(cacheVal, &data); err != nil {
+				m.cache.Delete(ctx, cacheKey)
+				next.ServeHTTP(res, req)
+				return
+			}
+
 			for k := range data.Header {
 				res.Header().Set(k, data.Header.Get(k))
 			}
@@ -83,7 +94,7 @@ func (m *Middleware) HTTPCache(next http.Handler) http.Handler {
 		next.ServeHTTP(respWriter, req)
 
 		if respWriter.StatusCode() <= http.StatusBadRequest {
-			m.cache.Set(ctx, req.URL.String(), candihelper.ToBytes(
+			m.cache.Set(ctx, cacheKey, candihelper.ToBytes(
 				cacheData{
 					Body:       resBody.Bytes(),
 					StatusCode: respWriter.StatusCode(),
