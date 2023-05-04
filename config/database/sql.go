@@ -3,7 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
-	"log"
+	"fmt"
 	"net/url"
 	"strings"
 
@@ -52,21 +52,37 @@ func InitSQLDatabase() interfaces.SQLDatabase {
 
 // ConnectSQLDatabase connect to sql database with dsn
 func ConnectSQLDatabase(dsn string) *sql.DB {
-	var sqlDriver string
-	delimiter := "://"
-	if u, err := url.Parse(dsn); err != nil {
-		idx := strings.Index(dsn, delimiter)
-		sqlDriver = dsn[0:idx]
-		dsn = dsn[idx+len(delimiter):]
-	} else {
-		sqlDriver = u.Scheme
+
+	sqlDriver, conn, ok := strings.Cut(dsn, "://")
+	if !ok {
+		panic("SQL DSN: invalid url format")
 	}
-	db, err := sql.Open(sqlDriver, dsn)
+	driverName := sqlDriver
+
+	switch sqlDriver {
+	case "mysql":
+		dsn = conn
+
+	case "sqlserver":
+		driverName = "mssql"
+		fallthrough
+
+	case "postgres":
+		if i := strings.LastIndex(conn, "@"); i > 0 {
+			if username, password, ok := strings.Cut(conn[:i], ":"); ok {
+				conn = fmt.Sprintf("%s:%s@%s", url.QueryEscape(username), url.QueryEscape(password), conn[i+1:])
+			}
+		}
+		dsn = fmt.Sprintf("%s://%s", sqlDriver, conn)
+
+	}
+
+	db, err := sql.Open(driverName, dsn)
 	if err != nil {
-		log.Panicf("SQL Connection: %v", err)
+		panic(fmt.Sprintf("SQL Connection: %v", err))
 	}
 	if err = db.Ping(); err != nil {
-		log.Panicf("SQL Connection: %v", err)
+		panic(fmt.Sprintf("SQL Ping: %v", err))
 	}
 
 	return db

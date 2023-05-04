@@ -60,10 +60,7 @@ func InitMongoDB(ctx context.Context) interfaces.MongoDatabase {
 	deferFunc := logger.LogWithDefer("Load MongoDB connection...")
 	defer deferFunc()
 
-	mi := &mongoInstance{
-		read:  ConnectMongoDB(ctx, env.BaseEnv().DbMongoReadHost),
-		write: ConnectMongoDB(ctx, env.BaseEnv().DbMongoWriteHost),
-	}
+	mi := &mongoInstance{}
 	if env.BaseEnv().DbMongoReadHost != "" {
 		mi.read = ConnectMongoDB(ctx, env.BaseEnv().DbMongoReadHost)
 	}
@@ -88,13 +85,13 @@ func ConnectMongoDB(ctx context.Context, dsn string) *mongo.Database {
 	// connect to MongoDB
 	client, err := mongo.NewClient(append([]*options.ClientOptions{options.Client().ApplyURI(connDSN.String())}, clientOpts...)...)
 	if err != nil {
-		panic(fmt.Errorf("mongodb: %v, conn: %s", err, connDSN.String()))
+		panic(fmt.Sprintf("mongodb: %v, conn: %s", err, connDSN.String()))
 	}
 	if err := client.Connect(ctx); err != nil {
-		panic(fmt.Errorf("mongodb error connect: %v", err))
+		panic(fmt.Sprintf("mongodb error connect: %v", err))
 	}
 	if err = client.Ping(ctx, readpref.Primary()); err != nil {
-		panic(fmt.Errorf("mongodb ping: %v", err))
+		panic(fmt.Sprintf("mongodb ping: %v", err))
 	}
 
 	return client.Database(connDSN.Database)
