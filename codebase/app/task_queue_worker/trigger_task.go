@@ -190,7 +190,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 
 	job.TraceID = tracer.GetTraceID(ctx)
 
-	eventContext := candishared.NewEventContext(&bytes.Buffer{})
+	eventContext := candishared.NewEventContext(bytes.NewBuffer(make([]byte, 256)))
 	eventContext.SetContext(ctx)
 	eventContext.SetWorkerType(string(types.TaskQueue))
 	eventContext.SetHandlerRoute(job.TaskName)

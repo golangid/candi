@@ -18,6 +18,7 @@ type EventContext struct {
 
 // NewEventContext event context constructor
 func NewEventContext(buff *bytes.Buffer) *EventContext {
+	buff.Reset()
 	return &EventContext{
 		messageBuff: buff,
 	}

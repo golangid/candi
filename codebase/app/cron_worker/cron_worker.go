@@ -193,7 +193,7 @@ func (c *cronWorker) processJob(job *Job) {
 		log.Printf("\x1b[35;3mCron Scheduler: executing task '%s' (interval: %s)\x1b[0m", job.HandlerName, job.Interval)
 	}
 
-	eventContext := candishared.NewEventContext(&bytes.Buffer{})
+	eventContext := candishared.NewEventContext(bytes.NewBuffer(make([]byte, 256)))
 	eventContext.SetContext(ctx)
 	eventContext.SetWorkerType(string(types.Scheduler))
 	eventContext.SetHandlerRoute(job.HandlerName)
