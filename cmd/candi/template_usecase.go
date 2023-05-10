@@ -338,6 +338,8 @@ import (
 	"context"
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
+	{{if .SQLDeps}}
+	"{{.LibraryName}}/candishared"{{end}}
 	"{{.LibraryName}}/tracer"
 )
 
@@ -351,8 +353,11 @@ func (uc *{{camel .ModuleName}}UsecaseImpl) Update{{upper (camel .ModuleName)}}(
 		return err
 	}
 	existing.Field = data.Field
-	err = uc.repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().Save(ctx, &existing){{end}}
-	return
+	{{if .SQLDeps}}err = uc.repoSQL.WithTransaction(ctx, func(ctx context.Context) error {
+		return uc.repoSQL.{{upper (camel .ModuleName)}}Repo().Save(ctx, &existing, candishared.DBUpdateSetUpdatedFields("Field"))
+	}){{else}}
+	err = uc.repo{{if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().Save(ctx, &existing){{end}}
+	return{{end}}
 }
 `
 

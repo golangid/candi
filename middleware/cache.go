@@ -93,7 +93,7 @@ func (m *Middleware) HTTPCache(next http.Handler) http.Handler {
 
 		next.ServeHTTP(respWriter, req)
 
-		if respWriter.StatusCode() <= http.StatusBadRequest {
+		if respWriter.StatusCode() < http.StatusBadRequest {
 			m.cache.Set(ctx, cacheKey, candihelper.ToBytes(
 				cacheData{
 					Body:       resBody.Bytes(),

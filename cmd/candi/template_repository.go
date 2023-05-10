@@ -332,6 +332,8 @@ import (
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
+
+	"{{.LibraryName}}/candishared"
 )
 
 // {{upper (camel .ModuleName)}}Repository abstract interface
@@ -339,7 +341,7 @@ type {{upper (camel .ModuleName)}}Repository interface {
 	FetchAll(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) ([]shareddomain.{{upper (camel .ModuleName)}}, error)
 	Count(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) int
 	Find(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (shareddomain.{{upper (camel .ModuleName)}}, error)
-	Save(ctx context.Context, data *shareddomain.{{upper (camel .ModuleName)}}) error
+	Save(ctx context.Context, data *shareddomain.{{upper (camel .ModuleName)}}, updateOptions ...candishared.DBUpdateOptionFunc) error
 	Delete(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (err error)
 }
 `
@@ -361,12 +363,14 @@ import (
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 
 	"{{.LibraryName}}/candihelper"
+	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/tracer"
 )
 
 type {{camel .ModuleName}}RepoMongo struct {
 	readDB, writeDB *mongo.Database
 	collection      string
+	updateTools     *candishared.DBUpdateTools
 }
 
 // New{{upper (camel .ModuleName)}}RepoMongo mongo repo constructor
@@ -375,6 +379,10 @@ func New{{upper (camel .ModuleName)}}RepoMongo(readDB, writeDB *mongo.Database) 
 		readDB: 	readDB, 
 		writeDB: 	writeDB, 
 		collection: shareddomain.{{upper (camel .ModuleName)}}{}.CollectionName(),
+		updateTools: &candishared.DBUpdateTools{
+			KeyExtractorFunc: candishared.DBUpdateMongoExtractorKey,
+			IgnoredFields:    []string{"_id"},
+		},
 	}
 }
 
@@ -433,17 +441,20 @@ func (r *{{camel .ModuleName}}RepoMongo) Count(ctx context.Context, filter *doma
 	return int(count)
 }
 
-func (r *{{camel .ModuleName}}RepoMongo) Save(ctx context.Context, data *shareddomain.{{upper (camel .ModuleName)}}) (err error) {
+func (r *{{camel .ModuleName}}RepoMongo) Save(ctx context.Context, data *shareddomain.{{upper (camel .ModuleName)}}, updateOptions ...candishared.DBUpdateOptionFunc) (err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoMongo:Save")
 	defer func() { trace.Finish(tracer.FinishWithError(err)) }()
-	tracer.Log(ctx, "data", data)
 
 	data.UpdatedAt = time.Now()
 	if data.ID{{if and .MongoDeps (not .SQLDeps)}}.IsZero(){{else}} == 0{{end}} {
 		data.ID = {{if and .MongoDeps (not .SQLDeps)}}primitive.NewObjectID(){{else}}r.Count(ctx, &domain.Filter{{upper (camel .ModuleName)}}{}) + 1{{end}}
 		data.CreatedAt = time.Now()
 		_, err = r.writeDB.Collection(r.collection).InsertOne(ctx, data)
+		trace.Log("data", data)
+
 	} else {
+		updated := bson.M(r.updateTools.ToMap(data, updateOptions...))
+		trace.Log("updated", updated)
 		opt := options.UpdateOptions{
 			Upsert: candihelper.ToBoolPtr(true),
 		}
@@ -452,10 +463,11 @@ func (r *{{camel .ModuleName}}RepoMongo) Save(ctx context.Context, data *sharedd
 				"_id": data.ID,
 			},
 			bson.M{
-				"$set": data,
+				"$set": updated,
 			}, &opt)
 	}
 
+	trace.SetTag("id", data.ID.Hex())
 	return
 }
 
@@ -534,7 +546,7 @@ func (r *{{camel .ModuleName}}RepoArango) Count(ctx context.Context, filter *dom
 	return total
 }
 
-func (r *{{camel .ModuleName}}RepoArango) Save(ctx context.Context, data *shareddomain.{{upper (camel .ModuleName)}}) (err error) {
+func (r *{{camel .ModuleName}}RepoArango) Save(ctx context.Context, data *shareddomain.{{upper (camel .ModuleName)}}, updateOptions ...candishared.DBUpdateOptionFunc) (err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoArango:Save")
 	defer func() { trace.Finish(tracer.FinishWithError(err)) }()
 	tracer.Log(ctx, "data", data)
@@ -576,12 +588,16 @@ import (
 
 type {{camel .ModuleName}}RepoSQL struct {
 	readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB
+	updateTools     *candishared.DBUpdateTools
 }
 
 // New{{upper (camel .ModuleName)}}RepoSQL mongo repo constructor
 func New{{upper (camel .ModuleName)}}RepoSQL(readDB, writeDB *{{if .SQLUseGORM}}gorm{{else}}sql{{end}}.DB) {{upper (camel .ModuleName)}}Repository {
 	return &{{camel .ModuleName}}RepoSQL{
-		readDB, writeDB,
+		readDB: readDB, writeDB: writeDB,
+		updateTools: &candishared.DBUpdateTools{
+			{{if .SQLUseGORM}}KeyExtractorFunc: candishared.DBUpdateGORMExtractorKey, {{end}}IgnoredFields: []string{"id"},
+		},
 	}
 }
 
@@ -652,7 +668,7 @@ func (r *{{camel .ModuleName}}RepoSQL) Find(ctx context.Context, filter *domain.
 	{{end}}return
 }
 
-func (r *{{camel .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddomain.{{upper (camel .ModuleName)}}) (err error) {
+func (r *{{camel .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddomain.{{upper (camel .ModuleName)}}, updateOptions ...candishared.DBUpdateOptionFunc) (err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}RepoSQL:Save")
 	defer func() { trace.Finish(tracer.FinishWithError(err)) }()
 
@@ -667,7 +683,7 @@ func (r *{{camel .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddom
 	if data.ID == 0 {
 		err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, db).Create(data).Error
 	} else {
-		err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, db).Save(data).Error
+		err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, db).Model(data).Updates(r.updateTools.ToMap(data, updateOptions...)).Error
 	}
 	{{else}}var query string
 	var args []interface{}
@@ -680,8 +696,15 @@ func (r *{{camel .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddom
 		query = "INSERT INTO {{snake .ModuleName}}s (field, created_at, updated_at) VALUES ({{if eq .SQLDriver "postgres"}}$1,$2,$3{{else}}?,?,?{{end}})"
 		args = []interface{}{data.Field, data.CreatedAt, data.UpdatedAt}
 	} else {
-		query = "UPDATE {{snake .ModuleName}}s SET field={{if eq .SQLDriver "postgres"}}$1{{else}}?{{end}}, created_at={{if eq .SQLDriver "postgres"}}$2{{else}}?{{end}}, updated_at={{if eq .SQLDriver "postgres"}}$3{{else}}?{{end}} WHERE id={{if eq .SQLDriver "postgres"}}$4{{else}}?{{end}}"
-		args = []interface{}{data.Field, data.CreatedAt, data.UpdatedAt, data.ID}
+		var updatedFields []string{{if eq .SQLDriver "postgres"}}
+		i := 1{{end}}
+		for field, val := range r.updateTools.ToMap(data, updateOptions...) {
+			args = append(args, val)
+			updatedFields = append(updatedFields, {{if eq .SQLDriver "postgres"}}fmt.Sprintf("%s=$%d", field, i))
+			i++{{else}}fmt.Sprintf("%s=?", field)){{end}}
+		}
+		query = fmt.Sprintf("UPDATE {{snake .ModuleName}}s SET %s WHERE id={{if eq .SQLDriver "postgres"}}$%d", strings.Join(updatedFields, ", "), i){{else}}?", strings.Join(updatedFields, ", ")){{end}}
+		args = append(args, data.ID)
 	}
 	trace.Log("query", query)
 	trace.Log("args", args)
