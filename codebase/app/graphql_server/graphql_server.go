@@ -61,7 +61,8 @@ func (s *graphqlServer) Serve() {
 		err = s.httpEngine.ListenAndServe()
 	}
 
-	if err != nil {
+	switch err.(type) {
+	case *net.OpError:
 		log.Panicf("GraphQL Server: Unexpected Error: %v", err)
 	}
 }

@@ -23,6 +23,9 @@ type Dependency interface {
 	GetValidator() interfaces.Validator
 	SetValidator(v interfaces.Validator)
 
+	GetLocker() interfaces.Locker
+	SetLocker(v interfaces.Locker)
+
 	GetExtended(key string) interface{}
 	AddExtended(key string, value interface{})
 }
@@ -38,6 +41,7 @@ type deps struct {
 	redisPool interfaces.RedisPool
 	key       interfaces.RSAKey
 	validator interfaces.Validator
+	locker    interfaces.Locker
 	extended  map[string]interface{}
 }
 
@@ -89,6 +93,13 @@ func SetKey(key interfaces.RSAKey) Option {
 func SetValidator(validator interfaces.Validator) Option {
 	return func(d *deps) {
 		d.validator = validator
+	}
+}
+
+// SetLocker option func
+func SetLocker(lock interfaces.Locker) Option {
+	return func(d *deps) {
+		d.locker = lock
 	}
 }
 
@@ -154,6 +165,12 @@ func (d *deps) GetValidator() interfaces.Validator {
 func (d *deps) SetValidator(v interfaces.Validator) {
 	d.validator = v
 }
+func (d *deps) GetLocker() interfaces.Locker {
+	return d.locker
+}
+func (d *deps) SetLocker(v interfaces.Locker) {
+	d.locker = v
+}
 func (d *deps) GetExtended(key string) interface{} {
 	return d.extended[key]
 }
@@ -197,6 +214,11 @@ func GetKey() interfaces.RSAKey {
 // GetValidator free function for get validator
 func GetValidator() interfaces.Validator {
 	return stdDeps.validator
+}
+
+// GetLocker free function for get validator
+func GetLocker() interfaces.Locker {
+	return stdDeps.locker
 }
 
 // GetExtended free function for get extended

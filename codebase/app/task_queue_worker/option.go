@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golangid/candi/candiutils"
+	"github.com/golangid/candi/codebase/interfaces"
 )
 
 type (
@@ -20,7 +20,7 @@ type (
 		dashboardPort            uint16
 		dashboardAuthKey         string
 		debugMode                bool
-		locker                   candiutils.Locker
+		locker                   interfaces.Locker
 	}
 
 	// OptionFunc type
@@ -84,7 +84,7 @@ func SetDebugMode(debugMode bool) OptionFunc {
 }
 
 // SetLocker option func
-func SetLocker(locker candiutils.Locker) OptionFunc {
+func SetLocker(locker interfaces.Locker) OptionFunc {
 	return func(o *option) {
 		o.locker = locker
 	}

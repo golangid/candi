@@ -1,11 +1,11 @@
 package redisworker
 
-import "github.com/golangid/candi/candiutils"
+import "github.com/golangid/candi/codebase/interfaces"
 
 type (
 	option struct {
 		maxGoroutines int
-		locker        candiutils.Locker
+		locker        interfaces.Locker
 		debugMode     bool
 	}
 

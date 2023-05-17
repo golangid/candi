@@ -15,6 +15,7 @@ import (
 	"{{.LibraryName}}/broker"
 	"{{.LibraryName}}/candihelper"
 	"{{.LibraryName}}/candishared"
+	"{{.LibraryName}}/candiutils"
 	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/interfaces"
 	"{{.LibraryName}}/config"
@@ -43,7 +44,8 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 		)
 		{{if not .RedisDeps}}// {{end}}redisDeps := database.InitRedis()
 		{{if not .SQLDeps}}// {{end}}sqlDeps := database.InitSQLDatabase()
-		{{if not .MongoDeps}}// {{end}}mongoDeps := database.InitMongoDB(ctx)` +
+		{{if not .MongoDeps}}// {{end}}mongoDeps := database.InitMongoDB(ctx)
+		locker := {{if not .RedisDeps}}&candiutils.NoopLocker{}{{else}}candiutils.NewRedisLocker(redisDeps.WritePool()){{end}}` +
 		"{{if .ArangoDeps}}\n		arangoDeps := arango.InitArangoDB(ctx, sharedEnv.DbArangoReadHost, sharedEnv.DbArangoWriteHost){{end}}" + `
 ` + "{{ if .IsMonorepo }}\n		sdk.SetGlobalSDK(\n			// init service client sdk\n		)\n{{end}}" + `
 		// inject all service dependencies
@@ -51,6 +53,7 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 		deps = dependency.InitDependency(
 			dependency.SetValidator(validator.NewValidator()),
 			dependency.SetBrokers(brokerDeps.GetBrokers()),
+			dependency.SetLocker(locker),
 			{{if not .RedisDeps}}// {{end}}dependency.SetRedisPool(redisDeps),
 			{{if not .SQLDeps}}// {{end}}dependency.SetSQLDatabase(sqlDeps),
 			{{if not .MongoDeps}}// {{end}}dependency.SetMongoDatabase(mongoDeps),{{if .ArangoDeps}}
@@ -59,6 +62,7 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 		)
 		return []interfaces.Closer{ // throw back to base config for close connection when application shutdown
 			brokerDeps,
+			locker,
 			{{if not .RedisDeps}}// {{end}}redisDeps,
 			{{if not .SQLDeps}}// {{end}}sqlDeps,
 			{{if not .MongoDeps}}// {{end}}mongoDeps,{{if .ArangoDeps}}

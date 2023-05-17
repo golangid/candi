@@ -98,7 +98,8 @@ func (h *restServer) Serve() {
 		err = h.serverEngine.Start(fmt.Sprintf(":%d", h.opt.httpPort))
 	}
 
-	if err != nil {
+	switch err.(type) {
+	case *net.OpError:
 		log.Panicf("REST Server: Unexpected Error: %v", err)
 	}
 }

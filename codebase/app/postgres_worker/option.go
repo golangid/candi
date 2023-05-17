@@ -3,13 +3,14 @@ package postgresworker
 import (
 	"github.com/golangid/candi/candiutils"
 	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/codebase/interfaces"
 )
 
 type (
 	option struct {
 		maxGoroutines int
 		debugMode     bool
-		locker        candiutils.Locker
+		locker        interfaces.Locker
 
 		sources map[string]*PostgresSource
 	}
@@ -54,7 +55,7 @@ func SetDebugMode(debugMode bool) OptionFunc {
 }
 
 // SetLocker option func
-func SetLocker(locker candiutils.Locker) OptionFunc {
+func SetLocker(locker interfaces.Locker) OptionFunc {
 	return func(o *option) {
 		o.locker = locker
 	}

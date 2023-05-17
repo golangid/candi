@@ -72,6 +72,22 @@ func (_m *Dependency) GetKey() interfaces.RSAKey {
 	return r0
 }
 
+// GetLocker provides a mock function with given fields:
+func (_m *Dependency) GetLocker() interfaces.Locker {
+	ret := _m.Called()
+
+	var r0 interfaces.Locker
+	if rf, ok := ret.Get(0).(func() interfaces.Locker); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(interfaces.Locker)
+		}
+	}
+
+	return r0
+}
+
 // GetMiddleware provides a mock function with given fields:
 func (_m *Dependency) GetMiddleware() interfaces.Middleware {
 	ret := _m.Called()
@@ -155,6 +171,11 @@ func (_m *Dependency) GetValidator() interfaces.Validator {
 // SetKey provides a mock function with given fields: i
 func (_m *Dependency) SetKey(i interfaces.RSAKey) {
 	_m.Called(i)
+}
+
+// SetLocker provides a mock function with given fields: v
+func (_m *Dependency) SetLocker(v interfaces.Locker) {
+	_m.Called(v)
 }
 
 // SetMiddleware provides a mock function with given fields: mw

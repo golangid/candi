@@ -681,9 +681,9 @@ func (r *{{camel .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddom
 		data.CreatedAt = time.Now()
 	}
 	if data.ID == 0 {
-		err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, db).Create(data).Error
+		err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, db).Omit(clause.Associations).Create(data).Error
 	} else {
-		err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, db).Model(data).Updates(r.updateTools.ToMap(data, updateOptions...)).Error
+		err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, db).Model(data).Omit(clause.Associations).Updates(r.updateTools.ToMap(data, updateOptions...)).Error
 	}
 	{{else}}var query string
 	var args []interface{}

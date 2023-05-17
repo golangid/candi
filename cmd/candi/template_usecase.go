@@ -103,6 +103,7 @@ type {{upper (camel .ModuleName)}}Usecase interface {
 type {{camel .ModuleName}}UsecaseImpl struct {
 	sharedUsecase common.Usecase
 	cache         interfaces.Cache
+	locker        interfaces.Locker
 	{{if not .SQLDeps}}// {{end}}repoSQL       repository.RepoSQL
 	{{if not .MongoDeps}}// {{end}}repoMongo     repository.RepoMongo{{if .ArangoDeps}}
 	repoArango     repository.RepoArango{{end}}
@@ -114,7 +115,8 @@ type {{camel .ModuleName}}UsecaseImpl struct {
 func New{{upper (camel .ModuleName)}}Usecase(deps dependency.Dependency) ({{upper (camel .ModuleName)}}Usecase, func(sharedUsecase common.Usecase)) {
 	uc := &{{camel .ModuleName}}UsecaseImpl{
 		{{if not .SQLDeps}}// {{end}}repoSQL:   repository.GetSharedRepoSQL(),
-		{{if not .MongoDeps}}// {{end}}repoMongo: repository.GetSharedRepoMongo(),{{if .ArangoDeps}}
+		{{if not .MongoDeps}}// {{end}}repoMongo: repository.GetSharedRepoMongo(),
+		locker:    deps.GetLocker(),{{if .ArangoDeps}}
 		repoArango: repository.GetSharedRepoArango(),{{end}}
 	}
 	if redisPool := deps.GetRedisPool(); redisPool != nil {
