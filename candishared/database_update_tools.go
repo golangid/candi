@@ -2,6 +2,7 @@ package candishared
 
 import (
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -35,7 +36,11 @@ func DBUpdateSetIgnoredFields(fields ...string) DBUpdateOptionFunc {
 
 // DBUpdateGORMExtractorKey struct tag key extractor for gorm model
 func DBUpdateGORMExtractorKey(structTag reflect.StructTag) string {
-	return strings.Split(strings.TrimPrefix(structTag.Get("gorm"), "column:"), ";")[0]
+	gormTag := structTag.Get("gorm")
+	if !strings.HasPrefix(gormTag, "column:") {
+		return ""
+	}
+	return strings.Split(strings.TrimPrefix(gormTag, "column:"), ";")[0]
 }
 
 // DBUpdateMongoExtractorKey struct tag key extractor for mongo model
@@ -70,8 +75,8 @@ func (d DBUpdateTools) ToMap(data interface{}, opts ...DBUpdateOptionFunc) map[s
 
 	for i := 0; i < dataValue.NumField(); i++ {
 		fieldValue := dataValue.Field(i)
-
 		fieldType := dataType.Field(i)
+
 		if fieldType.Anonymous {
 			for k, v := range d.ToMap(fieldValue.Interface(), opts...) {
 				updateFields[k] = v
@@ -79,9 +84,13 @@ func (d DBUpdateTools) ToMap(data interface{}, opts ...DBUpdateOptionFunc) map[s
 			continue
 		}
 
+		isIgnore, _ := strconv.ParseBool(fieldType.Tag.Get("ignoreUpdate"))
 		key := strings.TrimSuffix(fieldType.Tag.Get("json"), ",omitempty")
 		if d.KeyExtractorFunc != nil {
 			key = d.KeyExtractorFunc(fieldType.Tag)
+		}
+		if key == "" || key == "-" || isIgnore {
+			continue
 		}
 
 		val := fieldValue.Interface()
@@ -104,6 +113,5 @@ func (d DBUpdateTools) ToMap(data interface{}, opts ...DBUpdateOptionFunc) map[s
 	for _, ignored := range d.IgnoredFields {
 		delete(updateFields, ignored)
 	}
-
 	return updateFields
 }
