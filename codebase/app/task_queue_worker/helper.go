@@ -14,3 +14,10 @@ func convertIncrementMap(mp map[string]int) map[string]interface{} {
 	}
 	return res
 }
+
+func normalizeCount(count int) int {
+	if count < 0 {
+		return 0
+	}
+	return count
+}

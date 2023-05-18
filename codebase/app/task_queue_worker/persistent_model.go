@@ -106,16 +106,17 @@ func (f *Filter) ParseStartEndDate() (startDate, endDate time.Time) {
 
 // CountTotalJob method
 func (s *TaskSummary) CountTotalJob() int {
-	return s.Success + s.Queueing + s.Retrying + s.Failure + s.Stopped
+	return normalizeCount(s.Success) + normalizeCount(s.Queueing) + normalizeCount(s.Retrying) +
+		normalizeCount(s.Failure) + normalizeCount(s.Stopped)
 }
 
 // ToSummaryDetail method
 func (s *TaskSummary) ToSummaryDetail() (detail SummaryDetail) {
-	detail.Failure = s.Failure
-	detail.Retrying = s.Retrying
-	detail.Success = s.Success
-	detail.Queueing = s.Queueing
-	detail.Stopped = s.Stopped
+	detail.Failure = normalizeCount(s.Failure)
+	detail.Retrying = normalizeCount(s.Retrying)
+	detail.Success = normalizeCount(s.Success)
+	detail.Queueing = normalizeCount(s.Queueing)
+	detail.Stopped = normalizeCount(s.Stopped)
 	return
 }
 

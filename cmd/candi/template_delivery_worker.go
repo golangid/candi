@@ -198,9 +198,10 @@ func (h *TaskQueueHandler) handleTask{{upper (camel .ModuleName)}}(eventContext 
 
 	// exec usecase
 	// h.uc.SomethingUsecase()
+	time.Sleep(1*time.Second) // just for example process
 
 	return &candishared.ErrorRetrier{
-		Delay:   2 * time.Second,
+		Delay:   1 * time.Second,
 		Message: "Error retry",
 	}
 }

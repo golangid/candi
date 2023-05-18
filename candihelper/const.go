@@ -54,6 +54,21 @@ const (
 	HeaderMIMEMultipartForm = "multipart/form-data"
 	// HeaderMIMEOctetStream const
 	HeaderMIMEOctetStream = "application/octet-stream"
+
+	// DateFormatMonday date format
+	DateFormatMonday = "Monday"
+	// DateFormatYYYYMM date format
+	DateFormatYYYYMM = "2006-01"
+	// DateFormatYYYYMMDD date format
+	DateFormatYYYYMMDD = "2006-01-02"
+	// DateFormatYYYYMMDDHHmmss date format
+	DateFormatYYYYMMDDHHmmss = "2006-01-02 15:04:05"
+	// DateFormatYYYYMMDDClean date format
+	DateFormatYYYYMMDDClean = "20060102"
+	// DateFormatHHmmss date format
+	DateFormatHHmm = "15:04"
+	// DateFormatDDMMYYYY date format
+	DateFormatDDMMYYYY = "02-01-2006"
 )
 
 var (

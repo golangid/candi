@@ -654,3 +654,11 @@ func StringToByte(s string) (b []byte) {
 	bh.Len = sh.Len
 	return b
 }
+
+// ParseTimeToString helper, return empty string if zero time
+func ParseTimeToString(date time.Time, format string) (res string) {
+	if !date.IsZero() {
+		res = date.Format(format)
+	}
+	return res
+}
