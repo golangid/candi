@@ -26,7 +26,7 @@ var (
 		"1": RedisDeps, "2": SqldbDeps, "3": MongodbDeps, "4": ArangodbDeps,
 	}
 	sqlDrivers = map[string]string{
-		"1": "postgres", "2": "mysql",
+		"1": "postgres", "2": "mysql", "3": "sqlite3",
 	}
 	optionYesNo = map[string]bool{"y": true, "n": false}
 	licenseMap  = map[string]string{

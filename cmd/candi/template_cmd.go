@@ -9,7 +9,8 @@ import (
 	"fmt"
 	"runtime/debug"{{if eq .SQLDriver "postgres"}}
 	_ "github.com/lib/pq"{{else if eq .SQLDriver "mysql"}}
-	_ "github.com/go-sql-driver/mysql"{{end}}
+	_ "github.com/go-sql-driver/mysql"{{else if eq .SQLDriver "sqlite3"}}
+	_ "github.com/mattn/go-sqlite3"{{end}}
 
 	"{{.LibraryName}}/codebase/app"
 	"{{.LibraryName}}/config"

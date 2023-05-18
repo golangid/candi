@@ -200,7 +200,7 @@ func (h *TaskQueueHandler) handleTask{{upper (camel .ModuleName)}}(eventContext 
 	// h.uc.SomethingUsecase()
 
 	return &candishared.ErrorRetrier{
-		Delay:   10 * time.Second,
+		Delay:   2 * time.Second,
 		Message: "Error retry",
 	}
 }

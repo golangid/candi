@@ -210,7 +210,8 @@ stageSelectDependencies:
 	stageSelectSQLDriver:
 		cmdInput = readInput("Please select SQL database driver (choose one)\n" +
 			"1) Postgres\n" +
-			"2) MySQL")
+			"2) MySQL\n" +
+			"3) SQLite3")
 		srvConfig.SQLDriver, ok = sqlDrivers[cmdInput]
 		if !ok {
 			fmt.Printf(RedFormat, "Invalid option, try again")

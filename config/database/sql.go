@@ -60,7 +60,7 @@ func ConnectSQLDatabase(dsn string) *sql.DB {
 	driverName := sqlDriver
 
 	switch sqlDriver {
-	case "mysql":
+	case "mysql", "sqlite3":
 		dsn = conn
 
 	case "sqlserver":
