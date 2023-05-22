@@ -7,25 +7,25 @@ import "errors"
 const minQueueLen = 16
 
 // Queue represents a single instance of the queue data structure.
-type Queue struct {
-	buf               []interface{}
+type Queue[T any] struct {
+	buf               []T
 	head, tail, count int
 }
 
 // NewQueue constructs and returns a new Queue.
-func NewQueue() *Queue {
-	return &Queue{
-		buf: make([]interface{}, minQueueLen),
+func NewQueue[T any]() *Queue[T] {
+	return &Queue[T]{
+		buf: make([]T, minQueueLen),
 	}
 }
 
 // Len returns the number of elements currently stored in the queue.
-func (q *Queue) Len() int {
+func (q *Queue[T]) Len() int {
 	return q.count
 }
 
 // Push puts an element on the end of the queue.
-func (q *Queue) Push(elem interface{}) {
+func (q *Queue[T]) Push(elem T) {
 	if q.count == len(q.buf) {
 		q.resize()
 	}
@@ -37,12 +37,12 @@ func (q *Queue) Push(elem interface{}) {
 
 // Pop Pops and returns the element from the front of the queue. If the
 // queue is empty, the call will panic.
-func (q *Queue) Pop() (interface{}, error) {
+func (q *Queue[T]) Pop() (t T, err error) {
 	if q.count <= 0 {
-		return nil, errors.New("queue: Pop() called on empty queue")
+		return t, errors.New("queue: Pop() called on empty queue")
 	}
 	ret := q.buf[q.head]
-	q.buf[q.head] = nil
+	q.buf[q.head] = t
 	// bitwise modulus
 	q.head = (q.head + 1) & (len(q.buf) - 1)
 	q.count--
@@ -55,17 +55,17 @@ func (q *Queue) Pop() (interface{}, error) {
 
 // Peek returns the element at the head of the queue. This call panics
 // if the queue is empty.
-func (q *Queue) Peek() (interface{}, error) {
+func (q *Queue[T]) Peek() (t T, err error) {
 	if q.count <= 0 {
-		return nil, errors.New("queue: Peek() called on empty queue")
+		return t, errors.New("queue: Peek() called on empty queue")
 	}
 	return q.buf[q.head], nil
 }
 
 // resizes the queue to fit exactly twice its current contents
 // this can result in shrinking if the queue is less than half-full
-func (q *Queue) resize() {
-	newBuf := make([]interface{}, q.count<<1)
+func (q *Queue[T]) resize() {
+	newBuf := make([]T, q.count<<1)
 
 	if q.tail > q.head {
 		copy(newBuf, q.buf[q.head:q.tail])

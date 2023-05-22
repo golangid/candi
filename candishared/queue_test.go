@@ -7,7 +7,7 @@ import (
 )
 
 func TestQueue(t *testing.T) {
-	q := NewQueue()
+	q := NewQueue[string]()
 	q.Push("q")
 	q.Push("a")
 
