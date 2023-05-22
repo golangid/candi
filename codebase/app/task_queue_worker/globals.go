@@ -1,10 +1,13 @@
 package taskqueueworker
 
 import (
+	"bytes"
 	"context"
 	"reflect"
+	"sync"
 	"time"
 
+	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/candiutils"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/config/env"
@@ -19,7 +22,6 @@ var (
 )
 
 func initEngine(service factory.ServiceFactory, opts ...OptionFunc) *taskQueueWorker {
-
 	var opt option
 	// set default value
 	opt.maxClientSubscriber = 5
@@ -66,12 +68,17 @@ func initEngine(service factory.ServiceFactory, opts ...OptionFunc) *taskQueueWo
 		service:                   service,
 		ready:                     make(chan struct{}),
 		shutdown:                  make(chan struct{}, 1),
-		refreshWorkerNotif:        make(chan struct{}),
+		refreshWorkerNotif:        make(chan struct{}, 1),
 		opt:                       &opt,
 		configuration:             initConfiguration(&opt),
 		registeredTaskWorkerIndex: make(map[string]int),
 		runningWorkerIndexTask:    make(map[int]*Task),
 		globalSemaphore:           make(chan struct{}, env.BaseEnv().MaxGoroutines),
+		messagePool: sync.Pool{
+			New: func() interface{} {
+				return candishared.NewEventContext(bytes.NewBuffer(make([]byte, 0, 256)))
+			},
+		},
 	}
 	engine.subscriber = initSubscriber(engine.configuration, &opt)
 	engine.ctx, engine.ctxCancelFunc = context.WithCancel(context.Background())

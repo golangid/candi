@@ -1,11 +1,11 @@
 package kafkaworker
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"runtime/debug"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -21,6 +21,7 @@ type consumerHandler struct {
 	topics       []string
 	handlerFuncs map[string]types.WorkerHandler
 	ready        chan struct{}
+	messagePool  sync.Pool
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
@@ -91,7 +92,8 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 		log.Printf("\x1b[35;3mKafka Consumer: message consumed, timestamp = %v, topic = %s\x1b[0m", message.Timestamp, message.Topic)
 	}
 
-	eventContext := candishared.NewEventContext(bytes.NewBuffer(make([]byte, 256)))
+	eventContext := c.messagePool.Get().(*candishared.EventContext)
+	defer c.releaseMessagePool(eventContext)
 	eventContext.SetContext(ctx)
 	eventContext.SetWorkerType(string(types.Kafka))
 	eventContext.SetHandlerRoute(message.Topic)
@@ -105,4 +107,9 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 			trace.SetError(err)
 		}
 	}
+}
+
+func (c *consumerHandler) releaseMessagePool(eventContext *candishared.EventContext) {
+	eventContext.Reset()
+	c.messagePool.Put(eventContext)
 }

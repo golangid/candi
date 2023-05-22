@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
@@ -35,6 +36,7 @@ type taskQueueWorker struct {
 	tasks                     []string
 
 	globalSemaphore chan struct{}
+	messagePool     sync.Pool
 }
 
 // NewTaskQueueWorker create new task queue worker
@@ -67,7 +69,7 @@ func NewTaskQueueWorker(service factory.ServiceFactory, opts ...OptionFunc) fact
 
 	go e.prepare()
 
-	fmt.Printf("\x1b[34;1m⇨ Task Queue Worker running with %d task. Open [::]:%d for dashboard\x1b[0m\n\n",
+	fmt.Printf("\x1b[34;1m⇨ Task Queue Worker running with %d task. Open http://127.0.0.1:%d for dashboard\x1b[0m\n\n",
 		len(e.registeredTaskWorkerIndex), e.opt.dashboardPort)
 
 	return e
@@ -251,5 +253,10 @@ func (t *taskQueueWorker) stopAllJobInTask(taskName string) {
 }
 
 func (t *taskQueueWorker) doRefreshWorker() {
-	go func() { t.refreshWorkerNotif <- struct{}{} }()
+	t.refreshWorkerNotif <- struct{}{}
+}
+
+func (t *taskQueueWorker) releaseMessagePool(eventContext *candishared.EventContext) {
+	eventContext.Reset()
+	t.messagePool.Put(eventContext)
 }

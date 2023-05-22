@@ -138,7 +138,7 @@ func (j *jaegerPlatform) GetTraceURL(ctx context.Context) (u string) {
 	}
 	traceID := j.GetTraceID(ctx)
 	if traceID == "" {
-		return
+		return "<disabled>"
 	}
 
 	return fmt.Sprintf("%s/%s", j.dashboardURL, traceID)

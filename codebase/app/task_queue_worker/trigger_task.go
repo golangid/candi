@@ -1,7 +1,6 @@
 package taskqueueworker
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -18,7 +17,6 @@ import (
 )
 
 func (t *taskQueueWorker) triggerTask(workerIndex int) {
-
 	runningTask, ok := t.runningWorkerIndexTask[workerIndex]
 	if !ok {
 		return
@@ -59,6 +57,7 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 			return
 		}
 
+		// lock for multiple worker (if running on multiple runtime)
 		isLocked := t.opt.locker.IsLocked(t.getLockKey(runningTask.taskName))
 		if isLocked {
 			logger.LogI("task_queue_worker > task " + runningTask.taskName + " is locked")
@@ -77,13 +76,6 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		logger.LogI("task_queue_worker > empty queue")
 		return
 	}
-
-	// lock for multiple worker (if running on multiple pods/instance)
-	if t.opt.locker.IsLocked(t.getLockKey(jobID)) {
-		logger.LogI("task_queue_worker > job " + jobID + " is locked")
-		return
-	}
-	defer t.opt.locker.Unlock(t.getLockKey(jobID))
 
 	job, err := t.opt.persistent.FindJobByID(ctx, jobID, nil)
 	if err != nil {
@@ -190,7 +182,8 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 
 	job.TraceID = tracer.GetTraceID(ctx)
 
-	eventContext := candishared.NewEventContext(bytes.NewBuffer(make([]byte, 256)))
+	eventContext := t.messagePool.Get().(*candishared.EventContext)
+	defer t.releaseMessagePool(eventContext)
 	eventContext.SetContext(ctx)
 	eventContext.SetWorkerType(string(types.TaskQueue))
 	eventContext.SetHandlerRoute(job.TaskName)
@@ -202,7 +195,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		HeaderMaxProgress:     strconv.Itoa(job.MaxProgress),
 	})
 	eventContext.SetKey(job.ID)
-	eventContext.Write([]byte(job.Arguments))
+	eventContext.WriteString(job.Arguments)
 
 	if len(selectedHandler.HandlerFuncs) == 0 {
 		job.Error = "No handler found for exec this job"

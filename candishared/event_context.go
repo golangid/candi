@@ -24,6 +24,17 @@ func NewEventContext(buff *bytes.Buffer) *EventContext {
 	}
 }
 
+// Reset method
+func (e *EventContext) Reset() {
+	e.messageBuff.Reset()
+	e.ctx = nil
+	e.workerType = ""
+	e.header = nil
+	e.handlerRoute = ""
+	e.key = ""
+	e.err = nil
+}
+
 // SetContext setter
 func (e *EventContext) SetContext(ctx context.Context) {
 	e.ctx = ctx
@@ -97,4 +108,9 @@ func (e *EventContext) Read(p []byte) (n int, err error) {
 // Write implement io.Writer
 func (e *EventContext) Write(p []byte) (n int, err error) {
 	return e.messageBuff.Write(p)
+}
+
+// WriteString write string to buffer
+func (e *EventContext) WriteString(s string) (n int, err error) {
+	return e.messageBuff.WriteString(s)
 }

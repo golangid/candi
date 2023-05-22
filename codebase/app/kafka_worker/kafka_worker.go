@@ -1,6 +1,7 @@
 package kafkaworker
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
+	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
@@ -66,6 +68,11 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 
 	consumerHandler.ready = make(chan struct{})
 	consumerHandler.opt = &worker.opt
+	consumerHandler.messagePool = sync.Pool{
+		New: func() interface{} {
+			return candishared.NewEventContext(bytes.NewBuffer(make([]byte, 0, 256)))
+		},
+	}
 
 	worker.engine = consumerEngine
 	worker.consumerHandler = &consumerHandler

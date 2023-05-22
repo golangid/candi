@@ -38,6 +38,8 @@ type (
 		workers           []reflect.SelectCase
 		service           factory.ServiceFactory
 		wg                sync.WaitGroup
+
+		messagePool sync.Pool
 	}
 )
 
@@ -48,6 +50,11 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 		opt:        getDefaultOption(service),
 		semaphores: make(map[string]chan struct{}),
 		shutdown:   make(chan struct{}, 1),
+		messagePool: sync.Pool{
+			New: func() interface{} {
+				return candishared.NewEventContext(bytes.NewBuffer(make([]byte, 0, 256)))
+			},
+		},
 	}
 
 	for _, opt := range opts {
@@ -184,7 +191,6 @@ func (p *postgresWorker) getLockKey(eventPayload *EventPayload) string {
 }
 
 func (p *postgresWorker) execEvent(workerIndex int, data *EventPayload) {
-
 	source, ok := p.opt.sources[p.workerSourceIndex[workerIndex]]
 	if !ok || source == nil {
 		return
@@ -239,7 +245,8 @@ func (p *postgresWorker) execEvent(workerIndex int, data *EventPayload) {
 		}
 	}
 
-	eventContext := candishared.NewEventContext(bytes.NewBuffer(make([]byte, 256)))
+	eventContext := p.messagePool.Get().(*candishared.EventContext)
+	defer p.releaseMessagePool(eventContext)
 	eventContext.SetContext(ctx)
 	eventContext.SetWorkerType(string(types.PostgresListener))
 	eventContext.SetHandlerRoute(data.Table)
@@ -265,4 +272,9 @@ func (p *postgresWorker) execEvent(workerIndex int, data *EventPayload) {
 			trace.SetError(err)
 		}
 	}
+}
+
+func (p *postgresWorker) releaseMessagePool(eventContext *candishared.EventContext) {
+	eventContext.Reset()
+	p.messagePool.Put(eventContext)
 }
