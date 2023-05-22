@@ -52,8 +52,8 @@ import (
 
 	"github.com/pressly/goose/v3"
 
-	{{if eq .SQLDriver "postgres"}}_ "github.com/lib/pq"{{else if eq .SQLDriver "mysql"}}_ "github.com/go-sql-driver/mysql"{{end}}
-	"gorm.io/driver/{{.SQLDriver}}"
+	{{if eq .SQLDriver "postgres"}}_ "github.com/lib/pq"{{else if eq .SQLDriver "mysql"}}_ "github.com/go-sql-driver/mysql"{{else if eq .SQLDriver "sqlite3"}}_ "github.com/mattn/go-sqlite3"{{end}}
+	{{if eq .SQLDriver "sqlite3"}}"gorm.io/driver/sqlite"{{else}}"gorm.io/driver/{{.SQLDriver}}"{{end}}
 	"gorm.io/gorm"
 )
 
@@ -90,9 +90,9 @@ func main() {
 		}
 
 		if migrateTables := migrations.GetMigrateTables(); len(migrateTables) > 0 {
-			gormWrite, err := gorm.Open({{ .SQLDriver }}.New({{ .SQLDriver }}.Config{
+			gormWrite, err := gorm.Open({{if eq .SQLDriver "sqlite3"}}sqlite.Dialector{Conn: sqlDeps.WriteDB()}{{else}}{{ .SQLDriver }}.New({{ .SQLDriver }}.Config{
 				Conn: sqlDeps.WriteDB(),
-			}), &gorm.Config{
+			}){{end}}, &gorm.Config{
 				SkipDefaultTransaction:                   true,
 				DisableForeignKeyConstraintWhenMigrating: true,
 			})

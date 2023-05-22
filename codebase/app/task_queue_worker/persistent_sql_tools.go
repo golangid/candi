@@ -22,9 +22,9 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 				retries INTEGER NOT NULL DEFAULT 0,
 				max_retry INTEGER NOT NULL DEFAULT 0,
 				interval VARCHAR(255) NOT NULL DEFAULT '',
-				created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-				updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-				finished_at TIMESTAMP NULL,
+				created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				finished_at TIMESTAMPTZ NULL,
 				status VARCHAR(255) NOT NULL DEFAULT '',
 				error TEXT NOT NULL DEFAULT '',
 				trace_id VARCHAR(255) NOT NULL DEFAULT '',
@@ -89,7 +89,7 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 				INDEX (task_name, status, created_at),
 				INDEX (task_name),
 				INDEX (status),
-				INDEX (task_name, status));`,
+				INDEX (task_name, status)) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE utf8_unicode_ci;`,
 			),
 			fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s %s %s %s %s %s %s %s\n%s", jobSummaryModelName+
 				"(`id` VARCHAR(255) PRIMARY KEY NOT NULL,",
@@ -100,7 +100,7 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 				"`stopped` INTEGER NOT NULL,",
 				"`is_loading` BOOLEAN DEFAULT false,",
 				"`loading_message` VARCHAR(255) NOT NULL DEFAULT '',",
-				`INDEX (id));`,
+				`INDEX (id)) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE utf8_unicode_ci;`,
 			),
 			fmt.Sprintf("CREATE TABLE IF NOT EXISTS task_queue_worker_job_histories %s %s %s %s %s %s %s\n%s",
 				"(`job_id` VARCHAR(255) NOT NULL,",
@@ -111,13 +111,13 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 				"`start_at` TIMESTAMP NULL,",
 				"`end_at` TIMESTAMP NULL,",
 				`INDEX (job_id),
-				INDEX (start_at));`,
+				INDEX (start_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE utf8_unicode_ci;`,
 			),
 			fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s %s %s %s %s", configurationModelName,
 				"(`key` VARCHAR(255) PRIMARY KEY NOT NULL,",
 				"`name` VARCHAR(255) NOT NULL,",
 				"`value` VARCHAR(255) NOT NULL,",
-				"`is_active` BOOLEAN DEFAULT false);",
+				"`is_active` BOOLEAN DEFAULT false) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE utf8_unicode_ci;",
 			),
 		}
 	}
@@ -129,42 +129,113 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 	}
 }
 
-func (s *SQLPersistent) formatColumnName(c string) string {
+func (s *SQLPersistent) formatColumnName(columns ...string) string {
 	switch s.driverName {
 	case "mysql":
-		c = "`" + strings.TrimSpace(c) + "`"
-	}
-	return c
-}
-
-func (s *SQLPersistent) formatMultiColumnName(c string) string {
-	switch s.driverName {
-	case "mysql":
-		splits := strings.Split(c, ",")
-		for i, name := range splits {
-			splits[i] = "`" + strings.TrimSpace(name) + "`"
+		for i, name := range columns {
+			columns[i] = "`" + strings.TrimSpace(name) + "`"
 		}
-		return strings.Join(splits, ",")
 	}
-	return c
+	return strings.Join(columns, ",")
 }
 
-func (s *SQLPersistent) parseDateString(date string) (t time.Time) {
+func (s *SQLPersistent) toMultiParamQuery(params []string) string {
+	var in []string
+	for _, param := range params {
+		in = append(in, "'"+param+"'")
+	}
+	return " (" + strings.Join(in, ",") + ") "
+}
+
+func (s *SQLPersistent) parseNullTime(date time.Time) (t sql.NullTime) {
+	t.Time = date
+	t.Valid = !date.IsZero()
+	return t
+}
+
+func (s *SQLPersistent) parseDateString(date string) (t sql.NullTime) {
+	var err error
 	switch s.driverName {
 	case "postgres", "sqlite3":
-		t, _ = time.Parse(time.RFC3339Nano, date)
+		t.Time, err = time.Parse(time.RFC3339Nano, date)
 	case "mysql":
-		t, _ = time.Parse(candihelper.DateFormatYYYYMMDDHHmmss, date)
+		t.Time, err = time.Parse(candihelper.DateFormatYYYYMMDDHHmmss, date)
 	}
-	return candihelper.ToAsiaJakartaTime(t)
+	t.Time = candihelper.ToAsiaJakartaTime(t.Time)
+	t.Valid = err == nil
+	return t
 }
 
-func (s *SQLPersistent) parseDate(t time.Time) (date string) {
+func (s *SQLPersistent) parseDate(t time.Time) (res *string) {
+	var date string
 	switch s.driverName {
 	case "postgres", "sqlite3":
 		date = candihelper.ParseTimeToString(t, time.RFC3339Nano)
 	case "mysql":
 		date = candihelper.ParseTimeToString(t, candihelper.DateFormatYYYYMMDDHHmmss)
 	}
-	return date
+	if date == "" {
+		return nil
+	}
+	return &date
+}
+
+func (s *SQLPersistent) parameterize(lenCols int) (param string) {
+	switch s.driverName {
+	case "postgres":
+		for i := 1; i <= lenCols; i++ {
+			param += fmt.Sprintf("$%d", i)
+			if i < lenCols {
+				param += ","
+			}
+		}
+		return param
+
+	case "mysql", "sqlite3":
+		for i := 0; i < lenCols; i++ {
+			param += "?"
+			if i < lenCols-1 {
+				param += ","
+			}
+		}
+		return param
+	}
+	return
+}
+
+func (s *SQLPersistent) parameterizeByColumnAndNumber(column string, number int) (param string) {
+	switch s.driverName {
+	case "postgres":
+		return fmt.Sprintf(`"%s"=$%d`, column, number)
+
+	case "mysql", "sqlite3":
+		return fmt.Sprintf("%s=?", s.formatColumnName(column))
+	}
+	return
+}
+
+func (s *SQLPersistent) parameterizeForUpdate(columns ...string) (param string) {
+	lenCol := len(columns)
+
+	switch s.driverName {
+	case "postgres":
+		for i, column := range columns {
+			param += fmt.Sprintf(`"%s"=$%d`, column, i+1)
+			if i < lenCol-1 {
+				param += ","
+			}
+		}
+		return param
+
+	case "mysql", "sqlite3":
+		for i, column := range columns {
+			param += fmt.Sprintf("%s=?", s.formatColumnName(column))
+			if i < lenCol-1 {
+				param += ","
+			}
+		}
+		return param
+	}
+
+	return
 }

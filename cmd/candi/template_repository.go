@@ -44,7 +44,7 @@ import (
 
 	{{ if .IsMonorepo }}"monorepo/globalshared"{{else}}"{{$.PackagePrefix}}/pkg/shared"{{end}}
 
-	"gorm.io/driver/{{.SQLDriver}}"
+	{{if eq .SQLDriver "sqlite3"}}"gorm.io/driver/sqlite"{{else}}"gorm.io/driver/{{.SQLDriver}}"{{end}}
 	"gorm.io/gorm"{{end}}` + `
 )
 
@@ -70,20 +70,20 @@ var (
 
 // setSharedRepoSQL set the global singleton "RepoSQL" implementation
 func setSharedRepoSQL(readDB, writeDB *sql.DB) {
-	{{if .SQLUseGORM}}gormRead, err := gorm.Open({{.SQLDriver}}.New({{.SQLDriver}}.Config{
+	{{if .SQLUseGORM}}gormRead, err := gorm.Open({{if eq .SQLDriver "sqlite3"}}sqlite.Dialector{Conn: readDB}{{else}}{{ .SQLDriver }}.New({{ .SQLDriver }}.Config{
 		Conn: readDB,
-	}), &gorm.Config{})
+	}){{end}}, &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
 
-	gormWrite, err := gorm.Open({{.SQLDriver}}.New({{.SQLDriver}}.Config{
+	gormWrite, err := gorm.Open({{if eq .SQLDriver "sqlite3"}}sqlite.Dialector{Conn: writeDB}{{else}}{{ .SQLDriver }}.New({{ .SQLDriver }}.Config{
 		Conn: writeDB,
-	}), &gorm.Config{SkipDefaultTransaction: true})
+	}){{end}}, &gorm.Config{SkipDefaultTransaction: true})
 	if err != nil {
 		panic(err)
 	}
-	
+
 	{{ if .IsMonorepo }}global{{end}}shared.AddGormCallbacks(gormRead)
 	{{ if .IsMonorepo }}global{{end}}shared.AddGormCallbacks(gormWrite){{end}}
 

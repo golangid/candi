@@ -62,10 +62,9 @@ func (s *SQLPersistent) FindAllJob(ctx context.Context, filter *Filter) (jobs []
 	if strings.HasPrefix(filter.Sort, "-") {
 		sort = "DESC"
 	}
-	filter.Sort = s.formatColumnName(strings.TrimPrefix(filter.Sort, "-"))
 	query := "SELECT " +
-		s.formatMultiColumnName("id, task_name, arguments, retries, max_retry, interval, created_at, finished_at, status, error, trace_id, current_progress, max_progress") +
-		" FROM " + jobModelName + " " + where + " ORDER BY " + filter.Sort + " " + sort
+		s.formatColumnName("id", "task_name", "arguments", "retries", "max_retry", "interval", "created_at", "finished_at", "status", "error", "trace_id", "current_progress", "max_progress") +
+		" FROM " + jobModelName + " " + where + " ORDER BY " + s.formatColumnName(strings.TrimPrefix(filter.Sort, "-")) + " " + sort
 	if !filter.ShowAll {
 		query += fmt.Sprintf(` LIMIT %d OFFSET %d `, filter.Limit, filter.CalculateOffset())
 	}
@@ -87,8 +86,8 @@ func (s *SQLPersistent) FindAllJob(ctx context.Context, filter *Filter) (jobs []
 			logger.LogE(err.Error())
 			return
 		}
-		job.CreatedAt = s.parseDateString(createdAt)
-		job.FinishedAt = s.parseDateString(finishedAt.String)
+		job.CreatedAt = s.parseDateString(createdAt).Time
+		job.FinishedAt = s.parseDateString(finishedAt.String).Time
 		jobs = append(jobs, job)
 	}
 
@@ -98,8 +97,8 @@ func (s *SQLPersistent) FindJobByID(ctx context.Context, id string, filterHistor
 	var finishedAt sql.NullString
 	var createdAt string
 	err = s.db.QueryRow(`SELECT `+
-		s.formatMultiColumnName("id, task_name, arguments, retries, max_retry, interval, created_at, finished_at, status, error, trace_id, current_progress, max_progress")+
-		` FROM `+jobModelName+` WHERE id='`+s.queryReplacer.Replace(id)+`'`).
+		s.formatColumnName("id", "task_name", "arguments", "retries", "max_retry", "interval", "created_at", "finished_at", "status", "error", "trace_id", "current_progress", "max_progress")+
+		` FROM `+jobModelName+` WHERE id='`+id+`'`).
 		Scan(
 			&job.ID, &job.TaskName, &job.Arguments, &job.Retries, &job.MaxRetry, &job.Interval, &createdAt,
 			&finishedAt, &job.Status, &job.Error, &job.TraceID, &job.CurrentProgress, &job.MaxProgress,
@@ -108,12 +107,12 @@ func (s *SQLPersistent) FindJobByID(ctx context.Context, id string, filterHistor
 		logger.LogE(err.Error())
 		return job, err
 	}
-	job.CreatedAt = s.parseDateString(createdAt)
-	job.FinishedAt = s.parseDateString(finishedAt.String)
+	job.CreatedAt = s.parseDateString(createdAt).Time
+	job.FinishedAt = s.parseDateString(finishedAt.String).Time
 
 	if filterHistory != nil {
-		query := `SELECT error_stack, status, error, trace_id, start_at, end_at FROM task_queue_worker_job_histories
-			WHERE job_id = '` + s.queryReplacer.Replace(id) + `' ORDER BY start_at DESC `
+		query := `SELECT ` + s.formatColumnName("error_stack", "status", "error", "trace_id", "start_at", "end_at") +
+			` FROM task_queue_worker_job_histories WHERE job_id = '` + id + `' ORDER BY start_at DESC `
 		rows, err := s.db.Query(query + fmt.Sprintf(` LIMIT %d OFFSET %d`, filterHistory.Limit, filterHistory.CalculateOffset()))
 		if err != nil {
 			logger.LogE(err.Error())
@@ -125,12 +124,11 @@ func (s *SQLPersistent) FindJobByID(ctx context.Context, id string, filterHistor
 			var rh RetryHistory
 			var startAt, endAt string
 			rows.Scan(&rh.ErrorStack, &rh.Status, &rh.Error, &rh.TraceID, &startAt, &endAt)
-			rh.StartAt = s.parseDateString(startAt)
-			rh.EndAt = s.parseDateString(endAt)
+			rh.StartAt = s.parseDateString(startAt).Time
+			rh.EndAt = s.parseDateString(endAt).Time
 			job.RetryHistories = append(job.RetryHistories, rh)
 		}
-		s.db.QueryRow(`SELECT COUNT(*) FROM task_queue_worker_job_histories WHERE job_id = '` + s.queryReplacer.Replace(id) + `'`).
-			Scan(&filterHistory.Count)
+		s.db.QueryRow(`SELECT COUNT(*) FROM task_queue_worker_job_histories WHERE job_id = '` + id + `'`).Scan(&filterHistory.Count)
 	}
 
 	return
@@ -144,9 +142,9 @@ func (s *SQLPersistent) CountAllJob(ctx context.Context, filter *Filter) (count 
 }
 func (s *SQLPersistent) AggregateAllTaskJob(ctx context.Context, filter *Filter) (result []TaskSummary) {
 	where, _ := s.toQueryFilter(filter)
-	query := `SELECT COUNT(` + s.formatColumnName("status") + `), ` + s.formatMultiColumnName("status, task_name") +
-		` FROM ` + jobModelName + ` ` + where +
-		` GROUP BY` + s.formatMultiColumnName("status, task_name")
+	query := "SELECT COUNT(" + s.formatColumnName("status") + "), " + s.formatColumnName("status", "task_name") +
+		" FROM " + jobModelName + " " + where +
+		" GROUP BY " + s.formatColumnName("status", "task_name")
 	rows, err := s.db.Query(query)
 	if err != nil {
 		logger.LogE(err.Error())
@@ -185,66 +183,37 @@ func (s *SQLPersistent) AggregateAllTaskJob(ctx context.Context, filter *Filter)
 }
 func (s *SQLPersistent) SaveJob(ctx context.Context, job *Job, retryHistories ...RetryHistory) (err error) {
 	var query string
-	finishedAt := s.parseDate(job.FinishedAt)
-	if finishedAt == "" {
-		finishedAt = "NULL"
-	}
+	var args []interface{}
 	if job.ID == "" {
 		job.ID = uuid.NewString()
 		job.CreatedAt = time.Now()
-		query = `INSERT INTO ` + jobModelName + ` (` +
-			s.formatMultiColumnName("id, task_name, arguments, retries, max_retry, interval, created_at, updated_at, finished_at, status, error, trace_id, current_progress, max_progress") +
-			`) VALUES (
-				'` + s.queryReplacer.Replace(job.ID) + `',
-				'` + s.queryReplacer.Replace(job.TaskName) + `',
-				'` + s.queryReplacer.Replace(job.Arguments) + `',
-				'` + candihelper.ToString(job.Retries) + `',
-				'` + candihelper.ToString(job.MaxRetry) + `',
-				'` + s.queryReplacer.Replace(job.Interval) + `',
-				'` + s.parseDate(job.CreatedAt) + `',
-				'` + s.parseDate(time.Now()) + `',
-				` + finishedAt + `,
-				'` + s.queryReplacer.Replace(job.Status) + `',
-				'` + s.queryReplacer.Replace(job.Error) + `',
-				'` + s.queryReplacer.Replace(job.TraceID) + `',
-				'` + candihelper.ToString(job.CurrentProgress) + `',
-				'` + candihelper.ToString(job.MaxProgress) + `'
-			)`
+		args = []interface{}{
+			job.ID, job.TaskName, job.Arguments, job.Retries, job.MaxRetry, job.Interval, s.parseDate(job.CreatedAt), s.parseDate(time.Now()), s.parseDate(job.FinishedAt),
+			job.Status, job.Error, job.TraceID, job.CurrentProgress, job.MaxProgress,
+		}
+		query = "INSERT INTO " + jobModelName + " (" +
+			s.formatColumnName("id", "task_name", "arguments", "retries", "max_retry", "interval", "created_at", "updated_at", "finished_at", "status", "error", "trace_id", "current_progress", "max_progress") +
+			") VALUES (" + s.parameterize(len(args)) + ")"
 	} else {
-		query = `UPDATE ` + jobModelName + ` SET 
-			` + s.formatColumnName("task_name") + `='` + s.queryReplacer.Replace(job.TaskName) + `', 
-			` + s.formatColumnName("arguments") + `='` + s.queryReplacer.Replace(job.Arguments) + `', 
-			` + s.formatColumnName("retries") + `='` + candihelper.ToString(job.Retries) + `', 
-			` + s.formatColumnName("max_retry") + `='` + candihelper.ToString(job.MaxRetry) + `', 
-			` + s.formatColumnName("interval") + `='` + s.queryReplacer.Replace(job.Interval) + `', 
-			` + s.formatColumnName("updated_at") + `='` + s.parseDate(time.Now()) + `', 
-			` + s.formatColumnName("finished_at") + `=` + finishedAt + `, 
-			` + s.formatColumnName("status") + `='` + s.queryReplacer.Replace(job.Status) + `', 
-			` + s.formatColumnName("error") + `='` + s.queryReplacer.Replace(job.Error) + `', 
-			` + s.formatColumnName("trace_id") + `='` + s.queryReplacer.Replace(job.TraceID) + `', 
-			` + s.formatColumnName("current_progress") + `='` + candihelper.ToString(job.CurrentProgress) + `', 
-			` + s.formatColumnName("max_progress") + `='` + candihelper.ToString(job.MaxProgress) + `'
-			WHERE id = '` + s.queryReplacer.Replace(job.ID) + `'`
+		args = []interface{}{
+			job.TaskName, job.Arguments, job.Retries, job.MaxRetry, job.Interval, s.parseDate(time.Now()), s.parseDate(job.FinishedAt), job.Status,
+			job.Error, job.TraceID, job.CurrentProgress, job.MaxProgress,
+		}
+		query = `UPDATE ` + jobModelName + ` SET ` +
+			s.parameterizeForUpdate("task_name", "arguments", "retries", "max_retry", "interval", "updated_at", "finished_at", "status", "error", "trace_id", "current_progress", "max_progress") +
+			` WHERE id = '` + job.ID + `'`
 	}
-
-	_, err = s.db.ExecContext(ctx, query)
+	_, err = s.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		logger.LogE(err.Error())
 		return err
 	}
 
 	for _, rh := range retryHistories {
+		args := []interface{}{job.ID, rh.ErrorStack, rh.Status, rh.Error, rh.TraceID, rh.StartAt, rh.EndAt}
 		_, err = s.db.ExecContext(ctx, `INSERT INTO task_queue_worker_job_histories (`+
-			s.formatMultiColumnName("job_id, error_stack, status, error, trace_id, start_at, end_at")+
-			`) VALUES (
-				'`+s.queryReplacer.Replace(job.ID)+`',
-				'`+s.queryReplacer.Replace(rh.ErrorStack)+`',
-				'`+s.queryReplacer.Replace(rh.Status)+`',
-				'`+s.queryReplacer.Replace(rh.Error)+`',
-				'`+s.queryReplacer.Replace(rh.TraceID)+`',
-				'`+s.parseDate(rh.StartAt)+`',
-				'`+s.parseDate(rh.EndAt)+`'
-			)`)
+			s.formatColumnName("job_id", "error_stack", "status", "error", "trace_id", "start_at", "end_at")+
+			`) VALUES (`+s.parameterize(len(args))+`)`, args...)
 		if err != nil {
 			logger.LogE(err.Error())
 			return err
@@ -259,25 +228,21 @@ func (s *SQLPersistent) UpdateJob(ctx context.Context, filter *Filter, updated m
 		logger.LogE(err.Error())
 		return matchedCount, affectedRow, err
 	}
-
 	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+jobModelName+` `+where).Scan(&matchedCount)
-	var setFields []string
+
+	var columns []string
+	var args []interface{}
 	updated["updated_at"] = time.Now()
 	for field, value := range updated {
-		if t, ok := value.(time.Time); ok {
-			value = s.parseDate(t)
+		if v, ok := value.(time.Time); ok {
+			value = s.parseDate(v)
 		}
-		field = s.formatColumnName(field)
-		val := s.queryReplacer.Replace(candihelper.ToString(value))
-		switch value.(type) {
-		case bool:
-			setFields = append(setFields, field+"="+val)
-		default:
-			setFields = append(setFields, field+"='"+val+"'")
-		}
+		columns = append(columns, field)
+		args = append(args, value)
 	}
-	query := `UPDATE ` + jobModelName + ` SET ` + strings.Join(setFields, ",") + ` ` + where
-	res, err := s.db.ExecContext(ctx, query)
+	query := `UPDATE ` + jobModelName + ` SET ` + s.parameterizeForUpdate(columns...) + ` ` + where
+
+	res, err := s.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		logger.LogE(err.Error())
 		return matchedCount, affectedRow, err
@@ -286,17 +251,10 @@ func (s *SQLPersistent) UpdateJob(ctx context.Context, filter *Filter, updated m
 
 	if filter.JobID != nil {
 		for _, rh := range retryHistories {
+			args := []interface{}{filter.JobID, rh.ErrorStack, rh.Status, rh.Error, rh.TraceID, s.parseDate(rh.StartAt), s.parseDate(rh.EndAt)}
 			_, err = s.db.ExecContext(ctx, `INSERT INTO task_queue_worker_job_histories (`+
-				s.formatMultiColumnName("job_id, error_stack, status, error, trace_id, start_at, end_at")+
-				`) VALUES (
-				'`+s.queryReplacer.Replace(*filter.JobID)+`',
-				'`+s.queryReplacer.Replace(rh.ErrorStack)+`',
-				'`+s.queryReplacer.Replace(rh.Status)+`',
-				'`+s.queryReplacer.Replace(rh.Error)+`',
-				'`+s.queryReplacer.Replace(rh.TraceID)+`',
-				'`+s.parseDate(rh.StartAt)+`',
-				'`+s.parseDate(rh.EndAt)+`'
-			)`)
+				s.formatColumnName("job_id", "error_stack", "status", "error", "trace_id", "start_at", "end_at")+
+				`) VALUES (`+s.parameterize(len(args))+`)`, args...)
 			if err != nil {
 				logger.LogE(err.Error())
 			}
@@ -325,38 +283,40 @@ func (s *SQLPersistent) CleanJob(ctx context.Context, filter *Filter) (affectedR
 	return
 }
 func (s *SQLPersistent) DeleteJob(ctx context.Context, id string) (job Job, err error) {
+	var createdAt, finishedAt sql.NullString
 	err = s.db.QueryRow(`SELECT `+
-		s.formatMultiColumnName(`id, task_name, arguments, retries, max_retry, interval, created_at, finished_at, status, error, trace_id, current_progress, max_progress`)+
-		` FROM `+jobModelName+` WHERE id='`+s.queryReplacer.Replace(id)+`'`).Scan(
-		&job.ID, &job.TaskName, &job.Arguments, &job.Retries, &job.MaxRetry, &job.Interval, &job.CreatedAt,
-		&job.FinishedAt, &job.Status, &job.Error, &job.TraceID, &job.CurrentProgress, &job.MaxProgress,
-	)
-	_, err = s.db.Exec(`DELETE FROM ` + jobModelName + ` WHERE id='` + s.queryReplacer.Replace(id) + `'`)
-	if err != nil {
-		logger.LogE(err.Error())
-	}
-	_, err = s.db.Exec(`DELETE FROM task_queue_worker_job_histories WHERE job_id='` + s.queryReplacer.Replace(id) + `'`)
-	if err != nil {
-		logger.LogE(err.Error())
-	}
+		s.formatColumnName("id", "task_name", "arguments", "retries", "max_retry", "interval", "created_at", "finished_at", "status", "error", "trace_id", "current_progress", "max_progress")+
+		` FROM `+jobModelName+` WHERE id=`+s.parameterize(1), id).
+		Scan(
+			&job.ID, &job.TaskName, &job.Arguments, &job.Retries, &job.MaxRetry, &job.Interval, &createdAt,
+			&finishedAt, &job.Status, &job.Error, &job.TraceID, &job.CurrentProgress, &job.MaxProgress,
+		)
+	job.CreatedAt = s.parseDateString(createdAt.String).Time
+	job.FinishedAt = s.parseDateString(finishedAt.String).Time
+	logger.LogIfError(err)
+	_, err = s.db.Exec(`DELETE FROM ` + jobModelName + ` WHERE id='` + id + `'`)
+	logger.LogIfError(err)
+	_, err = s.db.Exec(`DELETE FROM task_queue_worker_job_histories WHERE job_id='` + id + `'`)
+	logger.LogIfError(err)
 	return
 }
 
 // summary
 func (s *SQLPersistent) FindAllSummary(ctx context.Context, filter *Filter) (result []TaskSummary) {
 	var where string
+	var args []interface{}
 	if filter.TaskName != "" {
-		where = ` WHERE id = '` + s.queryReplacer.Replace(filter.TaskName) + `'`
+		args = append(args, filter.TaskName)
+		where = ` WHERE id = ` + s.parameterize(len(args))
 	} else if len(filter.TaskNameList) > 0 {
-		var taskNameList []string
 		for _, taskName := range filter.TaskNameList {
-			taskNameList = append(taskNameList, "'"+s.queryReplacer.Replace(taskName)+"'")
+			args = append(args, taskName)
 		}
-		where = " WHERE id IN (" + strings.Join(taskNameList, ",") + ")"
+		where = " WHERE id IN (" + s.parameterize(len(args)) + ")"
 	}
-	query := `SELECT ` + s.formatMultiColumnName("id, success, queueing, retrying, failure, stopped, is_loading") +
+	query := `SELECT ` + s.formatColumnName("id", "success", "queueing", "retrying", "failure", "stopped", "is_loading") +
 		` FROM ` + jobSummaryModelName + where + " ORDER BY id ASC"
-	rows, err := s.db.Query(query)
+	rows, err := s.db.Query(query, args...)
 	if err != nil {
 		return
 	}
@@ -384,42 +344,39 @@ func (s *SQLPersistent) FindAllSummary(ctx context.Context, filter *Filter) (res
 	return
 }
 func (s *SQLPersistent) FindDetailSummary(ctx context.Context, taskName string) (result TaskSummary) {
-	s.db.QueryRow(`SELECT `+s.formatMultiColumnName("id, success, queueing, retrying, failure, stopped, is_loading")+
-		` FROM `+jobSummaryModelName+` WHERE id='`+s.queryReplacer.Replace(taskName)+`'`).
+	s.db.QueryRow(`SELECT `+s.formatColumnName("id", "success", "queueing", "retrying", "failure", "stopped", "is_loading")+
+		` FROM `+jobSummaryModelName+` WHERE id=`+s.parameterize(1), taskName).
 		Scan(&result.TaskName, &result.Success, &result.Queueing, &result.Retrying,
 			&result.Failure, &result.Stopped, &result.IsLoading)
 	result.ID = result.TaskName
 	return
 }
 func (s *SQLPersistent) UpdateSummary(ctx context.Context, taskName string, updated map[string]interface{}) {
-	var setFields []string
+	var columns []string
+	var args []interface{}
 	for field, value := range updated {
 		if field == "" {
 			continue
 		}
-		field = s.formatColumnName(strings.ToLower(field))
-		switch value.(type) {
-		case bool:
-			setFields = append(setFields, field+"="+candihelper.ToString(value))
-		default:
-			setFields = append(setFields, field+"='"+candihelper.ToString(value)+"'")
-		}
+		columns = append(columns, field)
+		args = append(args, value)
 	}
-	query := `UPDATE ` + jobSummaryModelName + ` SET ` + strings.Join(setFields, ",") + ` WHERE id='` + s.queryReplacer.Replace(taskName) + `'`
-	res, err := s.db.Exec(query)
+	query := `UPDATE ` + jobSummaryModelName + ` SET ` + s.parameterizeForUpdate(columns...) + ` WHERE id='` + taskName + `'`
+	res, err := s.db.Exec(query, args...)
 	if err != nil {
 		logger.LogE(err.Error())
 		return
 	}
 	affected, _ := res.RowsAffected()
 	if affected == 0 {
-		query := fmt.Sprintf(`INSERT INTO %s (`+
-			s.formatMultiColumnName("id, success, queueing, retrying, failure, stopped, is_loading")+
-			`) VALUES ('%s', '%d', '%d', '%d', '%d', '%d', %s)`,
-			jobSummaryModelName, s.queryReplacer.Replace(taskName), candihelper.ToInt(updated["success"]), candihelper.ToInt(updated["queueing"]),
-			candihelper.ToInt(updated["retrying"]), candihelper.ToInt(updated["failure"]), candihelper.ToInt(updated["stopped"]),
-			s.queryReplacer.Replace(candihelper.ToString(updated["is_loading"])))
-		_, err := s.db.Exec(query)
+		args := []interface{}{
+			taskName, candihelper.ToInt(updated["success"]), candihelper.ToInt(updated["queueing"]), candihelper.ToInt(updated["retrying"]),
+			candihelper.ToInt(updated["failure"]), candihelper.ToInt(updated["stopped"]), updated["is_loading"],
+		}
+		query := `INSERT INTO ` + jobSummaryModelName + ` (` +
+			s.formatColumnName("id", "success", "queueing", "retrying", "failure", "stopped", "is_loading") +
+			`) VALUES (` + s.parameterize(len(args)) + `)`
+		_, err := s.db.Exec(query, args...)
 		if err != nil {
 			logger.LogE(err.Error())
 		}
@@ -436,14 +393,14 @@ func (s *SQLPersistent) IncrementSummary(ctx context.Context, taskName string, i
 		if field == "" {
 			continue
 		}
-		field = strings.ToLower(field)
+		field = s.formatColumnName(strings.ToLower(field))
 		val := candihelper.ToString(value)
 		if value >= 0 {
 			val = "+" + candihelper.ToString(value)
 		}
 		setFields = append(setFields, field+"="+field+val)
 	}
-	query := `UPDATE ` + jobSummaryModelName + ` SET ` + strings.Join(setFields, ",") + ` WHERE id='` + s.queryReplacer.Replace(taskName) + `'`
+	query := `UPDATE ` + jobSummaryModelName + ` SET ` + strings.Join(setFields, ",") + ` WHERE id='` + taskName + `'`
 	res, err := s.db.Exec(query)
 	if err != nil {
 		logger.LogE(err.Error())
@@ -451,12 +408,14 @@ func (s *SQLPersistent) IncrementSummary(ctx context.Context, taskName string, i
 	}
 	affected, _ := res.RowsAffected()
 	if affected == 0 {
-		query := fmt.Sprintf(`INSERT INTO %s (`+
-			s.formatMultiColumnName("id, success, queueing, retrying, failure, stopped")+
-			`) VALUES ('%s', '%d', '%d', '%d', '%d', '%d')`,
-			jobSummaryModelName, s.queryReplacer.Replace(taskName), candihelper.ToInt(incr["success"]), candihelper.ToInt(incr["queueing"]),
-			candihelper.ToInt(incr["retrying"]), candihelper.ToInt(incr["failure"]), candihelper.ToInt(incr["stopped"]))
-		_, err := s.db.Exec(query)
+		args := []interface{}{
+			taskName, candihelper.ToInt(incr["success"]), candihelper.ToInt(incr["queueing"]), candihelper.ToInt(incr["retrying"]),
+			candihelper.ToInt(incr["failure"]), candihelper.ToInt(incr["stopped"]),
+		}
+		query := `INSERT INTO ` + jobSummaryModelName + ` (` +
+			s.formatColumnName("id", "success", "queueing", "retrying", "failure", "stopped") +
+			`) VALUES (` + s.parameterize(len(args)) + `)`
+		_, err := s.db.Exec(query, args...)
 		if err != nil {
 			logger.LogE(err.Error())
 		}
@@ -489,7 +448,6 @@ func (s *SQLPersistent) Type() string {
 }
 
 func (s *SQLPersistent) toQueryFilter(f *Filter) (where string, err error) {
-
 	var conditions []string
 	if f.TaskName != "" {
 		conditions = append(conditions, s.formatColumnName("task_name")+"='"+s.queryReplacer.Replace(f.TaskName)+"'")
@@ -527,16 +485,8 @@ func (s *SQLPersistent) toQueryFilter(f *Filter) (where string, err error) {
 	return
 }
 
-func (s *SQLPersistent) toMultiParamQuery(params []string) string {
-	var in []string
-	for _, taskName := range params {
-		in = append(in, "'"+s.queryReplacer.Replace(taskName)+"'")
-	}
-	return " (" + strings.Join(in, ",") + ") "
-}
-
 func (s *SQLPersistent) GetAllConfiguration(ctx context.Context) (cfg []Configuration, err error) {
-	query := "SELECT " + s.formatMultiColumnName("key, name, value, is_active") + " FROM " + configurationModelName +
+	query := "SELECT " + s.formatColumnName("key", "name", "value", "is_active") + " FROM " + configurationModelName +
 		" ORDER BY " + s.formatColumnName("key")
 	rows, err := s.db.Query(query)
 	if err != nil {
@@ -553,37 +503,28 @@ func (s *SQLPersistent) GetAllConfiguration(ctx context.Context) (cfg []Configur
 }
 
 func (s *SQLPersistent) GetConfiguration(key string) (cfg Configuration, err error) {
-	query := "SELECT " + s.formatMultiColumnName("key, name, value, is_active") + " FROM " + configurationModelName +
-		` WHERE ` + s.formatColumnName("key") + `='` + s.queryReplacer.Replace(key) + `'`
-	err = s.db.QueryRow(query).Scan(&cfg.Key, &cfg.Name, &cfg.Value, &cfg.IsActive)
+	query := "SELECT " + s.formatColumnName("key", "name", "value", "is_active") + " FROM " + configurationModelName +
+		` WHERE ` + s.parameterizeByColumnAndNumber("key", 1)
+	err = s.db.QueryRow(query, key).Scan(&cfg.Key, &cfg.Name, &cfg.Value, &cfg.IsActive)
 	return
 }
 
 func (s *SQLPersistent) SetConfiguration(cfg *Configuration) (err error) {
-	res, err := s.db.Exec(`UPDATE ` + configurationModelName + ` SET 
-		` + s.formatColumnName("name") + `='` + s.queryReplacer.Replace(cfg.Name) + `', 
-		` + s.formatColumnName("value") + `='` + s.queryReplacer.Replace(cfg.Value) + `', 
-		` + s.formatColumnName("is_active") + `=` + candihelper.ToString(cfg.IsActive) + `
-		WHERE ` + s.formatColumnName("key") + ` = '` + s.queryReplacer.Replace(cfg.Key) + `'`)
+	args := []interface{}{cfg.Name, cfg.Value, cfg.IsActive}
+	query := `UPDATE ` + configurationModelName + ` SET ` + s.parameterizeForUpdate("name", "value", "is_active") +
+		` WHERE ` + s.parameterizeByColumnAndNumber("key", len(args)+1)
+	args = append(args, cfg.Key)
+	res, err := s.db.Exec(query, args...)
 	if err != nil {
 		logger.LogE(err.Error())
 		return err
 	}
 	affected, _ := res.RowsAffected()
 	if affected == 0 {
-		query := `INSERT INTO ` + configurationModelName + ` (` +
-			s.formatColumnName("key, name, value, is_active") + `
-			) VALUES (
-			'` + s.queryReplacer.Replace(cfg.Key) + `',
-			'` + s.queryReplacer.Replace(cfg.Name) + `',
-			'` + s.queryReplacer.Replace(cfg.Value) + `',
-			` + candihelper.ToString(cfg.IsActive) + `
-		)`
-		_, err := s.db.Exec(query)
-		if err != nil {
-			logger.LogE(err.Error())
-			return err
-		}
+		args := []interface{}{cfg.Key, cfg.Name, cfg.Value, cfg.IsActive}
+		query := `INSERT INTO ` + configurationModelName +
+			` (` + s.formatColumnName("key", "name", "value", "is_active") + ` ) VALUES (` + s.parameterize(len(args)) + `)`
+		s.db.Exec(query, args...)
 	}
 	return nil
 }
