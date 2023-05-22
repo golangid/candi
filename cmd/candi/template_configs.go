@@ -38,16 +38,19 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 	tracer.InitOpenTracing(baseCfg.ServiceName)
 
 	baseCfg.LoadFunc(func(ctx context.Context) []interfaces.Closer {
-		brokerDeps := broker.InitBrokers(
-			{{if not .KafkaHandler}}// {{ end }}broker.NewKafkaBroker(),
-			{{if not .RabbitMQHandler}}// {{ end }}broker.NewRabbitMQBroker(),
-		)
 		{{if not .RedisDeps}}// {{end}}redisDeps := database.InitRedis()
 		{{if not .SQLDeps}}// {{end}}sqlDeps := database.InitSQLDatabase()
 		{{if not .MongoDeps}}// {{end}}mongoDeps := database.InitMongoDB(ctx)
 		locker := {{if not .RedisDeps}}&candiutils.NoopLocker{}{{else}}candiutils.NewRedisLocker(redisDeps.WritePool()){{end}}` +
 		"{{if .ArangoDeps}}\n		arangoDeps := arango.InitArangoDB(ctx, sharedEnv.DbArangoReadHost, sharedEnv.DbArangoWriteHost){{end}}" + `
 ` + "{{ if .IsMonorepo }}\n		sdk.SetGlobalSDK(\n			// init service client sdk\n		)\n{{end}}" + `
+
+		brokerDeps := broker.InitBrokers(
+			{{if not .KafkaHandler}}// {{ end }}broker.NewKafkaBroker(),
+			{{if not .RabbitMQHandler}}// {{ end }}broker.NewRabbitMQBroker(),
+			{{if not .RedisSubsHandler}}// {{ end }}broker.NewRedisBroker(redisDeps.WritePool()),
+		)
+
 		// inject all service dependencies
 		// See all option in dependency package
 		deps = dependency.InitDependency(

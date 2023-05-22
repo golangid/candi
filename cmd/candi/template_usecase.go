@@ -107,7 +107,8 @@ type {{camel .ModuleName}}UsecaseImpl struct {
 	{{if not .SQLDeps}}// {{end}}repoSQL       repository.RepoSQL
 	{{if not .MongoDeps}}// {{end}}repoMongo     repository.RepoMongo{{if .ArangoDeps}}
 	repoArango     repository.RepoArango{{end}}
-	kafkaPub       interfaces.Publisher{{if .RabbitMQHandler}}
+	kafkaPub       interfaces.Publisher{{if .RedisSubsHandler}}
+	redisPub       interfaces.Publisher{{ end }}{{if .RabbitMQHandler}}
 	rabbitmqPub    interfaces.Publisher{{ end }}
 }
 
@@ -124,7 +125,10 @@ func New{{upper (camel .ModuleName)}}Usecase(deps dependency.Dependency) ({{uppe
 	}
 	if kafkaBroker := deps.GetBroker(types.Kafka); kafkaBroker != nil {
 		uc.kafkaPub = kafkaBroker.GetPublisher()
-	}{{if .RabbitMQHandler}}
+	}{{if .RedisSubsHandler}}
+	if redisBroker := deps.GetBroker(types.RedisSubscriber); redisBroker != nil {
+		uc.redisPub = redisBroker.GetPublisher()
+	}{{ end }}{{if .RabbitMQHandler}}
 	if rabbitmqBroker := deps.GetBroker(types.RabbitMQ); rabbitmqBroker != nil {
 		uc.rabbitmqPub = rabbitmqBroker.GetPublisher()
 	}{{ end }}

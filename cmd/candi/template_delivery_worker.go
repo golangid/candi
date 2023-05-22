@@ -138,7 +138,7 @@ func (h *RedisHandler) handle{{upper (camel .ModuleName)}}(eventContext *candish
 	trace, _ := tracer.StartTraceWithContext(eventContext.Context(), "{{upper (camel .ModuleName)}}DeliveryRedis:Handle{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	fmt.Printf("redis subs: execute handler %s with message %s", eventContext.HandlerRoute(), eventContext.Message())
+	fmt.Printf("redis subs: execute handler %s with message %s\n", eventContext.HandlerRoute(), eventContext.Message())
 
 	// exec usecase
 	// h.uc.SomethingUsecase()

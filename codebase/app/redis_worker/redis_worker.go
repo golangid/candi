@@ -10,10 +10,12 @@ import (
 	"runtime/debug"
 	"sync"
 
+	"github.com/golangid/candi/broker"
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/candiutils"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/codebase/interfaces"
 	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
 	"github.com/gomodule/redigo/redis"
@@ -29,24 +31,33 @@ type (
 		ctxCancelFunc func()
 		opt           option
 
-		pool      *redis.Pool
-		isHaveJob bool
-		service   factory.ServiceFactory
-		handlers  map[string]types.WorkerHandler
-		wg        sync.WaitGroup
-		semaphore map[string]chan struct{}
+		broker      interfaces.Broker
+		isHaveJob   bool
+		service     factory.ServiceFactory
+		handlers    map[string]types.WorkerHandler
+		wg          sync.WaitGroup
+		semaphore   map[string]chan struct{}
+		messagePool sync.Pool
 	}
 )
 
 // NewWorker create new redis subscriber
 func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
-	redisPool := service.GetDependency().GetRedisPool().WritePool()
-
 	workerInstance := &redisWorker{
 		service:   service,
 		opt:       getDefaultOption(),
 		semaphore: make(map[string]chan struct{}),
-		pool:      redisPool,
+		messagePool: sync.Pool{
+			New: func() interface{} {
+				return candishared.NewEventContext(bytes.NewBuffer(make([]byte, 0, 256)))
+			},
+		},
+	}
+
+	redisPool := service.GetDependency().GetRedisPool().WritePool()
+	workerInstance.broker = service.GetDependency().GetBroker(types.RedisSubscriber)
+	if workerInstance.broker == nil {
+		workerInstance.broker = broker.NewRedisBroker(redisPool)
 	}
 	workerInstance.opt.locker = candiutils.NewRedisLocker(redisPool)
 
@@ -88,36 +99,15 @@ func (r *redisWorker) Serve() {
 		return
 	}
 
-	psc := r.getPubSubConn()
-	messageChan := make(chan redis.Message)
-
-	go func() {
-		for {
-			switch msg := psc.Receive().(type) {
-			case redis.Message:
-				messageChan <- msg
-
-			case error:
-				// if network connection error, create new connection from pool
-				psc.Close()
-				psc = r.getPubSubConn()
-			}
-		}
-	}()
-
+	psc := r.broker.GetConfiguration().(*redis.PubSubConn)
 	for {
-		select {
-		case <-shutdown:
-			psc.Unsubscribe()
-			return
-
-		case msg := <-messageChan:
-			redisMessage := ParseRedisPubSubKeyTopic(msg.Data)
+		switch msg := psc.Receive().(type) {
+		case redis.Message:
+			redisMessage := broker.ParseRedisPubSubKeyTopic(msg.Data)
 			if _, ok := r.handlers[redisMessage.HandlerName]; ok {
-
 				r.semaphore[redisMessage.HandlerName] <- struct{}{}
 				r.wg.Add(1)
-				go func(message RedisMessage) {
+				go func(message broker.RedisMessage) {
 					defer func() {
 						r.wg.Done()
 						<-r.semaphore[message.HandlerName]
@@ -129,8 +119,12 @@ func (r *redisWorker) Serve() {
 					}
 					r.processMessage(message)
 				}(redisMessage)
-
 			}
+
+		case error:
+			// if network connection error, create new connection from pool
+			psc.Close()
+			psc = r.broker.GetConfiguration().(*redis.PubSubConn)
 		}
 	}
 }
@@ -160,17 +154,7 @@ func (r *redisWorker) Name() string {
 	return string(types.RedisSubscriber)
 }
 
-func (r *redisWorker) getPubSubConn() *redis.PubSubConn {
-	conn := r.pool.Get()
-	conn.Do("CONFIG", "SET", "notify-keyspace-events", "Ex")
-
-	psc := &redis.PubSubConn{Conn: conn}
-	psc.PSubscribe("__keyevent@*__:expired")
-	return psc
-}
-
-func (r *redisWorker) processMessage(param RedisMessage) {
-
+func (r *redisWorker) processMessage(param broker.RedisMessage) {
 	// lock for multiple worker (if running on multiple pods/instance)
 	if r.opt.locker.IsLocked(r.getLockKey(param.HandlerName, param.EventID)) {
 		logger.LogYellow("redis_subscriber > eventID " + param.EventID + " is locked")
@@ -203,12 +187,13 @@ func (r *redisWorker) processMessage(param RedisMessage) {
 	trace.SetTag("event_id", param.EventID)
 	trace.Log("message", param.Message)
 
-	eventContext := candishared.NewEventContext(bytes.NewBuffer(make([]byte, 256)))
+	eventContext := r.messagePool.Get().(*candishared.EventContext)
+	defer r.releaseMessagePool(eventContext)
 	eventContext.SetContext(ctx)
 	eventContext.SetWorkerType(string(types.RedisSubscriber))
 	eventContext.SetHandlerRoute(param.HandlerName)
 	eventContext.SetKey(param.EventID)
-	eventContext.Write([]byte(param.Message))
+	eventContext.WriteString(param.Message)
 
 	for _, handlerFunc := range selectedHandler.HandlerFuncs {
 		if err := handlerFunc(eventContext); err != nil {
@@ -220,4 +205,9 @@ func (r *redisWorker) processMessage(param RedisMessage) {
 
 func (r *redisWorker) getLockKey(handlerName, eventID string) string {
 	return fmt.Sprintf("%s:redis-worker-lock:%s-%s", r.service.Name(), handlerName, eventID)
+}
+
+func (r *redisWorker) releaseMessagePool(eventContext *candishared.EventContext) {
+	eventContext.Reset()
+	r.messagePool.Put(eventContext)
 }

@@ -7,6 +7,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// Deprecated, move to broker package
+
 // RedisMessage model for redis subscriber key
 type RedisMessage struct {
 	HandlerName string `json:"h"`
