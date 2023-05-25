@@ -10,12 +10,12 @@ import (
 )
 
 func (s *SQLPersistent) initTable(db *sql.DB) {
-	var queries []string
+	var queries map[string]string
 
 	switch s.driverName {
 	case "postgres", "sqlite3":
-		queries = []string{
-			`CREATE TABLE IF NOT EXISTS ` + jobModelName + ` (
+		queries = map[string]string{
+			jobModelName: `CREATE TABLE IF NOT EXISTS ` + jobModelName + ` (
 				id VARCHAR(255) PRIMARY KEY NOT NULL DEFAULT '',
 				task_name VARCHAR(255) NOT NULL DEFAULT '',
 				arguments TEXT NOT NULL DEFAULT '',
@@ -37,7 +37,7 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 			CREATE INDEX IF NOT EXISTS idx_task_name ON ` + jobModelName + ` (task_name);
 			CREATE INDEX IF NOT EXISTS idx_status ON ` + jobModelName + ` (status);
 			CREATE INDEX IF NOT EXISTS idx_task_name_status ON ` + jobModelName + ` (task_name, status);`,
-			`CREATE TABLE IF NOT EXISTS ` + jobSummaryModelName + ` (
+			jobSummaryModelName: `CREATE TABLE IF NOT EXISTS ` + jobSummaryModelName + ` (
 				id VARCHAR(255) PRIMARY KEY NOT NULL DEFAULT '',
 				success INTEGER NOT NULL DEFAULT 0,
 				queueing INTEGER NOT NULL DEFAULT 0,
@@ -48,7 +48,7 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 				loading_message VARCHAR(255) NOT NULL DEFAULT ''
 			);
 			CREATE INDEX IF NOT EXISTS idx_task_name_summary ON ` + jobSummaryModelName + ` (id);`,
-			`CREATE TABLE IF NOT EXISTS task_queue_worker_job_histories (
+			"task_queue_worker_job_histories": `CREATE TABLE IF NOT EXISTS task_queue_worker_job_histories (
 				job_id VARCHAR(255) NOT NULL DEFAULT '',
 				error_stack VARCHAR(255) NOT NULL DEFAULT '',
 				status VARCHAR(255) NOT NULL DEFAULT '',
@@ -59,7 +59,7 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 			);
 			CREATE INDEX IF NOT EXISTS idx_job_id_history ON task_queue_worker_job_histories (job_id);
 			CREATE INDEX IF NOT EXISTS idx_start_at_history ON task_queue_worker_job_histories (start_at);`,
-			`CREATE TABLE IF NOT EXISTS ` + configurationModelName + ` (
+			configurationModelName: `CREATE TABLE IF NOT EXISTS ` + configurationModelName + ` (
 				key VARCHAR(255) PRIMARY KEY NOT NULL DEFAULT '',
 				name VARCHAR(255) NOT NULL DEFAULT '',
 				value VARCHAR(255) NOT NULL DEFAULT '',
@@ -68,8 +68,8 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 		}
 
 	case "mysql":
-		queries = []string{
-			fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n%s", jobModelName,
+		queries = map[string]string{
+			jobModelName: fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n%s", jobModelName,
 				"(`id` VARCHAR(255) PRIMARY KEY NOT NULL,",
 				"`task_name` VARCHAR(255) NOT NULL,",
 				"`arguments` TEXT NOT NULL,",
@@ -91,7 +91,7 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 				INDEX (status),
 				INDEX (task_name, status)) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE utf8_unicode_ci;`,
 			),
-			fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s %s %s %s %s %s %s %s\n%s", jobSummaryModelName+
+			jobSummaryModelName: fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s %s %s %s %s %s %s %s\n%s", jobSummaryModelName+
 				"(`id` VARCHAR(255) PRIMARY KEY NOT NULL,",
 				"`success` INTEGER NOT NULL,",
 				"`queueing` INTEGER NOT NULL,",
@@ -102,7 +102,7 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 				"`loading_message` VARCHAR(255) NOT NULL DEFAULT '',",
 				`INDEX (id)) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE utf8_unicode_ci;`,
 			),
-			fmt.Sprintf("CREATE TABLE IF NOT EXISTS task_queue_worker_job_histories %s %s %s %s %s %s %s\n%s",
+			"task_queue_worker_job_histories": fmt.Sprintf("CREATE TABLE IF NOT EXISTS task_queue_worker_job_histories %s %s %s %s %s %s %s\n%s",
 				"(`job_id` VARCHAR(255) NOT NULL,",
 				"`error_stack` VARCHAR(255) NOT NULL,",
 				"`status` VARCHAR(255) NOT NULL,",
@@ -113,7 +113,7 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 				`INDEX (job_id),
 				INDEX (start_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE utf8_unicode_ci;`,
 			),
-			fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s %s %s %s %s", configurationModelName,
+			configurationModelName: fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s %s %s %s %s", configurationModelName,
 				"(`key` VARCHAR(255) PRIMARY KEY NOT NULL,",
 				"`name` VARCHAR(255) NOT NULL,",
 				"`value` VARCHAR(255) NOT NULL,",
@@ -122,29 +122,20 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 		}
 	}
 
-	if err := s.checkExistingTable(db); err == nil {
-		return
-	}
-
-	for _, query := range queries {
+	for tableName, query := range queries {
+		if err := s.checkExistingTable(db, tableName); err == nil {
+			continue
+		}
 		if _, err := db.Exec(query); err != nil {
 			panic(err)
 		}
 	}
 }
 
-func (s *SQLPersistent) checkExistingTable(db *sql.DB) error {
-	checkTableQueries := []string{
-		`SELECT EXISTS (SELECT * FROM ` + jobModelName + `);`,
-		`SELECT EXISTS (SELECT * FROM ` + jobSummaryModelName + `);`,
-		`SELECT EXISTS (SELECT * FROM ` + configurationModelName + `);`,
-		`SELECT EXISTS (SELECT * FROM task_queue_worker_job_histories);`,
-	}
-
-	for _, checkTableQuery := range checkTableQueries {
-		if _, err := db.Exec(checkTableQuery); err != nil {
-			return err
-		}
+func (s *SQLPersistent) checkExistingTable(db *sql.DB, tableName string) error {
+	checkTableQuery := `SELECT EXISTS (SELECT * FROM ` + tableName + `);`
+	if _, err := db.Exec(checkTableQuery); err != nil {
+		return err
 	}
 	return nil
 }
