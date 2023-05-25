@@ -114,8 +114,8 @@ func (r *RedisBroker) PublishMessage(ctx context.Context, args *candishared.Publ
 	if err := args.Validate(); err != nil {
 		return err
 	}
-	if args.Expired <= 0 {
-		return errors.New("expired cannot empty")
+	if args.Delay <= 0 {
+		return errors.New("delay cannot empty")
 	}
 
 	trace.SetTag("topic", args.Topic)
@@ -123,7 +123,7 @@ func (r *RedisBroker) PublishMessage(ctx context.Context, args *candishared.Publ
 		trace.SetTag("key", args.Key)
 	}
 	trace.Log("header", args.Header)
-	trace.Log("expired", args.Expired.String())
+	trace.Log("delay", args.Delay.String())
 	trace.Log("message", args.Message)
 
 	conn := r.pool.Get()
@@ -137,7 +137,7 @@ func (r *RedisBroker) PublishMessage(ctx context.Context, args *candishared.Publ
 	if _, err := conn.Do("SET", string(redisMessage), "ok"); err != nil {
 		return err
 	}
-	_, err = conn.Do("EXPIRE", string(redisMessage), int(args.Expired.Seconds()))
+	_, err = conn.Do("EXPIRE", string(redisMessage), int(args.Delay.Seconds()))
 	return err
 }
 

@@ -86,6 +86,7 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	newJob.direct = req.direct
 
 	if err := engine.opt.persistent.SaveJob(ctx, &newJob); err != nil {
+		trace.SetError(err)
 		logger.LogE(fmt.Sprintf("Cannot save job, error: %s", err.Error()))
 		newJob.ID = ""
 		err = engine.opt.secondaryPersistent.SaveJob(ctx, &newJob)

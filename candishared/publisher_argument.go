@@ -13,7 +13,7 @@ type PublisherArgument struct {
 	Header      map[string]interface{}
 	ContentType string
 	Message     []byte
-	Expired     time.Duration
+	Delay       time.Duration
 
 	// Deprecated : use Message
 	Data interface{}

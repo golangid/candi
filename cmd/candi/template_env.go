@@ -37,11 +37,11 @@ MONGODB_HOST_READ=mongodb://user:pass@localhost:27017/{{.ServiceName}}?authSourc
 
 SQL_DB_READ_DSN={{ if .SQLDeps }}{{.SQLDriver}}://` +
 	"{{if eq .SQLDriver \"postgres\"}}user:pass@localhost:5432/db_name?sslmode=disable&TimeZone=Asia/Jakarta{{else if eq .SQLDriver \"mysql\"}}" +
-	"root:pass@tcp(127.0.0.1:3306)/db_name{{else if eq .SQLDriver \"sqlite3\"}}database.db{{end}}" +
+	"root:pass@tcp(127.0.0.1:3306)/db_name?charset=utf8&parseTime=True{{else if eq .SQLDriver \"sqlite3\"}}database.db{{end}}" +
 	`{{ end }}
 SQL_DB_WRITE_DSN={{ if .SQLDeps }}{{.SQLDriver}}://` +
 	"{{if eq .SQLDriver \"postgres\"}}user:pass@localhost:5432/db_name?sslmode=disable&TimeZone=Asia/Jakarta{{else if eq .SQLDriver \"mysql\"}}" +
-	"root:pass@tcp(127.0.0.1:3306)/db_name{{else if eq .SQLDriver \"sqlite3\"}}database.db{{end}}" +
+	"root:pass@tcp(127.0.0.1:3306)/db_name?charset=utf8&parseTime=True{{else if eq .SQLDriver \"sqlite3\"}}database.db{{end}}" +
 	`{{ end }}
 {{if .ArangoDeps}}
 ARANGODB_HOST_WRITE=http://user:pass@localhost:8529/{{.ServiceName}}
