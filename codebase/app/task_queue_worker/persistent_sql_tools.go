@@ -122,11 +122,31 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 		}
 	}
 
+	if err := s.checkExistingTable(db); err == nil {
+		return
+	}
+
 	for _, query := range queries {
 		if _, err := db.Exec(query); err != nil {
 			panic(err)
 		}
 	}
+}
+
+func (s *SQLPersistent) checkExistingTable(db *sql.DB) error {
+	checkTableQueries := []string{
+		`SELECT EXISTS (SELECT * FROM ` + jobModelName + `);`,
+		`SELECT EXISTS (SELECT * FROM ` + jobSummaryModelName + `);`,
+		`SELECT EXISTS (SELECT * FROM ` + configurationModelName + `);`,
+		`SELECT EXISTS (SELECT * FROM task_queue_worker_job_histories);`,
+	}
+
+	for _, checkTableQuery := range checkTableQueries {
+		if _, err := db.Exec(checkTableQuery); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *SQLPersistent) formatColumnName(columns ...string) string {
