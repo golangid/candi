@@ -1,21 +1,41 @@
 package wrapper
 
 import (
-	"io"
+	"bytes"
 	"net/http"
 )
 
 // WrapHTTPResponseWriter wrapper
 type WrapHTTPResponseWriter struct {
-	statusCode int
-	writer     io.Writer
+	statusCode     int
+	buff           *bytes.Buffer
+	maxWriteSize   int
+	limitWriteSize bool
+	contentLength  int
 	http.ResponseWriter
 }
 
 // NewWrapHTTPResponseWriter init new wrapper for http response writter
-func NewWrapHTTPResponseWriter(w io.Writer, httpResponseWriter http.ResponseWriter) *WrapHTTPResponseWriter {
-	// Default the status code to 200
-	return &WrapHTTPResponseWriter{statusCode: http.StatusOK, writer: io.MultiWriter(w, httpResponseWriter), ResponseWriter: httpResponseWriter}
+func NewWrapHTTPResponseWriter(responseBuff *bytes.Buffer, httpResponseWriter http.ResponseWriter) *WrapHTTPResponseWriter {
+	return &WrapHTTPResponseWriter{
+		statusCode: http.StatusOK, buff: responseBuff, ResponseWriter: httpResponseWriter,
+	}
+}
+
+// SetMaxWriteSize set max write size to buffer
+func (w *WrapHTTPResponseWriter) SetMaxWriteSize(max int) {
+	w.maxWriteSize = max
+	w.limitWriteSize = true
+}
+
+// GetContentLength get response content length
+func (w *WrapHTTPResponseWriter) GetContentLength() int {
+	return w.contentLength
+}
+
+// GetContent get response content
+func (w *WrapHTTPResponseWriter) GetContent() []byte {
+	return w.buff.Bytes()
 }
 
 // StatusCode give a way to get the Code
@@ -30,7 +50,12 @@ func (w *WrapHTTPResponseWriter) Header() http.Header {
 
 func (w *WrapHTTPResponseWriter) Write(data []byte) (int, error) {
 	// Store response body to writer
-	return w.writer.Write(data)
+	n, err := w.ResponseWriter.Write(data)
+	w.contentLength += n
+	if !w.limitWriteSize || w.contentLength < w.maxWriteSize {
+		w.buff.Write(data)
+	}
+	return n, err
 }
 
 // WriteHeader method

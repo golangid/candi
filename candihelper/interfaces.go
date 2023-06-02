@@ -15,3 +15,10 @@ type MultiError interface {
 	Merge(MultiError) MultiError
 	Error() string
 }
+
+// FilterStreamer abstract interface
+type FilterStreamer interface {
+	GetPage() int
+	IncrPage()
+	GetLimit() int
+}

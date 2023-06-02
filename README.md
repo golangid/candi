@@ -4,6 +4,7 @@
 [![Build Status](https://github.com/golangid/candi/workflows/build/badge.svg)](https://github.com/golangid/candi/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/golangid/candi)](https://goreportcard.com/report/github.com/golangid/candi)
 [![codecov](https://codecov.io/gh/golangid/candi/branch/master/graph/badge.svg)](https://codecov.io/gh/golangid/candi)
+[![golang](https://img.shields.io/badge/golang%20%3E=-v1.18-green.svg?logo=go)](https://golang.org/doc/devel/release.html#go1.18)
 
 ## Build with :heart: and
 <p align="center">

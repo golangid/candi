@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golangid/candi/candihelper"
@@ -26,9 +27,18 @@ type HTTPMiddlewareTracerConfig struct {
 
 // HTTPMiddlewareTracer middleware wrapper for tracer
 func HTTPMiddlewareTracer(cfg HTTPMiddlewareTracerConfig) func(http.Handler) http.Handler {
+	bPool := &sync.Pool{
+		New: func() interface{} {
+			return bytes.NewBuffer(make([]byte, 256))
+		},
+	}
+	releasePool := func(buff *bytes.Buffer) {
+		buff.Reset()
+		bPool.Put(buff)
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-
 			if _, isExcludePath := cfg.ExcludePath[req.URL.Path]; isExcludePath {
 				next.ServeHTTP(rw, req)
 				return
@@ -54,32 +64,39 @@ func HTTPMiddlewareTracer(cfg HTTPMiddlewareTracerConfig) func(http.Handler) htt
 			}()
 
 			httpDump, _ := httputil.DumpRequest(req, false)
+			trace.Log("http.request", httpDump)
 			trace.SetTag("http.url_path", req.URL.Path)
 			trace.SetTag("http.method", req.Method)
-			trace.Log("http.request", httpDump)
 
-			body, _ := io.ReadAll(req.Body)
-			if len(body) < cfg.MaxLogSize {
-				trace.Log("request.body", body)
-			} else {
-				trace.Log("request.body.size", len(body))
+			if contentLength, err := strconv.Atoi(req.Header.Get("Content-Length")); err == nil {
+				if contentLength < cfg.MaxLogSize {
+					reqBody := bPool.Get().(*bytes.Buffer)
+					reqBody.Reset()
+					reqBody.ReadFrom(req.Body)
+					trace.Log("request.body", reqBody.String())
+					req.Body = io.NopCloser(bytes.NewReader(reqBody.Bytes())) // reuse body
+					releasePool(reqBody)
+				} else {
+					trace.Log("request.body.size", candihelper.TransformSizeToByte(uint64(contentLength)))
+				}
 			}
-			req.Body = io.NopCloser(bytes.NewBuffer(body)) // reuse body
 
-			resBody := &bytes.Buffer{}
+			resBody := bPool.Get().(*bytes.Buffer)
+			resBody.Reset()
+			defer releasePool(resBody)
 			respWriter := NewWrapHTTPResponseWriter(resBody, rw)
-
+			respWriter.SetMaxWriteSize(cfg.MaxLogSize)
 			next.ServeHTTP(respWriter, req.WithContext(ctx))
 
 			trace.SetTag("http.status_code", respWriter.statusCode)
 			if respWriter.statusCode >= http.StatusBadRequest {
 				trace.SetError(fmt.Errorf("resp.code:%d", respWriter.statusCode))
 			}
-
-			if resBody.Len() < cfg.MaxLogSize {
+			trace.Log("response.header", respWriter.Header())
+			if respWriter.contentLength < cfg.MaxLogSize {
 				trace.Log("response.body", resBody.String())
 			} else {
-				trace.Log("response.body.size", resBody.Len())
+				trace.Log("response.body.size", candihelper.TransformSizeToByte(uint64(respWriter.contentLength)))
 			}
 		})
 	}
@@ -91,7 +108,6 @@ func HTTPMiddlewareCORS(
 	exposeHeaders []string,
 	allowCredential bool,
 ) func(http.Handler) http.Handler {
-
 	if len(allowOrigins) == 0 {
 		allowOrigins = []string{"*"}
 	}
@@ -101,9 +117,7 @@ func HTTPMiddlewareCORS(
 	exposeHeader := strings.Join(exposeHeaders, ",")
 
 	return func(next http.Handler) http.Handler {
-
 		return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-
 			origin := req.Header.Get("Origin")
 			allowOrigin := ""
 

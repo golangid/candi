@@ -26,6 +26,8 @@ const (
 	MByte = KByte * 1024
 	// GByte ...
 	GByte = MByte * 1024
+	// TByte ...
+	TByte = GByte * 1024
 
 	// WORKDIR const for workdir environment
 	WORKDIR = "WORKDIR"

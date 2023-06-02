@@ -20,15 +20,12 @@ const (
 
 // HTTPCache middleware for cache
 func (m *Middleware) HTTPCache(next http.Handler) http.Handler {
-
 	type cacheData struct {
-		Body       []byte      `json:"body,omitempty"`
-		StatusCode int         `json:"statusCode,omitempty"`
-		Header     http.Header `json:"header,omitempty"`
+		Body   []byte      `json:"body,omitempty"`
+		Header http.Header `json:"header,omitempty"`
 	}
 
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-
 		if m.cache == nil {
 			next.ServeHTTP(res, req)
 			return
@@ -67,8 +64,8 @@ func (m *Middleware) HTTPCache(next http.Handler) http.Handler {
 		defer trace.Finish()
 
 		cacheKey := req.Method + ":" + req.URL.String()
+		trace.SetTag("key", cacheKey)
 		if cacheVal, err := m.cache.Get(ctx, cacheKey); err == nil {
-
 			if ttl, err := m.cache.GetTTL(ctx, cacheKey); err == nil {
 				res.Header().Add(HeaderExpires, time.Now().In(time.UTC).Add(ttl).Format(time.RFC1123))
 			}
@@ -84,7 +81,6 @@ func (m *Middleware) HTTPCache(next http.Handler) http.Handler {
 				res.Header().Set(k, data.Header.Get(k))
 			}
 			res.Write(data.Body)
-			res.WriteHeader(data.StatusCode)
 			return
 		}
 
@@ -96,9 +92,8 @@ func (m *Middleware) HTTPCache(next http.Handler) http.Handler {
 		if respWriter.StatusCode() < http.StatusBadRequest {
 			m.cache.Set(ctx, cacheKey, candihelper.ToBytes(
 				cacheData{
-					Body:       resBody.Bytes(),
-					StatusCode: respWriter.StatusCode(),
-					Header:     res.Header(),
+					Body:   resBody.Bytes(),
+					Header: res.Header(),
 				},
 			), maxAge)
 		}

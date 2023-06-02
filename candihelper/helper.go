@@ -662,3 +662,26 @@ func ParseTimeToString(date time.Time, format string) (res string) {
 	}
 	return res
 }
+
+// TransformSizeToByte helper
+func TransformSizeToByte(size uint64) string {
+	var unit string
+	if size >= TByte {
+		unit = "TB"
+		size /= TByte
+	} else if size >= GByte {
+		unit = "GB"
+		size /= GByte
+	} else if size >= MByte {
+		unit = "MB"
+		size /= MByte
+	} else if size >= KByte {
+		unit = "KB"
+		size /= KByte
+	} else {
+		unit = "B"
+		size /= Byte
+	}
+
+	return fmt.Sprintf("%d %s", size, unit)
+}

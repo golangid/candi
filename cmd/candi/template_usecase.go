@@ -496,6 +496,7 @@ func TestNew{{upper (camel .ModuleName)}}Usecase(t *testing.T) {
 	mockDeps := &mockdeps.Dependency{}
 	mockDeps.On("GetRedisPool").Return(mockRedisPool)
 	mockDeps.On("GetBroker", mock.Anything).Return(mockBroker)
+	mockDeps.On("GetLocker").Return(&mockinterfaces.Locker{})
 
 	uc, setFunc := New{{upper (camel .ModuleName)}}Usecase(mockDeps)
 	setFunc(nil)
