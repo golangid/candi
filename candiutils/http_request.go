@@ -11,8 +11,6 @@ import (
 	"net/http/httputil"
 	"time"
 
-	"github.com/gojektech/heimdall/v6"
-	"github.com/gojektech/heimdall/v6/hystrix"
 	"github.com/golangid/candi/tracer"
 )
 
@@ -37,7 +35,6 @@ type (
 		sleepBetweenRetry         time.Duration
 		tlsConfig                 *tls.Config
 		minHTTPErrorCodeThreshold int
-		hystrixOptions            []hystrix.Option
 	}
 
 	// HTTPRequestResult struct
@@ -92,13 +89,6 @@ func HTTPRequestSetBreakerName(breakerName string) HTTPRequestOption {
 	}
 }
 
-// HTTPRequestAddHystrixOptions option func
-func HTTPRequestAddHystrixOptions(opts ...hystrix.Option) HTTPRequestOption {
-	return func(h *httpRequestImpl) {
-		h.hystrixOptions = opts
-	}
-}
-
 // HTTPRequestSetClient option func
 func HTTPRequestSetClient(cl *http.Client) HTTPRequestOption {
 	return func(h *httpRequestImpl) {
@@ -124,30 +114,13 @@ func NewHTTPRequest(opts ...HTTPRequestOption) HTTPRequest {
 
 	// set http client
 	if httpReq.client == nil {
-		// define a maximum jitter interval
-		maximumJitterInterval := 10 * time.Millisecond
-		// create a backoff
-		backoff := heimdall.NewConstantBackoff(httpReq.sleepBetweenRetry, maximumJitterInterval)
-		// create a new retry mechanism with the backoff
-		retrier := heimdall.NewRetrier(backoff)
-
-		hystrixClientOpt := []hystrix.Option{
-			hystrix.WithHTTPTimeout(httpReq.timeout),
-			hystrix.WithHystrixTimeout(httpReq.timeout),
-			hystrix.WithRetrier(retrier),
-			hystrix.WithRetryCount(httpReq.retries),
-			hystrix.WithCommandName(httpReq.breakerName),
-			hystrix.WithFallbackFunc(func(err error) error {
-				return err
-			}),
+		client := &http.Client{
+			Timeout: httpReq.timeout,
 		}
-		hystrixClientOpt = append(hystrixClientOpt, httpReq.hystrixOptions...)
 		if httpReq.tlsConfig != nil {
-			hystrixClientOpt = append(hystrixClientOpt, hystrix.WithHTTPClient(&http.Client{
-				Transport: &http.Transport{TLSClientConfig: httpReq.tlsConfig},
-			}))
+			client.Transport = &http.Transport{TLSClientConfig: httpReq.tlsConfig}
 		}
-		httpReq.client = hystrix.NewClient(hystrixClientOpt...)
+		httpReq.client = client
 	}
 
 	return httpReq
