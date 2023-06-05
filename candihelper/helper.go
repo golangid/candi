@@ -311,11 +311,11 @@ func StringInSlice(str string, list []string) bool {
 func MaskingPasswordURL(stringURL string) string {
 	u, err := url.Parse(stringURL)
 	if err != nil {
-		return stringURL
+		return "xxxxx"
 	}
 	pass, ok := u.User.Password()
 	if pass == "" || !ok {
-		return stringURL
+		return "xxxxx"
 	}
 
 	u.User = url.UserPassword(u.User.Username(), "xxxxx")

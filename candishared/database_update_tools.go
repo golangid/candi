@@ -94,7 +94,7 @@ func (d DBUpdateTools) ToMap(data interface{}, opts ...DBUpdateOptionFunc) map[s
 		}
 
 		val := fieldValue.Interface()
-		if fieldValue.Kind() == reflect.Pointer {
+		if fieldValue.Kind() == reflect.Pointer && !fieldValue.IsNil() {
 			val = fieldValue.Elem().Interface()
 		}
 

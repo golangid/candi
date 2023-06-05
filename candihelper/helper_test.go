@@ -180,12 +180,12 @@ func TestMaskingPasswordURL(t *testing.T) {
 		{
 			name:      "Testcase #2: Positive",
 			stringURL: "mongodb://pass:@localhost:27017",
-			want:      "mongodb://pass:@localhost:27017",
+			want:      "xxxxx",
 		},
 		{
 			name:      "Testcase #3: Negative",
 			stringURL: "()$%!#!#@!",
-			want:      "()$%!#!#@!",
+			want:      "xxxxx",
 		},
 	}
 	for _, tt := range tests {

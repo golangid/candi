@@ -84,7 +84,9 @@ func main() {
 		}
 
 	default:
-
+		if err := goose.SetDialect("{{ .SQLDriver }}"); err != nil {
+			log.Fatal(err)
+		}
 		if err := goose.Run(args[0], sqlDeps.WriteDB(), dir, arguments...); err != nil {
 			log.Fatalf("goose %v: %v", args[0], err)
 		}
@@ -125,12 +127,17 @@ func GetMigrateTables() []interface{} {
 
 	templateCmdMigrationInitModule = `-- +goose Up
 -- +goose StatementBegin
-CREATE TABLE IF NOT EXISTS {{plural .ModuleName}} (
+{{if eq .SQLDriver "mysql"}}CREATE TABLE IF NOT EXISTS ` + "`" + `{{plural .ModuleName}}` + "`" + ` (
+	` + "`" + `id` + "`" + ` SERIAL NOT NULL PRIMARY KEY,
+	` + "`" + `field` + "`" + ` VARCHAR(255),
+	` + "`" + `created_at` + "`" + ` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	` + "`" + `updated_at` + "`" + ` TIMESTAMP NULL
+);{{else}}CREATE TABLE IF NOT EXISTS {{plural .ModuleName}} (
 	"id" SERIAL NOT NULL PRIMARY KEY,
 	"field" VARCHAR(255),
 	"created_at" TIMESTAMPTZ(6),
 	"updated_at" TIMESTAMPTZ(6)
-);
+);{{end}}
 -- +goose StatementEnd
 
 -- +goose Down
