@@ -2,6 +2,7 @@ package tracer
 
 import (
 	"context"
+	"runtime"
 	"sync"
 
 	"github.com/golangid/candi/candishared"
@@ -70,6 +71,14 @@ func GetTraceID(ctx context.Context) string {
 // GetTraceURL log trace url
 func GetTraceURL(ctx context.Context) (u string) {
 	return activeTracer.GetTraceURL(ctx)
+}
+
+// LogStackTraceWhenPanic log stack trace in recover panic
+func LogStackTraceWhenPanic(trace Tracer) {
+	const size = 2 << 10
+	buf := make([]byte, size)
+	buf = buf[:runtime.Stack(buf, false)]
+	trace.Log("panic_trace", buf)
 }
 
 type noopTracer struct{ ctx context.Context }

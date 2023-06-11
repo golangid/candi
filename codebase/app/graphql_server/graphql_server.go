@@ -37,9 +37,9 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 	mux := http.NewServeMux()
 	mux.Handle("/", server.opt.rootHandler)
 	mux.Handle("/memstats", service.GetDependency().GetMiddleware().HTTPBasicAuth(http.HandlerFunc(wrapper.HTTPHandlerMemstats)))
-	mux.HandleFunc(server.opt.rootPath+rootGraphQLPath, httpHandler.ServeGraphQL())
-	mux.HandleFunc(server.opt.rootPath+rootGraphQLPlayground, httpHandler.ServePlayground)
-	mux.HandleFunc(server.opt.rootPath+rootGraphQLVoyager, httpHandler.ServeVoyager)
+	mux.HandleFunc(server.opt.RootPath, httpHandler.ServeGraphQL())
+	mux.HandleFunc(server.opt.RootPath+"/playground", httpHandler.ServePlayground)
+	mux.HandleFunc(server.opt.RootPath+"/voyager", httpHandler.ServeVoyager)
 
 	httpEngine.Addr = fmt.Sprintf(":%d", server.opt.httpPort)
 	httpEngine.Handler = mux

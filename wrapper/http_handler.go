@@ -58,6 +58,10 @@ func HTTPMiddlewareTracer(cfg HTTPMiddlewareTracerConfig) func(http.Handler) htt
 
 			trace, ctx := tracer.StartTraceFromHeader(req.Context(), operationName, header)
 			defer func() {
+				if rec := recover(); rec != nil {
+					tracer.LogStackTraceWhenPanic(trace)
+					NewHTTPResponse(http.StatusInternalServerError, fmt.Sprintf("panic: %v", rec)).JSON(rw)
+				}
 				trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 				trace.Finish()
 				logger.LogGreen("rest_server > trace_url: " + tracer.GetTraceURL(ctx))
@@ -159,6 +163,94 @@ func HTTPMiddlewareCORS(
 				}
 			}
 			res.WriteHeader(http.StatusNoContent)
+		})
+	}
+}
+
+// HTTPMiddlewareLog middleware
+func HTTPMiddlewareLog(isActive bool, writer io.Writer) func(http.Handler) http.Handler {
+	bPool := &sync.Pool{
+		New: func() interface{} {
+			return bytes.NewBuffer(make([]byte, 256))
+		},
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+			if !isActive {
+				next.ServeHTTP(res, req)
+				return
+			}
+
+			start := time.Now()
+
+			resBody := bytes.NewBuffer(make([]byte, 256))
+			respWriter := NewWrapHTTPResponseWriter(resBody, res)
+			next.ServeHTTP(respWriter, req)
+
+			stop := time.Now()
+			buf := bPool.Get().(*bytes.Buffer)
+			buf.Reset()
+
+			buf.WriteString(`{"time":"`)
+			buf.WriteString(time.Now().Format(time.RFC3339Nano))
+
+			buf.WriteString(`","id":"`)
+			id := req.Header.Get("X-Request-ID")
+			if id == "" {
+				id = res.Header().Get("X-Request-ID")
+			}
+			buf.WriteString(id)
+
+			buf.WriteString(`","remote_ip":"`)
+			buf.WriteString(req.Header.Get("X-Real-IP"))
+
+			buf.WriteString(`","host":"`)
+			buf.WriteString(req.Host)
+
+			buf.WriteString(`","method":"`)
+			buf.WriteString(req.Method)
+
+			buf.WriteString(`","uri":"`)
+			buf.WriteString(req.RequestURI)
+
+			buf.WriteString(`","user_agent":"`)
+			buf.WriteString(req.UserAgent())
+
+			buf.WriteString(`","status":`)
+
+			s := logger.GreenColor(respWriter.statusCode)
+			switch {
+			case respWriter.statusCode >= 500:
+				s = logger.RedColor(respWriter.statusCode)
+			case respWriter.statusCode >= 400:
+				s = logger.YellowColor(respWriter.statusCode)
+			case respWriter.statusCode >= 300:
+				s = logger.CyanColor(respWriter.statusCode)
+			}
+			buf.WriteString(s)
+
+			buf.WriteString(`","latency":`)
+			l := stop.Sub(start)
+			buf.WriteString(strconv.FormatInt(int64(l), 10))
+
+			buf.WriteString(`,"latency_human":"`)
+			buf.WriteString(stop.Sub(start).String())
+
+			buf.WriteString(`","bytes_in":`)
+			cl := req.Header.Get("Content-Length")
+			if cl == "" {
+				cl = "0"
+			}
+			buf.WriteString(cl)
+
+			buf.WriteString(`,"bytes_out":`)
+			buf.WriteString(strconv.FormatInt(int64(respWriter.contentLength), 10))
+
+			buf.WriteString("}\n")
+
+			io.Copy(writer, buf)
+			bPool.Put(buf)
 		})
 	}
 }

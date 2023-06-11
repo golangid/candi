@@ -28,7 +28,6 @@ func (m *Middleware) Bearer(ctx context.Context, tokenString string) (*candishar
 // HTTPBearerAuth http jwt token middleware
 func (m *Middleware) HTTPBearerAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-
 		claim, err := func(req *http.Request) (*candishared.TokenClaim, error) {
 			trace := tracer.StartTrace(req.Context(), "Middleware:HTTPBearerAuth")
 			defer trace.Finish()

@@ -10,7 +10,6 @@ import (
 
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
-	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -118,23 +117,13 @@ func TestNewHTTPResponse(t *testing.T) {
 }
 
 func TestHTTPResponse_JSON(t *testing.T) {
-	e := echo.New()
-	req, err := http.NewRequest(echo.GET, "/testing", nil)
-	assert.NoError(t, err)
-
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
 	resp := NewHTTPResponse(200, "success")
-	assert.NoError(t, resp.JSON(c.Response()))
+	assert.NoError(t, resp.JSON(rec))
 }
 
 func TestHTTPResponse_XML(t *testing.T) {
-	e := echo.New()
-	req, err := http.NewRequest(echo.GET, "/testing", nil)
-	assert.NoError(t, err)
-
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
 	resp := NewHTTPResponse(200, "success")
-	assert.NoError(t, resp.XML(c.Response()))
+	assert.NoError(t, resp.XML(rec))
 }
