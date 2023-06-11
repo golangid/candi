@@ -36,7 +36,7 @@ func (t *taskQueueWorker) serveGraphQLAPI() {
 	mux.Handle("/job", t.opt.basicAuth(http.StripPrefix("/", http.FileServer(dashboard.Dashboard))))
 	mux.Handle("/expired", t.opt.basicAuth(http.StripPrefix("/", http.FileServer(dashboard.Dashboard))))
 
-	gqlHandler := graphqlserver.NewHandler(false, schema)
+	gqlHandler := graphqlserver.NewHandler(schema, graphqlserver.Option{})
 	mux.HandleFunc("/graphql", gqlHandler.ServeGraphQL())
 	mux.HandleFunc("/playground", gqlHandler.ServePlayground)
 	mux.HandleFunc("/voyager", gqlHandler.ServeVoyager)

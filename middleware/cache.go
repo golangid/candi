@@ -63,7 +63,7 @@ func (m *Middleware) HTTPCache(next http.Handler) http.Handler {
 		trace, ctx := tracer.StartTraceWithContext(req.Context(), "Middleware:HTTPCache")
 		defer trace.Finish()
 
-		cacheKey := req.Method + ":" + req.URL.String()
+		cacheKey := req.Method + ":" + strings.TrimSuffix(req.URL.String(), "/")
 		trace.SetTag("key", cacheKey)
 		if cacheVal, err := m.cache.Get(ctx, cacheKey); err == nil {
 			if ttl, err := m.cache.GetTTL(ctx, cacheKey); err == nil {

@@ -3,26 +3,25 @@ package restserver
 import (
 	"net/http"
 	"os"
+	"strings"
 
 	graphqlserver "github.com/golangid/candi/codebase/app/graphql_server"
 	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/wrapper"
-	"github.com/labstack/echo"
 	"github.com/soheilhy/cmux"
 )
 
 type (
 	option struct {
-		rootMiddlewares     []echo.MiddlewareFunc
-		rootHandler         http.Handler
-		errorHandler        echo.HTTPErrorHandler
+		rootMiddlewares     []func(http.Handler) http.Handler
+		rootHandler         http.HandlerFunc
+		errorHandler        http.HandlerFunc
 		httpPort            uint16
 		rootPath            string
 		debugMode           bool
 		includeGraphQL      bool
 		jaegerMaxPacketSize int
 		sharedListener      cmux.CMux
-		engineOption        func(e *echo.Echo)
 		graphqlOption       graphqlserver.Option
 	}
 
@@ -33,21 +32,20 @@ type (
 func getDefaultOption() option {
 	return option{
 		httpPort:  8000,
-		rootPath:  "",
+		rootPath:  "/",
 		debugMode: true,
-		rootMiddlewares: []echo.MiddlewareFunc{
-			echo.WrapMiddleware(wrapper.HTTPMiddlewareCORS(
+		rootMiddlewares: []func(http.Handler) http.Handler{
+			wrapper.HTTPMiddlewareCORS(
 				env.BaseEnv().CORSAllowMethods, env.BaseEnv().CORSAllowHeaders,
 				env.BaseEnv().CORSAllowOrigins, nil, env.BaseEnv().CORSAllowCredential,
-			)),
-			EchoWrapMiddleware(wrapper.HTTPMiddlewareTracer(wrapper.HTTPMiddlewareTracerConfig{
+			),
+			wrapper.HTTPMiddlewareTracer(wrapper.HTTPMiddlewareTracerConfig{
 				MaxLogSize:  env.BaseEnv().JaegerMaxPacketSize,
-				ExcludePath: map[string]struct{}{"/": {}, "/graphql": {}},
-			})),
-			EchoLoggerMiddleware(env.BaseEnv().DebugMode, os.Stdout),
+				ExcludePath: map[string]struct{}{"/": {}, "/graphql": {}, "/favicon.ico": {}},
+			}),
+			wrapper.HTTPMiddlewareLog(env.BaseEnv().DebugMode, os.Stdout),
 		},
-		rootHandler:  http.HandlerFunc(wrapper.HTTPHandlerDefaultRoot),
-		errorHandler: CustomHTTPErrorHandler,
+		rootHandler: http.HandlerFunc(wrapper.HTTPHandlerDefaultRoot),
 	}
 }
 
@@ -61,12 +59,15 @@ func SetHTTPPort(port uint16) OptionFunc {
 // SetRootPath option func
 func SetRootPath(rootPath string) OptionFunc {
 	return func(o *option) {
+		if !strings.HasPrefix(rootPath, "/") {
+			rootPath = "/" + strings.Trim(rootPath, "/")
+		}
 		o.rootPath = rootPath
 	}
 }
 
 // SetRootHTTPHandler option func
-func SetRootHTTPHandler(rootHandler http.Handler) OptionFunc {
+func SetRootHTTPHandler(rootHandler http.HandlerFunc) OptionFunc {
 	return func(o *option) {
 		o.rootHandler = rootHandler
 	}
@@ -101,36 +102,23 @@ func SetJaegerMaxPacketSize(max int) OptionFunc {
 }
 
 // SetRootMiddlewares option func
-func SetRootMiddlewares(middlewares ...echo.MiddlewareFunc) OptionFunc {
+func SetRootMiddlewares(middlewares ...func(http.Handler) http.Handler) OptionFunc {
 	return func(o *option) {
 		o.rootMiddlewares = middlewares
 	}
 }
 
 // AddRootMiddlewares option func, overide root middleware
-func AddRootMiddlewares(middlewares ...echo.MiddlewareFunc) OptionFunc {
+func AddRootMiddlewares(middlewares ...func(http.Handler) http.Handler) OptionFunc {
 	return func(o *option) {
 		o.rootMiddlewares = append(o.rootMiddlewares, middlewares...)
-	}
-}
-
-// SetErrorHandler option func
-func SetErrorHandler(errorHandler echo.HTTPErrorHandler) OptionFunc {
-	return func(o *option) {
-		o.errorHandler = errorHandler
-	}
-}
-
-// SetEchoEngineOption option func
-func SetEchoEngineOption(echoFunc func(e *echo.Echo)) OptionFunc {
-	return func(o *option) {
-		o.engineOption = echoFunc
 	}
 }
 
 // AddGraphQLOption option func
 func AddGraphQLOption(opts ...graphqlserver.OptionFunc) OptionFunc {
 	return func(o *option) {
+		o.graphqlOption.RootPath = "/graphql"
 		for _, opt := range opts {
 			opt(&o.graphqlOption)
 		}

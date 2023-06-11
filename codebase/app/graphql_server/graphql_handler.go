@@ -31,7 +31,6 @@ type Handler interface {
 
 // ConstructHandlerFromService for create public graphql handler (maybe inject to rest handler)
 func ConstructHandlerFromService(service factory.ServiceFactory, opt Option) Handler {
-
 	// create dynamic struct
 	queryResolverValues := make(map[string]interface{})
 	mutationResolverValues := make(map[string]interface{})
@@ -79,33 +78,31 @@ func ConstructHandlerFromService(service factory.ServiceFactory, opt Option) Han
 	}
 	schema := graphql.MustParseSchema(string(gqlSchema), &opt.rootResolver, schemaOpts...)
 
-	logger.LogYellow(fmt.Sprintf("[GraphQL] endpoint\t\t\t: http://127.0.0.1:%d%s%s", opt.httpPort, opt.rootPath, rootGraphQLPath))
-	logger.LogYellow(fmt.Sprintf("[GraphQL] playground\t\t\t: http://127.0.0.1:%d%s%s", opt.httpPort, opt.rootPath, rootGraphQLPlayground))
-	logger.LogYellow(fmt.Sprintf("[GraphQL] playground (with explorer)\t: http://127.0.0.1:%d%s%s?graphiql=true", opt.httpPort, opt.rootPath, rootGraphQLPlayground))
-	logger.LogYellow(fmt.Sprintf("[GraphQL] voyager\t\t\t: http://127.0.0.1:%d%s%s", opt.httpPort, opt.rootPath, rootGraphQLVoyager))
+	logger.LogYellow(fmt.Sprintf("[GraphQL] endpoint\t\t\t: http://127.0.0.1:%d%s", opt.httpPort, opt.RootPath))
+	logger.LogYellow(fmt.Sprintf("[GraphQL] playground\t\t\t: http://127.0.0.1:%d%s/playground", opt.httpPort, opt.RootPath))
+	logger.LogYellow(fmt.Sprintf("[GraphQL] playground (with explorer)\t: http://127.0.0.1:%d%s/playground?graphiql=true", opt.httpPort, opt.RootPath))
+	logger.LogYellow(fmt.Sprintf("[GraphQL] voyager\t\t\t: http://127.0.0.1:%d%s/voyager", opt.httpPort, opt.RootPath))
 
 	return &handlerImpl{
-		disableIntrospection: opt.DisableIntrospection,
-		schema:               schema,
+		schema: schema,
+		option: opt,
 	}
 }
 
 type handlerImpl struct {
-	disableIntrospection bool
-	schema               *graphql.Schema
+	schema *graphql.Schema
+	option Option
 }
 
-func NewHandler(disableIntrospection bool, schema *graphql.Schema) Handler {
+func NewHandler(schema *graphql.Schema, opt Option) Handler {
 	return &handlerImpl{
-		disableIntrospection: disableIntrospection,
-		schema:               schema,
+		schema: schema,
+		option: opt,
 	}
 }
 
 func (s *handlerImpl) ServeGraphQL() http.HandlerFunc {
-
 	return ws.NewHandlerFunc(s.schema, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-
 		var params struct {
 			Query         string                 `json:"query"`
 			OperationName string                 `json:"operationName"`
@@ -136,7 +133,7 @@ func (s *handlerImpl) ServeGraphQL() http.HandlerFunc {
 }
 
 func (s *handlerImpl) ServePlayground(resp http.ResponseWriter, req *http.Request) {
-	if s.disableIntrospection {
+	if s.option.DisableIntrospection {
 		http.Error(resp, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -156,7 +153,7 @@ func (s *handlerImpl) ServePlayground(resp http.ResponseWriter, req *http.Reques
 		<script type=module>
 			import{renderYogaGraphiQL}from"https://storage.googleapis.com/agungdp/bin/candi/graphiql/yoga-graphiql.es.js";
 			renderYogaGraphiQL(root, {
-				endpoint: '/graphql',
+				endpoint: '` + s.option.RootPath + `',
 				title: 'GraphiQL'
 			});
 		</script>
@@ -188,8 +185,8 @@ func (s *handlerImpl) ServePlayground(resp http.ResponseWriter, req *http.Reques
 		root.classList.add('playgroundIn');
 		const wsProto = location.protocol == 'https:' ? 'wss:' : 'ws:'
 		GraphQLPlayground.init(root, {
-			endpoint: location.protocol + '//' + location.host + '/graphql',
-			subscriptionsEndpoint: wsProto + '//' + location.host + '/graphql',
+			endpoint: location.protocol + '//' + location.host + '` + s.option.RootPath + `',
+			subscriptionsEndpoint: wsProto + '//' + location.host + '` + s.option.RootPath + `',
 			settings: {
 				'request.credentials': 'same-origin'
 			}
@@ -201,7 +198,7 @@ func (s *handlerImpl) ServePlayground(resp http.ResponseWriter, req *http.Reques
 }
 
 func (s *handlerImpl) ServeVoyager(resp http.ResponseWriter, req *http.Request) {
-	if s.disableIntrospection {
+	if s.option.DisableIntrospection {
 		http.Error(resp, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -251,7 +248,7 @@ func (s *handlerImpl) ServeVoyager(resp http.ResponseWriter, req *http.Request) 
 		function introspectionProvider(introspectionQuery) {
 		// This example expects a GraphQL server at the path /graphql.
 		// Change this to point wherever you host your GraphQL server.
-		return fetch(location.protocol + '//' + location.host + '/graphql', {
+		return fetch(location.protocol + '//' + location.host + '` + s.option.RootPath + `', {
 			method: 'post',
 			headers: {
 			'Accept': 'application/json',

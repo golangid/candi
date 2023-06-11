@@ -3,8 +3,7 @@
 package mocks
 
 import (
-	echo "github.com/labstack/echo"
-
+	interfaces "github.com/golangid/candi/codebase/interfaces"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -14,7 +13,7 @@ type RESTHandler struct {
 }
 
 // Mount provides a mock function with given fields: group
-func (_m *RESTHandler) Mount(group *echo.Group) {
+func (_m *RESTHandler) Mount(group interfaces.RESTRouter) {
 	_m.Called(group)
 }
 

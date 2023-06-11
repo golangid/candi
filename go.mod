@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/Shopify/sarama v1.38.1
 	github.com/gertd/go-pluralize v0.2.1
+	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.11.2
@@ -16,7 +17,6 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/joho/godotenv v1.5.1
-	github.com/labstack/echo v3.3.10+incompatible
 	github.com/lib/pq v1.10.9
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/soheilhy/cmux v0.1.5
@@ -47,10 +47,7 @@ require (
 	github.com/jcmturner/rpc/v2 v2.0.3 // indirect
 	github.com/klauspost/compress v1.16.5 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/labstack/gommon v0.4.0 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
-	github.com/mattn/go-colorable v0.1.11 // indirect
-	github.com/mattn/go-isatty v0.0.18 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -58,8 +55,6 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
-	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect

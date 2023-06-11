@@ -8,6 +8,7 @@ main_service.go
 *.key
 coverage.txt
 example/
+cmd/candi/test/
 .vscode
 .idea
 .DS_Store

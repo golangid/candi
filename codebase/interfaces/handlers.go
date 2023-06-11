@@ -2,13 +2,12 @@ package interfaces
 
 import (
 	"github.com/golangid/candi/codebase/factory/types"
-	"github.com/labstack/echo"
 	"google.golang.org/grpc"
 )
 
 // RESTHandler delivery factory for REST handler (default using echo rest framework)
 type RESTHandler interface {
-	Mount(group *echo.Group)
+	Mount(group RESTRouter)
 }
 
 // GRPCHandler delivery factory for GRPC handler

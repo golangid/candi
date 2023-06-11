@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -121,7 +120,8 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			err = fmt.Errorf("panic: %v", r)
 			job.Error = err.Error()
 			job.Status = string(StatusFailure)
-			trace.Log("stacktrace", string(debug.Stack()))
+
+			tracer.LogStackTraceWhenPanic(trace)
 		}
 
 		job.FinishedAt = time.Now()

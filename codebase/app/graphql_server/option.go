@@ -8,19 +8,13 @@ import (
 	"github.com/soheilhy/cmux"
 )
 
-const (
-	rootGraphQLPath       = "/graphql"
-	rootGraphQLPlayground = "/graphql/playground"
-	rootGraphQLVoyager    = "/graphql/voyager"
-)
-
 type (
 	// Option gql server
 	Option struct {
 		DisableIntrospection bool
+		RootPath             string
 
 		httpPort            uint16
-		rootPath            string
 		debugMode           bool
 		jaegerMaxPacketSize int
 		rootHandler         http.Handler
@@ -36,7 +30,7 @@ type (
 func getDefaultOption() Option {
 	return Option{
 		httpPort:    8000,
-		rootPath:    "",
+		RootPath:    "/graphql",
 		debugMode:   true,
 		rootHandler: http.HandlerFunc(wrapper.HTTPHandlerDefaultRoot),
 	}
@@ -52,7 +46,7 @@ func SetHTTPPort(port uint16) OptionFunc {
 // SetRootPath option func
 func SetRootPath(rootPath string) OptionFunc {
 	return func(o *Option) {
-		o.rootPath = rootPath
+		o.RootPath = rootPath
 	}
 }
 
