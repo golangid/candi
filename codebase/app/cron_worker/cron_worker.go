@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"log"
 	"reflect"
-	"runtime/debug"
 	"sync"
 	"time"
 
@@ -180,7 +179,7 @@ func (c *cronWorker) processJob(job *Job) {
 	defer func() {
 		if r := recover(); r != nil {
 			trace.SetError(fmt.Errorf("%v", r))
-			trace.Log("stacktrace", string(debug.Stack()))
+			tracer.LogStackTrace(trace)
 		}
 		logger.LogGreen("cron_scheduler > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))

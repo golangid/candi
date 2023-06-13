@@ -73,12 +73,12 @@ func GetTraceURL(ctx context.Context) (u string) {
 	return activeTracer.GetTraceURL(ctx)
 }
 
-// LogStackTraceWhenPanic log stack trace in recover panic
-func LogStackTraceWhenPanic(trace Tracer) {
+// LogStackTrace log stack trace in recover panic
+func LogStackTrace(trace Tracer) {
 	const size = 2 << 10
 	buf := make([]byte, size)
 	buf = buf[:runtime.Stack(buf, false)]
-	trace.Log("panic_trace", buf)
+	trace.Log("stacktrace_detail", buf)
 }
 
 type noopTracer struct{ ctx context.Context }
