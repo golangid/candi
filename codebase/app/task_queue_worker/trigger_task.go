@@ -121,7 +121,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			job.Error = err.Error()
 			job.Status = string(StatusFailure)
 
-			tracer.LogStackTraceWhenPanic(trace)
+			tracer.LogStackTrace(trace)
 		}
 
 		job.FinishedAt = time.Now()

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"reflect"
-	"runtime/debug"
 	"strconv"
 	"sync"
 
@@ -119,7 +118,6 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 }
 
 func (p *postgresWorker) Serve() {
-
 	for _, source := range p.opt.sources {
 		source.listener.Listen(eventsConst)
 	}
@@ -216,7 +214,7 @@ func (p *postgresWorker) execEvent(workerIndex int, data *EventPayload) {
 	defer func() {
 		if r := recover(); r != nil {
 			trace.SetError(fmt.Errorf("panic: %v", r))
-			trace.Log("stacktrace", string(debug.Stack()))
+			tracer.LogStackTrace(trace)
 		}
 		logger.LogGreen("postgres_listener > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
@@ -233,7 +231,6 @@ func (p *postgresWorker) execEvent(workerIndex int, data *EventPayload) {
 
 	if data.Data.IsTooLongPayload {
 		detailData := source.findDetailData(data.Table, data.GetID())
-
 		switch data.Action {
 		case ActionInsert:
 			data.Data.New = detailData

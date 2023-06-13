@@ -59,7 +59,7 @@ func HTTPMiddlewareTracer(cfg HTTPMiddlewareTracerConfig) func(http.Handler) htt
 			trace, ctx := tracer.StartTraceFromHeader(req.Context(), operationName, header)
 			defer func() {
 				if rec := recover(); rec != nil {
-					tracer.LogStackTraceWhenPanic(trace)
+					tracer.LogStackTrace(trace)
 					NewHTTPResponse(http.StatusInternalServerError, fmt.Sprintf("panic: %v", rec)).JSON(rw)
 				}
 				trace.SetTag("trace_id", tracer.GetTraceID(ctx))
@@ -197,9 +197,6 @@ func HTTPMiddlewareLog(isActive bool, writer io.Writer) func(http.Handler) http.
 
 			buf.WriteString(`","id":"`)
 			id := req.Header.Get("X-Request-ID")
-			if id == "" {
-				id = res.Header().Get("X-Request-ID")
-			}
 			buf.WriteString(id)
 
 			buf.WriteString(`","remote_ip":"`)

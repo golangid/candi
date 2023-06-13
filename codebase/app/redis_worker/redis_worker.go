@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"runtime/debug"
 	"sync"
 
 	"github.com/golangid/candi/broker"
@@ -172,7 +171,7 @@ func (r *redisWorker) processMessage(param broker.RedisMessage) {
 	defer func() {
 		if r := recover(); r != nil {
 			trace.SetError(fmt.Errorf("panic: %v", r))
-			trace.Log("stacktrace", string(debug.Stack()))
+			tracer.LogStackTrace(trace)
 		}
 		logger.LogGreen("redis_subscriber > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))

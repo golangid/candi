@@ -11,7 +11,6 @@ import (
 )
 
 func getListener(dsn string) (*sql.DB, *pq.Listener) {
-
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		panic(fmt.Errorf(`[POSTGRES-LISTENER] ERROR: %v, connection: %s`, err, candihelper.MaskingPasswordURL(dsn)))

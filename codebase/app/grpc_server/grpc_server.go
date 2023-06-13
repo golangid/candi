@@ -98,7 +98,7 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 
 func (s *grpcServer) Serve() {
 	if err := s.serverEngine.Serve(s.listener); err != nil {
-		log.Panicf("GRPC: Unexpected Error: %v", err)
+		log.Println("GRPC: Unexpected Error", err)
 	}
 }
 

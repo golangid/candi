@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"reflect"
-	"runtime/debug"
 	"sync"
 
 	"github.com/golangid/candi/candihelper"
@@ -153,7 +152,7 @@ func (r *rabbitmqWorker) processMessage(message amqp.Delivery) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
-			trace.Log("stacktrace", string(debug.Stack()))
+			tracer.LogStackTrace(trace)
 		}
 
 		if selectedHandler.AutoACK {
