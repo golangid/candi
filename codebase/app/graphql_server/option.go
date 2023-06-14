@@ -2,6 +2,7 @@ package graphqlserver
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/golangid/candi/wrapper"
 	"github.com/golangid/graphql-go/types"
@@ -46,6 +47,9 @@ func SetHTTPPort(port uint16) OptionFunc {
 // SetRootPath option func
 func SetRootPath(rootPath string) OptionFunc {
 	return func(o *Option) {
+		if strings.Trim(rootPath, "/") == "" {
+			return
+		}
 		o.RootPath = rootPath
 	}
 }

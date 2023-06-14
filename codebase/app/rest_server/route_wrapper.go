@@ -65,6 +65,9 @@ func (r *routeWrapper) TRACE(pattern string, h http.HandlerFunc, middlewares ...
 }
 
 func transformURLParam(pattern string) string {
+	if pattern == "" {
+		return "/"
+	}
 	if strings.ContainsRune(pattern, '{') {
 		return pattern
 	}
