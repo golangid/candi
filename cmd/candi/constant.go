@@ -23,7 +23,10 @@ const (
 	RedisDeps               = "redisDeps"
 	SqldbDeps               = "sqldbDeps"
 	MongodbDeps             = "mongodbDeps"
-	ArangodbDeps            = "arangodbDeps"
+
+	// plugin
+	ArangodbDeps  = "arangodbDeps"
+	FiberRestDeps = "fiberRestDeps"
 
 	MitLicense     = "MIT License"
 	ApacheLicense  = "Apache License"

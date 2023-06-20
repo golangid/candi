@@ -16,11 +16,9 @@ var (
 	scopeMap = map[string]string{
 		"1": InitMonorepo, "2": InitService, "3": AddModule, "4": AddHandler,
 	}
-	serviceHandlersMap = map[string]string{
-		"1": RestHandler, "2": GrpcHandler, "3": GraphqlHandler,
-	}
-	workerHandlersMap = map[string]string{
-		"1": KafkaHandler, "2": SchedulerHandler, "3": RedissubsHandler, "4": TaskqueueHandler, "5": PostgresListenerHandler, "6": RabbitmqHandler,
+
+	pluginHandler = map[string]string{
+		"4": FiberRestDeps,
 	}
 	dependencyMap = map[string]string{
 		"1": RedisDeps, "2": SqldbDeps, "3": MongodbDeps, "4": ArangodbDeps,
@@ -104,7 +102,7 @@ type configHeader struct {
 
 type config struct {
 	IsMonorepo                                                         bool
-	RestHandler, GRPCHandler, GraphQLHandler                           bool
+	RestHandler, GRPCHandler, GraphQLHandler, FiberRestHandler         bool
 	KafkaHandler, SchedulerHandler, RedisSubsHandler, TaskQueueHandler bool
 	PostgresListenerHandler, RabbitMQHandler, IsWorkerActive           bool
 	RedisDeps, SQLDeps, MongoDeps, SQLUseGORM, ArangoDeps              bool

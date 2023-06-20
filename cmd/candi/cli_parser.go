@@ -117,13 +117,20 @@ stageInputModules:
 	}
 
 stageSelectServerHandler:
-	deliveryHandlerOption, deliveryHandlerMap = filterServerHandler(srvConfig, flagParam)
+	deliveryHandlerOption, deliveryHandlerMap = filterServerHandler(&srvConfig, flagParam)
 	if len(deliveryHandlerMap) == 0 {
 		goto stageSelectWorkerHandlers
 	}
 	cmdInput = readInput("Please select server handlers (separated by comma, enter for skip)\n" + deliveryHandlerOption)
 	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
-		if serverName, ok := deliveryHandlerMap[strings.TrimSpace(str)]; ok {
+		opt := strings.TrimSpace(str)
+		if serverName, ok := deliveryHandlerMap[opt]; ok {
+			if serviceHandlers[serverName] {
+				fmt.Printf(RedFormat, "Duplicate server handler type")
+				goto stageSelectServerHandler
+			}
+
+			srvConfig.FiberRestHandler = serverName == RestHandler && pluginHandler[opt] == FiberRestDeps
 			serviceHandlers[serverName] = true
 		} else if str != "" {
 			fmt.Printf(RedFormat, "Invalid option, try again")
@@ -132,7 +139,7 @@ stageSelectServerHandler:
 	}
 
 stageSelectWorkerHandlers:
-	deliveryHandlerOption, deliveryHandlerMap = filterWorkerHandler(srvConfig, flagParam)
+	deliveryHandlerOption, deliveryHandlerMap = filterWorkerHandler(&srvConfig, flagParam)
 	cmdInput = readInput("Please select worker handlers (separated by comma, enter for skip)\n" + deliveryHandlerOption)
 	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
 		if workerName, ok := deliveryHandlerMap[strings.TrimSpace(str)]; ok {

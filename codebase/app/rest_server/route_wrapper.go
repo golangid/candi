@@ -8,6 +8,11 @@ import (
 	"github.com/golangid/candi/codebase/interfaces"
 )
 
+// URLParam default parse param from url path
+var URLParam = func(r *http.Request, key string) string {
+	return chi.URLParam(r, key)
+}
+
 type routeWrapper struct {
 	router chi.Router
 }
@@ -93,9 +98,4 @@ func transformURLParam(pattern string) string {
 	}
 
 	return pattern
-}
-
-// URLParam bridging get url param with chi
-func URLParam(r *http.Request, key string) string {
-	return chi.URLParam(r, key)
 }

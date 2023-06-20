@@ -107,9 +107,7 @@ type {{camel .ModuleName}}UsecaseImpl struct {
 	{{if not .SQLDeps}}// {{end}}repoSQL       repository.RepoSQL
 	{{if not .MongoDeps}}// {{end}}repoMongo     repository.RepoMongo{{if .ArangoDeps}}
 	repoArango     repository.RepoArango{{end}}
-	kafkaPub       interfaces.Publisher{{if .RedisSubsHandler}}
-	redisPub       interfaces.Publisher{{ end }}{{if .RabbitMQHandler}}
-	rabbitmqPub    interfaces.Publisher{{ end }}
+	publisher      map[types.Worker]interfaces.Publisher
 }
 
 // New{{upper (camel .ModuleName)}}Usecase usecase impl constructor
@@ -117,20 +115,21 @@ func New{{upper (camel .ModuleName)}}Usecase(deps dependency.Dependency) ({{uppe
 	uc := &{{camel .ModuleName}}UsecaseImpl{
 		{{if not .SQLDeps}}// {{end}}repoSQL:   repository.GetSharedRepoSQL(),
 		{{if not .MongoDeps}}// {{end}}repoMongo: repository.GetSharedRepoMongo(),
-		locker:    deps.GetLocker(),{{if .ArangoDeps}}
+		locker:    deps.GetLocker(),
+		publisher: make(map[types.Worker]interfaces.Publisher),{{if .ArangoDeps}}
 		repoArango: repository.GetSharedRepoArango(),{{end}}
 	}
 	if redisPool := deps.GetRedisPool(); redisPool != nil {
 		uc.cache = redisPool.Cache()
 	}
 	if kafkaBroker := deps.GetBroker(types.Kafka); kafkaBroker != nil {
-		uc.kafkaPub = kafkaBroker.GetPublisher()
+		uc.publisher[types.Kafka] = kafkaBroker.GetPublisher()
 	}{{if .RedisSubsHandler}}
 	if redisBroker := deps.GetBroker(types.RedisSubscriber); redisBroker != nil {
-		uc.redisPub = redisBroker.GetPublisher()
+		uc.publisher[types.RedisSubscriber] = redisBroker.GetPublisher()
 	}{{ end }}{{if .RabbitMQHandler}}
 	if rabbitmqBroker := deps.GetBroker(types.RabbitMQ); rabbitmqBroker != nil {
-		uc.rabbitmqPub = rabbitmqBroker.GetPublisher()
+		uc.publisher[types.RabbitMQ] = rabbitmqBroker.GetPublisher()
 	}{{ end }}
 	return uc, func(sharedUsecase common.Usecase) {
 		uc.sharedUsecase = sharedUsecase
@@ -301,6 +300,15 @@ func (uc *{{camel .ModuleName}}UsecaseImpl) Create{{upper (camel .ModuleName)}}(
 	}
 	err = {{if or .SQLDeps .MongoDeps .ArangoDeps}}uc.repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().Save(ctx, &data){{end}}
 	result.Serialize(&data)
+
+	/*
+	// Sample using publisher
+	uc.publisher[types.Kafka].PublishMessage(ctx, &candishared.PublisherArgument{
+		Topic: "[topic]",
+		Key:   "[key]",
+		Message: candihelper.ToBytes([message]),
+	})
+	*/
 	return
 }
 `

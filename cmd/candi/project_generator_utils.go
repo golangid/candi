@@ -194,7 +194,7 @@ func loadSavedConfig(flagParam *flagParameter) serviceConfig {
 	return savedConfig
 }
 
-func filterServerHandler(cfg serviceConfig, flagParam *flagParameter) (wording string, handlers map[string]string) {
+func filterServerHandler(cfg *serviceConfig, flagParam *flagParameter) (wording string, handlers map[string]string) {
 	handlers = make(map[string]string)
 	var options []string
 	if !cfg.RestHandler || (flagParam.addHandler && validateDir(flagParam.getFullModuleChildDir("delivery", "resthandler")) != nil) {
@@ -209,12 +209,16 @@ func filterServerHandler(cfg serviceConfig, flagParam *flagParameter) (wording s
 		options = append(options, fmt.Sprintf("%d) GraphQL", len(options)+1))
 		handlers[strconv.Itoa(len(options))] = GraphqlHandler
 	}
+	if !cfg.RestHandler || (flagParam.addHandler && validateDir(flagParam.getFullModuleChildDir("delivery", "resthandler")) != nil) {
+		options = append(options, fmt.Sprintf("%d) Fiber REST API (plugin)", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = RestHandler
+	}
 
 	wording = strings.Join(options, "\n")
 	return
 }
 
-func filterWorkerHandler(cfg serviceConfig, flagParam *flagParameter) (wording string, handlers map[string]string) {
+func filterWorkerHandler(cfg *serviceConfig, flagParam *flagParameter) (wording string, handlers map[string]string) {
 	handlers = make(map[string]string)
 	var options []string
 	if !cfg.KafkaHandler || (flagParam.addHandler &&

@@ -122,7 +122,9 @@ import ({{if not .MongoDeps}}
 	taskqueueworker "{{.LibraryName}}/codebase/app/task_queue_worker"{{end}}
 	"{{.LibraryName}}/codebase/factory"
 	"{{.LibraryName}}/codebase/factory/appfactory"
-	"{{.LibraryName}}/config/env"{{if not (or .SQLDeps .MongoDeps)}}
+	"{{.LibraryName}}/config/env"{{if .FiberRestHandler}}
+	
+	fiberrest "github.com/golangid/candi-plugin/fiber-rest"{{end}}{{if not (or .SQLDeps .MongoDeps)}}
 
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"{{end}}
@@ -147,7 +149,6 @@ USE_POSTGRES_LISTENER_WORKER=[bool]
 USE_RABBITMQ_CONSUMER=[bool] # event driven handler and dynamic scheduler
 */
 func InitAppFromEnvironmentConfig(service factory.ServiceFactory) (apps []factory.AppServerFactory) {
-
 	if env.BaseEnv().UseKafkaConsumer {
 		apps = append(apps, appfactory.SetupKafkaWorker(service))
 	}
@@ -180,7 +181,7 @@ func InitAppFromEnvironmentConfig(service factory.ServiceFactory) (apps []factor
 	}
 
 	if env.BaseEnv().UseREST {
-		apps = append(apps, appfactory.SetupRESTServer(service))
+		apps = append(apps, {{if .FiberRestHandler}}fiberrest.SetupFiberServer(service){{else}}appfactory.SetupRESTServer(service){{end}})
 	} else if env.BaseEnv().UseGraphQL {
 		apps = append(apps, appfactory.SetupGraphQLServer(service))
 	}
