@@ -139,6 +139,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			updated := map[string]interface{}{
 				"retries": job.Retries, "finished_at": job.FinishedAt, "status": job.Status,
 				"interval": job.Interval, "error": job.Error, "trace_id": job.TraceID,
+				"result": job.Result,
 			}
 			if isUpdateArgs {
 				updated["arguments"] = job.Arguments
@@ -152,7 +153,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			retryHistory := RetryHistory{
 				Status: job.Status, Error: job.Error, TraceID: job.TraceID,
 				StartAt: startAt, EndAt: job.FinishedAt,
-				ErrorStack: job.ErrorStack,
+				ErrorStack: job.ErrorStack, Result: job.Result,
 			}
 			if err != nil {
 				retryHistory.Status = StatusFailure.String()
@@ -217,14 +218,17 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 
 	select {
 	case <-ctx.Done():
-
 		job.Error = "Job has been stopped when running (context canceled)"
 		job.Status = string(StatusStopped)
 		isContextCanceled = true
 		return
 
 	case err = <-errChan:
-
+		job.Status = string(StatusSuccess)
+		job.Error = ""
+		if respBuff := eventContext.GetResponse(); respBuff != nil {
+			job.Result = respBuff.String()
+		}
 		if err != nil {
 			eventContext.SetError(err)
 
@@ -236,7 +240,6 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 				job.ErrorStack = e.StackTrace
 
 				if job.Retries < job.MaxRetry {
-
 					if e.Delay <= 0 {
 						e.Delay = defaultInterval
 					}
@@ -260,10 +263,6 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 
 				logger.LogRed("TaskQueueWorker: Still error for task '" + job.TaskName + "' (job id: " + job.ID + ")")
 			}
-
-		} else {
-			job.Status = string(StatusSuccess)
-			job.Error = ""
 		}
 
 		for _, h := range selectedHandler.HandlerFuncs[1:] {

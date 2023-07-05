@@ -76,7 +76,10 @@ func initEngine(service factory.ServiceFactory, opts ...OptionFunc) *taskQueueWo
 		globalSemaphore:           make(chan struct{}, env.BaseEnv().MaxGoroutines),
 		messagePool: sync.Pool{
 			New: func() interface{} {
-				return candishared.NewEventContext(bytes.NewBuffer(make([]byte, 0, 256)))
+				return candishared.NewEventContextWithResult(
+					bytes.NewBuffer(make([]byte, 0, 256)),
+					bytes.NewBuffer(make([]byte, 0, 256)),
+				)
 			},
 		},
 	}

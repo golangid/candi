@@ -63,12 +63,12 @@ func (s *SQLPersistent) FindAllJob(ctx context.Context, filter *Filter) (jobs []
 		sort = "DESC"
 	}
 	query := "SELECT " +
-		s.formatColumnName("id", "task_name", "arguments", "retries", "max_retry", "interval", "created_at", "finished_at", "status", "error", "trace_id", "current_progress", "max_progress") +
+		s.formatColumnName("id", "task_name", "arguments", "retries", "max_retry", "interval", "created_at", "finished_at", "status", "error", "result", "trace_id", "current_progress", "max_progress") +
 		" FROM " + jobModelName + " " + where + " ORDER BY " + s.formatColumnName(strings.TrimPrefix(filter.Sort, "-")) + " " + sort
 	if !filter.ShowAll {
 		query += fmt.Sprintf(` LIMIT %d OFFSET %d `, filter.Limit, filter.CalculateOffset())
 	}
-	rows, err := s.db.Query(query)
+	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
 		logger.LogE(err.Error())
 		return jobs
@@ -78,30 +78,31 @@ func (s *SQLPersistent) FindAllJob(ctx context.Context, filter *Filter) (jobs []
 	for rows.Next() {
 		var job Job
 		var createdAt string
-		var finishedAt sql.NullString
+		var finishedAt, result sql.NullString
 		if err := rows.Scan(
 			&job.ID, &job.TaskName, &job.Arguments, &job.Retries, &job.MaxRetry, &job.Interval, &createdAt,
-			&finishedAt, &job.Status, &job.Error, &job.TraceID, &job.CurrentProgress, &job.MaxProgress,
+			&finishedAt, &job.Status, &job.Error, &result, &job.TraceID, &job.CurrentProgress, &job.MaxProgress,
 		); err != nil {
 			logger.LogE(err.Error())
 			return
 		}
 		job.CreatedAt = s.parseDateString(createdAt).Time
 		job.FinishedAt = s.parseDateString(finishedAt.String).Time
+		job.Result = result.String
 		jobs = append(jobs, job)
 	}
 
 	return
 }
 func (s *SQLPersistent) FindJobByID(ctx context.Context, id string, filterHistory *Filter) (job Job, err error) {
-	var finishedAt sql.NullString
+	var finishedAt, result sql.NullString
 	var createdAt string
-	err = s.db.QueryRow(`SELECT `+
-		s.formatColumnName("id", "task_name", "arguments", "retries", "max_retry", "interval", "created_at", "finished_at", "status", "error", "trace_id", "current_progress", "max_progress")+
+	err = s.db.QueryRowContext(ctx, `SELECT `+
+		s.formatColumnName("id", "task_name", "arguments", "retries", "max_retry", "interval", "created_at", "finished_at", "status", "error", "result", "trace_id", "current_progress", "max_progress")+
 		` FROM `+jobModelName+` WHERE id='`+id+`'`).
 		Scan(
 			&job.ID, &job.TaskName, &job.Arguments, &job.Retries, &job.MaxRetry, &job.Interval, &createdAt,
-			&finishedAt, &job.Status, &job.Error, &job.TraceID, &job.CurrentProgress, &job.MaxProgress,
+			&finishedAt, &job.Status, &job.Error, &result, &job.TraceID, &job.CurrentProgress, &job.MaxProgress,
 		)
 	if err != nil {
 		logger.LogE(err.Error())
@@ -109,9 +110,10 @@ func (s *SQLPersistent) FindJobByID(ctx context.Context, id string, filterHistor
 	}
 	job.CreatedAt = s.parseDateString(createdAt).Time
 	job.FinishedAt = s.parseDateString(finishedAt.String).Time
+	job.Result = result.String
 
 	if filterHistory != nil {
-		query := `SELECT ` + s.formatColumnName("error_stack", "status", "error", "trace_id", "start_at", "end_at") +
+		query := `SELECT ` + s.formatColumnName("error_stack", "status", "error", "result", "trace_id", "start_at", "end_at") +
 			` FROM task_queue_worker_job_histories WHERE job_id = '` + id + `' ORDER BY start_at DESC `
 		rows, err := s.db.Query(query + fmt.Sprintf(` LIMIT %d OFFSET %d`, filterHistory.Limit, filterHistory.CalculateOffset()))
 		if err != nil {
@@ -123,19 +125,21 @@ func (s *SQLPersistent) FindJobByID(ctx context.Context, id string, filterHistor
 		for rows.Next() {
 			var rh RetryHistory
 			var startAt, endAt string
-			rows.Scan(&rh.ErrorStack, &rh.Status, &rh.Error, &rh.TraceID, &startAt, &endAt)
+			var result sql.NullString
+			rows.Scan(&rh.ErrorStack, &rh.Status, &rh.Error, &result, &rh.TraceID, &startAt, &endAt)
 			rh.StartAt = s.parseDateString(startAt).Time
 			rh.EndAt = s.parseDateString(endAt).Time
+			rh.Result = result.String
 			job.RetryHistories = append(job.RetryHistories, rh)
 		}
-		s.db.QueryRow(`SELECT COUNT(*) FROM task_queue_worker_job_histories WHERE job_id = '` + id + `'`).Scan(&filterHistory.Count)
+		s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM task_queue_worker_job_histories WHERE job_id = '`+id+`'`).Scan(&filterHistory.Count)
 	}
 
 	return
 }
 func (s *SQLPersistent) CountAllJob(ctx context.Context, filter *Filter) (count int) {
 	where, _ := s.toQueryFilter(filter)
-	if err := s.db.QueryRow(`SELECT COUNT(*) FROM ` + jobModelName + ` ` + where).Scan(&count); err != nil {
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+jobModelName+` `+where).Scan(&count); err != nil {
 		logger.LogE(err.Error())
 	}
 	return
@@ -189,18 +193,18 @@ func (s *SQLPersistent) SaveJob(ctx context.Context, job *Job, retryHistories ..
 		job.CreatedAt = time.Now()
 		args = []interface{}{
 			job.ID, job.TaskName, job.Arguments, job.Retries, job.MaxRetry, job.Interval, s.parseDate(job.CreatedAt), s.parseDate(time.Now()), s.parseDate(job.FinishedAt),
-			job.Status, job.Error, job.TraceID, job.CurrentProgress, job.MaxProgress,
+			job.Status, job.Error, job.Result, job.TraceID, job.CurrentProgress, job.MaxProgress,
 		}
 		query = "INSERT INTO " + jobModelName + " (" +
-			s.formatColumnName("id", "task_name", "arguments", "retries", "max_retry", "interval", "created_at", "updated_at", "finished_at", "status", "error", "trace_id", "current_progress", "max_progress") +
+			s.formatColumnName("id", "task_name", "arguments", "retries", "max_retry", "interval", "created_at", "updated_at", "finished_at", "status", "error", "result", "trace_id", "current_progress", "max_progress") +
 			") VALUES (" + s.parameterize(len(args)) + ")"
 	} else {
 		args = []interface{}{
 			job.TaskName, job.Arguments, job.Retries, job.MaxRetry, job.Interval, s.parseDate(time.Now()), s.parseDate(job.FinishedAt), job.Status,
-			job.Error, job.TraceID, job.CurrentProgress, job.MaxProgress,
+			job.Error, job.Result, job.TraceID, job.CurrentProgress, job.MaxProgress,
 		}
 		query = `UPDATE ` + jobModelName + ` SET ` +
-			s.parameterizeForUpdate("task_name", "arguments", "retries", "max_retry", "interval", "updated_at", "finished_at", "status", "error", "trace_id", "current_progress", "max_progress") +
+			s.parameterizeForUpdate("task_name", "arguments", "retries", "max_retry", "interval", "updated_at", "finished_at", "status", "error", "result", "trace_id", "current_progress", "max_progress") +
 			` WHERE id = '` + job.ID + `'`
 	}
 	_, err = s.db.ExecContext(ctx, query, args...)
@@ -210,9 +214,9 @@ func (s *SQLPersistent) SaveJob(ctx context.Context, job *Job, retryHistories ..
 	}
 
 	for _, rh := range retryHistories {
-		args := []interface{}{job.ID, rh.ErrorStack, rh.Status, rh.Error, rh.TraceID, rh.StartAt, rh.EndAt}
+		args := []interface{}{job.ID, rh.ErrorStack, rh.Status, rh.Error, rh.Result, rh.TraceID, rh.StartAt, rh.EndAt}
 		_, err = s.db.ExecContext(ctx, `INSERT INTO task_queue_worker_job_histories (`+
-			s.formatColumnName("job_id", "error_stack", "status", "error", "trace_id", "start_at", "end_at")+
+			s.formatColumnName("job_id", "error_stack", "status", "error", "result", "trace_id", "start_at", "end_at")+
 			`) VALUES (`+s.parameterize(len(args))+`)`, args...)
 		if err != nil {
 			logger.LogE(err.Error())
@@ -251,9 +255,9 @@ func (s *SQLPersistent) UpdateJob(ctx context.Context, filter *Filter, updated m
 
 	if filter.JobID != nil {
 		for _, rh := range retryHistories {
-			args := []interface{}{filter.JobID, rh.ErrorStack, rh.Status, rh.Error, rh.TraceID, s.parseDate(rh.StartAt), s.parseDate(rh.EndAt)}
+			args := []interface{}{filter.JobID, rh.ErrorStack, rh.Status, rh.Error, rh.Result, rh.TraceID, s.parseDate(rh.StartAt), s.parseDate(rh.EndAt)}
 			_, err = s.db.ExecContext(ctx, `INSERT INTO task_queue_worker_job_histories (`+
-				s.formatColumnName("job_id", "error_stack", "status", "error", "trace_id", "start_at", "end_at")+
+				s.formatColumnName("job_id", "error_stack", "status", "error", "result", "trace_id", "start_at", "end_at")+
 				`) VALUES (`+s.parameterize(len(args))+`)`, args...)
 			if err != nil {
 				logger.LogE(err.Error())
@@ -283,16 +287,17 @@ func (s *SQLPersistent) CleanJob(ctx context.Context, filter *Filter) (affectedR
 	return
 }
 func (s *SQLPersistent) DeleteJob(ctx context.Context, id string) (job Job, err error) {
-	var createdAt, finishedAt sql.NullString
-	err = s.db.QueryRow(`SELECT `+
-		s.formatColumnName("id", "task_name", "arguments", "retries", "max_retry", "interval", "created_at", "finished_at", "status", "error", "trace_id", "current_progress", "max_progress")+
+	var createdAt, finishedAt, result sql.NullString
+	err = s.db.QueryRowContext(ctx, `SELECT `+
+		s.formatColumnName("id", "task_name", "arguments", "retries", "max_retry", "interval", "created_at", "finished_at", "status", "error", "result", "trace_id", "current_progress", "max_progress")+
 		` FROM `+jobModelName+` WHERE id=`+s.parameterize(1), id).
 		Scan(
 			&job.ID, &job.TaskName, &job.Arguments, &job.Retries, &job.MaxRetry, &job.Interval, &createdAt,
-			&finishedAt, &job.Status, &job.Error, &job.TraceID, &job.CurrentProgress, &job.MaxProgress,
+			&finishedAt, &job.Status, &job.Error, &result, &job.TraceID, &job.CurrentProgress, &job.MaxProgress,
 		)
 	job.CreatedAt = s.parseDateString(createdAt.String).Time
 	job.FinishedAt = s.parseDateString(finishedAt.String).Time
+	job.Result = result.String
 	logger.LogIfError(err)
 	_, err = s.db.Exec(`DELETE FROM ` + jobModelName + ` WHERE id='` + id + `'`)
 	logger.LogIfError(err)
@@ -344,7 +349,7 @@ func (s *SQLPersistent) FindAllSummary(ctx context.Context, filter *Filter) (res
 	return
 }
 func (s *SQLPersistent) FindDetailSummary(ctx context.Context, taskName string) (result TaskSummary) {
-	s.db.QueryRow(`SELECT `+s.formatColumnName("id", "success", "queueing", "retrying", "failure", "stopped", "is_loading")+
+	s.db.QueryRowContext(ctx, `SELECT `+s.formatColumnName("id", "success", "queueing", "retrying", "failure", "stopped", "is_loading")+
 		` FROM `+jobSummaryModelName+` WHERE id=`+s.parameterize(1), taskName).
 		Scan(&result.TaskName, &result.Success, &result.Queueing, &result.Retrying,
 			&result.Failure, &result.Stopped, &result.IsLoading)

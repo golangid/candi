@@ -101,6 +101,7 @@ type (
 		FinishedAt      string
 		Status          string
 		Error           string
+		Result          string
 		ErrorStack      string
 		TraceID         string
 		RetryHistories  []RetryHistory
@@ -108,11 +109,12 @@ type (
 		CurrentProgress int
 		MaxProgress     int
 		Meta            struct {
-			IsCloseSession  bool
-			Page            int
-			TotalHistory    int
-			IsShowMoreArgs  bool
-			IsShowMoreError bool
+			IsCloseSession   bool
+			Page             int
+			TotalHistory     int
+			IsShowMoreArgs   bool
+			IsShowMoreError  bool
+			IsShowMoreResult bool
 		}
 	}
 
@@ -250,22 +252,22 @@ func (j *JobResolver) ParseFromJob(job *Job, maxArgsLength int) {
 	j.ID = job.ID
 	j.TaskName = job.TaskName
 
+	j.Arguments = job.Arguments
+	j.Error = job.Error
+	j.Result = job.Result
 	if maxArgsLength > 0 {
 		if len(job.Arguments) > maxArgsLength {
 			j.Arguments = job.Arguments[:maxArgsLength]
 			j.Meta.IsShowMoreArgs = true
-		} else {
-			j.Arguments = job.Arguments
 		}
 		if len(job.Error) > maxArgsLength {
 			j.Error = job.Error[:maxArgsLength]
 			j.Meta.IsShowMoreError = true
-		} else {
-			j.Error = job.Error
 		}
-	} else {
-		j.Arguments = job.Arguments
-		j.Error = job.Error
+		if len(job.Result) > maxArgsLength {
+			j.Result = job.Result[:maxArgsLength]
+			j.Meta.IsShowMoreResult = true
+		}
 	}
 	j.Retries = job.Retries
 	j.MaxRetry = job.MaxRetry

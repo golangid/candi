@@ -97,15 +97,13 @@ func (t *taskQueueWorker) prepare() {
 		updated := map[string]interface{}{
 			"is_loading": true, "loading_message": "Requeueing...",
 		}
-		if summary := t.opt.persistent.Summary().FindDetailSummary(t.ctx, taskName); summary.ID == "" {
-			for _, status := range []string{
-				StatusRetrying.String(), StatusFailure.String(), StatusSuccess.String(),
-				StatusQueueing.String(), StatusStopped.String(),
-			} {
-				updated[strings.ToLower(status)] = t.opt.persistent.CountAllJob(t.ctx, &Filter{
-					TaskName: taskName, Status: &status,
-				})
-			}
+		for _, status := range []string{
+			StatusRetrying.String(), StatusFailure.String(), StatusSuccess.String(),
+			StatusQueueing.String(), StatusStopped.String(),
+		} {
+			updated[strings.ToLower(status)] = t.opt.persistent.CountAllJob(t.ctx, &Filter{
+				TaskName: taskName, Status: &status,
+			})
 		}
 		t.opt.persistent.Summary().UpdateSummary(t.ctx, taskName, updated)
 	}

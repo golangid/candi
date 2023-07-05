@@ -133,6 +133,7 @@ type JobResolver {
 	max_retry: Int!
 	interval: String!
 	error: String!
+	result: String!
 	trace_id: String!
 	retry_histories: [JobRetryHistory!]!
 	status: String!
@@ -150,12 +151,14 @@ type JoDetailMetaResolver {
 	total_history: Int!
 	is_show_more_args: Boolean!
 	is_show_more_error: Boolean!
+	is_show_more_result: Boolean!
 }
 
 type JobRetryHistory {
 	error_stack: String!
 	status: String!
 	error: String!
+	result: String!
 	trace_id: String!
 	start_at: String!
 	end_at: String!

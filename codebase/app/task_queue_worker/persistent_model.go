@@ -8,6 +8,7 @@ import (
 const (
 	jobModelName           = "task_queue_worker_jobs"
 	jobSummaryModelName    = "task_queue_worker_job_summaries"
+	jobHistoryModel        = "task_queue_worker_job_histories"
 	configurationModelName = "task_queue_worker_configurations"
 )
 
@@ -61,6 +62,7 @@ type (
 		Status          string         `bson:"status" json:"status"`
 		Error           string         `bson:"error" json:"error"`
 		ErrorStack      string         `bson:"-" json:"error_stack"`
+		Result          string         `bson:"result" json:"result"`
 		TraceID         string         `bson:"trace_id" json:"trace_id"`
 		CurrentProgress int            `bson:"current_progress" json:"current_progress"`
 		MaxProgress     int            `bson:"max_progress" json:"max_progress"`
@@ -74,6 +76,7 @@ type (
 		ErrorStack string    `bson:"error_stack" json:"error_stack"`
 		Status     string    `bson:"status" json:"status"`
 		Error      string    `bson:"error" json:"error"`
+		Result     string    `bson:"result" json:"result"`
 		TraceID    string    `bson:"trace_id" json:"trace_id"`
 		StartAt    time.Time `bson:"start_at" json:"start_at"`
 		EndAt      time.Time `bson:"end_at" json:"end_at"`

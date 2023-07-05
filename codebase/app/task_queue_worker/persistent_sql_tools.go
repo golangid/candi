@@ -7,14 +7,39 @@ import (
 	"time"
 
 	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/logger"
 )
 
+func generateAddColumnQuery(driverName, tableName, newColumnName, columnType string) (q []string) {
+	switch driverName {
+	case "postgres":
+		q = []string{
+			`SELECT column_name FROM information_schema.columns WHERE table_name='` + tableName + `' AND column_name='` + newColumnName + `'`,
+			`ALTER TABLE ` + tableName + ` ADD COLUMN IF NOT EXISTS "` + newColumnName + `" ` + columnType,
+		}
+
+	case "sqlite3":
+		q = []string{
+			`SELECT name FROM pragma_table_info('` + tableName + `') WHERE name='` + newColumnName + `'`,
+			`ALTER TABLE ` + tableName + ` ADD COLUMN "` + newColumnName + `" ` + columnType,
+		}
+
+	case "mysql":
+		q = []string{
+			"SELECT `COLUMN_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_NAME` = '" + tableName + "' AND `COLUMN_NAME` = '" + newColumnName + "'",
+			`ALTER TABLE ` + tableName + " ADD COLUMN `" + newColumnName + "` " + columnType,
+		}
+	}
+
+	return q
+}
+
 func (s *SQLPersistent) initTable(db *sql.DB) {
-	var queries map[string]string
+	var initTableQueries map[string]string
 
 	switch s.driverName {
 	case "postgres", "sqlite3":
-		queries = map[string]string{
+		initTableQueries = map[string]string{
 			jobModelName: `CREATE TABLE IF NOT EXISTS ` + jobModelName + ` (
 				id VARCHAR(255) PRIMARY KEY NOT NULL DEFAULT '',
 				task_name VARCHAR(255) NOT NULL DEFAULT '',
@@ -37,6 +62,7 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 			CREATE INDEX IF NOT EXISTS idx_task_name ON ` + jobModelName + ` (task_name);
 			CREATE INDEX IF NOT EXISTS idx_status ON ` + jobModelName + ` (status);
 			CREATE INDEX IF NOT EXISTS idx_task_name_status ON ` + jobModelName + ` (task_name, status);`,
+
 			jobSummaryModelName: `CREATE TABLE IF NOT EXISTS ` + jobSummaryModelName + ` (
 				id VARCHAR(255) PRIMARY KEY NOT NULL DEFAULT '',
 				success INTEGER NOT NULL DEFAULT 0,
@@ -48,7 +74,8 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 				loading_message VARCHAR(255) NOT NULL DEFAULT ''
 			);
 			CREATE INDEX IF NOT EXISTS idx_task_name_summary ON ` + jobSummaryModelName + ` (id);`,
-			"task_queue_worker_job_histories": `CREATE TABLE IF NOT EXISTS task_queue_worker_job_histories (
+
+			jobHistoryModel: `CREATE TABLE IF NOT EXISTS ` + jobHistoryModel + ` (
 				job_id VARCHAR(255) NOT NULL DEFAULT '',
 				error_stack VARCHAR(255) NOT NULL DEFAULT '',
 				status VARCHAR(255) NOT NULL DEFAULT '',
@@ -57,8 +84,9 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 				start_at TIMESTAMP,
 				end_at TIMESTAMP
 			);
-			CREATE INDEX IF NOT EXISTS idx_job_id_history ON task_queue_worker_job_histories (job_id);
-			CREATE INDEX IF NOT EXISTS idx_start_at_history ON task_queue_worker_job_histories (start_at);`,
+			CREATE INDEX IF NOT EXISTS idx_job_id_history ON ` + jobHistoryModel + ` (job_id);
+			CREATE INDEX IF NOT EXISTS idx_start_at_history ON ` + jobHistoryModel + ` (start_at);`,
+
 			configurationModelName: `CREATE TABLE IF NOT EXISTS ` + configurationModelName + ` (
 				key VARCHAR(255) PRIMARY KEY NOT NULL DEFAULT '',
 				name VARCHAR(255) NOT NULL DEFAULT '',
@@ -68,7 +96,7 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 		}
 
 	case "mysql":
-		queries = map[string]string{
+		initTableQueries = map[string]string{
 			jobModelName: fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n%s", jobModelName,
 				"(`id` VARCHAR(255) PRIMARY KEY NOT NULL,",
 				"`task_name` VARCHAR(255) NOT NULL,",
@@ -102,7 +130,7 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 				"`loading_message` VARCHAR(255) NOT NULL DEFAULT '',",
 				`INDEX (id)) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE utf8_unicode_ci;`,
 			),
-			"task_queue_worker_job_histories": fmt.Sprintf("CREATE TABLE IF NOT EXISTS task_queue_worker_job_histories %s %s %s %s %s %s %s\n%s",
+			jobHistoryModel: fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s %s %s %s %s %s %s %s\n%s", jobHistoryModel,
 				"(`job_id` VARCHAR(255) NOT NULL,",
 				"`error_stack` VARCHAR(255) NOT NULL,",
 				"`status` VARCHAR(255) NOT NULL,",
@@ -122,12 +150,28 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 		}
 	}
 
-	for tableName, query := range queries {
+	for tableName, query := range initTableQueries {
 		if err := s.checkExistingTable(db, tableName); err == nil {
 			continue
 		}
 		if _, err := db.Exec(query); err != nil {
 			panic(err)
+		}
+	}
+
+	extraQueries := [][]string{
+		generateAddColumnQuery(s.driverName, jobModelName, "result", "TEXT"),
+		generateAddColumnQuery(s.driverName, jobHistoryModel, "result", "TEXT"),
+	}
+	for _, queries := range extraQueries {
+		if queries[0] != "" {
+			var columnName string
+			if err := db.QueryRow(queries[0]).Scan(&columnName); err == nil {
+				continue
+			}
+		}
+		if _, err := db.Exec(queries[1]); err != nil {
+			logger.LogE(err.Error())
 		}
 	}
 }
@@ -166,11 +210,11 @@ func (s *SQLPersistent) parseNullTime(date time.Time) (t sql.NullTime) {
 
 func (s *SQLPersistent) parseDateString(date string) (t sql.NullTime) {
 	var err error
-	switch s.driverName {
-	case "postgres", "sqlite3":
-		t.Time, err = time.Parse(time.RFC3339Nano, date)
-	case "mysql":
-		t.Time, err = time.Parse(candihelper.DateFormatYYYYMMDDHHmmss, date)
+	for _, format := range []string{time.RFC3339, time.RFC3339Nano, candihelper.DateFormatYYYYMMDDHHmmss} {
+		t.Time, err = time.Parse(format, date)
+		if err == nil {
+			break
+		}
 	}
 	t.Time = candihelper.ToAsiaJakartaTime(t.Time)
 	t.Valid = err == nil

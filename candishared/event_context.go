@@ -3,6 +3,7 @@ package candishared
 import (
 	"bytes"
 	"context"
+	"errors"
 )
 
 // EventContext worker context in handler
@@ -14,19 +15,31 @@ type EventContext struct {
 	err                      error
 
 	messageBuff *bytes.Buffer
+	resultBuff  *bytes.Buffer
 }
 
 // NewEventContext event context constructor
-func NewEventContext(buff *bytes.Buffer) *EventContext {
-	buff.Reset()
+func NewEventContext(msgBuff *bytes.Buffer) *EventContext {
+	msgBuff.Reset()
 	return &EventContext{
-		messageBuff: buff,
+		messageBuff: msgBuff,
+	}
+}
+
+// NewEventContextWithResult event context constructor
+func NewEventContextWithResult(msgBuff, resBuff *bytes.Buffer) *EventContext {
+	msgBuff.Reset()
+	resBuff.Reset()
+	return &EventContext{
+		messageBuff: msgBuff,
+		resultBuff:  resBuff,
 	}
 }
 
 // Reset method
 func (e *EventContext) Reset() {
 	e.messageBuff.Reset()
+	e.resultBuff.Reset()
 	e.ctx = nil
 	e.workerType = ""
 	e.header = nil
@@ -113,4 +126,17 @@ func (e *EventContext) Write(p []byte) (n int, err error) {
 // WriteString write string to buffer
 func (e *EventContext) WriteString(s string) (n int, err error) {
 	return e.messageBuff.WriteString(s)
+}
+
+// WriteResult write result to buffer
+func (e *EventContext) WriteResult(p []byte) (n int, err error) {
+	if e.resultBuff == nil {
+		return n, errors.New("result buff is nil")
+	}
+	return e.resultBuff.Write(p)
+}
+
+// GetResponse get response writer buffer
+func (e *EventContext) GetResponse() *bytes.Buffer {
+	return e.resultBuff
 }
