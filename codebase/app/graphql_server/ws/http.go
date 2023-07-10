@@ -11,6 +11,8 @@ import (
 const protocolGraphQLWS = "graphql-ws"
 
 var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
@@ -31,7 +33,7 @@ func NewHandlerFunc(svc GraphQLService, httpHandler http.Handler) http.HandlerFu
 		}
 
 		for _, subprotocol := range websocket.Subprotocols(r) {
-			if subprotocol == "graphql-ws" {
+			if subprotocol == protocolGraphQLWS {
 				ws, err := upgrader.Upgrade(w, r, nil)
 				if err != nil {
 					return

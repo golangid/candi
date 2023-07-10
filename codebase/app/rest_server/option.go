@@ -29,6 +29,10 @@ type (
 	OptionFunc func(*option)
 )
 
+var (
+	MiddlewareExcludeURLPath = map[string]struct{}{"/": {}, "/graphql": {}, "/favicon.ico": {}}
+)
+
 func getDefaultOption() option {
 	return option{
 		httpPort:  8000,
@@ -39,11 +43,20 @@ func getDefaultOption() option {
 				env.BaseEnv().CORSAllowMethods, env.BaseEnv().CORSAllowHeaders,
 				env.BaseEnv().CORSAllowOrigins, nil, env.BaseEnv().CORSAllowCredential,
 			),
-			wrapper.HTTPMiddlewareTracer(wrapper.HTTPMiddlewareTracerConfig{
-				MaxLogSize:  env.BaseEnv().JaegerMaxPacketSize,
-				ExcludePath: map[string]struct{}{"/": {}, "/graphql": {}, "/favicon.ico": {}},
+			wrapper.HTTPMiddlewareTracer(wrapper.HTTPMiddlewareConfig{
+				MaxLogSize: env.BaseEnv().JaegerMaxPacketSize,
+				DisableFunc: func(r *http.Request) bool {
+					_, ok := MiddlewareExcludeURLPath[r.URL.Path]
+					return ok
+				},
 			}),
-			wrapper.HTTPMiddlewareLog(env.BaseEnv().DebugMode, os.Stdout),
+			wrapper.HTTPMiddlewareLog(wrapper.HTTPMiddlewareConfig{
+				Writer: os.Stdout,
+				DisableFunc: func(r *http.Request) bool {
+					_, ok := MiddlewareExcludeURLPath[r.URL.Path]
+					return !env.BaseEnv().DebugMode || ok
+				},
+			}),
 		},
 		rootHandler: http.HandlerFunc(wrapper.HTTPHandlerDefaultRoot),
 	}
@@ -122,5 +135,6 @@ func AddGraphQLOption(opts ...graphqlserver.OptionFunc) OptionFunc {
 		for _, opt := range opts {
 			opt(&o.graphqlOption)
 		}
+		MiddlewareExcludeURLPath[o.graphqlOption.RootPath] = struct{}{}
 	}
 }

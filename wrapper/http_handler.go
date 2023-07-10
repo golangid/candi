@@ -20,13 +20,14 @@ import (
 	"github.com/golangid/candi/tracer"
 )
 
-type HTTPMiddlewareTracerConfig struct {
+type HTTPMiddlewareConfig struct {
 	MaxLogSize  int
-	ExcludePath map[string]struct{}
+	DisableFunc func(r *http.Request) bool
+	Writer      io.Writer
 }
 
 // HTTPMiddlewareTracer middleware wrapper for tracer
-func HTTPMiddlewareTracer(cfg HTTPMiddlewareTracerConfig) func(http.Handler) http.Handler {
+func HTTPMiddlewareTracer(cfg HTTPMiddlewareConfig) func(http.Handler) http.Handler {
 	bPool := &sync.Pool{
 		New: func() interface{} {
 			return bytes.NewBuffer(make([]byte, 256))
@@ -39,10 +40,11 @@ func HTTPMiddlewareTracer(cfg HTTPMiddlewareTracerConfig) func(http.Handler) htt
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			if _, isExcludePath := cfg.ExcludePath[req.URL.Path]; isExcludePath {
+			if cfg.DisableFunc != nil && cfg.DisableFunc(req) {
 				next.ServeHTTP(rw, req)
 				return
 			}
+
 			isDisableTrace, _ := strconv.ParseBool(req.Header.Get(candihelper.HeaderDisableTrace))
 			if isDisableTrace {
 				next.ServeHTTP(rw, req.WithContext(tracer.SkipTraceContext(req.Context())))
@@ -168,7 +170,7 @@ func HTTPMiddlewareCORS(
 }
 
 // HTTPMiddlewareLog middleware
-func HTTPMiddlewareLog(isActive bool, writer io.Writer) func(http.Handler) http.Handler {
+func HTTPMiddlewareLog(cfg HTTPMiddlewareConfig) func(http.Handler) http.Handler {
 	bPool := &sync.Pool{
 		New: func() interface{} {
 			return bytes.NewBuffer(make([]byte, 256))
@@ -177,7 +179,7 @@ func HTTPMiddlewareLog(isActive bool, writer io.Writer) func(http.Handler) http.
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-			if !isActive {
+			if cfg.DisableFunc != nil && cfg.DisableFunc(req) {
 				next.ServeHTTP(res, req)
 				return
 			}
@@ -246,7 +248,7 @@ func HTTPMiddlewareLog(isActive bool, writer io.Writer) func(http.Handler) http.
 
 			buf.WriteString("}\n")
 
-			io.Copy(writer, buf)
+			io.Copy(cfg.Writer, buf)
 			bPool.Put(buf)
 		})
 	}
