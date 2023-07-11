@@ -39,7 +39,9 @@ func NewEventContextWithResult(msgBuff, resBuff *bytes.Buffer) *EventContext {
 // Reset method
 func (e *EventContext) Reset() {
 	e.messageBuff.Reset()
-	e.resultBuff.Reset()
+	if e.resultBuff != nil {
+		e.resultBuff.Reset()
+	}
 	e.ctx = nil
 	e.workerType = ""
 	e.header = nil
