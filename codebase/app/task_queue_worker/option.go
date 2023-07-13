@@ -107,6 +107,10 @@ func SetDashboardBasicAuth(username, password string) OptionFunc {
 
 func (o *option) basicAuth(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/_next") {
+			r.URL.Path = strings.TrimPrefix(r.URL.Path, "/task")
+			r.URL.Path = strings.TrimPrefix(r.URL.Path, "/job")
+		}
 		if o.dashboardAuthKey == "" {
 			next.ServeHTTP(w, r)
 			return

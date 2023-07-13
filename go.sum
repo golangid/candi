@@ -40,8 +40,8 @@ github.com/golang/protobuf v1.5.2/go.mod h1:XVQd3VNwM+JqD3oG2Ue2ip4fOMUkwXdXDdiu
 github.com/golang/snappy v0.0.1/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
 github.com/golang/snappy v0.0.4 h1:yAGX7huGHXlcLOEtBnF4w7FQwA26wojNCwOYAEhLjQM=
 github.com/golang/snappy v0.0.4/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
-github.com/golangid/candi-plugin/task-queue-worker v0.0.0-20230705033545-071ef5966198 h1:iExb/i1Jgs3eHsC5JQGaeqF+t6UWyYwvGVoL7lBGsCc=
-github.com/golangid/candi-plugin/task-queue-worker v0.0.0-20230705033545-071ef5966198/go.mod h1:4VCwTWA5k6usXdJFVfReu4NavGvK3srMwVL3k3UEyTw=
+github.com/golangid/candi-plugin/task-queue-worker v0.0.0-20230713141811-580c70719718 h1:ay74LCamQPXxGfGK6qpkgzeU4Ir0mcSE+NvvXUUXykk=
+github.com/golangid/candi-plugin/task-queue-worker v0.0.0-20230713141811-580c70719718/go.mod h1:4VCwTWA5k6usXdJFVfReu4NavGvK3srMwVL3k3UEyTw=
 github.com/golangid/gojsonschema v0.0.1 h1:NBcgGWWQHVpkZcLbqyTgLXGHBIsnhKD/F7RMKtgd3gY=
 github.com/golangid/gojsonschema v0.0.1/go.mod h1:MeZZ07joOA5f0dIqRfh1imRQHhi/GtlTYZamSmYIOQA=
 github.com/golangid/graphql-go v0.0.9 h1:9Hwhtp3C2Ybv4ILM3M+BXOa+B0GabZmjLmtj7jVIIm4=

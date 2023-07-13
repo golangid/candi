@@ -82,6 +82,7 @@ func (t *taskQueueWorker) prepare() {
 		return
 	}
 
+	t.opt.locker.Reset(t.getLockKey("*"))
 	t.opt.persistent.Summary().DeleteAllSummary(t.ctx, &Filter{ExcludeTaskNameList: t.tasks})
 	t.opt.persistent.CleanJob(t.ctx, &Filter{ExcludeTaskNameList: t.tasks})
 
