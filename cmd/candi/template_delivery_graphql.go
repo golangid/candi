@@ -55,14 +55,14 @@ import (
 )
 
 // GetAll{{upper (camel .ModuleName)}} resolver
-func (q *GraphQLHandler) GetAll{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ Filter *CommonFilter }) (results {{upper (camel .ModuleName)}}ListResolver, err error) {
+func (q *GraphQLHandler) GetAll{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ Filter *Filter{{upper (camel .ModuleName)}} }) (results {{upper (camel .ModuleName)}}ListResolver, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryGraphQL:GetAll{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
 	if input.Filter == nil {
-		input.Filter = new(CommonFilter)
+		input.Filter = new(Filter{{upper (camel .ModuleName)}})
 	}
 	filter := input.Filter.toSharedFilter()
 	if err := q.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/get_all", filter); err != nil {
@@ -194,38 +194,19 @@ func (s *GraphQLHandler) ListenData(ctx context.Context) <-chan domain.Response{
 import (
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 
-	"{{.LibraryName}}/candihelper"
 	"{{.LibraryName}}/candishared"
 )
 
-// CommonFilter basic filter model
-type CommonFilter struct {
-	Limit   *int
-	Page    *int
-	Search  *string
-	Sort    *string
-	ShowAll *bool
-	OrderBy *string
+// Filter{{upper (camel .ModuleName)}} basic filter model
+type Filter{{upper (camel .ModuleName)}} struct {
+	candishared.NullableFilter
+	domain.Filter{{upper (camel .ModuleName)}}
 }
 
 // toSharedFilter method
-func (f *CommonFilter) toSharedFilter() (filter domain.Filter{{upper (camel .ModuleName)}}) {
-	filter.Search = candihelper.PtrToString(f.Search)
-	filter.OrderBy = candihelper.PtrToString(f.OrderBy)
-	filter.Sort = candihelper.PtrToString(f.Sort)
-	filter.ShowAll = candihelper.PtrToBool(f.ShowAll)
-
-	if f.Limit == nil {
-		filter.Limit = 10
-	} else {
-		filter.Limit = *f.Limit
-	}
-	if f.Page == nil {
-		filter.Page = 1
-	} else {
-		filter.Page = *f.Page
-	}
-
+func (f *Filter{{upper (camel .ModuleName)}}) toSharedFilter() (filter domain.Filter{{upper (camel .ModuleName)}}) {
+	filter = f.Filter{{upper (camel .ModuleName)}}
+	filter.Filter = f.ToFilter()
 	return
 }
 

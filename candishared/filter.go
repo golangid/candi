@@ -32,3 +32,40 @@ func (f *Filter) IncrPage() {
 func (f *Filter) GetLimit() int {
 	return f.Limit
 }
+
+// NullableFilter filter contains nullable value
+type NullableFilter struct {
+	Limit   *int
+	Page    *int
+	Search  *string
+	Sort    *string
+	ShowAll *bool
+	OrderBy *string
+}
+
+func (n *NullableFilter) ToFilter() (filter Filter) {
+	if n.Search != nil {
+		filter.Search = *n.Search
+	}
+	if n.OrderBy != nil {
+		filter.OrderBy = *n.OrderBy
+	}
+	if n.Sort != nil {
+		filter.Sort = *n.Sort
+	}
+	if n.ShowAll != nil {
+		filter.ShowAll = *n.ShowAll
+	}
+
+	if n.Limit == nil {
+		filter.Limit = 10
+	} else {
+		filter.Limit = *n.Limit
+	}
+	if n.Page == nil {
+		filter.Page = 1
+	} else {
+		filter.Page = *n.Page
+	}
+	return filter
+}

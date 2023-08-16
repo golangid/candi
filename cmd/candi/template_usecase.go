@@ -285,8 +285,7 @@ func Test_{{camel .ModuleName}}UsecaseImpl_GetDetail{{upper (camel .ModuleName)}
 import (
 	"context"
 
-	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"{{if or .SQLDeps .MongoDeps .ArangoDeps}}
-	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"{{end}}
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 
 	"{{.LibraryName}}/tracer"
 )
@@ -295,9 +294,7 @@ func (uc *{{camel .ModuleName}}UsecaseImpl) Create{{upper (camel .ModuleName)}}(
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}Usecase:Create{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	data := shareddomain.{{upper (camel .ModuleName)}}{
-		Field: req.Field,
-	}
+	data := req.Deserialize()
 	err = {{if or .SQLDeps .MongoDeps .ArangoDeps}}uc.repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().Save(ctx, &data){{end}}
 	result.Serialize(&data)
 
@@ -352,8 +349,8 @@ import (
 	"context"
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
-	{{if .SQLDeps}}
-	"{{.LibraryName}}/candishared"{{end}}
+
+	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/tracer"
 )
 
@@ -370,7 +367,7 @@ func (uc *{{camel .ModuleName}}UsecaseImpl) Update{{upper (camel .ModuleName)}}(
 	{{if .SQLDeps}}err = uc.repoSQL.WithTransaction(ctx, func(ctx context.Context) error {
 		return uc.repoSQL.{{upper (camel .ModuleName)}}Repo().Save(ctx, &existing, candishared.DBUpdateSetUpdatedFields("Field"))
 	}){{else}}
-	err = uc.repo{{if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().Save(ctx, &existing){{end}}
+	err = uc.repo{{if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().Save(ctx, &existing, candishared.DBUpdateSetUpdatedFields("Field")){{end}}
 	return{{end}}
 }
 `
@@ -392,20 +389,27 @@ import (
 )
 
 func Test_{{camel .ModuleName}}UsecaseImpl_Update{{upper (camel .ModuleName)}}(t *testing.T) {
+	ctx := context.Background()
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
 
 		{{camel .ModuleName}}Repo := &mockrepo.{{upper (camel .ModuleName)}}Repository{}
 		{{camel .ModuleName}}Repo.On("Find", mock.Anything, mock.Anything).Return(shareddomain.{{upper (camel .ModuleName)}}{}, nil)
-		{{camel .ModuleName}}Repo.On("Save", mock.Anything, mock.Anything).Return(nil)
+		{{camel .ModuleName}}Repo.On("Save", mock.Anything, mock.Anything, mock.AnythingOfType("candishared.DBUpdateOptionFunc")).Return(nil)
 
 		repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}} := &mocksharedrepo.Repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}{}
 		repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.On("{{upper (camel .ModuleName)}}Repo").Return({{camel .ModuleName}}Repo)
-
+		{{if .SQLDeps}}repoSQL.On("WithTransaction", mock.Anything,
+			mock.AnythingOfType("func(context.Context) error")).
+			Return(nil).
+			Run(func(args mock.Arguments) {
+				arg := args.Get(1).(func(context.Context) error)
+				arg(ctx)
+			}){{end}}
 		uc := {{camel .ModuleName}}UsecaseImpl{
 			repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}: repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}},
 		}
 
-		err := uc.Update{{upper (camel .ModuleName)}}(context.Background(), &domain.Request{{upper (camel .ModuleName)}}{})
+		err := uc.Update{{upper (camel .ModuleName)}}(ctx, &domain.Request{{upper (camel .ModuleName)}}{})
 		assert.NoError(t, err)
 	})
 
@@ -413,16 +417,22 @@ func Test_{{camel .ModuleName}}UsecaseImpl_Update{{upper (camel .ModuleName)}}(t
 
 		{{camel .ModuleName}}Repo := &mockrepo.{{upper (camel .ModuleName)}}Repository{}
 		{{camel .ModuleName}}Repo.On("Find", mock.Anything, mock.Anything).Return(shareddomain.{{upper (camel .ModuleName)}}{}, errors.New("Error"))
-		{{camel .ModuleName}}Repo.On("Save", mock.Anything, mock.Anything).Return(nil)
+		{{camel .ModuleName}}Repo.On("Save", mock.Anything, mock.Anything, mock.AnythingOfType("candishared.DBUpdateOptionFunc")).Return(nil)
 
 		repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}} := &mocksharedrepo.Repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}{}
 		repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.On("{{upper (camel .ModuleName)}}Repo").Return({{camel .ModuleName}}Repo)
-
+		{{if .SQLDeps}}repoSQL.On("WithTransaction", mock.Anything,
+			mock.AnythingOfType("func(context.Context) error")).
+			Return(nil).
+			Run(func(args mock.Arguments) {
+				arg := args.Get(1).(func(context.Context) error)
+				arg(ctx)
+			}){{end}}
 		uc := {{camel .ModuleName}}UsecaseImpl{
 			repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}: repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}},
 		}
 
-		err := uc.Update{{upper (camel .ModuleName)}}(context.Background(), &domain.Request{{upper (camel .ModuleName)}}{})
+		err := uc.Update{{upper (camel .ModuleName)}}(ctx, &domain.Request{{upper (camel .ModuleName)}}{})
 		assert.Error(t, err)
 	})
 }

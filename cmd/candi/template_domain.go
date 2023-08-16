@@ -42,10 +42,20 @@ type Filter{{upper (camel .ModuleName)}} struct {
 `
 	templateModuleRequestDomain = `package domain
 
+import (
+	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
+)
+
 // Request{{upper (camel .ModuleName)}} model
 type Request{{upper (camel .ModuleName)}} struct {
 	ID    {{if and .MongoDeps (not .SQLDeps)}}string{{else}}int{{end}} ` + "`json:\"id\"`" + `
 	Field string ` + "`json:\"field\"`" + `
+}
+
+// Deserialize to db model
+func (r *RequestUser) Deserialize() (res shareddomain.{{upper (camel .ModuleName)}}) {
+	res.Field = r.Field
+	return
 }
 `
 	templateModuleResponseDomain = `package domain
