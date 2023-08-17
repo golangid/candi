@@ -51,8 +51,12 @@ func (c *consumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 }
 
 func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, message *sarama.ConsumerMessage) {
+	handler, ok := c.handlerFuncs[message.Topic]
+	if !ok {
+		return
+	}
+
 	ctx := session.Context()
-	handler := c.handlerFuncs[message.Topic]
 	if handler.DisableTrace {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
@@ -66,21 +70,22 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 		header[string(val.Key)] = string(val.Value)
 	}
 
+	var err error
 	trace, ctx := tracer.StartTraceFromHeader(ctx, "KafkaConsumer", header)
 	defer func() {
 		if r := recover(); r != nil {
-			trace.SetError(fmt.Errorf("%v", r))
-			tracer.LogStackTrace(trace)
+			trace.SetTag("panic", true)
+			err = fmt.Errorf("%v", r)
 		}
-
 		if handler.AutoACK {
 			session.MarkMessage(message, "")
 		}
 		logger.LogGreen("kafka_consumer > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
-		trace.Finish()
+		trace.Finish(tracer.FinishWithError(err))
 	}()
 
+	trace.SetTag("brokers", c.opt.brokers)
 	trace.SetTag("topic", message.Topic)
 	trace.SetTag("key", message.Key)
 	trace.SetTag("consumer_group", c.opt.consumerGroup)
@@ -101,9 +106,8 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 	eventContext.Write(message.Value)
 
 	for _, handlerFunc := range handler.HandlerFuncs {
-		if err := handlerFunc(eventContext); err != nil {
+		if err = handlerFunc(eventContext); err != nil {
 			eventContext.SetError(err)
-			trace.SetError(err)
 		}
 	}
 }

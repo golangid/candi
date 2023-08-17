@@ -202,8 +202,10 @@ func (t *jaegerTraceImpl) SetError(err error) {
 
 	ext.Error.Set(t.span, true)
 	t.span.SetTag("error.message", err.Error())
-	_, callerFile, callerLine, _ := runtime.Caller(1)
-	t.span.LogKV("error.source", callerFile+":"+strconv.Itoa(callerLine))
+
+	buff := make([]byte, 1<<10)
+	buff = buff[:runtime.Stack(buff, false)]
+	t.span.LogKV("stacktrace", toValue(buff))
 }
 
 // SetError log data
@@ -237,10 +239,11 @@ func (t *jaegerTraceImpl) Finish(opts ...FinishOptionFunc) {
 	}
 
 	if finishOpt.Error != nil {
-		ext.Error.Set(t.span, true)
-		t.span.SetTag("error.message", finishOpt.Error.Error())
-		_, callerFile, callerLine, _ := runtime.Caller(1)
-		t.span.LogKV("error.source", callerFile+":"+strconv.Itoa(callerLine))
+		t.SetError(finishOpt.Error)
+	} else if finishOpt.WithStackTraceDetail {
+		buff := make([]byte, 1<<10)
+		buff = buff[:runtime.Stack(buff, false)]
+		t.span.LogKV("stacktrace", toValue(buff))
 	}
 
 	t.span.Finish()
@@ -268,9 +271,9 @@ func LogEvent(ctx context.Context, event string, payload ...interface{}) {
 			if e, ok := p.(error); ok && e != nil {
 				ext.Error.Set(span, true)
 			}
-			span.LogEventWithPayload(event, toValue(p))
+			span.LogKV(event, toValue(p))
 		}
 	} else {
-		span.LogEvent(event)
+		span.LogKV(event)
 	}
 }

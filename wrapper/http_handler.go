@@ -24,6 +24,7 @@ type HTTPMiddlewareConfig struct {
 	MaxLogSize  int
 	DisableFunc func(r *http.Request) bool
 	Writer      io.Writer
+	OnPanic     func(panicMessage interface{}) (respCode int, respMessage string)
 }
 
 // HTTPMiddlewareTracer middleware wrapper for tracer
@@ -36,6 +37,11 @@ func HTTPMiddlewareTracer(cfg HTTPMiddlewareConfig) func(http.Handler) http.Hand
 	releasePool := func(buff *bytes.Buffer) {
 		buff.Reset()
 		bPool.Put(buff)
+	}
+	if cfg.OnPanic == nil {
+		cfg.OnPanic = func(interface{}) (respCode int, respMessage string) {
+			return http.StatusInternalServerError, "Something Error"
+		}
 	}
 
 	return func(next http.Handler) http.Handler {
@@ -58,14 +64,16 @@ func HTTPMiddlewareTracer(cfg HTTPMiddlewareConfig) func(http.Handler) http.Hand
 				header[key] = req.Header.Get(key)
 			}
 
+			var err error
 			trace, ctx := tracer.StartTraceFromHeader(req.Context(), operationName, header)
 			defer func() {
 				if rec := recover(); rec != nil {
-					tracer.LogStackTrace(trace)
-					NewHTTPResponse(http.StatusInternalServerError, fmt.Sprintf("panic: %v", rec)).JSON(rw)
+					trace.SetTag("panic", true)
+					err = fmt.Errorf("%v", rec)
+					NewHTTPResponse(cfg.OnPanic(rec)).JSON(rw)
 				}
 				trace.SetTag("trace_id", tracer.GetTraceID(ctx))
-				trace.Finish()
+				trace.Finish(tracer.FinishWithError(err))
 				logger.LogGreen("rest_server > trace_url: " + tracer.GetTraceURL(ctx))
 			}()
 
@@ -96,7 +104,7 @@ func HTTPMiddlewareTracer(cfg HTTPMiddlewareConfig) func(http.Handler) http.Hand
 
 			trace.SetTag("http.status_code", respWriter.statusCode)
 			if respWriter.statusCode >= http.StatusBadRequest {
-				trace.SetError(fmt.Errorf("resp.code:%d", respWriter.statusCode))
+				err = fmt.Errorf("resp.code:%d", respWriter.statusCode)
 			}
 			trace.Log("response.header", respWriter.Header())
 			if respWriter.contentLength < cfg.MaxLogSize {

@@ -117,11 +117,10 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 	trace, ctx := tracer.StartTraceFromHeader(ctx, "TaskQueueWorker", map[string]string{})
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("panic: %v", r)
+			trace.SetTag("panic", true)
+			err = fmt.Errorf("%v", r)
 			job.Error = err.Error()
 			job.Status = string(StatusFailure)
-
-			tracer.LogStackTrace(trace)
 		}
 
 		job.FinishedAt = time.Now()

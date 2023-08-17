@@ -151,10 +151,9 @@ func (r *rabbitmqWorker) processMessage(message amqp.Delivery) {
 	trace, ctx := tracer.StartTraceFromHeader(ctx, "RabbitMQConsumer", header)
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("panic: %v", r)
-			tracer.LogStackTrace(trace)
+			trace.SetTag("panic", true)
+			err = fmt.Errorf("%v", r)
 		}
-
 		if selectedHandler.AutoACK {
 			message.Ack(false)
 		}
@@ -182,9 +181,8 @@ func (r *rabbitmqWorker) processMessage(message amqp.Delivery) {
 	eventContext.Write(message.Body)
 
 	for _, handlerFunc := range selectedHandler.HandlerFuncs {
-		if err := handlerFunc(eventContext); err != nil {
+		if err = handlerFunc(eventContext); err != nil {
 			eventContext.SetError(err)
-			trace.SetError(err)
 		}
 	}
 }

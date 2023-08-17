@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 type interceptor struct {
@@ -48,7 +49,7 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 	start := time.Now()
 	meta, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return nil, grpc.Errorf(codes.Aborted, "missing context metadata")
+		return nil, status.Errorf(codes.Aborted, "missing context metadata")
 	}
 
 	if metaDisableTrace := meta.Get(candihelper.HeaderDisableTrace); len(metaDisableTrace) > 0 {
@@ -69,9 +70,9 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 	trace, ctx := tracer.StartTraceFromHeader(ctx, fmt.Sprintf("GRPC: %s", info.FullMethod), header)
 	defer func() {
 		if r := recover(); r != nil {
-			err = grpc.Errorf(codes.Aborted, "%v", r)
+			trace.SetTag("panic", true)
+			err = status.Errorf(codes.Aborted, "%v", r)
 		}
-		trace.SetError(err)
 		i.logInterceptor(start, err, info.FullMethod, "GRPC")
 		logger.LogGreen("grpc > trace_url: " + tracer.GetTraceURL(ctx))
 		if respBody := candihelper.ToBytes(resp); len(respBody) < i.opt.jaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
@@ -80,7 +81,7 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 			trace.Log("response.body.size", len(respBody))
 		}
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
-		trace.Finish()
+		trace.Finish(tracer.FinishWithError(err))
 	}()
 
 	trace.SetTag("metadata", meta)
@@ -131,7 +132,7 @@ func (i *interceptor) streamTracerInterceptor(srv interface{}, stream grpc.Serve
 	ctx := stream.Context()
 	meta, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return grpc.Errorf(codes.Aborted, "missing context metadata")
+		return status.Errorf(codes.Aborted, "missing context metadata")
 	}
 
 	if metaDisableTrace := meta.Get(candihelper.HeaderDisableTrace); len(metaDisableTrace) > 0 {
@@ -153,13 +154,13 @@ func (i *interceptor) streamTracerInterceptor(srv interface{}, stream grpc.Serve
 	trace, ctx := tracer.StartTraceFromHeader(ctx, fmt.Sprintf("GRPC-STREAM: %s", info.FullMethod), header)
 	defer func() {
 		if r := recover(); r != nil {
-			err = grpc.Errorf(codes.Aborted, "%v", r)
+			trace.SetTag("panic", true)
+			err = status.Errorf(codes.Aborted, "%v", r)
 		}
-		trace.SetError(err)
 		i.logInterceptor(start, err, info.FullMethod, "GRPC-STREAM")
 		logger.LogGreen("grpc_stream > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
-		trace.Finish()
+		trace.Finish(tracer.FinishWithError(err))
 	}()
 
 	trace.SetTag("metadata", meta)

@@ -34,7 +34,6 @@ type graphqlTracer struct {
 
 // TraceQuery method, intercept incoming query and add tracing
 func (t *graphqlTracer) TraceQuery(ctx context.Context, queryString string, operationName string, variables map[string]interface{}, varTypes map[string]*introspection.Type) (context.Context, gqltrace.QueryFinishFunc) {
-
 	headers, _ := ctx.Value(candishared.ContextKeyHTTPHeader).(http.Header)
 	header := map[string]string{}
 	for key := range headers {
@@ -55,7 +54,6 @@ func (t *graphqlTracer) TraceQuery(ctx context.Context, queryString string, oper
 	}
 
 	return ctx, func(data []byte, errs []*gqlerrors.QueryError) {
-
 		if len(data) < env.BaseEnv().JaegerMaxPacketSize { // limit request body size to 65000 bytes (if higher tracer cannot show root span)
 			trace.Log("response.data", data)
 		} else {

@@ -33,7 +33,7 @@ func toValue(v interface{}) (s interface{}) {
 	var str string
 	switch val := v.(type) {
 
-	case uint, uint64, int, int64, float32, float64:
+	case uint, uint64, int, int64, float32, float64, bool:
 		return v
 
 	case error:

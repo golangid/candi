@@ -167,15 +167,16 @@ func (r *redisWorker) processMessage(param broker.RedisMessage) {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
 
+	var err error
 	trace, ctx := tracer.StartTraceFromHeader(ctx, "RedisSubscriber", map[string]string{})
 	defer func() {
 		if r := recover(); r != nil {
-			trace.SetError(fmt.Errorf("panic: %v", r))
-			tracer.LogStackTrace(trace)
+			trace.SetTag("panic", true)
+			err = fmt.Errorf("%v", r)
 		}
 		logger.LogGreen("redis_subscriber > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
-		trace.Finish()
+		trace.Finish(tracer.FinishWithError(err))
 	}()
 
 	if r.opt.debugMode {
@@ -195,9 +196,8 @@ func (r *redisWorker) processMessage(param broker.RedisMessage) {
 	eventContext.WriteString(param.Message)
 
 	for _, handlerFunc := range selectedHandler.HandlerFuncs {
-		if err := handlerFunc(eventContext); err != nil {
+		if err = handlerFunc(eventContext); err != nil {
 			eventContext.SetError(err)
-			trace.SetError(err)
 		}
 	}
 }

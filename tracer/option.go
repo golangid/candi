@@ -15,8 +15,9 @@ type (
 
 	// FinishOption for option when trace is finished
 	FinishOption struct {
-		Tags  map[string]interface{}
-		Error error
+		Tags                 map[string]interface{}
+		Error                error
+		WithStackTraceDetail bool
 	}
 
 	// FinishOptionFunc func
@@ -69,5 +70,12 @@ func FinishWithError(err error) FinishOptionFunc {
 func FinishWithAdditionalTags(tags map[string]interface{}) FinishOptionFunc {
 	return func(fo *FinishOption) {
 		fo.Tags = tags
+	}
+}
+
+// FinishWithStackTraceDetail option for add stack trace detail
+func FinishWithStackTraceDetail() FinishOptionFunc {
+	return func(fo *FinishOption) {
+		fo.WithStackTraceDetail = true
 	}
 }

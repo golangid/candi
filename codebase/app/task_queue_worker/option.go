@@ -110,6 +110,7 @@ func (o *option) basicAuth(next http.Handler) http.HandlerFunc {
 		if strings.Contains(r.URL.Path, "/_next") {
 			r.URL.Path = strings.TrimPrefix(r.URL.Path, "/task")
 			r.URL.Path = strings.TrimPrefix(r.URL.Path, "/job")
+			r.URL.Path = strings.TrimPrefix(r.URL.Path, "/expired")
 		}
 		if o.dashboardAuthKey == "" {
 			next.ServeHTTP(w, r)
