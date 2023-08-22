@@ -131,6 +131,7 @@ func Load(serviceName string) {
 	}
 
 	// ------------------------------------
+	isServerActive := false
 	if env.UseREST || env.UseGraphQL {
 		if httpPort, ok := os.LookupEnv("HTTP_PORT"); !ok {
 			mErrs.Append("HTTP_PORT", errors.New("missing HTTP_PORT environment"))
@@ -141,14 +142,20 @@ func Load(serviceName string) {
 			}
 			env.HTTPPort = uint16(port)
 		}
+		isServerActive = true
 	} else if env.UseGRPC {
 		if _, ok = os.LookupEnv("GRPC_PORT"); !ok {
 			mErrs.Append("GRPC_PORT", errors.New("missing GRPC_PORT environment"))
 		}
+		isServerActive = true
 	}
-
 	port, _ := strconv.Atoi(os.Getenv("GRPC_PORT"))
 	env.GRPCPort = uint16(port)
+
+	env.UseSharedListener = parseBool("USE_SHARED_LISTENER")
+	if isServerActive && env.UseSharedListener && env.HTTPPort <= 0 {
+		mErrs.Append("USE_SHARED_LISTENER", errors.New("missing or invalid value for HTTP_PORT environment"))
+	}
 
 	if env.UseTaskQueueWorker {
 		taskQueueDashboardPort, ok := os.LookupEnv("TASK_QUEUE_DASHBOARD_PORT")
@@ -171,10 +178,6 @@ func Load(serviceName string) {
 	env.DebugMode, err = strconv.ParseBool(os.Getenv("DEBUG_MODE"))
 	if err != nil {
 		env.DebugMode = true
-	}
-	env.UseSharedListener = parseBool("USE_SHARED_LISTENER")
-	if env.UseSharedListener && env.HTTPPort <= 0 {
-		mErrs.Append("USE_SHARED_LISTENER", errors.New("missing or invalid value for HTTP_PORT environment"))
 	}
 
 	env.GraphQLDisableIntrospection = parseBool("GRAPHQL_DISABLE_INTROSPECTION")
