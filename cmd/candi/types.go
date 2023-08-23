@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -17,9 +19,6 @@ var (
 		"1": InitMonorepo, "2": InitService, "3": AddModule, "4": AddHandler,
 	}
 
-	pluginHandler = map[string]string{
-		"4": FiberRestDeps,
-	}
 	dependencyMap = map[string]string{
 		"1": RedisDeps, "2": SqldbDeps, "3": MongodbDeps, "4": ArangodbDeps,
 	}
@@ -32,6 +31,10 @@ var (
 	}
 	licenseMapTemplate = map[string]string{
 		MitLicense: mitLicenseTemplate, ApacheLicense: apacheLicenseTemplate, PrivateLicense: privateLicenseTemplate,
+	}
+
+	restPluginHandler = map[string]string{
+		"1": FiberRestDeps,
 	}
 
 	tpl    *template.Template
@@ -140,6 +143,12 @@ func (s *serviceConfig) disableAllHandler() {
 	s.TaskQueueHandler = false
 	s.PostgresListenerHandler = false
 	s.RabbitMQHandler = false
+}
+func (s *serviceConfig) toJSONString() string {
+	jsonSrvConfig, _ := json.Marshal(s)
+	var configJSON bytes.Buffer
+	json.Indent(&configJSON, jsonSrvConfig, "", "     ")
+	return configJSON.String()
 }
 
 type moduleConfig struct {

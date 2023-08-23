@@ -11,7 +11,6 @@ import (
 )
 
 func parseInput(flagParam *flagParameter) (srvConfig serviceConfig) {
-
 	defer func() { srvConfig.parseDefaultHeader() }()
 
 	serviceHandlers := make(map[string]bool)
@@ -20,37 +19,39 @@ func parseInput(flagParam *flagParameter) (srvConfig serviceConfig) {
 	var cmdInput string
 	var deliveryHandlerOption string
 	var deliveryHandlerMap map[string]string
+	var newModules []moduleConfig
+
+	srvConfig = loadSavedConfig(flagParam)
+	srvConfig.IsMonorepo = flagParam.isMonorepo
 
 	scope, ok := scopeMap[flagParam.scopeFlag]
 	switch scope {
 	case InitService:
-		srvConfig.ServiceName = inputServiceName()
+		flagParam.serviceName = inputServiceName()
+		srvConfig.ServiceName = flagParam.serviceName
 
 	case AddModule:
-		if flagParam.serviceName != "" {
-			srvConfig.ServiceName = flagParam.serviceName
-		} else if flagParam.isMonorepo {
+		if flagParam.isMonorepo {
 		stageInputServiceNameModule:
-			srvConfig.ServiceName = readInput("Please input existing service name to be added module(s):")
-			_, err := os.Stat(flagParam.outputFlag + srvConfig.ServiceName)
+			flagParam.serviceName = readInput("Please input existing service name to be added module(s):")
+			_, err := os.Stat(flagParam.outputFlag + flagParam.serviceName)
 			var errMessage string
-			if strings.TrimSpace(srvConfig.ServiceName) == "" {
+			if strings.TrimSpace(flagParam.serviceName) == "" {
 				errMessage = "Service name cannot empty"
 			}
 			if os.IsNotExist(err) {
-				errMessage = fmt.Sprintf(`Service "%s" is not exist in "%s" directory`, srvConfig.ServiceName, flagParam.outputFlag)
+				errMessage = fmt.Sprintf(`Service "%s" is not exist in "%s" directory`, flagParam.serviceName, flagParam.outputFlag)
 			}
 			if errMessage != "" {
 				fmt.Printf(RedFormat, errMessage+", try again")
 				goto stageInputServiceNameModule
 			}
+			srvConfig = loadSavedConfig(flagParam)
 		}
 
 	case AddHandler:
 		flagParam.addHandler = true
-		if flagParam.serviceName != "" {
-			srvConfig.ServiceName = flagParam.serviceName
-		} else if flagParam.isMonorepo {
+		if flagParam.isMonorepo {
 		stageInputServiceName:
 			flagParam.serviceName = readInput("Please input existing service name to be added delivery handler(s):")
 			srvConfig.ServiceName = flagParam.serviceName
@@ -58,6 +59,8 @@ func parseInput(flagParam *flagParameter) (srvConfig serviceConfig) {
 				fmt.Print(err.Error())
 				goto stageInputServiceName
 			}
+			srvConfig = loadSavedConfig(flagParam)
+			srvConfig.ServiceName = flagParam.serviceName
 		}
 
 	stageReadInputModule:
@@ -67,53 +70,34 @@ func parseInput(flagParam *flagParameter) (srvConfig serviceConfig) {
 			fmt.Print(err.Error())
 			goto stageReadInputModule
 		}
-		srvConfig = loadSavedConfig(flagParam)
 		goto stageSelectServerHandler
 	}
-
-	flagParam.serviceName = srvConfig.ServiceName
 
 stageInputModules:
 	cmdInput = readInput("Please input new module names (if more than one, separated by comma):")
 	for _, moduleName := range strings.Split(cmdInput, ",") {
-		if err := validateDir(flagParam.outputFlag + flagParam.serviceName + "/internal/modules/" + moduleName); scope != InitService && err == nil {
+		path := "internal/modules/" + moduleName
+		if flagParam.serviceName != "" {
+			path = flagParam.outputFlag + flagParam.serviceName + "/" + path
+		}
+		if err := validateDir(path); scope != InitService && err == nil {
 			fmt.Printf(RedFormat, "module '"+moduleName+"' is exist")
 			goto stageInputModules
 		}
-		srvConfig.Modules = append(srvConfig.Modules, moduleConfig{
+		newModules = append(newModules, moduleConfig{
 			ModuleName: strings.TrimSpace(candihelper.ToDelimited(moduleName, '-')), Skip: false,
 		})
 		flagParam.modules = append(flagParam.modules, strings.TrimSpace(moduleName))
 	}
-	if len(srvConfig.Modules) == 0 {
+	if len(newModules) == 0 {
 		fmt.Printf(RedFormat, "Modules cannot empty")
 		goto stageInputModules
 	}
 	sort.Strings(flagParam.modules)
+	srvConfig.Modules = append(srvConfig.Modules, newModules...)
 
 	if scope == AddModule {
-		savedConfig := loadSavedConfig(flagParam)
-		savedConfig.Modules = append(savedConfig.Modules, srvConfig.Modules...)
-		srvConfig = savedConfig
-
-	stageChooseCustomConfig:
-		format := "\n* REST: %t\n* GRPC: %t\n* GraphQL: %t\n* Kafka: %t\n* Scheduler: %t\n" +
-			"* RedisSubs: %t\n* TaskQueue: %t\n* PostgresListener: %t\n* RabbitMQ: %t"
-		currentConfig := fmt.Sprintf(format,
-			savedConfig.RestHandler, savedConfig.GRPCHandler, savedConfig.GraphQLHandler, savedConfig.KafkaHandler, savedConfig.SchedulerHandler,
-			savedConfig.RedisSubsHandler, savedConfig.TaskQueueHandler, savedConfig.PostgresListenerHandler, savedConfig.RabbitMQHandler)
-		customConfig := readInput(fmt.Sprintf("Use custom server/worker handler (y/n)? \ncurrent handler config is: %s", currentConfig))
-		yes, ok := optionYesNo[customConfig]
-		if !ok {
-			fmt.Printf(RedFormat, "Invalid option, try again")
-			goto stageChooseCustomConfig
-		}
-
-		if yes {
-			srvConfig.disableAllHandler()
-			goto stageSelectServerHandler
-		}
-		return
+		srvConfig.disableAllHandler()
 	}
 
 stageSelectServerHandler:
@@ -130,7 +114,19 @@ stageSelectServerHandler:
 				goto stageSelectServerHandler
 			}
 
-			srvConfig.FiberRestHandler = serverName == RestHandler && pluginHandler[opt] == FiberRestDeps
+			if serverName == RestHandler && scope == InitService {
+			stageSelectRESTFramework:
+				cmdInput = readInput("Please select REST library (choose one, enter for default using go-chi)",
+					"1) Fiber REST API (plugin)")
+				selected, ok := restPluginHandler[cmdInput]
+				if ok {
+					srvConfig.FiberRestHandler = selected == FiberRestDeps
+				} else if cmdInput != "" {
+					fmt.Printf(RedFormat, "Invalid option, try again")
+					goto stageSelectRESTFramework
+				}
+			}
+
 			serviceHandlers[serverName] = true
 		} else if str != "" {
 			fmt.Printf(RedFormat, "Invalid option, try again")

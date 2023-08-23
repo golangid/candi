@@ -53,7 +53,7 @@ type Request{{upper (camel .ModuleName)}} struct {
 }
 
 // Deserialize to db model
-func (r *RequestUser) Deserialize() (res shareddomain.{{upper (camel .ModuleName)}}) {
+func (r *Request{{upper (camel .ModuleName)}}) Deserialize() (res shareddomain.{{upper (camel .ModuleName)}}) {
 	res.Field = r.Field
 	return
 }

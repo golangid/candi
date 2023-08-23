@@ -149,8 +149,8 @@ func inputOwnerName() (ownerName string) {
 	return
 }
 
-func readInput(cmd string) string {
-	logger.Printf("\033[1m%s\033[0m ", cmd)
+func readInput(cmds ...string) string {
+	logger.Printf("\033[1m%s\033[0m ", strings.Join(cmds, "\n"))
 	fmt.Printf(">> ")
 	cmdInput, _ := reader.ReadString('\n')
 	return strings.TrimRight(strings.TrimSpace(cmdInput), "\n")
@@ -174,13 +174,13 @@ func isDirExist(dir string) bool {
 
 func loadSavedConfig(flagParam *flagParameter) serviceConfig {
 	var baseDir string
-	if flagParam.serviceName != "" {
+	if flagParam.isMonorepo {
 		baseDir = flagParam.outputFlag + flagParam.serviceName + "/"
 	}
 
 	b, err := os.ReadFile(baseDir + "candi.json")
 	if err != nil {
-		log.Fatal("ERROR: cannot find candi.json file")
+		return serviceConfig{}
 	}
 	var savedConfig serviceConfig
 	json.Unmarshal(b, &savedConfig)
@@ -191,6 +191,7 @@ func loadSavedConfig(flagParam *flagParameter) serviceConfig {
 		log.Fatal(err)
 	}
 	savedConfig.Version = candi.Version
+	savedConfig.IsMonorepo = flagParam.isMonorepo
 	return savedConfig
 }
 
@@ -208,10 +209,6 @@ func filterServerHandler(cfg *serviceConfig, flagParam *flagParameter) (wording 
 	if !cfg.GraphQLHandler || (flagParam.addHandler && validateDir(flagParam.getFullModuleChildDir("delivery", "graphqlhandler")) != nil) {
 		options = append(options, fmt.Sprintf("%d) GraphQL", len(options)+1))
 		handlers[strconv.Itoa(len(options))] = GraphqlHandler
-	}
-	if !cfg.RestHandler || (flagParam.addHandler && validateDir(flagParam.getFullModuleChildDir("delivery", "resthandler")) != nil) {
-		options = append(options, fmt.Sprintf("%d) Fiber REST API (plugin)", len(options)+1))
-		handlers[strconv.Itoa(len(options))] = RestHandler
 	}
 
 	wording = strings.Join(options, "\n")

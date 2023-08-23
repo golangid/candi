@@ -113,6 +113,8 @@ func selectScope(flagParam flagParameter, scope string) {
 	case RunServiceMonorepo: // 5
 		serviceRunner(flagParam.serviceName)
 		return
+	case InitService:
+		flagParam.initService = true
 	}
 
 	if flagParam.isMonorepo {

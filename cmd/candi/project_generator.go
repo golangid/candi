@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -35,7 +33,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 		TargetDir: "pkg/", IsDir: true, DataSource: srvConfig,
 	}
 	apiProtoStructure := FileStructure{
-		TargetDir: "proto/", IsDir: true, SkipFunc: func() bool { return !srvConfig.GRPCHandler },
+		TargetDir: "proto/", IsDir: true,
 	}
 	apiGraphQLStructure := FileStructure{
 		TargetDir: "graphql/", IsDir: true, SkipFunc: func() bool { return !srvConfig.GraphQLHandler },
@@ -192,10 +190,6 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 		FromTemplate: true, DataSource: srvConfig, Source: serviceMainTemplate, FileName: "service.go",
 	})
 
-	jsonSrvConfig, _ := json.Marshal(srvConfig)
-	var configJSON bytes.Buffer
-	json.Indent(&configJSON, jsonSrvConfig, "", "     ")
-
 	var baseDirectoryFile FileStructure
 	baseDirectoryFile.TargetDir = flagParam.outputFlag + srvConfig.ServiceName + "/"
 	baseDirectoryFile.DataSource = srvConfig
@@ -269,7 +263,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 			{FromTemplate: true, DataSource: srvConfig, Source: cmdMainTemplate, FileName: "main.go"},
 			{FromTemplate: true, DataSource: srvConfig, Source: envTemplate, FileName: ".env"},
 			{FromTemplate: true, DataSource: srvConfig, Source: envTemplate, FileName: ".env.sample"},
-			{Source: configJSON.String(), FileName: "candi.json"},
+			{Source: srvConfig.toJSONString(), FileName: "candi.json"},
 			{FromTemplate: true, DataSource: srvConfig, Source: readmeTemplate, FileName: "README.md"},
 			{FromTemplate: true, DataSource: srvConfig, Source: licenseMapTemplate[srvConfig.License], FileName: "LICENSE",
 				Skip: srvConfig.License == ""},
@@ -306,7 +300,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 
 		internalServiceStructure.Childs = append(internalServiceStructure.Childs, moduleStructure)
 		apiStructure.Skip = true
-		apiProtoStructure.Skip, apiGraphQLStructure.Skip, apiJSONSchemaStructure.Skip = true, true, true
+		apiProtoStructure.SkipIfExist, apiGraphQLStructure.SkipIfExist, apiJSONSchemaStructure.SkipIfExist = true, true, true
 		apiStructure.Childs = []FileStructure{
 			apiProtoStructure, apiGraphQLStructure, apiJSONSchemaStructure,
 		}
@@ -315,18 +309,18 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 			apiStructure, cmdStructure, internalServiceStructure, pkgServiceStructure,
 		}...)
 		baseDirectoryFile.Childs = append(baseDirectoryFile.Childs, FileStructure{
-			Source: configJSON.String(), FileName: "candi.json",
+			Source: srvConfig.toJSONString(), FileName: "candi.json",
 		})
 		baseDirectoryFile.Skip = true
 		baseDirectoryFile.TargetDir = ""
-		if flagParam.serviceName != "" {
+		if flagParam.serviceName != "" && srvConfig.IsMonorepo {
 			baseDirectoryFile.TargetDir = flagParam.outputFlag + flagParam.serviceName + "/"
 		}
 	}
 
 	execGenerator(baseDirectoryFile)
 	if srvConfig.GraphQLHandler {
-		updateGraphQLRoot(flagParam, srvConfig)
+		updateGraphQLRoot(&flagParam, srvConfig)
 	}
 	updateSharedUsecase(flagParam, srvConfig)
 	updateSharedRepository(flagParam, srvConfig)
@@ -387,7 +381,7 @@ func execGenerator(fl FileStructure) {
 			if fl.SkipIfExist {
 				goto execChild
 			}
-			log.Fatal("mkdir err:", err)
+			log.Fatal("mkdir err: ", err)
 		}
 	}
 

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/golangid/candi/candihelper"
@@ -40,8 +39,7 @@ func (t *graphqlTracer) TraceQuery(ctx context.Context, queryString string, oper
 		header[key] = headers.Get(key)
 	}
 
-	trace, ctx := tracer.StartTraceFromHeader(ctx, strings.TrimSuffix(fmt.Sprintf("GraphQL-Root:%s", operationName), ":"), header)
-
+	trace, ctx := tracer.StartTraceFromHeader(ctx, "GraphQL-Root", header)
 	if operationName != "" {
 		trace.SetTag("graphql.operationName", operationName)
 	}

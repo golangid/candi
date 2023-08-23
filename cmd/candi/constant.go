@@ -1,15 +1,13 @@
 package main
 
 const (
-	Ps1                      = "\x1b[32;1m>>> \x1b[0m"
-	RedFormat                = "\x1b[31;1m%s \x1b[0m\n"
-	InitService              = "initservice"
-	AddModule                = "addmodule"
-	InitMonorepo             = "initMonorepo"
-	InitMonorepoService      = "initMonorepoService"
-	AddModuleMonorepoService = "addModuleMonorepoService"
-	RunServiceMonorepo       = "runServiceMonorepo"
-	AddHandler               = "addHandler"
+	Ps1                = "\x1b[32;1m>>> \x1b[0m"
+	RedFormat          = "\x1b[31;1m%s \x1b[0m\n"
+	InitService        = "initservice"
+	AddModule          = "addmodule"
+	InitMonorepo       = "initMonorepo"
+	RunServiceMonorepo = "runServiceMonorepo"
+	AddHandler         = "addHandler"
 
 	RestHandler             = "restHandler"
 	GrpcHandler             = "grpcHandler"

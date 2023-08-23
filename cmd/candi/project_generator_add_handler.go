@@ -188,7 +188,9 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 
 	root := FileStructure{
 		Skip: true, Childs: []FileStructure{
-			apiStructure, internalServiceStructure,
+			apiStructure, internalServiceStructure, {
+				Source: gqlCfg.toJSONString(), FileName: "candi.json",
+			},
 		},
 	}
 
@@ -209,7 +211,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 		readFileAndApply(root.TargetDir+"internal/modules/"+mod.ModuleName+"/module.go", old, new)
 	}
 	if serverHandlers[GraphqlHandler] {
-		updateGraphQLRoot(*flagParam, gqlCfg)
+		updateGraphQLRoot(flagParam, gqlCfg)
 	}
 }
 
@@ -258,7 +260,7 @@ func Set{{upper (clean $.ServiceName)}}({{lower (clean $.ServiceName)}} {{lower 
 	}
 }
 
-func updateGraphQLRoot(flagParam flagParameter, cfg serviceConfig) {
+func updateGraphQLRoot(flagParam *flagParameter, cfg serviceConfig) {
 	path := "api/graphql/_schema.graphql"
 	if flagParam.serviceName != "" {
 		path = flagParam.outputFlag + flagParam.serviceName + "/" + path
@@ -269,9 +271,9 @@ func updateGraphQLRoot(flagParam flagParameter, cfg serviceConfig) {
 	}
 	for _, moduleName := range flagParam.modules {
 		cleanMod, cleanUpperMod := candihelper.ToCamelCase(moduleName), strings.Title(candihelper.ToCamelCase(moduleName))
-		b = bytes.Replace(b, []byte("@candi:queryRoot"), []byte(fmt.Sprintf("@candi:queryRoot\n	%s: %sQueryResolver @auth(authType: BEARER)", cleanMod, cleanUpperMod)), -1)
-		b = bytes.Replace(b, []byte("@candi:mutationRoot"), []byte(fmt.Sprintf("@candi:mutationRoot\n	%s: %sMutationResolver @auth(authType: BEARER)", cleanMod, cleanUpperMod)), -1)
-		b = bytes.Replace(b, []byte("@candi:subscriptionRoot"), []byte(fmt.Sprintf("@candi:subscriptionRoot\n	%s: %sSubscriptionResolver", cleanMod, cleanUpperMod)), -1)
+		b = bytes.ReplaceAll(b, []byte("@candi:queryRoot"), []byte(fmt.Sprintf("@candi:queryRoot\n	%s: %sQueryResolver @auth(authType: BEARER)", cleanMod, cleanUpperMod)))
+		b = bytes.ReplaceAll(b, []byte("@candi:mutationRoot"), []byte(fmt.Sprintf("@candi:mutationRoot\n	%s: %sMutationResolver @auth(authType: BEARER)", cleanMod, cleanUpperMod)))
+		b = bytes.ReplaceAll(b, []byte("@candi:subscriptionRoot"), []byte(fmt.Sprintf("@candi:subscriptionRoot\n	%s: %sSubscriptionResolver", cleanMod, cleanUpperMod)))
 	}
 	os.WriteFile(path, b, 0644)
 }
