@@ -10,7 +10,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.11.2
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/golangid/candi-plugin/task-queue-worker v0.0.0-20230713141811-580c70719718
+	github.com/golangid/candi-plugin/task-queue-worker v0.0.0-20230903150753-5f4f2fd271a7
 	github.com/golangid/gojsonschema v0.0.1
 	github.com/golangid/graphql-go v0.0.9
 	github.com/gomodule/redigo v1.8.9
