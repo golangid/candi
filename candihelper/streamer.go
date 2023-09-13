@@ -23,3 +23,23 @@ func StreamAllBatch[T any, F FilterStreamer](ctx context.Context, totalData int,
 	}
 	return nil
 }
+
+// StreamAllBatchDynamic helper func for stream data with dynamic source changes
+func StreamAllBatchDynamic[T any, F FilterStreamer](ctx context.Context, filter F, fetchAllFunc func(context.Context, F) ([]T, error), handleFunc func(idx int, data *T) error) error {
+	for {
+		list, err := fetchAllFunc(ctx, filter)
+		if err != nil {
+			return err
+		}
+		if len(list) == 0 {
+			return nil
+		}
+		for i, data := range list {
+			offset := (filter.GetPage() - 1) * filter.GetLimit()
+			if err := handleFunc(offset+i, &data); err != nil {
+				return err
+			}
+		}
+		filter.IncrPage()
+	}
+}
