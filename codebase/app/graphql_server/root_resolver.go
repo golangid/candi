@@ -2,21 +2,21 @@ package graphqlserver
 
 import "reflect"
 
-// RootResolver root
+// rootResolver root
 // issue https://github.com/graph-gophers/graphql-go/issues/145
-type RootResolver struct {
+type rootResolver struct {
 	rootQuery        interface{}
 	rootMutation     interface{}
 	rootSubscription interface{}
 }
 
-func (r *RootResolver) Query() interface{} {
+func (r *rootResolver) Query() interface{} {
 	return r.rootQuery
 }
-func (r *RootResolver) Mutation() interface{} {
+func (r *rootResolver) Mutation() interface{} {
 	return r.rootMutation
 }
-func (r *RootResolver) Subscription() interface{} {
+func (r *rootResolver) Subscription() interface{} {
 	return r.rootSubscription
 }
 

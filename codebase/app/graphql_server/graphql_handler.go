@@ -31,30 +31,32 @@ type Handler interface {
 
 // ConstructHandlerFromService for create public graphql handler (maybe inject to rest handler)
 func ConstructHandlerFromService(service factory.ServiceFactory, opt Option) Handler {
-	// create dynamic struct
-	queryResolverValues := make(map[string]interface{})
-	mutationResolverValues := make(map[string]interface{})
-	subscriptionResolverValues := make(map[string]interface{})
-	var queryResolverFields, mutationResolverFields, subscriptionResolverFields []reflect.StructField
-	for _, m := range service.GetModules() {
-		if resolverModule := m.GraphQLHandler(); resolverModule != nil {
-			rootName := string(m.Name())
-			query, mutation, subscription := resolverModule.Query(), resolverModule.Mutation(), resolverModule.Subscription()
+	if opt.rootResolver == nil {
+		// create dynamic struct
+		queryResolverValues := make(map[string]interface{})
+		mutationResolverValues := make(map[string]interface{})
+		subscriptionResolverValues := make(map[string]interface{})
+		var queryResolverFields, mutationResolverFields, subscriptionResolverFields []reflect.StructField
+		for _, m := range service.GetModules() {
+			if resolverModule := m.GraphQLHandler(); resolverModule != nil {
+				rootName := string(m.Name())
+				query, mutation, subscription := resolverModule.Query(), resolverModule.Mutation(), resolverModule.Subscription()
 
-			appendStructField(rootName, query, &queryResolverFields)
-			appendStructField(rootName, mutation, &mutationResolverFields)
-			appendStructField(rootName, subscription, &subscriptionResolverFields)
+				appendStructField(rootName, query, &queryResolverFields)
+				appendStructField(rootName, mutation, &mutationResolverFields)
+				appendStructField(rootName, subscription, &subscriptionResolverFields)
 
-			queryResolverValues[rootName] = query
-			mutationResolverValues[rootName] = mutation
-			subscriptionResolverValues[rootName] = subscription
+				queryResolverValues[rootName] = query
+				mutationResolverValues[rootName] = mutation
+				subscriptionResolverValues[rootName] = subscription
+			}
+		}
+		opt.rootResolver = &rootResolver{
+			rootQuery:        constructStruct(queryResolverFields, queryResolverValues),
+			rootMutation:     constructStruct(mutationResolverFields, mutationResolverValues),
+			rootSubscription: constructStruct(subscriptionResolverFields, subscriptionResolverValues),
 		}
 	}
-
-	opt.rootResolver.rootQuery = constructStruct(queryResolverFields, queryResolverValues)
-	opt.rootResolver.rootMutation = constructStruct(mutationResolverFields, mutationResolverValues)
-	opt.rootResolver.rootSubscription = constructStruct(subscriptionResolverFields, subscriptionResolverValues)
-	gqlSchema := candihelper.LoadAllFile(os.Getenv(candihelper.WORKDIR)+"api/graphql", ".graphql")
 
 	// default directive
 	directiveFuncs := map[string]gqltypes.DirectiveFunc{
@@ -76,7 +78,13 @@ func ConstructHandlerFromService(service factory.ServiceFactory, opt Option) Han
 		// handling vulnerabilities exploit schema
 		schemaOpts = append(schemaOpts, graphql.DisableIntrospection())
 	}
-	schema := graphql.MustParseSchema(string(gqlSchema), &opt.rootResolver, schemaOpts...)
+
+	gqlSchema := candihelper.LoadAllFile(os.Getenv(candihelper.WORKDIR)+"api/graphql", ".graphql")
+	schema := graphql.MustParseSchema(string(gqlSchema), &rootResolver{
+		rootQuery:        opt.rootResolver.Query(),
+		rootMutation:     opt.rootResolver.Mutation(),
+		rootSubscription: opt.rootResolver.Subscription(),
+	}, schemaOpts...)
 
 	logger.LogYellow(fmt.Sprintf("[GraphQL] endpoint\t\t\t: http://127.0.0.1:%d%s", opt.httpPort, opt.RootPath))
 	logger.LogYellow(fmt.Sprintf("[GraphQL] playground\t\t\t: http://127.0.0.1:%d%s/playground", opt.httpPort, opt.RootPath))

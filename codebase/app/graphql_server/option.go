@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/golangid/candi/codebase/interfaces"
 	"github.com/golangid/candi/wrapper"
 	"github.com/golangid/graphql-go/types"
 	"github.com/soheilhy/cmux"
@@ -20,7 +21,7 @@ type (
 		jaegerMaxPacketSize int
 		rootHandler         http.Handler
 		sharedListener      cmux.CMux
-		rootResolver        RootResolver
+		rootResolver        interfaces.GraphQLHandler
 		directiveFuncs      map[string]types.DirectiveFunc
 	}
 
@@ -89,26 +90,10 @@ func SetJaegerMaxPacketSize(max int) OptionFunc {
 	}
 }
 
-// SetRootQuery option func
-func SetRootQuery(resolver interface{}) OptionFunc {
+// SetRootResolver option func
+func SetRootResolver(resolver interfaces.GraphQLHandler) OptionFunc {
 	return func(o *Option) {
-		o.rootResolver.rootQuery = resolver
-	}
-}
-
-// SetRootMutation option func
-func SetRootMutation(resolver interface{}) OptionFunc {
-	return func(o *Option) {
-		o.rootResolver.rootMutation = resolver
-	}
-}
-
-// SetRootSubscription public function
-// this public method created because cannot create dynamic method for embedded struct (issue https://github.com/golang/go/issues/15924)
-// and subscription in graphql cannot subscribe to at most one subscription at a time
-func SetRootSubscription(resolver interface{}) OptionFunc {
-	return func(o *Option) {
-		o.rootResolver.rootSubscription = resolver
+		o.rootResolver = resolver
 	}
 }
 
