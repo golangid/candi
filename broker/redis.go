@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
@@ -13,6 +14,11 @@ import (
 	"github.com/golangid/candi/tracer"
 	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
+)
+
+const (
+	// RedisBrokerKey key constant
+	RedisBrokerKey = "dynamic_scheduling"
 )
 
 // RedisOptionFunc func type
@@ -105,12 +111,19 @@ func (r *RedisBroker) Disconnect(ctx context.Context) error {
 
 // PublishMessage method
 func (r *RedisBroker) PublishMessage(ctx context.Context, args *candishared.PublisherArgument) (err error) {
-	trace := tracer.StartTrace(ctx, "redis_broker:publish_message")
-	defer func() {
-		trace.SetError(err)
-		trace.Finish()
-	}()
+	trace, ctx := tracer.StartTraceWithContext(ctx, "redis_broker:publish_message")
+	defer func() { trace.Finish(tracer.FinishWithError(err)) }()
 
+	if args.Key == "" {
+		return errors.New("key cannot empty")
+	}
+
+	trace.SetTag("topic", args.Topic)
+	trace.SetTag("key", args.Key)
+	if args.IsDeleteMessage {
+		trace.SetTag("is_delete", args.IsDeleteMessage)
+		return r.deleteMessage(ctx, args)
+	}
 	if err := args.Validate(); err != nil {
 		return err
 	}
@@ -118,10 +131,6 @@ func (r *RedisBroker) PublishMessage(ctx context.Context, args *candishared.Publ
 		return errors.New("delay cannot empty")
 	}
 
-	trace.SetTag("topic", args.Topic)
-	if args.Key != "" {
-		trace.SetTag("key", args.Key)
-	}
 	trace.Log("header", args.Header)
 	trace.Log("delay", args.Delay.String())
 	trace.Log("message", args.Message)
@@ -132,19 +141,47 @@ func (r *RedisBroker) PublishMessage(ctx context.Context, args *candishared.Publ
 	eventID := uuid.NewString()
 	trace.SetTag("event_id", eventID)
 	redisMessage, _ := json.Marshal(RedisMessage{
-		EventID: eventID, HandlerName: args.Topic, Message: string(args.Message),
+		EventID: eventID, HandlerName: args.Topic, Key: args.Key,
 	})
-	if _, err := conn.Do("SET", string(redisMessage), "ok"); err != nil {
+	if _, err := conn.Do("SET", string(redisMessage), 1); err != nil {
 		return err
 	}
 	_, err = conn.Do("EXPIRE", string(redisMessage), int(args.Delay.Seconds()))
+	_, err = conn.Do("HSET", RedisBrokerKey, args.Key, args.Message)
 	return err
+}
+
+// deleteMessage method
+func (r *RedisBroker) deleteMessage(ctx context.Context, args *candishared.PublisherArgument) (err error) {
+	conn := r.pool.Get()
+	trace := tracer.StartTrace(ctx, "redis_broker:delete_message")
+	defer func() { conn.Close(); trace.Finish(tracer.FinishWithError(err)) }()
+
+	conn.Do("HDEL", RedisBrokerKey, args.Key)
+
+	b, _ := json.Marshal(RedisMessage{
+		HandlerName: args.Topic, Key: args.Key,
+	})
+	b[len(b)-1] = '*'
+	key := string(b)
+	var keys []string
+	if strings.HasSuffix(key, "*") {
+		keys, _ = redis.Strings(conn.Do("KEYS", key))
+	}
+	if len(keys) == 0 {
+		keys = []string{key}
+	}
+	for _, k := range keys {
+		_, err = conn.Do("DEL", k)
+	}
+	return
 }
 
 // RedisMessage messaging model for redis subscriber key
 type RedisMessage struct {
 	HandlerName string `json:"h"`
-	Message     string `json:"message"`
+	Key         string `json:"key"`
+	Message     string `json:"message,omitempty"`
 	EventID     string `json:"id,omitempty"`
 }
 

@@ -37,6 +37,7 @@ type (
 		wg          sync.WaitGroup
 		semaphore   map[string]chan struct{}
 		messagePool sync.Pool
+		redisPool   *redis.Pool
 	}
 )
 
@@ -59,6 +60,7 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 		workerInstance.broker = broker.NewRedisBroker(redisPool)
 	}
 	workerInstance.opt.locker = candiutils.NewRedisLocker(redisPool)
+	workerInstance.redisPool = redisPool
 
 	for _, opt := range opts {
 		opt(&workerInstance.opt)
@@ -155,11 +157,24 @@ func (r *redisWorker) Name() string {
 
 func (r *redisWorker) processMessage(param broker.RedisMessage) {
 	// lock for multiple worker (if running on multiple pods/instance)
-	if r.opt.locker.IsLocked(r.getLockKey(param.HandlerName, param.EventID)) {
+	lockKey := r.getLockKey(param.HandlerName, param.EventID)
+	if r.opt.locker.IsLocked(lockKey) {
 		logger.LogYellow("redis_subscriber > eventID " + param.EventID + " is locked")
 		return
 	}
-	defer r.opt.locker.Unlock(r.getLockKey(param.HandlerName, param.EventID))
+	defer r.opt.locker.Unlock(lockKey)
+
+	var err error
+	message := []byte(param.Message)
+	if len(message) == 0 {
+		conn := r.redisPool.Get()
+		message, err = redis.Bytes(conn.Do("HGET", broker.RedisBrokerKey, param.Key))
+		if err != nil {
+			return
+		}
+		conn.Do("HDEL", broker.RedisBrokerKey, param.Key)
+		conn.Close()
+	}
 
 	ctx := r.ctx
 	selectedHandler := r.handlers[param.HandlerName]
@@ -167,7 +182,6 @@ func (r *redisWorker) processMessage(param broker.RedisMessage) {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
 
-	var err error
 	trace, ctx := tracer.StartTraceFromHeader(ctx, "RedisSubscriber", map[string]string{})
 	defer func() {
 		if r := recover(); r != nil {
@@ -180,20 +194,23 @@ func (r *redisWorker) processMessage(param broker.RedisMessage) {
 	}()
 
 	if r.opt.debugMode {
-		log.Printf("\x1b[35;3mRedis Key Expired Subscriber: executing event key '%s'\x1b[0m", param.HandlerName)
+		log.Printf("\x1b[35;3mRedis Key Expired Subscriber: executing event topic '%s'\x1b[0m", param.HandlerName)
 	}
 
 	trace.SetTag("handler_name", param.HandlerName)
 	trace.SetTag("event_id", param.EventID)
-	trace.Log("message", param.Message)
+	trace.Log("message", message)
 
 	eventContext := r.messagePool.Get().(*candishared.EventContext)
 	defer r.releaseMessagePool(eventContext)
 	eventContext.SetContext(ctx)
 	eventContext.SetWorkerType(string(types.RedisSubscriber))
 	eventContext.SetHandlerRoute(param.HandlerName)
-	eventContext.SetKey(param.EventID)
-	eventContext.WriteString(param.Message)
+	eventContext.SetKey(param.Key)
+	eventContext.SetHeader(map[string]string{
+		"event_id": param.EventID,
+	})
+	eventContext.Write(message)
 
 	for _, handlerFunc := range selectedHandler.HandlerFuncs {
 		if err = handlerFunc(eventContext); err != nil {
