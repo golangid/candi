@@ -608,11 +608,15 @@ func (r *{{camel .ModuleName}}RepoSQL) FetchAll(ctx context.Context, filter *dom
 	if filter.OrderBy == "" {
 		filter.OrderBy = ` + `"updated_at"` + `
 	}
-	
-	{{if .SQLUseGORM}}err = r.setFilter{{upper (camel .ModuleName)}}({{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, r.readDB), filter).Order(clause.OrderByColumn{
+
+	{{if .SQLUseGORM}}db := r.setFilter{{upper (camel .ModuleName)}}({{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, r.readDB), filter).Order(clause.OrderByColumn{
 		Column: clause.Column{Name: filter.OrderBy},
 		Desc:   strings.ToUpper(filter.Sort) == "DESC",
-	}).Limit(filter.Limit).Offset(filter.CalculateOffset()).Find(&data).Error
+	})
+	if filter.Limit >= 0 {
+		db = db.Limit(filter.Limit).Offset(filter.CalculateOffset())
+	}
+	err = db.Find(&data).Error
 	{{else}}where, args := r.setFilter{{upper (camel .ModuleName)}}(filter)
 	if len(args) > 0 {
 		where = " WHERE " + where

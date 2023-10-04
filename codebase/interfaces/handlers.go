@@ -20,6 +20,7 @@ type GraphQLHandler interface {
 	Query() interface{}
 	Mutation() interface{}
 	Subscription() interface{}
+	Schema() string
 }
 
 // WorkerHandler delivery factory for all worker handler

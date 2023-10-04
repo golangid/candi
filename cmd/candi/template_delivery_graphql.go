@@ -40,6 +40,11 @@ func (h *GraphQLHandler) Mutation() interface{} {
 func (h *GraphQLHandler) Subscription() interface{} {
 	return h
 }
+
+// Schema method
+func (h *GraphQLHandler) Schema() string {
+	return ""
+}
 `
 
 	deliveryGraphqlQueryTemplate = `// {{.Header}}

@@ -3,7 +3,6 @@ package graphqlserver
 import "reflect"
 
 // rootResolver root
-// issue https://github.com/graph-gophers/graphql-go/issues/145
 type rootResolver struct {
 	rootQuery        interface{}
 	rootMutation     interface{}

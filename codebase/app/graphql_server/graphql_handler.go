@@ -31,6 +31,9 @@ type Handler interface {
 
 // ConstructHandlerFromService for create public graphql handler (maybe inject to rest handler)
 func ConstructHandlerFromService(service factory.ServiceFactory, opt Option) Handler {
+	gqlSchema := candihelper.LoadAllFile(os.Getenv(candihelper.WORKDIR)+"api/graphql", ".graphql")
+	var resolver rootResolver
+
 	if opt.rootResolver == nil {
 		// create dynamic struct
 		queryResolverValues := make(map[string]interface{})
@@ -49,12 +52,23 @@ func ConstructHandlerFromService(service factory.ServiceFactory, opt Option) Han
 				queryResolverValues[rootName] = query
 				mutationResolverValues[rootName] = mutation
 				subscriptionResolverValues[rootName] = subscription
+
+				if schema := resolverModule.Schema(); schema != "" {
+					gqlSchema = append(gqlSchema, schema+"\n"...)
+				}
 			}
 		}
-		opt.rootResolver = &rootResolver{
+		resolver = rootResolver{
 			rootQuery:        constructStruct(queryResolverFields, queryResolverValues),
 			rootMutation:     constructStruct(mutationResolverFields, mutationResolverValues),
 			rootSubscription: constructStruct(subscriptionResolverFields, subscriptionResolverValues),
+		}
+	} else {
+		gqlSchema = append(gqlSchema, opt.rootResolver.Schema()+"\n"...)
+		resolver = rootResolver{
+			rootQuery:        opt.rootResolver.Query(),
+			rootMutation:     opt.rootResolver.Mutation(),
+			rootSubscription: opt.rootResolver.Subscription(),
 		}
 	}
 
@@ -79,20 +93,13 @@ func ConstructHandlerFromService(service factory.ServiceFactory, opt Option) Han
 		schemaOpts = append(schemaOpts, graphql.DisableIntrospection())
 	}
 
-	gqlSchema := candihelper.LoadAllFile(os.Getenv(candihelper.WORKDIR)+"api/graphql", ".graphql")
-	schema := graphql.MustParseSchema(string(gqlSchema), &rootResolver{
-		rootQuery:        opt.rootResolver.Query(),
-		rootMutation:     opt.rootResolver.Mutation(),
-		rootSubscription: opt.rootResolver.Subscription(),
-	}, schemaOpts...)
-
 	logger.LogYellow(fmt.Sprintf("[GraphQL] endpoint\t\t\t: http://127.0.0.1:%d%s", opt.httpPort, opt.RootPath))
 	logger.LogYellow(fmt.Sprintf("[GraphQL] playground\t\t\t: http://127.0.0.1:%d%s/playground", opt.httpPort, opt.RootPath))
 	logger.LogYellow(fmt.Sprintf("[GraphQL] playground (with explorer)\t: http://127.0.0.1:%d%s/playground?graphiql=true", opt.httpPort, opt.RootPath))
 	logger.LogYellow(fmt.Sprintf("[GraphQL] voyager\t\t\t: http://127.0.0.1:%d%s/voyager", opt.httpPort, opt.RootPath))
 
 	return &handlerImpl{
-		schema: schema,
+		schema: graphql.MustParseSchema((string(gqlSchema)), &resolver, schemaOpts...),
 		option: opt,
 	}
 }
