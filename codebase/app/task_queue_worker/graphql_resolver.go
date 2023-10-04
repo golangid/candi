@@ -421,7 +421,7 @@ func (r *rootResolver) SetConfiguration(ctx context.Context, input struct {
 func (r *rootResolver) RunQueuedJob(ctx context.Context, input struct {
 	TaskName string
 }) (res string, err error) {
-
+	r.engine.checkForUnlockTask(input.TaskName)
 	r.engine.registerNextJob(true, input.TaskName)
 	return "Success", nil
 }

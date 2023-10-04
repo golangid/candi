@@ -210,7 +210,6 @@ func (t *taskQueueWorker) Name() string {
 }
 
 func (t *taskQueueWorker) registerJobToWorker(job *Job) {
-
 	interval, err := time.ParseDuration(job.Interval)
 	if err != nil || interval <= 0 {
 		logger.LogRed("invalid interval " + job.Interval)

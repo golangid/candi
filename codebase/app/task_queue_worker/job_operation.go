@@ -101,6 +101,9 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	if n := engine.opt.queue.PushJob(ctx, &newJob); n <= 1 && len(engine.semaphore[workerIndex-1]) == 0 {
 		engine.registerJobToWorker(&newJob)
 	}
+	if engine.opt.locker.HasBeenLocked(engine.getLockKey(newJob.TaskName)) {
+		engine.checkForUnlockTask(newJob.TaskName)
+	}
 
 	return newJob.ID, nil
 }
@@ -141,7 +144,7 @@ func AddJobViaHTTPRequest(ctx context.Context, workerHost string, req *AddJobReq
 		},
 		"query": `mutation addJob($param: AddJobInputResolver!) { add_job(param: $param) }`,
 	}
-	httpResp, err := httpReq.DoRequest(ctx, http.MethodPost, workerHost+"/graphql", candihelper.ToBytes(reqBody), header)
+	httpResp, err := httpReq.DoRequest(ctx, http.MethodPost, strings.Trim(workerHost, "/")+"/graphql", candihelper.ToBytes(reqBody), header)
 	if err != nil {
 		return jobID, err
 	}

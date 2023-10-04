@@ -38,7 +38,6 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 	go func(workerIndex int, task *Task) {
 		var ctx context.Context
 		ctx, task.cancel = context.WithCancel(t.ctx)
-
 		defer func() {
 			if r := recover(); r != nil {
 				logger.LogRed(fmt.Sprintf("task_queue_worker > panic: %v", r))
@@ -57,12 +56,13 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 		}
 
 		// lock for multiple worker (if running on multiple runtime)
-		isLocked := t.opt.locker.IsLocked(t.getLockKey(runningTask.taskName))
-		if isLocked {
+		lockKey := t.getLockKey(runningTask.taskName)
+		if t.opt.locker.IsLocked(lockKey) {
 			logger.LogI("task_queue_worker > task " + runningTask.taskName + " is locked")
+			t.checkForUnlockTask(runningTask.taskName)
 			return
 		}
-		defer t.opt.locker.Unlock(t.getLockKey(runningTask.taskName))
+		defer t.opt.locker.Unlock(lockKey)
 
 		t.execJob(ctx, task)
 
@@ -276,11 +276,17 @@ func (t *taskQueueWorker) getLockKey(jobID string) string {
 	return fmt.Sprintf("%s:task-queue-worker-lock:%s", t.service.Name(), jobID)
 }
 
-func (t *taskQueueWorker) registerNextJob(withStream bool, taskName string) {
+func (t *taskQueueWorker) checkForUnlockTask(taskName string) {
+	if count := t.opt.persistent.CountAllJob(t.ctx, &Filter{
+		TaskName: taskName, Status: candihelper.ToStringPtr(StatusRetrying.String()),
+	}); count == 0 {
+		t.opt.locker.Unlock(t.getLockKey(taskName))
+	}
+}
 
+func (t *taskQueueWorker) registerNextJob(withStream bool, taskName string) {
 	nextJobID := t.opt.queue.NextJob(t.ctx, taskName)
 	if nextJobID != "" {
-
 		if nextJob, err := t.opt.persistent.FindJobByID(t.ctx, nextJobID, nil); err == nil {
 			t.registerJobToWorker(&nextJob)
 			return
@@ -290,7 +296,6 @@ func (t *taskQueueWorker) registerNextJob(withStream bool, taskName string) {
 		t.registerNextJob(false, taskName)
 
 	} else if withStream {
-
 		StreamAllJob(t.ctx, &Filter{
 			TaskName: taskName,
 			Sort:     "created_at",
@@ -300,5 +305,4 @@ func (t *taskQueueWorker) registerNextJob(withStream bool, taskName string) {
 		})
 		t.registerNextJob(false, taskName)
 	}
-
 }
