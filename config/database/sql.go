@@ -50,14 +50,13 @@ func InitSQLDatabase() interfaces.SQLDatabase {
 	}
 }
 
-// ConnectSQLDatabase connect to sql database with dsn
-func ConnectSQLDatabase(dsn string) *sql.DB {
-
-	sqlDriver, conn, ok := strings.Cut(dsn, "://")
+// ParseSQLDSN parse sql dsn
+func ParseSQLDSN(source string) (driverName string, dsn string) {
+	sqlDriver, conn, ok := strings.Cut(source, "://")
 	if !ok {
 		panic("SQL DSN: invalid url format")
 	}
-	driverName := sqlDriver
+	driverName = sqlDriver
 
 	switch sqlDriver {
 	case "mysql", "sqlite3":
@@ -74,10 +73,13 @@ func ConnectSQLDatabase(dsn string) *sql.DB {
 			}
 		}
 		dsn = fmt.Sprintf("%s://%s", sqlDriver, conn)
-
 	}
+	return
+}
 
-	db, err := sql.Open(driverName, dsn)
+// ConnectSQLDatabase connect to sql database with dsn
+func ConnectSQLDatabase(dsn string) *sql.DB {
+	db, err := sql.Open(ParseSQLDSN(dsn))
 	if err != nil {
 		panic(fmt.Sprintf("SQL Connection: %v", err))
 	}
