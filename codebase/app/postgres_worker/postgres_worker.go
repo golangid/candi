@@ -65,7 +65,7 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 	}
 
 	for _, source := range worker.opt.sources {
-		source.db, source.listener = getListener(source.dsn)
+		source.db, source.listener = getListener(source.dsn, &worker.opt)
 		source.handlers = make(map[string]types.WorkerHandler)
 		source.workerIndex = len(worker.workerSourceIndex)
 
