@@ -685,3 +685,18 @@ func TransformSizeToByte(size uint64) string {
 
 	return fmt.Sprintf("%d %s", size, unit)
 }
+
+// UnwrapPtr take value from pointer
+func UnwrapPtr[T any](t *T) (res T) {
+	if t == nil {
+		return
+	}
+
+	res = *t
+	return
+}
+
+// WrapPtr set pointer from value
+func WrapPtr[T any](t T) *T {
+	return &t
+}
