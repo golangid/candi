@@ -56,31 +56,40 @@ import (
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 
+	"{{.LibraryName}}/candihelper"
+	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/tracer"
 )
 
 // GetAll{{upper (camel .ModuleName)}} resolver
-func (q *GraphQLHandler) GetAll{{upper (camel .ModuleName)}}(ctx context.Context, input struct{ Filter *Filter{{upper (camel .ModuleName)}} }) (results {{upper (camel .ModuleName)}}ListResolver, err error) {
+// GetAll{{upper (camel .ModuleName)}} resolver
+func (q *GraphQLHandler) GetAll{{upper (camel .ModuleName)}}(ctx context.Context, input struct {
+	Filter *struct {
+		candishared.NullableFilter
+		domain.Filter{{upper (camel .ModuleName)}}
+	}
+}) (res struct {
+	Meta candishared.Meta
+	Data []domain.Response{{upper (camel .ModuleName)}}
+}, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryGraphQL:GetAll{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GraphQLBearerAuth in middleware for this resolver
 
-	if input.Filter == nil {
-		input.Filter = new(Filter{{upper (camel .ModuleName)}})
+	filter := candihelper.UnwrapPtr(input.Filter)
+	filter.Filter = filter.ToFilter()
+	if err := q.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/get_all", filter.Filter{{upper (camel .ModuleName)}}); err != nil {
+		return res, err
 	}
-	filter := input.Filter.toSharedFilter()
-	if err := q.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/get_all", filter); err != nil {
-		return results, err
-	}
-	data, meta, err := q.uc.{{upper (camel .ModuleName)}}().GetAll{{upper (camel .ModuleName)}}(ctx, &filter)
+	data, meta, err := q.uc.{{upper (camel .ModuleName)}}().GetAll{{upper (camel .ModuleName)}}(ctx, &filter.Filter{{upper (camel .ModuleName)}})
 	if err != nil {
-		return results, err
+		return res, err
 	}
 
-	return {{upper (camel .ModuleName)}}ListResolver{
-		Meta: meta, Data: data,
-	}, nil
+	res.Data = data
+	res.Meta = meta
+	return
 }
 
 // GetDetail{{upper (camel .ModuleName)}} resolver
@@ -191,34 +200,6 @@ func (s *GraphQLHandler) ListenData(ctx context.Context) <-chan domain.Response{
 	}()
 
 	return output
-}
-`
-
-	deliveryGraphqlFieldResolverTemplate = `package graphqlhandler
-
-import (
-	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
-
-	"{{.LibraryName}}/candishared"
-)
-
-// Filter{{upper (camel .ModuleName)}} basic filter model
-type Filter{{upper (camel .ModuleName)}} struct {
-	candishared.NullableFilter
-	domain.Filter{{upper (camel .ModuleName)}}
-}
-
-// toSharedFilter method
-func (f *Filter{{upper (camel .ModuleName)}}) toSharedFilter() (filter domain.Filter{{upper (camel .ModuleName)}}) {
-	filter = f.Filter{{upper (camel .ModuleName)}}
-	filter.Filter = f.ToFilter()
-	return
-}
-
-// {{upper (camel .ModuleName)}}ListResolver resolver
-type {{upper (camel .ModuleName)}}ListResolver struct {
-	Meta candishared.Meta
-	Data []domain.Response{{upper (camel .ModuleName)}}
 }
 `
 

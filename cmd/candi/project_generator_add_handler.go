@@ -89,7 +89,6 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 					{FromTemplate: true, DataSource: mod, Source: deliveryGraphqlQueryTemplate, FileName: "query_resolver.go"},
 					{FromTemplate: true, DataSource: mod, Source: deliveryGraphqlMutationTemplate, FileName: "mutation_resolver.go"},
 					{FromTemplate: true, DataSource: mod, Source: deliveryGraphqlSubscriptionTemplate, FileName: "subscription_resolver.go"},
-					{FromTemplate: true, DataSource: mod, Source: deliveryGraphqlFieldResolverTemplate, FileName: "field_serializer_resolver.go"},
 				},
 			})
 			replaceEnv["USE_GRAPHQL=false"] = "USE_GRAPHQL=true"
