@@ -54,16 +54,16 @@ type DBUpdateTools struct {
 	IgnoredFields    []string
 }
 
-// ToMap method
-func (d DBUpdateTools) ToMap(data interface{}, opts ...DBUpdateOptionFunc) map[string]interface{} {
-	var (
-		o            partialUpdateOption
-		updateFields = make(map[string]interface{}, 0)
-	)
-
+func (d *DBUpdateTools) parseOption(opts ...DBUpdateOptionFunc) (o partialUpdateOption) {
 	for _, opt := range opts {
 		opt(&o)
 	}
+	return o
+}
+
+// ToMap method
+func (d DBUpdateTools) ToMap(data interface{}, opts ...DBUpdateOptionFunc) map[string]interface{} {
+	opt := d.parseOption(opts...)
 
 	dataValue := reflect.ValueOf(data)
 	dataType := reflect.TypeOf(data)
@@ -71,8 +71,9 @@ func (d DBUpdateTools) ToMap(data interface{}, opts ...DBUpdateOptionFunc) map[s
 		dataValue = dataValue.Elem()
 		dataType = dataType.Elem()
 	}
-	isPartial := len(o.updateFields) > 0 || len(o.ignoreFields) > 0
+	isPartial := len(opt.updateFields) > 0 || len(opt.ignoreFields) > 0
 
+	updateFields := make(map[string]interface{}, 0)
 	for i := 0; i < dataValue.NumField(); i++ {
 		fieldValue := dataValue.Field(i)
 		fieldType := dataType.Field(i)
@@ -103,9 +104,9 @@ func (d DBUpdateTools) ToMap(data interface{}, opts ...DBUpdateOptionFunc) map[s
 			continue
 		}
 
-		_, isFieldUpdated := o.updateFields[fieldType.Name]
-		_, isFieldIgnored := o.ignoreFields[fieldType.Name]
-		if (isFieldUpdated && len(o.updateFields) > 0) || (!isFieldIgnored && len(o.ignoreFields) > 0) {
+		_, isFieldUpdated := opt.updateFields[fieldType.Name]
+		_, isFieldIgnored := opt.ignoreFields[fieldType.Name]
+		if (isFieldUpdated && len(opt.updateFields) > 0) || (!isFieldIgnored && len(opt.ignoreFields) > 0) {
 			updateFields[key] = val
 		}
 	}
@@ -114,4 +115,16 @@ func (d DBUpdateTools) ToMap(data interface{}, opts ...DBUpdateOptionFunc) map[s
 		delete(updateFields, ignored)
 	}
 	return updateFields
+}
+
+// GetUpdatedFields method
+func (d DBUpdateTools) GetFields(opts ...DBUpdateOptionFunc) (updates, ignores []string) {
+	opt := d.parseOption(opts...)
+	for k := range opt.updateFields {
+		updates = append(updates, k)
+	}
+	for k := range opt.ignoreFields {
+		ignores = append(ignores, k)
+	}
+	return
 }

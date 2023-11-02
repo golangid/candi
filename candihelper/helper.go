@@ -700,3 +700,26 @@ func UnwrapPtr[T any](t *T) (res T) {
 func WrapPtr[T any](t T) *T {
 	return &t
 }
+
+// ToMap transform slice to map
+func ToMap[T any, K comparable](list []T, keyGetter func(T) K) map[K]T {
+	mp := make(map[K]T, len(list))
+	for _, el := range list {
+		mp[keyGetter(el)] = el
+	}
+	return mp
+}
+
+// IsExistInMap check key is exist in map
+func IsExistInMap[T any, K comparable](m map[K]T, key K) bool {
+	_, ok := m[key]
+	return ok
+}
+
+// ToKeyMapSlice transform key of map to slice
+func ToKeyMapSlice[T any, K comparable](mp map[K]T) (list []K) {
+	for k := range mp {
+		list = append(list, k)
+	}
+	return list
+}
