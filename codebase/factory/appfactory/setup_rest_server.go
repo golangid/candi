@@ -16,6 +16,9 @@ func SetupRESTServer(service factory.ServiceFactory, opts ...restserver.OptionFu
 		restserver.SetSharedListener(service.GetConfig().SharedListener),
 		restserver.SetDebugMode(env.BaseEnv().DebugMode),
 		restserver.SetJaegerMaxPacketSize(env.BaseEnv().JaegerMaxPacketSize),
+		restserver.SetTlsOption(env.BaseEnv().UseRESTTls),
+		restserver.SetCertFileOption(env.BaseEnv().RESTTlsCertFile),
+		restserver.SetKeyFileOption(env.BaseEnv().RESTTlsSKeyFile),
 	}
 	if env.BaseEnv().UseGraphQL {
 		restOptions = append(restOptions, restserver.AddGraphQLOption(
