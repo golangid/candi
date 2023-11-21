@@ -2,7 +2,9 @@ package restserver
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -75,7 +77,11 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 	server.httpEngine.Addr = fmt.Sprintf(":%d", server.opt.httpPort)
 	server.httpEngine.Handler = mux
 
-	fmt.Printf("\x1b[34;1m⇨ HTTP server run at port [::]%s\x1b[0m\n\n", server.httpEngine.Addr)
+	if server.opt.tls {
+		fmt.Printf("\x1b[34;1m⇨ HTTPS server run at port [::]%s\x1b[0m\n\n", server.httpEngine.Addr)
+	} else {
+		fmt.Printf("\x1b[34;1m⇨ HTTP server run at port [::]%s\x1b[0m\n\n", server.httpEngine.Addr)
+	}
 
 	if server.opt.sharedListener != nil {
 		server.listener = server.opt.sharedListener.Match(cmux.HTTP1Fast(http.MethodPatch))
@@ -86,10 +92,44 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 
 func (s *restServer) Serve() {
 	var err error
-	if s.listener != nil {
-		err = s.httpEngine.Serve(s.listener)
+
+	if !s.opt.tls {
+		if s.listener != nil {
+			err = s.httpEngine.Serve(s.listener)
+		} else {
+			err = s.httpEngine.ListenAndServe()
+		}
 	} else {
-		err = s.httpEngine.ListenAndServe()
+		certFile := s.opt.certFile
+		keyFile := s.opt.keyFile
+
+		// Try to read certFile as a file path
+		certBytes, err := ioutil.ReadFile(certFile)
+		if err != nil {
+			// If reading as a file fails, assume it's a certificate string
+			certBytes = []byte(certFile)
+		}
+
+		// Do the same for keyFile
+		keyBytes, err := ioutil.ReadFile(keyFile)
+		if err != nil {
+			keyBytes = []byte(keyFile)
+		}
+
+		// Now you can use certBytes and keyBytes to create a TLS certificate
+		cert, err := tls.X509KeyPair(certBytes, keyBytes)
+		if err != nil {
+			log.Fatalf("Server: loadkeys: %s", err)
+		}
+
+		config := &tls.Config{Certificates: []tls.Certificate{cert}}
+		s.httpEngine.TLSConfig = config
+
+		if s.listener != nil {
+			err = s.httpEngine.ServeTLS(s.listener, certFile, keyFile)
+		} else {
+			err = s.httpEngine.ListenAndServeTLS(certFile, keyFile)
+		}
 	}
 
 	switch err.(type) {
