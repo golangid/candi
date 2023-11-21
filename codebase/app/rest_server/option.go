@@ -23,6 +23,9 @@ type (
 		jaegerMaxPacketSize int
 		sharedListener      cmux.CMux
 		graphqlOption       graphqlserver.Option
+		tls                 bool
+		certFile            string
+		keyFile             string
 	}
 
 	// OptionFunc type
@@ -59,6 +62,9 @@ func getDefaultOption() option {
 			}),
 		},
 		rootHandler: http.HandlerFunc(wrapper.HTTPHandlerDefaultRoot),
+		tls:         false,
+		certFile:    "",
+		keyFile:     "",
 	}
 }
 
@@ -136,5 +142,26 @@ func AddGraphQLOption(opts ...graphqlserver.OptionFunc) OptionFunc {
 			opt(&o.graphqlOption)
 		}
 		MiddlewareExcludeURLPath[o.graphqlOption.RootPath] = struct{}{}
+	}
+}
+
+// SetTlsOption option func
+func SetTlsOption(tls bool) OptionFunc {
+	return func(o *option) {
+		o.tls = tls
+	}
+}
+
+// SetCertFileOption option func
+func SetCertFileOption(cert string) OptionFunc {
+	return func(o *option) {
+		o.certFile = cert
+	}
+}
+
+// SetKeyFileOption option func
+func SetKeyFileOption(key string) OptionFunc {
+	return func(o *option) {
+		o.keyFile = key
 	}
 }
