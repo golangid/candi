@@ -46,6 +46,14 @@ const (
 	HeaderContentType = "Content-Type"
 	// HeaderAuthorization const
 	HeaderAuthorization = "Authorization"
+	// HeaderCacheControl header const
+	HeaderCacheControl = "Cache-Control"
+	// HeaderExpires header const
+	HeaderExpires = "Expires"
+	// HeaderLastModified header const
+	HeaderLastModified = "Last-Modified"
+	// HeaderIfModifiedSince header const
+	HeaderIfModifiedSince = "If-Modified-Since"
 	// HeaderMIMEApplicationJSON const
 	HeaderMIMEApplicationJSON = "application/json"
 	// HeaderMIMEApplicationXML const

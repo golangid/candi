@@ -20,15 +20,6 @@ const (
 
 	// MULTIPLE constanta
 	MULTIPLE = "MULTIPLE"
-
-	// HeaderCacheControl header const
-	HeaderCacheControl = "Cache-Control"
-	// HeaderExpires header const
-	HeaderExpires = "Expires"
-	// HeaderLastModified header const
-	HeaderLastModified = "Last-Modified"
-	// HeaderIfModifiedSince header const
-	HeaderIfModifiedSince = "If-Modified-Since"
 )
 
 func extractAuthType(prefix, authorization string) (string, error) {

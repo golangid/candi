@@ -48,7 +48,6 @@ func InitZap(opts ...OptionFunc) {
 
 // Log func
 func Log(level zapcore.Level, message string, context string, scope string) {
-
 	entry := zap.S().With(
 		zap.String("context", context),
 		zap.String("scope", scope),
@@ -59,7 +58,6 @@ func Log(level zapcore.Level, message string, context string, scope string) {
 
 // LogWithField func
 func LogWithField(level zapcore.Level, fields map[string]interface{}) {
-
 	var message interface{}
 	var args []interface{}
 	for k, v := range fields {
@@ -108,7 +106,6 @@ func LogIf(format string, i ...interface{}) {
 }
 
 func setEntryType(level zapcore.Level, entry *zap.SugaredLogger, msg interface{}) {
-
 	switch level {
 	case zapcore.DebugLevel:
 		entry.Debug(msg)
