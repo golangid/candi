@@ -1,6 +1,7 @@
 package restserver
 
 import (
+	"crypto/tls"
 	"net/http"
 	"os"
 	"strings"
@@ -23,9 +24,7 @@ type (
 		jaegerMaxPacketSize int
 		sharedListener      cmux.CMux
 		graphqlOption       graphqlserver.Option
-		tls                 bool
-		certFile            string
-		keyFile             string
+		tlsConfig           *tls.Config
 	}
 
 	// OptionFunc type
@@ -62,9 +61,6 @@ func getDefaultOption() option {
 			}),
 		},
 		rootHandler: http.HandlerFunc(wrapper.HTTPHandlerDefaultRoot),
-		tls:         false,
-		certFile:    "",
-		keyFile:     "",
 	}
 }
 
@@ -145,23 +141,9 @@ func AddGraphQLOption(opts ...graphqlserver.OptionFunc) OptionFunc {
 	}
 }
 
-// SetTlsOption option func
-func SetTlsOption(tls bool) OptionFunc {
+// SetTLSConfig option func
+func SetTLSConfig(tlsConfig *tls.Config) OptionFunc {
 	return func(o *option) {
-		o.tls = tls
-	}
-}
-
-// SetCertFileOption option func
-func SetCertFileOption(cert string) OptionFunc {
-	return func(o *option) {
-		o.certFile = cert
-	}
-}
-
-// SetKeyFileOption option func
-func SetKeyFileOption(key string) OptionFunc {
-	return func(o *option) {
-		o.keyFile = key
+		o.tlsConfig = tlsConfig
 	}
 }
