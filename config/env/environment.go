@@ -44,13 +44,6 @@ type Env struct {
 	UsePostgresListenerWorker bool
 	// UseRabbitMQWorker env
 	UseRabbitMQWorker bool
-	// UseRESTTls config
-	UseRESTTls bool
-
-	// RESTTlsCertFile config
-	RESTTlsCertFile string
-	// RESTTlsSKeyFile config
-	RESTTlsSKeyFile string
 
 	DebugMode bool
 
@@ -210,11 +203,6 @@ func Load(serviceName string) {
 
 	env.StartAt = time.Now().Format(time.RFC3339)
 
-	// Parse REST TLS environment
-	if env.UseREST {
-		parseRestTlsEnv(mErrs)
-	}
-
 	if mErrs.HasError() {
 		panic("Basic environment error: \n" + mErrs.Error())
 	}
@@ -359,19 +347,4 @@ func parseCorsEnv() {
 func parseBool(envName string) bool {
 	b, _ := strconv.ParseBool(os.Getenv(envName))
 	return b
-}
-
-func parseRestTlsEnv(mErrs candihelper.MultiError) {
-	env.UseRESTTls = parseBool("USE_REST_TLS")
-	tlsCertFile := os.Getenv("REST_TLS_CERT_FILE")
-	if tlsCertFile == "" && env.UseRESTTls {
-		mErrs.Append("REST_TLS_CERT_FILE", errors.New("USE REST TLS is active, missing REST_TLS_CERT_FILE environment"))
-	}
-	env.RESTTlsCertFile = tlsCertFile
-
-	tlsKeyFile := os.Getenv("REST_TLS_KEY_FILE")
-	if tlsKeyFile == "" && env.UseRESTTls {
-		mErrs.Append("REST_TLS_KEY_FILE", errors.New("USE REST TLS is active, missing REST_TLS_KEY_FILE environment"))
-	}
-	env.RESTTlsSKeyFile = tlsKeyFile
 }
