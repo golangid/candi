@@ -12,6 +12,16 @@ func init() {
 	InitZap()
 }
 
+// MaskLog func for mask sensitive information from log
+var MaskLog = func(text string) string {
+	return text
+}
+
+// SetMaskLog set MaskLog function
+func SetMaskLog(masker Masker) {
+	MaskLog = masker.Mask
+}
+
 // LogWithDefer return defer func for status
 func LogWithDefer(str string) (deferFunc func()) {
 	fmt.Printf("%s %s ", time.Now().Format(candihelper.TimeFormatLogger), str)

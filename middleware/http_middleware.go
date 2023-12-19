@@ -74,8 +74,6 @@ func HTTPMiddlewareTracer(cfg HTTPMiddlewareConfig) func(http.Handler) http.Hand
 				logger.LogGreen("rest_server > trace_url: " + tracer.GetTraceURL(ctx))
 			}()
 
-			// trace.DisableLog()
-
 			httpDump, _ := httputil.DumpRequest(req, false)
 			trace.Log("http.request", httpDump)
 			trace.SetTag("http.url_path", req.URL.Path)

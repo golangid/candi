@@ -131,7 +131,7 @@ func ToBytes(i interface{}) (b []byte) {
 	case []byte:
 		b = t
 	case string:
-		b = []byte(t)
+		b = append(b, t...)
 	default:
 		b, _ = json.Marshal(i)
 	}
