@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candiutils"
 	"github.com/golangid/candi/tracer"
 	"github.com/golangid/candi/wrapper"
 )
@@ -24,6 +25,13 @@ func (m *Middleware) HTTPCache(next http.Handler) http.Handler {
 		Body   []byte      `json:"body,omitempty"`
 		Header http.Header `json:"header,omitempty"`
 	}
+	bPool := candiutils.NewSyncPool(func() *bytes.Buffer {
+		buff := bytes.NewBuffer(make([]byte, 256))
+		buff.Reset()
+		return buff
+	}, func(b *bytes.Buffer) {
+		b.Reset()
+	})
 
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		if m.cache == nil {
@@ -31,7 +39,7 @@ func (m *Middleware) HTTPCache(next http.Handler) http.Handler {
 			return
 		}
 
-		cacheControl := req.Header.Get(HeaderCacheControl)
+		cacheControl := req.Header.Get(candihelper.HeaderCacheControl)
 
 		var (
 			noCache = m.cache == nil
@@ -51,7 +59,6 @@ func (m *Middleware) HTTPCache(next http.Handler) http.Handler {
 
 			case "no-cache":
 				noCache = true
-
 			}
 		}
 
@@ -67,7 +74,7 @@ func (m *Middleware) HTTPCache(next http.Handler) http.Handler {
 		trace.SetTag("key", cacheKey)
 		if cacheVal, err := m.cache.Get(ctx, cacheKey); err == nil {
 			if ttl, err := m.cache.GetTTL(ctx, cacheKey); err == nil {
-				res.Header().Add(HeaderExpires, time.Now().In(time.UTC).Add(ttl).Format(time.RFC1123))
+				res.Header().Add(candihelper.HeaderExpires, time.Now().In(time.UTC).Add(ttl).Format(time.RFC1123))
 			}
 
 			var data cacheData
@@ -84,7 +91,8 @@ func (m *Middleware) HTTPCache(next http.Handler) http.Handler {
 			return
 		}
 
-		resBody := &bytes.Buffer{}
+		resBody := bPool.Get()
+		defer bPool.Put(resBody)
 		respWriter := wrapper.NewWrapHTTPResponseWriter(resBody, res)
 
 		next.ServeHTTP(respWriter, req)

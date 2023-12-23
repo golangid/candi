@@ -8,6 +8,7 @@ import (
 
 	graphqlserver "github.com/golangid/candi/codebase/app/graphql_server"
 	"github.com/golangid/candi/config/env"
+	"github.com/golangid/candi/middleware"
 	"github.com/golangid/candi/wrapper"
 	"github.com/soheilhy/cmux"
 )
@@ -41,18 +42,18 @@ func getDefaultOption() option {
 		rootPath:  "/",
 		debugMode: true,
 		rootMiddlewares: []func(http.Handler) http.Handler{
-			wrapper.HTTPMiddlewareCORS(
+			middleware.HTTPMiddlewareCORS(
 				env.BaseEnv().CORSAllowMethods, env.BaseEnv().CORSAllowHeaders,
 				env.BaseEnv().CORSAllowOrigins, nil, env.BaseEnv().CORSAllowCredential,
 			),
-			wrapper.HTTPMiddlewareTracer(wrapper.HTTPMiddlewareConfig{
+			middleware.HTTPMiddlewareTracer(middleware.HTTPMiddlewareConfig{
 				MaxLogSize: env.BaseEnv().JaegerMaxPacketSize,
 				DisableFunc: func(r *http.Request) bool {
 					_, ok := MiddlewareExcludeURLPath[r.URL.Path]
 					return ok
 				},
 			}),
-			wrapper.HTTPMiddlewareLog(wrapper.HTTPMiddlewareConfig{
+			middleware.HTTPMiddlewareLog(middleware.HTTPMiddlewareConfig{
 				Writer: os.Stdout,
 				DisableFunc: func(r *http.Request) bool {
 					_, ok := MiddlewareExcludeURLPath[r.URL.Path]

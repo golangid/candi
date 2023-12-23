@@ -49,3 +49,23 @@ func (wp *workerPool[T]) Finish() {
 	close(wp.jobChan)
 	wp.wg.Wait()
 }
+
+type SyncPool[T any] struct {
+	pool  sync.Pool
+	onPut func(T)
+}
+
+func NewSyncPool[T any](newFunc func() T, onPut func(T)) SyncPool[T] {
+	return SyncPool[T]{pool: sync.Pool{New: func() any { return newFunc() }}, onPut: onPut}
+}
+
+func (s *SyncPool[T]) Get() T {
+	return s.pool.Get().(T)
+}
+
+func (s *SyncPool[T]) Put(x T) {
+	if s.onPut != nil {
+		s.onPut(x)
+	}
+	s.pool.Put(x)
+}
