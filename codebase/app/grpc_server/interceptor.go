@@ -178,9 +178,11 @@ func (i *interceptor) streamMiddlewareInterceptor(srv interface{}, stream grpc.S
 }
 
 func (i *interceptor) middlewareInterceptor(ctx context.Context, fullMethod string) (context.Context, error) {
+	var err error
+	
 	if middFunc, ok := i.middleware[fullMethod]; ok {
 		for _, mw := range middFunc {
-			ctx, err := mw(ctx)
+			ctx, err = mw(ctx)
 			if err != nil {
 				return ctx, err
 			}
