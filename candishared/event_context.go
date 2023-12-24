@@ -55,6 +55,15 @@ func (e *EventContext) SetContext(ctx context.Context) {
 	e.ctx = ctx
 }
 
+// SetContextWithValue set context with allow to multiple value
+// If parent context is null will assign with context.Background() as default value
+func (e *EventContext) SetContextWithValue(key, value any) {
+	if e.ctx == nil {
+		e.ctx = context.Background()
+	}
+	e.ctx = context.WithValue(e.ctx, key, value)
+}
+
 // SetWorkerType setter
 func (e *EventContext) SetWorkerType(w string) {
 	e.workerType = w
