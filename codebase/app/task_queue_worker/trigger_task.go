@@ -176,8 +176,10 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		t.subscriber.broadcastAllToSubscribers(t.ctx)
 	}()
 
-	tags := trace.Tags()
-	tags["job_id"], tags["task_name"], tags["retries"], tags["max_retry"] = job.ID, job.TaskName, job.Retries, job.MaxRetry
+	trace.SetTag("job_id", job.ID)
+	trace.SetTag("task_name", job.TaskName)
+	trace.SetTag("retries", job.Retries)
+	trace.SetTag("max_retry", job.MaxRetry)
 	trace.Log("job_args", job.Arguments)
 
 	job.TraceID = tracer.GetTraceID(ctx)

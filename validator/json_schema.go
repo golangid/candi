@@ -57,16 +57,13 @@ func NewJSONSchemaValidator(opts ...JSONSchemaValidatorOptionFunc) JSONSchemaVal
 }
 
 // ValidateDocument based on schema id
-func (v *jsonSchemaValidator) ValidateDocument(schemaID string, documentSource interface{}) error {
-
-	s, err := v.schemaStorage.Get(schemaID)
-	if err != nil {
-		return err
+func (v *jsonSchemaValidator) ValidateDocument(schemaSource string, documentSource interface{}) error {
+	s, err := v.schemaStorage.Get(schemaSource)
+	if err == nil {
+		schemaSource = strings.ReplaceAll(s, "{{WORKDIR}}", os.Getenv(candihelper.WORKDIR))
 	}
 
-	schema, err := gojsonschema.NewSchema(gojsonschema.NewStringLoader(
-		strings.ReplaceAll(s, "{{WORKDIR}}", os.Getenv(candihelper.WORKDIR)),
-	))
+	schema, err := gojsonschema.NewSchema(gojsonschema.NewStringLoader(schemaSource))
 	if err != nil {
 		return err
 	}

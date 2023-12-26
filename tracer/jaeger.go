@@ -18,8 +18,8 @@ import (
 	config "github.com/uber/jaeger-client-go/config"
 )
 
-// InitOpenTracing init jaeger tracing
-func InitOpenTracing(serviceName string, opts ...OptionFunc) error {
+// InitJaeger init jaeger tracing
+func InitJaeger(serviceName string, opts ...OptionFunc) error {
 	option := Option{
 		AgentHost:       env.BaseEnv().JaegerTracingHost,
 		Level:           env.BaseEnv().Environment,
@@ -68,18 +68,23 @@ func InitOpenTracing(serviceName string, opts ...OptionFunc) error {
 	}
 	tracer, _, err := cfg.NewTracer(config.MaxTagValueLength(math.MaxInt32))
 	if err != nil {
-		log.Printf("ERROR: cannot init opentracing connection: %v\n", err)
+		log.Printf("ERROR: cannot init jaeger opentracing connection: %v\n", err)
 		return err
 	}
 	opentracing.SetGlobalTracer(tracer)
 	SetTracerPlatformType(&jaegerPlatform{
-		dashboardURL: option.TraceDashboard,
+		opt: &option,
 	})
 	return nil
 }
 
+// DEPRECATED: use InitJaeger
+func InitOpenTracing(serviceName string, opts ...OptionFunc) error {
+	return InitJaeger(serviceName, opts...)
+}
+
 type jaegerPlatform struct {
-	dashboardURL string
+	opt *Option
 }
 
 func (j *jaegerPlatform) StartSpan(ctx context.Context, operationName string) Tracer {
@@ -92,14 +97,16 @@ func (j *jaegerPlatform) StartSpan(ctx context.Context, operationName string) Tr
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
 	_, callerFile, callerLine, _ := runtime.Caller(4)
-	span.LogKV("caller", callerFile+":"+strconv.Itoa(callerLine))
+	caller := callerFile + ":" + strconv.Itoa(callerLine)
+	span.LogKV("caller", caller)
 	return &jaegerTraceImpl{
-		ctx:  ctx,
-		span: span,
+		ctx:           ctx,
+		span:          span,
+		operationName: operationName,
 	}
 }
-func (j *jaegerPlatform) StartRootSpan(ctx context.Context, operationName string, header map[string]string) Tracer {
 
+func (j *jaegerPlatform) StartRootSpan(ctx context.Context, operationName string, header map[string]string) Tracer {
 	if header == nil {
 		header = map[string]string{}
 	}
@@ -114,10 +121,12 @@ func (j *jaegerPlatform) StartRootSpan(ctx context.Context, operationName string
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
 	return &jaegerTraceImpl{
-		ctx:  ctx,
-		span: span,
+		ctx:           ctx,
+		span:          span,
+		operationName: operationName,
 	}
 }
+
 func (j *jaegerPlatform) GetTraceID(ctx context.Context) string {
 	span := opentracing.SpanFromContext(ctx)
 	if span == nil {
@@ -132,35 +141,28 @@ func (j *jaegerPlatform) GetTraceID(ctx context.Context) string {
 
 	return traceID
 }
+
 func (j *jaegerPlatform) GetTraceURL(ctx context.Context) (u string) {
 	if ctx == nil {
-		return j.dashboardURL
+		return j.opt.TraceDashboard
 	}
 	traceID := j.GetTraceID(ctx)
 	if traceID == "" {
 		return "<disabled>"
 	}
 
-	return fmt.Sprintf("%s/%s", j.dashboardURL, traceID)
+	return fmt.Sprintf("%s/%s", j.opt.TraceDashboard, traceID)
 }
 
 type jaegerTraceImpl struct {
-	ctx  context.Context
-	span opentracing.Span
-	tags map[string]interface{}
+	ctx           context.Context
+	span          opentracing.Span
+	operationName string
 }
 
 // Context get active context
 func (t *jaegerTraceImpl) Context() context.Context {
 	return t.ctx
-}
-
-// Tags create tags in tracer span
-func (t *jaegerTraceImpl) Tags() map[string]interface{} {
-	if t.tags == nil {
-		t.tags = make(map[string]interface{})
-	}
-	return t.tags
 }
 
 // SetTag set tags in tracer span
@@ -169,10 +171,7 @@ func (t *jaegerTraceImpl) SetTag(key string, value interface{}) {
 		return
 	}
 
-	if t.tags == nil {
-		t.tags = make(map[string]interface{})
-	}
-	t.tags[key] = value
+	t.span.SetTag(key, toValue(value))
 }
 
 // InjectRequestHeader to continue tracer with custom header carrier
@@ -203,14 +202,25 @@ func (t *jaegerTraceImpl) SetError(err error) {
 	ext.Error.Set(t.span, true)
 	t.span.SetTag("error.message", err.Error())
 
-	buff := make([]byte, 1<<10)
-	buff = buff[:runtime.Stack(buff, false)]
-	t.span.LogKV("stacktrace", toValue(buff))
+	stackTraces := []string{t.operationName + ", ERROR: " + err.Error()}
+	for i := 1; i < 5; i++ {
+		_, callerFile, callerLine, _ := runtime.Caller(i)
+		if strings.Contains(callerFile, "tracer/open_tracing.go") {
+			continue
+		}
+		caller := callerFile + ":" + strconv.Itoa(callerLine)
+		stackTraces = append(stackTraces, caller)
+	}
+	stackTrace := strings.Join(stackTraces, "\n")
+	log.Printf("\x1b[31;5m%s\x1b[0m", stackTrace)
+	if len(stackTraces) > 1 {
+		t.span.LogKV("stacktrace", strings.Join(stackTraces[1:], "\n"))
+	}
 }
 
 // SetError log data
 func (t *jaegerTraceImpl) Log(key string, value interface{}) {
-	Log(t.ctx, key, value)
+	t.span.LogKV(key, toValue(value))
 }
 
 // Finish trace with additional tags data, must in deferred function
@@ -226,54 +236,31 @@ func (t *jaegerTraceImpl) Finish(opts ...FinishOptionFunc) {
 		}
 	}
 
-	if finishOpt.Tags != nil && t.tags == nil {
-		t.tags = make(map[string]interface{})
-	}
-
 	for k, v := range finishOpt.Tags {
-		t.tags[k] = v
-	}
-
-	for k, v := range t.tags {
 		t.span.SetTag(k, toValue(v))
 	}
 
 	if finishOpt.Error != nil {
 		t.SetError(finishOpt.Error)
 	} else if finishOpt.WithStackTraceDetail {
-		buff := make([]byte, 1<<10)
-		buff = buff[:runtime.Stack(buff, false)]
-		t.span.LogKV("stacktrace", toValue(buff))
+		stackTraces := []string{t.operationName}
+		for i := 1; i < 5; i++ {
+			_, callerFile, callerLine, ok := runtime.Caller(i)
+			if !ok {
+				continue
+			}
+			if strings.Contains(callerFile, "tracer/open_tracing.go") {
+				continue
+			}
+			caller := callerFile + ":" + strconv.Itoa(callerLine)
+			stackTraces = append(stackTraces, caller)
+		}
+		stackTrace := strings.Join(stackTraces, "\n")
+		log.Printf("\x1b[31;5m%s\x1b[0m", stackTrace)
+		if len(stackTraces) > 1 {
+			t.span.LogKV("stacktrace", strings.Join(stackTraces[1:], "\n"))
+		}
 	}
 
 	t.span.Finish()
-}
-
-// Log trace
-func Log(ctx context.Context, key string, value interface{}) {
-	span := opentracing.SpanFromContext(ctx)
-	if span == nil {
-		return
-	}
-
-	span.LogKV(key, toValue(value))
-}
-
-// LogEvent trace
-func LogEvent(ctx context.Context, event string, payload ...interface{}) {
-	span := opentracing.SpanFromContext(ctx)
-	if span == nil {
-		return
-	}
-
-	if payload != nil {
-		for _, p := range payload {
-			if e, ok := p.(error); ok && e != nil {
-				ext.Error.Set(span, true)
-			}
-			span.LogKV(event, toValue(p))
-		}
-	} else {
-		span.LogKV(event)
-	}
 }

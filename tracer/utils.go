@@ -6,19 +6,13 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/config/env"
+	"github.com/golangid/candi/logger"
 	opentracing "github.com/opentracing/opentracing-go"
 	ext "github.com/opentracing/opentracing-go/ext"
 	otlog "github.com/opentracing/opentracing-go/log"
 )
-
-// WithTraceFunc functional with context and tags in function params (DEPRECATED, use WithTracerFunc)
-func WithTraceFunc(ctx context.Context, operationName string, fn func(context.Context, map[string]interface{})) {
-	t := StartTrace(ctx, operationName)
-	defer t.Finish()
-
-	fn(t.Context(), t.Tags())
-}
 
 // WithTracerFunc functional with Tracer instance in function params
 func WithTracerFunc(ctx context.Context, operationName string, fn func(context.Context, Tracer)) {
@@ -28,14 +22,8 @@ func WithTracerFunc(ctx context.Context, operationName string, fn func(context.C
 	fn(ctx, t)
 }
 
-func toValue(v interface{}) (s interface{}) {
-
-	var str string
+func toValue(v interface{}) (str string) {
 	switch val := v.(type) {
-
-	case uint, uint64, int, int64, float32, float64, bool:
-		return v
-
 	case error:
 		if val != nil {
 			str = val.Error()
@@ -43,10 +31,10 @@ func toValue(v interface{}) (s interface{}) {
 	case string:
 		str = val
 	case []byte:
-		str = string(val)
+		str = candihelper.ByteToString(val)
 	default:
 		b, _ := json.Marshal(val)
-		str = string(b)
+		str = candihelper.ByteToString(b)
 	}
 
 	if len(str) >= int(env.BaseEnv().JaegerMaxPacketSize) {
@@ -55,7 +43,7 @@ func toValue(v interface{}) (s interface{}) {
 			env.BaseEnv().JaegerMaxPacketSize)
 	}
 
-	return str
+	return logger.MaskLog(str)
 }
 
 // SetError global func
@@ -79,4 +67,33 @@ func SetError(ctx context.Context, err error) {
 		stackTrace = make([]byte, 2*len(stackTrace))
 	}
 	span.LogFields(otlog.String("stacktrace", string(stackTrace)))
+}
+
+// Log trace
+func Log(ctx context.Context, key string, value interface{}) {
+	span := opentracing.SpanFromContext(ctx)
+	if span == nil {
+		return
+	}
+
+	span.LogKV(key, toValue(value))
+}
+
+// LogEvent trace
+func LogEvent(ctx context.Context, event string, payload ...interface{}) {
+	span := opentracing.SpanFromContext(ctx)
+	if span == nil {
+		return
+	}
+
+	if payload != nil {
+		for _, p := range payload {
+			if e, ok := p.(error); ok && e != nil {
+				ext.Error.Set(span, true)
+			}
+			span.LogKV(event, toValue(p))
+		}
+	} else {
+		span.LogKV(event)
+	}
 }

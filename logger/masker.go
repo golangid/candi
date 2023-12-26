@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"unicode"
@@ -55,6 +56,7 @@ func NewMasker(keywords ...string) Masker {
 }
 
 func (r *maskImpl) Mask(text string) string {
+	isJSON := json.Valid([]byte(text))
 	for _, keyword := range r.keywords {
 		for _, pat := range GeneratePatternType(keyword) {
 			idx := strings.Index(text, pat.pattern)
@@ -84,7 +86,7 @@ func (r *maskImpl) Mask(text string) string {
 							maskStart = i
 						}
 
-						if isSpace || pat.ContainsInEnds(c) || i == len(text)-1 {
+						if (!isJSON && isSpace) || pat.ContainsInEnds(c) || i == len(text)-1 {
 							isValueStart = false
 							maskEnd = i
 							break

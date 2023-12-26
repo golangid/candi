@@ -19,7 +19,7 @@ func Test_maskImpl_Mask(t *testing.T) {
 			name:   "testcase #1",
 			fields: fields{keywords: []string{"password", "email", "ccNumber"}},
 			args:   args{text: `{"password"             : "usss" ,   "numb":1   , "ccNumber": 123123982347827  }`},
-			want:   `{"password"             : "xxxxx" ,   "numb":1   , "ccNumber": "xxxxx"  }`,
+			want:   `{"password"             : "xxxxx",   "numb":1   , "ccNumber": "xxxxx"}`,
 		},
 		{
 			name:   "testcase #2",
@@ -56,6 +56,12 @@ func Test_maskImpl_Mask(t *testing.T) {
 		email: "xxxxx",
 		password: "xxxxx"
 }`,
+		},
+		{
+			name:   "testcase #7",
+			fields: fields{keywords: []string{"password", "email", "ccNumber"}},
+			args:   args{text: `{"password"		:"usss asddasd"}`},
+			want:   `{"password"		:"xxxxx"}`,
 		},
 	}
 	for _, tt := range tests {

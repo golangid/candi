@@ -54,15 +54,13 @@ func HTTPMiddlewareTracer(cfg HTTPMiddlewareConfig) func(http.Handler) http.Hand
 				return
 			}
 
-			operationName := fmt.Sprintf("%s %s", req.Method, req.Host)
-
 			header := map[string]string{}
 			for key := range req.Header {
 				header[key] = req.Header.Get(key)
 			}
 
 			var err error
-			trace, ctx := tracer.StartTraceFromHeader(req.Context(), operationName, header)
+			trace, ctx := tracer.StartTraceFromHeader(req.Context(), "REST-Server", header)
 			defer func() {
 				if rec := recover(); rec != nil {
 					trace.SetTag("panic", true)
@@ -76,6 +74,7 @@ func HTTPMiddlewareTracer(cfg HTTPMiddlewareConfig) func(http.Handler) http.Hand
 
 			httpDump, _ := httputil.DumpRequest(req, false)
 			trace.Log("http.request", httpDump)
+			trace.SetTag("http.host", req.Host)
 			trace.SetTag("http.url_path", req.URL.Path)
 			trace.SetTag("http.method", req.Method)
 

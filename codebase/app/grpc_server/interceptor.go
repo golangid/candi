@@ -67,7 +67,7 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 		}
 	}
 
-	trace, ctx := tracer.StartTraceFromHeader(ctx, fmt.Sprintf("GRPC: %s", info.FullMethod), header)
+	trace, ctx := tracer.StartTraceFromHeader(ctx, "GRPC-Server", header)
 	defer func() {
 		if r := recover(); r != nil {
 			trace.SetTag("panic", true)
@@ -85,6 +85,7 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 	}()
 
 	trace.SetTag("metadata", meta)
+	trace.SetTag("method", info.FullMethod)
 	if reqBody := candihelper.ToBytes(req); len(reqBody) < i.opt.jaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
 		trace.Log("request.body", reqBody)
 	} else {
@@ -151,7 +152,7 @@ func (i *interceptor) streamTracerInterceptor(srv interface{}, stream grpc.Serve
 		}
 	}
 
-	trace, ctx := tracer.StartTraceFromHeader(ctx, fmt.Sprintf("GRPC-STREAM: %s", info.FullMethod), header)
+	trace, ctx := tracer.StartTraceFromHeader(ctx, "GRPC-STREAM", header)
 	defer func() {
 		if r := recover(); r != nil {
 			trace.SetTag("panic", true)
@@ -164,6 +165,7 @@ func (i *interceptor) streamTracerInterceptor(srv interface{}, stream grpc.Serve
 	}()
 
 	trace.SetTag("metadata", meta)
+	trace.SetTag("method", info.FullMethod)
 	err = handler(srv, &wrappedServerStream{ServerStream: stream, wrappedContext: ctx})
 	return
 }
@@ -179,7 +181,7 @@ func (i *interceptor) streamMiddlewareInterceptor(srv interface{}, stream grpc.S
 
 func (i *interceptor) middlewareInterceptor(ctx context.Context, fullMethod string) (context.Context, error) {
 	var err error
-	
+
 	if middFunc, ok := i.middleware[fullMethod]; ok {
 		for _, mw := range middFunc {
 			ctx, err = mw(ctx)
