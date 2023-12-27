@@ -151,7 +151,6 @@ func (p *postgresWorker) Serve() {
 				}
 
 				p.execEvent(workerIndex, data)
-
 			}(&payload, chosen)
 		}
 	}

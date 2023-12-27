@@ -10,11 +10,12 @@ import (
 
 type (
 	option struct {
-		maxGoroutines        int
-		debugMode            bool
-		locker               interfaces.Locker
-		minReconnectInterval time.Duration
-		maxReconnectInterval time.Duration
+		maxGoroutines         int
+		debugMode             bool
+		locker                interfaces.Locker
+		minReconnectInterval  time.Duration
+		maxReconnectInterval  time.Duration
+		onErrorConnectionFunc func(error)
 
 		sources map[string]*PostgresSource
 	}
@@ -28,8 +29,8 @@ func getDefaultOption(service factory.ServiceFactory) option {
 		maxGoroutines:        1,
 		debugMode:            true,
 		sources:              make(map[string]*PostgresSource),
-		minReconnectInterval: time.Second,
-		maxReconnectInterval: 3 * time.Second,
+		minReconnectInterval: 500 * time.Millisecond,
+		maxReconnectInterval: time.Second,
 	}
 	if redisPool := service.GetDependency().GetRedisPool(); redisPool != nil {
 		opt.locker = candiutils.NewRedisLocker(redisPool.WritePool())
@@ -87,5 +88,12 @@ func AddPostgresDSN(sourceName, dsn string) OptionFunc {
 		o.sources[sourceName] = &PostgresSource{
 			name: sourceName, dsn: dsn,
 		}
+	}
+}
+
+// SetOnErrorConnectionCallback option func for add error connection callback
+func SetOnErrorConnectionCallback(callback func(error)) OptionFunc {
+	return func(o *option) {
+		o.onErrorConnectionFunc = callback
 	}
 }
