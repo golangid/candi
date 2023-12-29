@@ -613,7 +613,7 @@ func (r *{{camel .ModuleName}}RepoSQL) FetchAll(ctx context.Context, filter *dom
 		Column: clause.Column{Name: filter.OrderBy},
 		Desc:   strings.ToUpper(filter.Sort) == "DESC",
 	})
-	if filter.Limit >= 0 {
+	if filter.Limit > 0 || !filter.ShowAll {
 		db = db.Limit(filter.Limit).Offset(filter.CalculateOffset())
 	}
 	err = db.Find(&data).Error

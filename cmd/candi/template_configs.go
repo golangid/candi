@@ -35,7 +35,7 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 	shared.SetEnv(sharedEnv)
 
 	logger.InitZap()
-	tracer.InitOpenTracing(baseCfg.ServiceName)
+	tracer.InitJaeger(baseCfg.ServiceName)
 
 	baseCfg.LoadFunc(func(ctx context.Context) []interfaces.Closer {
 		{{if not .RedisDeps}}// {{end}}redisDeps := database.InitRedis()

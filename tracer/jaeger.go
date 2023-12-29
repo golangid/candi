@@ -205,7 +205,7 @@ func (t *jaegerTraceImpl) SetError(err error) {
 	stackTraces := []string{t.operationName + ", ERROR: " + err.Error()}
 	for i := 1; i < 5; i++ {
 		_, callerFile, callerLine, _ := runtime.Caller(i)
-		if strings.Contains(callerFile, "tracer/open_tracing.go") {
+		if strings.Contains(callerFile, "candi/tracer/jaeger.go") {
 			continue
 		}
 		caller := callerFile + ":" + strconv.Itoa(callerLine)
@@ -249,7 +249,7 @@ func (t *jaegerTraceImpl) Finish(opts ...FinishOptionFunc) {
 			if !ok {
 				continue
 			}
-			if strings.Contains(callerFile, "tracer/open_tracing.go") {
+			if strings.Contains(callerFile, "candi/tracer/jaeger.go") {
 				continue
 			}
 			caller := callerFile + ":" + strconv.Itoa(callerLine)

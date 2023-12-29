@@ -566,3 +566,13 @@ func ToKeyMapSlice[T any, K comparable](mp map[K]T) (list []K) {
 	}
 	return list
 }
+
+// ElementInSlice check element is exist in slice
+func ElementInSlice[T comparable](el T, list []T) bool {
+	for _, v := range list {
+		if v == el {
+			return true
+		}
+	}
+	return false
+}
