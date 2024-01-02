@@ -74,7 +74,6 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 			err = status.Errorf(codes.Aborted, "%v", r)
 		}
 		i.logInterceptor(start, err, info.FullMethod, "GRPC")
-		logger.LogGreen("grpc > trace_url: " + tracer.GetTraceURL(ctx))
 		if respBody := candihelper.ToBytes(resp); len(respBody) < i.opt.jaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
 			trace.Log("response.body", respBody)
 		} else {
@@ -82,6 +81,7 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 		}
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish(tracer.FinishWithError(err))
+		logger.LogGreen("grpc > trace_url: " + tracer.GetTraceURL(ctx))
 	}()
 
 	trace.SetTag("metadata", meta)
@@ -159,9 +159,9 @@ func (i *interceptor) streamTracerInterceptor(srv interface{}, stream grpc.Serve
 			err = status.Errorf(codes.Aborted, "%v", r)
 		}
 		i.logInterceptor(start, err, info.FullMethod, "GRPC-STREAM")
-		logger.LogGreen("grpc_stream > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish(tracer.FinishWithError(err))
+		logger.LogGreen("grpc_stream > trace_url: " + tracer.GetTraceURL(ctx))
 	}()
 
 	trace.SetTag("metadata", meta)

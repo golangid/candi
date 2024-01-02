@@ -157,9 +157,9 @@ func (r *rabbitmqWorker) processMessage(message amqp.Delivery) {
 		if selectedHandler.AutoACK {
 			message.Ack(false)
 		}
-		logger.LogGreen("rabbitmq_consumer > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish(tracer.FinishWithError(err))
+		logger.LogGreen("rabbitmq_consumer > trace_url: " + tracer.GetTraceURL(ctx))
 	}()
 
 	trace.SetTag("broker", candihelper.MaskingPasswordURL(r.opt.broker))

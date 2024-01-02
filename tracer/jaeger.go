@@ -124,6 +124,7 @@ func (j *jaegerPlatform) StartRootSpan(ctx context.Context, operationName string
 		ctx:           ctx,
 		span:          span,
 		operationName: operationName,
+		isRoot:        true,
 	}
 }
 
@@ -158,6 +159,7 @@ type jaegerTraceImpl struct {
 	ctx           context.Context
 	span          opentracing.Span
 	operationName string
+	isRoot        bool
 }
 
 // Context get active context
@@ -202,8 +204,8 @@ func (t *jaegerTraceImpl) SetError(err error) {
 	ext.Error.Set(t.span, true)
 	t.span.SetTag("error.message", err.Error())
 
-	stackTraces := []string{t.operationName + ", ERROR: " + err.Error()}
-	for i := 1; i < 5; i++ {
+	stackTraces := []string{t.operationName + " => ERROR: " + err.Error()}
+	for i := 1; i < 5 && !t.isRoot; i++ {
 		_, callerFile, callerLine, _ := runtime.Caller(i)
 		if strings.Contains(callerFile, "candi/tracer/jaeger.go") {
 			continue
@@ -256,7 +258,7 @@ func (t *jaegerTraceImpl) Finish(opts ...FinishOptionFunc) {
 			stackTraces = append(stackTraces, caller)
 		}
 		stackTrace := strings.Join(stackTraces, "\n")
-		log.Printf("\x1b[31;5m%s\x1b[0m", stackTrace)
+		log.Printf("\x1b[32;5m%s\x1b[0m", stackTrace)
 		if len(stackTraces) > 1 {
 			t.span.LogKV("stacktrace", strings.Join(stackTraces[1:], "\n"))
 		}

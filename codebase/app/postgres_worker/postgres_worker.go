@@ -215,9 +215,9 @@ func (p *postgresWorker) execEvent(workerIndex int, data *EventPayload) {
 			trace.SetTag("panic", true)
 			err = fmt.Errorf("%v", r)
 		}
-		logger.LogGreen("postgres_listener > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish(tracer.FinishWithError(err))
+		logger.LogGreen("postgres_listener > trace_url: " + tracer.GetTraceURL(ctx))
 	}()
 
 	if p.opt.debugMode {

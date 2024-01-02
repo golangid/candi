@@ -79,9 +79,9 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 		if handler.AutoACK {
 			session.MarkMessage(message, "")
 		}
-		logger.LogGreen("kafka_consumer > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish(tracer.FinishWithError(err))
+		logger.LogGreen("kafka_consumer > trace_url: " + tracer.GetTraceURL(ctx))
 	}()
 
 	trace.SetTag("brokers", c.opt.brokers)

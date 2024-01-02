@@ -23,7 +23,7 @@ func NewRedisCache(read, write *redis.Pool) *RedisCache {
 // Get method
 func (r *RedisCache) Get(ctx context.Context, key string) (data []byte, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "redis:get")
-	defer func() { trace.SetError(err); trace.Log("result", data); trace.Finish() }()
+	defer func() { trace.Log("result", data); trace.Finish(tracer.FinishWithError(err)) }()
 
 	trace.SetTag("db.statement", "GET")
 	trace.SetTag("db.key", key)
@@ -37,7 +37,7 @@ func (r *RedisCache) Get(ctx context.Context, key string) (data []byte, err erro
 // GetKeys method
 func (r *RedisCache) GetKeys(ctx context.Context, pattern string) (data []string, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "redis:get_keys")
-	defer func() { trace.SetError(err); trace.Log("result", data); trace.Finish() }()
+	defer func() { trace.Log("result", data); trace.Finish(tracer.FinishWithError(err)) }()
 
 	trace.SetTag("db.statement", "KEYS")
 	trace.SetTag("db.key", pattern)
@@ -51,7 +51,7 @@ func (r *RedisCache) GetKeys(ctx context.Context, pattern string) (data []string
 // GetTTL method
 func (r *RedisCache) GetTTL(ctx context.Context, key string) (dur time.Duration, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "redis:get_ttl")
-	defer func() { trace.SetError(err); trace.Log("result", dur.String()); trace.Finish() }()
+	defer func() { trace.Log("result", dur.String()); trace.Finish(tracer.FinishWithError(err)) }()
 
 	trace.SetTag("db.statement", "GetTTL")
 	trace.SetTag("db.key", key)
@@ -71,7 +71,7 @@ func (r *RedisCache) GetTTL(ctx context.Context, key string) (dur time.Duration,
 // Set method
 func (r *RedisCache) Set(ctx context.Context, key string, value interface{}, expire time.Duration) (err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "redis:set")
-	defer func() { trace.SetError(err); trace.Finish() }()
+	defer func() { trace.Finish(tracer.FinishWithError(err)) }()
 
 	trace.SetTag("db.statement", "SET")
 	trace.SetTag("db.key", key)
@@ -94,7 +94,7 @@ func (r *RedisCache) Set(ctx context.Context, key string, value interface{}, exp
 // Exists method
 func (r RedisCache) Exists(ctx context.Context, key string) (exist bool, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "redis:exists")
-	defer func() { trace.SetError(err); trace.Log("result", exist); trace.Finish() }()
+	defer func() { trace.Log("result", exist); trace.Finish(tracer.FinishWithError(err)) }()
 
 	trace.SetTag("db.statement", "EXISTS")
 	trace.SetTag("db.key", key)
@@ -108,7 +108,7 @@ func (r RedisCache) Exists(ctx context.Context, key string) (exist bool, err err
 // Delete method with pattern
 func (r *RedisCache) Delete(ctx context.Context, key string) (err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "redis:delete")
-	defer func() { trace.SetError(err); trace.Finish() }()
+	defer func() { trace.Finish(tracer.FinishWithError(err)) }()
 
 	trace.SetTag("db.statement", "DEL")
 	trace.SetTag("db.key", key)

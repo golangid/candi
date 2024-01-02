@@ -125,9 +125,9 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 
 		job.FinishedAt = time.Now()
 
-		logger.LogGreen("task_queue_worker > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish(tracer.FinishWithError(err))
+		logger.LogGreen("task_queue_worker > trace_url: " + tracer.GetTraceURL(ctx))
 
 		incr := map[string]int64{}
 		if ok, _ := runningTask.handler.Configs[TaskOptionDeleteJobAfterSuccess].(bool); ok && job.Status == string(StatusSuccess) {

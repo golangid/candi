@@ -182,9 +182,9 @@ func (c *cronWorker) processJob(job *Job) {
 			trace.SetTag("panic", true)
 			err = fmt.Errorf("%v", r)
 		}
-		logger.LogGreen("cron_scheduler > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish(tracer.FinishWithError(err))
+		logger.LogGreen("cron_scheduler > trace_url: " + tracer.GetTraceURL(ctx))
 	}()
 	trace.SetTag("job_name", job.HandlerName)
 	trace.Log("job_param", job.Params)
@@ -224,7 +224,6 @@ func (c *cronWorker) stopAllJob() {
 }
 
 func (c *cronWorker) registerNextInterval(j *Job) {
-
 	if j.schedule != nil {
 		j.ticker.Stop()
 		j.ticker = time.NewTicker(j.schedule.NextInterval(time.Now()))
@@ -242,7 +241,6 @@ func (c *cronWorker) registerNextInterval(j *Job) {
 
 // addJob to cron worker
 func (c *cronWorker) addJob(job *Job) (err error) {
-
 	if len(job.Handler.HandlerFuncs) == 0 {
 		return errors.New("handler func cannot empty")
 	}

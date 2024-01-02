@@ -188,9 +188,9 @@ func (r *redisWorker) processMessage(param broker.RedisMessage) {
 			trace.SetTag("panic", true)
 			err = fmt.Errorf("%v", r)
 		}
-		logger.LogGreen("redis_subscriber > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish(tracer.FinishWithError(err))
+		logger.LogGreen("redis_subscriber > trace_url: " + tracer.GetTraceURL(ctx))
 	}()
 
 	if r.opt.debugMode {

@@ -61,9 +61,9 @@ func (t *graphqlTracer) TraceQuery(ctx context.Context, queryString string, oper
 			trace.Log("response.errors", errs)
 			trace.SetError(errs[0])
 		}
-		logger.LogGreen("graphql > trace_url: " + tracer.GetTraceURL(ctx))
 		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish()
+		logger.LogGreen("graphql > trace_url: " + tracer.GetTraceURL(ctx))
 	}
 }
 
