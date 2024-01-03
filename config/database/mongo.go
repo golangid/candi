@@ -2,7 +2,7 @@ package database
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -56,42 +56,40 @@ func (m *mongoInstance) Disconnect(ctx context.Context) (err error) {
 
 // InitMongoDB return mongo db read & write instance from environment:
 // MONGODB_HOST_WRITE, MONGODB_HOST_READ
-func InitMongoDB(ctx context.Context) interfaces.MongoDatabase {
+func InitMongoDB(ctx context.Context, opts ...*options.ClientOptions) interfaces.MongoDatabase {
 	deferFunc := logger.LogWithDefer("Load MongoDB connection...")
 	defer deferFunc()
 
 	mi := &mongoInstance{}
 	if env.BaseEnv().DbMongoReadHost != "" {
-		mi.read = ConnectMongoDB(ctx, env.BaseEnv().DbMongoReadHost)
+		mi.read = ConnectMongoDB(ctx, env.BaseEnv().DbMongoReadHost, opts...)
 	}
 	if env.BaseEnv().DbMongoWriteHost != "" {
-		mi.write = ConnectMongoDB(ctx, env.BaseEnv().DbMongoWriteHost)
+		mi.write = ConnectMongoDB(ctx, env.BaseEnv().DbMongoWriteHost, opts...)
 	}
 	return mi
 }
 
 // ConnectMongoDB connect to mongodb with dsn
-func ConnectMongoDB(ctx context.Context, dsn string) *mongo.Database {
+func ConnectMongoDB(ctx context.Context, dsn string, opts ...*options.ClientOptions) *mongo.Database {
+	connDSN, err := connstring.ParseAndValidate(dsn)
+	if err != nil {
+		log.Panic(err)
+	}
+
 	clientOpts := []*options.ClientOptions{
+		options.Client().ApplyURI(connDSN.String()),
 		options.Client().SetConnectTimeout(10 * time.Second),
 		options.Client().SetServerSelectionTimeout(10 * time.Second),
 	}
+	clientOpts = append(clientOpts, opts...)
 
-	// get mongo dsn from env
-	connDSN, err := connstring.ParseAndValidate(dsn)
+	client, err := mongo.Connect(ctx, clientOpts...)
 	if err != nil {
-		panic(err)
-	}
-	// connect to MongoDB
-	client, err := mongo.NewClient(append([]*options.ClientOptions{options.Client().ApplyURI(connDSN.String())}, clientOpts...)...)
-	if err != nil {
-		panic(fmt.Sprintf("mongodb: %v, conn: %s", err, connDSN.String()))
-	}
-	if err := client.Connect(ctx); err != nil {
-		panic(fmt.Sprintf("mongodb error connect: %v", err))
+		log.Panicf("mongodb: %v, conn: %s", err, connDSN.String())
 	}
 	if err = client.Ping(ctx, readpref.Primary()); err != nil {
-		panic(fmt.Sprintf("mongodb ping: %v", err))
+		log.Panicf("mongodb ping: %v", err)
 	}
 
 	return client.Database(connDSN.Database)
