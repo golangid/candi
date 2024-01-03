@@ -1,6 +1,7 @@
 package graphqlserver
 
 import (
+	"crypto/tls"
 	"net/http"
 	"strings"
 
@@ -23,6 +24,7 @@ type (
 		sharedListener      cmux.CMux
 		rootResolver        interfaces.GraphQLHandler
 		directiveFuncs      map[string]types.DirectiveFunc
+		tlsConfig           *tls.Config
 	}
 
 	// OptionFunc type
@@ -104,5 +106,12 @@ func AddDirectiveFunc(directiveName string, handlerFunc types.DirectiveFunc) Opt
 			o.directiveFuncs = make(map[string]types.DirectiveFunc)
 		}
 		o.directiveFuncs[directiveName] = handlerFunc
+	}
+}
+
+// SetTLSConfig option func
+func SetTLSConfig(tlsConfig *tls.Config) OptionFunc {
+	return func(o *Option) {
+		o.tlsConfig = tlsConfig
 	}
 }

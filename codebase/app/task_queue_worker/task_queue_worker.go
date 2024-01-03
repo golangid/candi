@@ -69,8 +69,12 @@ func NewTaskQueueWorker(service factory.ServiceFactory, opts ...OptionFunc) fact
 
 	go e.prepare()
 
-	fmt.Printf("\x1b[34;1m⇨ Task Queue Worker running with %d task. Open http://127.0.0.1:%d for dashboard\x1b[0m\n\n",
-		len(e.registeredTaskWorkerIndex), e.opt.dashboardPort)
+	var protocol string = "http"
+	if e.opt.tlsConfig != nil {
+		protocol = "https"
+	}
+	fmt.Printf("\x1b[34;1m⇨ Task Queue Worker running with %d task. Open %s://127.0.0.1:%d for dashboard\x1b[0m\n\n",
+		len(e.registeredTaskWorkerIndex), protocol, e.opt.dashboardPort)
 
 	return e
 }

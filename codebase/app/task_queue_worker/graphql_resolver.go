@@ -2,9 +2,11 @@ package taskqueueworker
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"runtime"
 	"sort"
@@ -19,34 +21,43 @@ import (
 	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/logger"
 	"github.com/golangid/graphql-go"
-	"github.com/golangid/graphql-go/trace"
 )
 
 func (t *taskQueueWorker) serveGraphQLAPI() {
 	schemaOpts := []graphql.SchemaOpt{
 		graphql.UseStringDescriptions(),
 		graphql.UseFieldResolvers(),
-		graphql.Tracer(trace.NoopTracer{}),
 	}
 	schema := graphql.MustParseSchema(schema, &rootResolver{engine: t}, schemaOpts...)
+	gqlHandler := graphqlserver.NewHandler(schema, graphqlserver.Option{})
 
 	mux := http.NewServeMux()
 	mux.Handle("/", t.opt.basicAuth(http.StripPrefix("/", http.FileServer(dashboard.Dashboard))))
 	mux.Handle("/task", t.opt.basicAuth(http.StripPrefix("/", http.FileServer(dashboard.Dashboard))))
 	mux.Handle("/job", t.opt.basicAuth(http.StripPrefix("/", http.FileServer(dashboard.Dashboard))))
 	mux.Handle("/expired", t.opt.basicAuth(http.StripPrefix("/", http.FileServer(dashboard.Dashboard))))
-
-	gqlHandler := graphqlserver.NewHandler(schema, graphqlserver.Option{})
 	mux.HandleFunc("/graphql", gqlHandler.ServeGraphQL())
 	mux.HandleFunc("/playground", gqlHandler.ServePlayground)
 	mux.HandleFunc("/voyager", gqlHandler.ServeVoyager)
 
 	httpEngine := new(http.Server)
-	httpEngine.Addr = fmt.Sprintf(":%d", engine.opt.dashboardPort)
 	httpEngine.Handler = mux
 
-	if err := httpEngine.ListenAndServe(); err != nil {
-		log.Panicf("task queue worker dashboard: %v", err)
+	var err error
+	if t.opt.tlsConfig != nil {
+		httpEngine.TLSConfig = t.opt.tlsConfig
+		listener, errListen := net.Listen("tcp", fmt.Sprintf(":%d", t.opt.dashboardPort))
+		if errListen != nil {
+			log.Panicf("Task Queue Worker Dashboard, Listen TCP Error: %v", err)
+		}
+		err = httpEngine.Serve(tls.NewListener(listener, t.opt.tlsConfig))
+	} else {
+		httpEngine.Addr = fmt.Sprintf(":%d", t.opt.dashboardPort)
+		err = httpEngine.ListenAndServe()
+	}
+
+	if err != nil {
+		log.Panicf("Task Queue Worker Dashboard: %v", err)
 	}
 }
 

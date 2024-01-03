@@ -1,6 +1,7 @@
 package taskqueueworker
 
 import (
+	"crypto/tls"
 	"encoding/base64"
 	"net/http"
 	"strings"
@@ -21,6 +22,7 @@ type (
 		dashboardAuthKey         string
 		debugMode                bool
 		locker                   interfaces.Locker
+		tlsConfig                *tls.Config
 	}
 
 	// OptionFunc type
@@ -134,5 +136,12 @@ func (o *option) basicAuth(next http.Handler) http.HandlerFunc {
 		}
 
 		next.ServeHTTP(w, r)
+	}
+}
+
+// SetTLSConfig option func
+func SetTLSConfig(tlsConfig *tls.Config) OptionFunc {
+	return func(o *option) {
+		o.tlsConfig = tlsConfig
 	}
 }
