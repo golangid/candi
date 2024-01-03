@@ -49,7 +49,7 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 	start := time.Now()
 	meta, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return nil, status.Errorf(codes.Aborted, "missing context metadata")
+		return handler(ctx, req)
 	}
 
 	if metaDisableTrace := meta.Get(candihelper.HeaderDisableTrace); len(metaDisableTrace) > 0 {
@@ -84,8 +84,8 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 		logger.LogGreen("grpc > trace_url: " + tracer.GetTraceURL(ctx))
 	}()
 
-	trace.SetTag("metadata", meta)
 	trace.SetTag("method", info.FullMethod)
+	trace.Log("metadata", meta)
 	if reqBody := candihelper.ToBytes(req); len(reqBody) < i.opt.jaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
 		trace.Log("request.body", reqBody)
 	} else {
@@ -133,7 +133,7 @@ func (i *interceptor) streamTracerInterceptor(srv interface{}, stream grpc.Serve
 	ctx := stream.Context()
 	meta, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return status.Errorf(codes.Aborted, "missing context metadata")
+		return handler(srv, stream)
 	}
 
 	if metaDisableTrace := meta.Get(candihelper.HeaderDisableTrace); len(metaDisableTrace) > 0 {
@@ -164,8 +164,8 @@ func (i *interceptor) streamTracerInterceptor(srv interface{}, stream grpc.Serve
 		logger.LogGreen("grpc_stream > trace_url: " + tracer.GetTraceURL(ctx))
 	}()
 
-	trace.SetTag("metadata", meta)
 	trace.SetTag("method", info.FullMethod)
+	trace.Log("metadata", meta)
 	err = handler(srv, &wrappedServerStream{ServerStream: stream, wrappedContext: ctx})
 	return
 }

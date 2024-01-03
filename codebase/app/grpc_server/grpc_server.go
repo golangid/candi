@@ -2,18 +2,16 @@ package grpcserver
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net"
-	"time"
 
-	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
 	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/keepalive"
 )
 
 type grpcServer struct {
@@ -25,41 +23,25 @@ type grpcServer struct {
 
 // NewServer create new GRPC server
 func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
-
-	var (
-		kaep = keepalive.EnforcementPolicy{
-			MinTime:             5 * time.Second, // If a client pings more than once every 5 seconds, terminate the connection
-			PermitWithoutStream: true,            // Allow pings even when there are no active streams
-		}
-		kasp = keepalive.ServerParameters{
-			MaxConnectionIdle:     15 * time.Second, // If a client is idle for 15 seconds, send a GOAWAY
-			MaxConnectionAgeGrace: 10 * time.Second, // Allow 5 seconds for pending RPCs to complete before forcibly closing connections
-			Time:                  5 * time.Second,  // Ping the client if it is idle for 5 seconds to ensure the connection is still active
-			Timeout:               1 * time.Second,  // Wait 1 second for the ping ack before assuming the connection is dead
-		}
-	)
-
 	intercept := new(interceptor)
+	serverOpt := getDefaultOption()
+	for _, opt := range opts {
+		opt(&serverOpt)
+	}
+	serverOpt.serverOptions = append(serverOpt.serverOptions,
+		grpc.UnaryInterceptor(chainUnaryServer(
+			intercept.unaryTracerInterceptor,
+			intercept.unaryMiddlewareInterceptor,
+		)),
+		grpc.StreamInterceptor(chainStreamServer(
+			intercept.streamTracerInterceptor,
+			intercept.streamMiddlewareInterceptor,
+		)))
 
 	server := &grpcServer{
-		serverEngine: grpc.NewServer(
-			grpc.KeepaliveEnforcementPolicy(kaep),
-			grpc.KeepaliveParams(kasp),
-			grpc.MaxSendMsgSize(200*int(candihelper.MByte)), grpc.MaxRecvMsgSize(200*int(candihelper.MByte)),
-			grpc.UnaryInterceptor(chainUnaryServer(
-				intercept.unaryTracerInterceptor,
-				intercept.unaryMiddlewareInterceptor,
-			)),
-			grpc.StreamInterceptor(chainStreamServer(
-				intercept.streamTracerInterceptor,
-				intercept.streamMiddlewareInterceptor,
-			)),
-		),
-		service: service,
-		opt:     getDefaultOption(),
-	}
-	for _, opt := range opts {
-		opt(&server.opt)
+		serverEngine: grpc.NewServer(serverOpt.serverOptions...),
+		service:      service,
+		opt:          serverOpt,
 	}
 
 	grpcPort := server.opt.tcpPort
@@ -75,6 +57,10 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 			cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc+proto"),
 		)
 		grpcPort = server.listener.Addr().String()
+	}
+
+	if server.opt.tlsConfig != nil {
+		server.listener = tls.NewListener(server.listener, server.opt.tlsConfig)
 	}
 
 	// register all module
