@@ -2,6 +2,7 @@ package graphqlserver
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net"
@@ -44,7 +45,11 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 	httpEngine.Addr = fmt.Sprintf(":%d", server.opt.httpPort)
 	httpEngine.Handler = mux
 
-	fmt.Printf("\x1b[34;1m⇨ GraphQL HTTP server run at port [::]%s\x1b[0m\n\n", httpEngine.Addr)
+	if server.opt.tlsConfig != nil {
+		fmt.Printf("\x1b[34;1m⇨ GraphQL HTTPS server run at port [::]%s\x1b[0m\n\n", httpEngine.Addr)
+	} else {
+		fmt.Printf("\x1b[34;1m⇨ GraphQL HTTP server run at port [::]%s\x1b[0m\n\n", httpEngine.Addr)
+	}
 
 	if server.opt.sharedListener != nil {
 		server.listener = server.opt.sharedListener.Match(cmux.HTTP1Fast(http.MethodPatch))
@@ -55,12 +60,19 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 
 func (s *graphqlServer) Serve() {
 	var err error
-	if s.listener != nil {
-		err = s.httpEngine.Serve(s.listener)
-	} else {
-		err = s.httpEngine.ListenAndServe()
+	if s.listener == nil {
+		s.listener, err = net.Listen("tcp", s.httpEngine.Addr)
+		if err != nil {
+			log.Panicf("GraphQL TCP Listener: Unexpected Error: %v", err)
+		}
 	}
 
+	if s.opt.tlsConfig != nil {
+		s.httpEngine.TLSConfig = s.opt.tlsConfig
+		s.listener = tls.NewListener(s.listener, s.opt.tlsConfig)
+	}
+
+	err = s.httpEngine.Serve(s.listener)
 	switch err.(type) {
 	case *net.OpError:
 		log.Panicf("GraphQL Server: Unexpected Error: %v", err)
