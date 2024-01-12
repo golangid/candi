@@ -14,6 +14,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/codebase/factory/dependency"
@@ -62,12 +63,12 @@ func (h *GRPCHandler) GetAll{{upper (camel .ModuleName)}}(ctx context.Context, r
 		StartDate: req.StartDate, EndDate: req.EndDate,
 	}
 	if err := h.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/get_all", filter); err != nil {
-		return nil,  grpc.Errorf(codes.InvalidArgument, err.Error())
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
 	data, meta, err := h.uc.{{upper (camel .ModuleName)}}().GetAll{{upper (camel .ModuleName)}}(ctx, &filter)
 	if err != nil {
-		return nil, grpc.Errorf(codes.FailedPrecondition, err.Error())
+		return nil, status.Errorf(codes.FailedPrecondition, err.Error())
 	}
 
 	resp := &proto.GetAll{{upper (camel .ModuleName)}}Response{
@@ -95,7 +96,7 @@ func (h *GRPCHandler) GetDetail{{upper (camel .ModuleName)}}(ctx context.Context
 
 	data, err := h.uc.{{upper (camel .ModuleName)}}().GetDetail{{upper (camel .ModuleName)}}(ctx, {{if and .MongoDeps (not .SQLDeps)}}req.ID{{else}}int(req.ID){{end}})
 	if err != nil {
-		return nil, grpc.Errorf(codes.FailedPrecondition, err.Error())
+		return nil, status.Errorf(codes.FailedPrecondition, err.Error())
 	}
 
 	resp := &proto.{{upper (camel .ModuleName)}}Model{
@@ -114,11 +115,11 @@ func (h *GRPCHandler) Create{{upper (camel .ModuleName)}}(ctx context.Context, r
 	var payload domain.Request{{upper (camel .ModuleName)}}
 	payload.Field = req.Field
 	if err := h.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/save", payload); err != nil {
-		return nil,  grpc.Errorf(codes.InvalidArgument, err.Error())
+		return nil,  status.Errorf(codes.InvalidArgument, err.Error())
 	}
 	data, err := h.uc.{{upper (camel .ModuleName)}}().Create{{upper (camel .ModuleName)}}(ctx, &payload)
 	if err != nil {
-		return nil, grpc.Errorf(codes.FailedPrecondition, err.Error())
+		return nil, status.Errorf(codes.FailedPrecondition, err.Error())
 	}
 
 	resp = &proto.{{upper (camel .ModuleName)}}Model{
@@ -138,10 +139,10 @@ func (h *GRPCHandler) Update{{upper (camel .ModuleName)}}(ctx context.Context, r
 	payload.ID = {{if and .MongoDeps (not .SQLDeps)}}req.ID{{else}}int(req.ID){{end}}
 	payload.Field = req.Field
 	if err := h.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/save", payload); err != nil {
-		return nil,  grpc.Errorf(codes.InvalidArgument, err.Error())
+		return nil,  status.Errorf(codes.InvalidArgument, err.Error())
 	}
 	if err := h.uc.{{upper (camel .ModuleName)}}().Update{{upper (camel .ModuleName)}}(ctx, &payload); err != nil {
-		return nil, grpc.Errorf(codes.FailedPrecondition, err.Error())
+		return nil, status.Errorf(codes.FailedPrecondition, err.Error())
 	}
 
 	return &proto.BaseResponse{
@@ -157,7 +158,7 @@ func (h *GRPCHandler) Delete{{upper (camel .ModuleName)}}(ctx context.Context, r
 	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
 
 	if err := h.uc.{{upper (camel .ModuleName)}}().Delete{{upper (camel .ModuleName)}}(ctx, {{if and .MongoDeps (not .SQLDeps)}}req.ID{{else}}int(req.ID){{end}}); err != nil {
-		return nil, grpc.Errorf(codes.FailedPrecondition, err.Error())
+		return nil, status.Errorf(codes.FailedPrecondition, err.Error())
 	}
 
 	return &proto.BaseResponse{
