@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime"
+	"strconv"
+	"strings"
 
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/config/env"
@@ -22,7 +24,8 @@ func WithTracerFunc(ctx context.Context, operationName string, fn func(context.C
 	fn(ctx, t)
 }
 
-func toValue(v interface{}) (str string) {
+func toValue(v any) (res any) {
+	var str string
 	switch val := v.(type) {
 	case error:
 		if val != nil {
@@ -30,6 +33,8 @@ func toValue(v interface{}) (str string) {
 		}
 	case string:
 		str = val
+	case bool, int8, int16, int32, int, int64, float32, float64:
+		return v
 	case []byte:
 		str = candihelper.ByteToString(val)
 	default:
@@ -96,4 +101,15 @@ func LogEvent(ctx context.Context, event string, payload ...interface{}) {
 	} else {
 		span.LogKV(event)
 	}
+}
+
+func parseCaller(pc uintptr, file string, line int, ok bool) (caller string) {
+	if !ok {
+		return
+	}
+
+	if strings.HasSuffix(file, "candi/tracer/jaeger.go") {
+		return
+	}
+	return file + ":" + strconv.Itoa(line)
 }

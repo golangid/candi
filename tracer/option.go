@@ -1,13 +1,17 @@
 package tracer
 
+import "context"
+
 type (
 	// Option for init tracer option
 	Option struct {
-		AgentHost       string
-		TraceDashboard  string
-		Level           string
-		BuildNumberTag  string
-		MaxGoroutineTag int
+		agentHost        string
+		traceDashboard   string
+		level            string
+		buildNumberTag   string
+		maxGoroutineTag  int
+		errorWhitelist   []error
+		traceIDExtractor func(context.Context) string
 	}
 
 	// OptionFunc func
@@ -15,9 +19,11 @@ type (
 
 	// FinishOption for option when trace is finished
 	FinishOption struct {
-		Tags                 map[string]interface{}
-		Error                error
-		WithStackTraceDetail bool
+		tags                 map[string]any
+		err                  error
+		withStackTraceDetail bool
+		recoverFunc          func(panicMessage any)
+		onFinish             func()
 	}
 
 	// FinishOptionFunc func
@@ -27,55 +33,83 @@ type (
 // OptionSetAgentHost option func
 func OptionSetAgentHost(agent string) OptionFunc {
 	return func(o *Option) {
-		o.AgentHost = agent
+		o.agentHost = agent
 	}
 }
 
 // OptionSetLevel option func
 func OptionSetLevel(level string) OptionFunc {
 	return func(o *Option) {
-		o.Level = level
+		o.level = level
 	}
 }
 
 // OptionSetBuildNumberTag option func
 func OptionSetBuildNumberTag(number string) OptionFunc {
 	return func(o *Option) {
-		o.BuildNumberTag = number
+		o.buildNumberTag = number
 	}
 }
 
 // OptionSetMaxGoroutineTag option func
 func OptionSetMaxGoroutineTag(max int) OptionFunc {
 	return func(o *Option) {
-		o.MaxGoroutineTag = max
+		o.maxGoroutineTag = max
 	}
 }
 
 // OptionSetTraceDashboardURL option func
 func OptionSetTraceDashboardURL(dashboardURL string) OptionFunc {
 	return func(o *Option) {
-		o.TraceDashboard = dashboardURL
+		o.traceDashboard = dashboardURL
+	}
+}
+
+// OptionSetErrorWhitelist option func, set no error if error in whitelist
+func OptionSetErrorWhitelist(errs []error) OptionFunc {
+	return func(o *Option) {
+		o.errorWhitelist = errs
+	}
+}
+
+// OptionSetTraceIDExtractor option func, set trace id extractor
+func OptionSetTraceIDExtractor(extractor func(context.Context) string) OptionFunc {
+	return func(o *Option) {
+		o.traceIDExtractor = extractor
 	}
 }
 
 // FinishWithError option for add error when finish
 func FinishWithError(err error) FinishOptionFunc {
 	return func(fo *FinishOption) {
-		fo.Error = err
+		fo.err = err
 	}
 }
 
 // FinishWithAdditionalTags option for add tag when finish
 func FinishWithAdditionalTags(tags map[string]interface{}) FinishOptionFunc {
 	return func(fo *FinishOption) {
-		fo.Tags = tags
+		fo.tags = tags
 	}
 }
 
 // FinishWithStackTraceDetail option for add stack trace detail
 func FinishWithStackTraceDetail() FinishOptionFunc {
 	return func(fo *FinishOption) {
-		fo.WithStackTraceDetail = true
+		fo.withStackTraceDetail = true
+	}
+}
+
+// FinishWithRecoverFunc option for add recover func if panic
+func FinishWithRecoverFunc(recoverFunc func(panicMessage any)) FinishOptionFunc {
+	return func(fo *FinishOption) {
+		fo.recoverFunc = recoverFunc
+	}
+}
+
+// FinishWithFunc option for add callback function before finish span
+func FinishWithFunc(finishFunc func()) FinishOptionFunc {
+	return func(fo *FinishOption) {
+		fo.onFinish = finishFunc
 	}
 }

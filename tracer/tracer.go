@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/codebase/interfaces"
 )
 
 var (
@@ -30,11 +31,18 @@ type PlatformType interface {
 	StartRootSpan(ctx context.Context, operationName string, header map[string]string) Tracer
 	GetTraceID(ctx context.Context) string
 	GetTraceURL(ctx context.Context) string
+	interfaces.Closer
 }
 
 // SetTracerPlatformType function for set tracer platform
 func SetTracerPlatformType(t PlatformType) {
 	once.Do(func() { activeTracer = t })
+}
+
+// IsTracerActive check tracer has been initialized with platform
+func IsTracerActive() bool {
+	_, ok := activeTracer.(*noopTracer)
+	return !ok
 }
 
 // StartTrace starting trace child span from parent span
@@ -91,6 +99,7 @@ func (noopTracer) Log(key string, value interface{})            { return }
 func (noopTracer) Finish(opts ...FinishOptionFunc)              { return }
 func (noopTracer) GetTraceID(ctx context.Context) (u string)    { return }
 func (noopTracer) GetTraceURL(ctx context.Context) (u string)   { return }
+func (noopTracer) Disconnect(ctx context.Context) error         { return nil }
 func (n noopTracer) StartSpan(ctx context.Context, opName string) Tracer {
 	n.ctx = ctx
 	return &n
