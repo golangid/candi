@@ -7,7 +7,6 @@ import (
 
 // ModuleFactory factory
 type ModuleFactory interface {
-	// Basic server type (current using echo rest framework)
 	RESTHandler() interfaces.RESTHandler
 	GRPCHandler() interfaces.GRPCHandler
 	GraphQLHandler() interfaces.GraphQLHandler

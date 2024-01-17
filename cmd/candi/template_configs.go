@@ -35,9 +35,10 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 	shared.SetEnv(sharedEnv)
 
 	logger.InitZap()
-	tracer.InitJaeger(baseCfg.ServiceName)
+	// logger.SetMaskLog(logger.NewMasker()) // add this for mask sensitive information
 
 	baseCfg.LoadFunc(func(ctx context.Context) []interfaces.Closer {
+		jaeger := tracer.InitJaeger(baseCfg.ServiceName)
 		{{if not .RedisDeps}}// {{end}}redisDeps := database.InitRedis()
 		{{if not .SQLDeps}}// {{end}}sqlDeps := database.InitSQLDatabase()
 		{{if not .MongoDeps}}// {{end}}mongoDeps := database.InitMongoDB(ctx)
@@ -64,6 +65,7 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 			// ... add more dependencies
 		)
 		return []interfaces.Closer{ // throw back to base config for close connection when application shutdown
+			jaeger,
 			brokerDeps,
 			locker,
 			{{if not .RedisDeps}}// {{end}}redisDeps,

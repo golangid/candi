@@ -159,10 +159,9 @@ func (uc *{{camel .ModuleName}}UsecaseImpl) GetAll{{upper (camel .ModuleName)}}(
 	count := uc.repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().Count(ctx, filter)
 	meta = candishared.NewMeta(filter.Page, filter.Limit, count){{end}}
 
-	for _, detail := range data {
-		var res domain.Response{{upper (camel .ModuleName)}}
-		res.Serialize(&detail)
-		results = append(results, res)
+	results = make([]domain.Response{{upper (camel .ModuleName)}}, len(data))
+	for i, detail := range data {
+		results[i].Serialize(&detail)
 	}
 
 	return
