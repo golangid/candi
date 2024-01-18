@@ -15,7 +15,9 @@ import (
 	"time"
 
 	"github.com/golangid/candi"
+	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/config/env"
+	"github.com/golangid/candi/logger"
 	"github.com/gomodule/redigo/redis"
 	opentracing "github.com/opentracing/opentracing-go"
 	ext "github.com/opentracing/opentracing-go/ext"
@@ -134,11 +136,11 @@ func (j *jaegerPlatform) StartRootSpan(ctx context.Context, operationName string
 	}
 	span.SetTag("trace_id", j.GetTraceID(ctx))
 	return &jaegerTraceImpl{
-		ctx:               ctx,
-		span:              span,
-		operationName:     operationName,
-		disableStackTrace: true,
-		errWhitelist:      j.opt.errorWhitelist,
+		ctx:           ctx,
+		span:          span,
+		operationName: operationName,
+		isRoot:        true,
+		errWhitelist:  j.opt.errorWhitelist,
 	}
 }
 
@@ -181,11 +183,11 @@ func (j *jaegerPlatform) Disconnect(ctx context.Context) error { return j.closer
 
 // jaeger span tracer implementation
 type jaegerTraceImpl struct {
-	ctx               context.Context
-	span              opentracing.Span
-	operationName     string
-	disableStackTrace bool
-	errWhitelist      []error
+	ctx           context.Context
+	span          opentracing.Span
+	operationName string
+	isRoot        bool
+	errWhitelist  []error
 }
 
 // Context get active context
@@ -234,10 +236,10 @@ func (t *jaegerTraceImpl) SetError(err error) {
 	}
 
 	ext.Error.Set(t.span, true)
-	t.span.SetTag("error.message", err.Error())
+	t.span.LogKV("error.message", err.Error())
 
 	var stackTraces []string
-	for i := 1; i < 10 && len(stackTraces) <= 5 && !t.disableStackTrace; i++ {
+	for i := 1; i < 10 && len(stackTraces) <= 5 && !t.isRoot; i++ {
 		if caller := parseCaller(runtime.Caller(i)); caller != "" {
 			stackTraces = append(stackTraces, caller)
 		}
@@ -267,11 +269,12 @@ func (t *jaegerTraceImpl) Finish(opts ...FinishOptionFunc) {
 		t.span.SetTag(k, toValue(v))
 	}
 
+	showLogTraceURL := t.isRoot
 	if finishOpt.recoverFunc != nil {
 		if rec := recover(); rec != nil {
 			finishOpt.recoverFunc(rec)
 			finishOpt.err = fmt.Errorf("panic: %v", rec)
-			t.disableStackTrace = false
+			t.isRoot = false
 			t.span.SetTag("panic", true)
 		}
 	}
@@ -292,6 +295,9 @@ func (t *jaegerTraceImpl) Finish(opts ...FinishOptionFunc) {
 		finishOpt.onFinish()
 	}
 	t.span.Finish()
+	if showLogTraceURL {
+		logger.LogGreen(candihelper.ToDelimited(t.operationName, '_') + " > trace_url: " + GetTraceURL(t.ctx))
+	}
 }
 
 func (t *jaegerTraceImpl) logStackTrace(color int, header string, stackTraces []string) {

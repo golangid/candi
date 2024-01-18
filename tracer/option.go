@@ -100,8 +100,8 @@ func FinishWithStackTraceDetail() FinishOptionFunc {
 	}
 }
 
-// FinishWithRecoverFunc option for add recover func if panic
-func FinishWithRecoverFunc(recoverFunc func(panicMessage any)) FinishOptionFunc {
+// FinishWithRecoverPanic option for add recover func if panic
+func FinishWithRecoverPanic(recoverFunc func(panicMessage any)) FinishOptionFunc {
 	return func(fo *FinishOption) {
 		fo.recoverFunc = recoverFunc
 	}
