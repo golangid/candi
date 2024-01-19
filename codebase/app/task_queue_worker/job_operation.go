@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/candiutils"
+	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
 )
@@ -163,6 +165,16 @@ func AddJobViaHTTPRequest(ctx context.Context, workerHost string, req *AddJobReq
 	}
 	trace.SetTag("job_id", respPayload.Data.AddJob)
 	return respPayload.Data.AddJob, nil
+}
+
+// AddJobWorkerHandler worker handler, bridging request from another worker for add job, default max retry is 5
+func AddJobWorkerHandler(taskName string) types.WorkerHandlerFunc {
+	return func(eventContext *candishared.EventContext) error {
+		_, err := AddJob(eventContext.Context(), &AddJobRequest{
+			TaskName: taskName, Args: eventContext.Message(), MaxRetry: 5,
+		})
+		return err
+	}
 }
 
 // GetDetailJob api for get detail job by id

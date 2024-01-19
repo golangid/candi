@@ -57,8 +57,7 @@ func (m *redisInstance) Cache() interfaces.Cache {
 	return m.cache
 }
 func (m *redisInstance) Disconnect(ctx context.Context) (err error) {
-	deferFunc := logger.LogWithDefer("redis: disconnect...")
-	defer deferFunc()
+	defer logger.LogWithDefer("redis: disconnect...")()
 
 	if err := m.read.Close(); err != nil {
 		return err
@@ -69,8 +68,7 @@ func (m *redisInstance) Disconnect(ctx context.Context) (err error) {
 // InitRedis connection from environment:
 // REDIS_READ_DSN, REDIS_WRITE_DSN
 func InitRedis(opts ...RedisPoolOption) interfaces.RedisPool {
-	deferFunc := logger.LogWithDefer("Load Redis connection...")
-	defer deferFunc()
+	defer logger.LogWithDefer("Load Redis connection...")()
 
 	inst := &redisInstance{
 		read:  ConnectRedis(env.BaseEnv().DbRedisReadDSN, opts...),

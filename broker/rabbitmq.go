@@ -54,8 +54,7 @@ type RabbitMQBroker struct {
 
 // NewRabbitMQBroker setup rabbitmq configuration for publisher or consumer, default connection from RABBITMQ_BROKER environment
 func NewRabbitMQBroker(opts ...RabbitMQOptionFunc) *RabbitMQBroker {
-	deferFunc := logger.LogWithDefer("Load RabbitMQ broker configuration... ")
-	defer deferFunc()
+	defer logger.LogWithDefer("Load RabbitMQ broker configuration... ")()
 	var err error
 
 	rabbitmq := new(RabbitMQBroker)
@@ -125,8 +124,7 @@ func (r *RabbitMQBroker) Health() map[string]error {
 
 // Disconnect method
 func (r *RabbitMQBroker) Disconnect(ctx context.Context) error {
-	deferFunc := logger.LogWithDefer("rabbitmq: disconnect...")
-	defer deferFunc()
+	defer logger.LogWithDefer("rabbitmq: disconnect...")()
 
 	return r.conn.Close()
 }
@@ -145,14 +143,10 @@ func NewRabbitMQPublisher(conn *amqp.Connection) interfaces.Publisher {
 
 // PublishMessage method
 func (r *rabbitMQPublisher) PublishMessage(ctx context.Context, args *candishared.PublisherArgument) (err error) {
-	trace := tracer.StartTrace(ctx, "rabbitmq:publish_message")
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("%v", r)
-		}
-		trace.SetError(err)
-		trace.Finish()
-	}()
+	trace, _ := tracer.StartTraceWithContext(ctx, "rabbitmq:publish_message")
+	defer trace.Finish(
+		tracer.FinishWithRecoverPanic(func(panicMessage any) { err = fmt.Errorf("%v", panicMessage) }),
+	)
 
 	ch, err := r.conn.Channel()
 	if err != nil {

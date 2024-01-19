@@ -10,6 +10,7 @@ type (
 		level            string
 		buildNumberTag   string
 		maxGoroutineTag  int
+		logAllSpan       bool
 		errorWhitelist   []error
 		traceIDExtractor func(context.Context) string
 	}
@@ -76,6 +77,13 @@ func OptionSetErrorWhitelist(errs []error) OptionFunc {
 func OptionSetTraceIDExtractor(extractor func(context.Context) string) OptionFunc {
 	return func(o *Option) {
 		o.traceIDExtractor = extractor
+	}
+}
+
+// OptionSetLogAllSpan option func
+func OptionSetLogAllSpan() OptionFunc {
+	return func(o *Option) {
+		o.logAllSpan = true
 	}
 }
 

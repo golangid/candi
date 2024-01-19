@@ -110,8 +110,11 @@ func (j *jaegerPlatform) StartSpan(ctx context.Context, operationName string) Tr
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
 	_, callerFile, callerLine, _ := runtime.Caller(4)
-	caller := callerFile + ":" + strconv.Itoa(callerLine)
-	span.LogKV("caller", caller)
+	span.LogKV("caller", callerFile+":"+strconv.Itoa(callerLine))
+	if j.opt.logAllSpan {
+		_, callerFile, callerLine, _ := runtime.Caller(3)
+		log.Printf("\x1b[32;5m%s => %s:%d\x1b[0m", operationName, callerFile, callerLine)
+	}
 	return &jaegerTraceImpl{
 		ctx:           ctx,
 		span:          span,

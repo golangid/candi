@@ -10,7 +10,6 @@ import (
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory/types"
-	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -60,7 +59,7 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 		}
 	}
 
-	header := map[string]string{}
+	header := make(map[string]string, meta.Len())
 	for key, values := range meta {
 		for _, value := range values {
 			header[key] = value
@@ -68,21 +67,14 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 	}
 
 	trace, ctx := tracer.StartTraceFromHeader(ctx, "GRPC-Server", header)
-	defer func() {
-		if r := recover(); r != nil {
-			trace.SetTag("panic", true)
-			err = status.Errorf(codes.Aborted, "%v", r)
-		}
-		i.logInterceptor(start, err, info.FullMethod, "GRPC")
-		if respBody := candihelper.ToBytes(resp); len(respBody) < i.opt.jaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
-			trace.Log("response.body", respBody)
-		} else {
-			trace.Log("response.body.size", len(respBody))
-		}
-		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
-		trace.Finish(tracer.FinishWithError(err))
-		logger.LogGreen("grpc > trace_url: " + tracer.GetTraceURL(ctx))
-	}()
+	defer trace.Finish(
+		tracer.FinishWithRecoverPanic(func(message any) {
+			err = status.Errorf(codes.Aborted, "%v", message)
+		}),
+		tracer.FinishWithFunc(func() {
+			i.logInterceptor(start, err, info.FullMethod, "GRPC")
+		}),
+	)
 
 	trace.SetTag("method", info.FullMethod)
 	trace.Log("metadata", meta)
@@ -93,6 +85,12 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 	}
 
 	resp, err = handler(ctx, req)
+	trace.SetError(err)
+	if respBody := candihelper.ToBytes(resp); len(respBody) < i.opt.jaegerMaxPacketSize { // limit response body size to 65000 bytes (if higher tracer cannot show root span)
+		trace.Log("response.body", respBody)
+	} else {
+		trace.Log("response.body.size", len(respBody))
+	}
 	return
 }
 
@@ -145,7 +143,7 @@ func (i *interceptor) streamTracerInterceptor(srv interface{}, stream grpc.Serve
 		}
 	}
 
-	header := map[string]string{}
+	header := make(map[string]string, meta.Len())
 	for key, values := range meta {
 		for _, value := range values {
 			header[key] = value
@@ -153,20 +151,19 @@ func (i *interceptor) streamTracerInterceptor(srv interface{}, stream grpc.Serve
 	}
 
 	trace, ctx := tracer.StartTraceFromHeader(ctx, "GRPC-STREAM", header)
-	defer func() {
-		if r := recover(); r != nil {
-			trace.SetTag("panic", true)
-			err = status.Errorf(codes.Aborted, "%v", r)
-		}
-		i.logInterceptor(start, err, info.FullMethod, "GRPC-STREAM")
-		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
-		trace.Finish(tracer.FinishWithError(err))
-		logger.LogGreen("grpc_stream > trace_url: " + tracer.GetTraceURL(ctx))
-	}()
+	defer trace.Finish(
+		tracer.FinishWithRecoverPanic(func(message any) {
+			err = status.Errorf(codes.Aborted, "%v", message)
+		}),
+		tracer.FinishWithFunc(func() {
+			i.logInterceptor(start, err, info.FullMethod, "GRPC-STREAM")
+		}),
+	)
 
 	trace.SetTag("method", info.FullMethod)
 	trace.Log("metadata", meta)
 	err = handler(srv, &wrappedServerStream{ServerStream: stream, wrappedContext: ctx})
+	trace.SetError(err)
 	return
 }
 

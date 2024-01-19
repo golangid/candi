@@ -34,6 +34,9 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 	for _, opt := range opts {
 		opt(&server.opt)
 	}
+	if server.opt.traceMiddleware != nil {
+		server.opt.rootMiddlewares = append(server.opt.rootMiddlewares, server.opt.traceMiddleware)
+	}
 
 	mux := chi.NewRouter()
 	mux.Use(server.opt.rootMiddlewares...)

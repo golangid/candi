@@ -103,8 +103,7 @@ func (r *RedisBroker) Health() map[string]error {
 
 // Disconnect method
 func (r *RedisBroker) Disconnect(ctx context.Context) error {
-	deferFunc := logger.LogWithDefer("redis: closing pool...")
-	defer deferFunc()
+	defer logger.LogWithDefer("redis: closing pool...")()
 
 	return r.pool.Close()
 }

@@ -14,7 +14,6 @@ import (
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/config/env"
-	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
 	gqlerrors "github.com/golangid/graphql-go/errors"
 	"github.com/golangid/graphql-go/introspection"
@@ -34,7 +33,7 @@ type graphqlTracer struct {
 // TraceQuery method, intercept incoming query and add tracing
 func (t *graphqlTracer) TraceQuery(ctx context.Context, queryString string, operationName string, variables map[string]interface{}, varTypes map[string]*introspection.Type) (context.Context, gqltrace.QueryFinishFunc) {
 	headers, _ := ctx.Value(candishared.ContextKeyHTTPHeader).(http.Header)
-	header := map[string]string{}
+	header := make(map[string]string, len(headers))
 	for key := range headers {
 		header[key] = headers.Get(key)
 	}
@@ -61,9 +60,7 @@ func (t *graphqlTracer) TraceQuery(ctx context.Context, queryString string, oper
 			trace.Log("response.errors", errs)
 			trace.SetError(errs[0])
 		}
-		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
 		trace.Finish()
-		logger.LogGreen("graphql > trace_url: " + tracer.GetTraceURL(ctx))
 	}
 }
 

@@ -3,18 +3,17 @@ package restserver
 import (
 	"crypto/tls"
 	"net/http"
-	"os"
 	"strings"
 
 	graphqlserver "github.com/golangid/candi/codebase/app/graphql_server"
 	"github.com/golangid/candi/config/env"
-	"github.com/golangid/candi/middleware"
 	"github.com/golangid/candi/wrapper"
 	"github.com/soheilhy/cmux"
 )
 
 type (
 	option struct {
+		traceMiddleware     func(http.Handler) http.Handler
 		rootMiddlewares     []func(http.Handler) http.Handler
 		rootHandler         http.HandlerFunc
 		errorHandler        http.HandlerFunc
@@ -42,26 +41,13 @@ func getDefaultOption() option {
 		rootPath:  "/",
 		debugMode: true,
 		rootMiddlewares: []func(http.Handler) http.Handler{
-			middleware.HTTPMiddlewareCORS(
+			HTTPMiddlewareCORS(
 				env.BaseEnv().CORSAllowMethods, env.BaseEnv().CORSAllowHeaders,
 				env.BaseEnv().CORSAllowOrigins, nil, env.BaseEnv().CORSAllowCredential,
 			),
-			middleware.HTTPMiddlewareTracer(middleware.HTTPMiddlewareConfig{
-				MaxLogSize: env.BaseEnv().JaegerMaxPacketSize,
-				DisableFunc: func(r *http.Request) bool {
-					_, ok := MiddlewareExcludeURLPath[r.URL.Path]
-					return ok
-				},
-			}),
-			middleware.HTTPMiddlewareLog(middleware.HTTPMiddlewareConfig{
-				Writer: os.Stdout,
-				DisableFunc: func(r *http.Request) bool {
-					_, ok := MiddlewareExcludeURLPath[r.URL.Path]
-					return !env.BaseEnv().DebugMode || ok
-				},
-			}),
 		},
-		rootHandler: http.HandlerFunc(wrapper.HTTPHandlerDefaultRoot),
+		traceMiddleware: HTTPMiddlewareTracer(),
+		rootHandler:     http.HandlerFunc(wrapper.HTTPHandlerDefaultRoot),
 	}
 }
 
@@ -146,5 +132,12 @@ func AddGraphQLOption(opts ...graphqlserver.OptionFunc) OptionFunc {
 func SetTLSConfig(tlsConfig *tls.Config) OptionFunc {
 	return func(o *option) {
 		o.tlsConfig = tlsConfig
+	}
+}
+
+// SetDisableTrace option func
+func SetDisableTrace() OptionFunc {
+	return func(o *option) {
+		o.traceMiddleware = nil
 	}
 }

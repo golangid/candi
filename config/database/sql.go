@@ -29,8 +29,7 @@ func (s *sqlInstance) Health() map[string]error {
 	return mErr
 }
 func (s *sqlInstance) Disconnect(ctx context.Context) (err error) {
-	deferFunc := logger.LogWithDefer("sql: disconnect...")
-	defer deferFunc()
+	defer logger.LogWithDefer("sql: disconnect...")()
 
 	if err := s.read.Close(); err != nil {
 		return err
@@ -41,8 +40,7 @@ func (s *sqlInstance) Disconnect(ctx context.Context) (err error) {
 // InitSQLDatabase return sql db read & write instance from environment:
 // SQL_DB_READ_DSN, SQL_DB_WRITE_DSN
 func InitSQLDatabase() interfaces.SQLDatabase {
-	deferFunc := logger.LogWithDefer("Load SQL connection...")
-	defer deferFunc()
+	defer logger.LogWithDefer("Load SQL connection...")()
 
 	return &sqlInstance{
 		read:  ConnectSQLDatabase(env.BaseEnv().DbSQLReadDSN),

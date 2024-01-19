@@ -45,8 +45,7 @@ func (m *mongoInstance) Health() map[string]error {
 	}
 }
 func (m *mongoInstance) Disconnect(ctx context.Context) (err error) {
-	deferFunc := logger.LogWithDefer("mongodb: disconnect...")
-	defer deferFunc()
+	defer logger.LogWithDefer("mongodb: disconnect...")()
 
 	if err := m.write.Client().Disconnect(ctx); err != nil {
 		return err
@@ -57,8 +56,7 @@ func (m *mongoInstance) Disconnect(ctx context.Context) (err error) {
 // InitMongoDB return mongo db read & write instance from environment:
 // MONGODB_HOST_WRITE, MONGODB_HOST_READ
 func InitMongoDB(ctx context.Context, opts ...*options.ClientOptions) interfaces.MongoDatabase {
-	deferFunc := logger.LogWithDefer("Load MongoDB connection...")
-	defer deferFunc()
+	defer logger.LogWithDefer("Load MongoDB connection...")()
 
 	mi := &mongoInstance{}
 	if env.BaseEnv().DbMongoReadHost != "" {

@@ -95,7 +95,7 @@ func ConstructHandlerFromService(service factory.ServiceFactory, opt Option) Han
 
 	logger.LogYellow(fmt.Sprintf("[GraphQL] endpoint\t\t\t: http://127.0.0.1:%d%s", opt.httpPort, opt.RootPath))
 	logger.LogYellow(fmt.Sprintf("[GraphQL] playground\t\t\t: http://127.0.0.1:%d%s/playground", opt.httpPort, opt.RootPath))
-	logger.LogYellow(fmt.Sprintf("[GraphQL] playground (with explorer)\t: http://127.0.0.1:%d%s/playground?graphiql=true", opt.httpPort, opt.RootPath))
+	logger.LogYellow(fmt.Sprintf("[GraphQL] playground (with explorer)\t: http://127.0.0.1:%d%s/playground?explorer=true", opt.httpPort, opt.RootPath))
 	logger.LogYellow(fmt.Sprintf("[GraphQL] voyager\t\t\t: http://127.0.0.1:%d%s/voyager", opt.httpPort, opt.RootPath))
 
 	return &handlerImpl{
@@ -153,7 +153,7 @@ func (s *handlerImpl) ServePlayground(resp http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	if ok, _ := strconv.ParseBool(req.URL.Query().Get("graphiql")); ok {
+	if ok, _ := strconv.ParseBool(req.URL.Query().Get("explorer")); ok {
 		resp.Write([]byte(`<!DOCTYPE html>
 <html lang=en>
 	<head>

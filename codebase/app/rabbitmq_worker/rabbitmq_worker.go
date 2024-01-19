@@ -142,25 +142,20 @@ func (r *rabbitmqWorker) processMessage(message amqp.Delivery) {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
 
-	header := map[string]string{}
+	header := make(map[string]string, len(message.Headers))
 	for key, val := range message.Headers {
 		header[key] = string(candihelper.ToBytes(val))
 	}
 
-	var err error
 	trace, ctx := tracer.StartTraceFromHeader(ctx, "RabbitMQConsumer", header)
-	defer func() {
-		if r := recover(); r != nil {
-			trace.SetTag("panic", true)
-			err = fmt.Errorf("%v", r)
-		}
-		if selectedHandler.AutoACK {
-			message.Ack(false)
-		}
-		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
-		trace.Finish(tracer.FinishWithError(err))
-		logger.LogGreen("rabbitmq_consumer > trace_url: " + tracer.GetTraceURL(ctx))
-	}()
+	defer trace.Finish(
+		tracer.FinishWithRecoverPanic(func(any) {}),
+		tracer.FinishWithFunc(func() {
+			if selectedHandler.AutoACK {
+				message.Ack(false)
+			}
+		}),
+	)
 
 	trace.SetTag("broker", candihelper.MaskingPasswordURL(r.opt.broker))
 	trace.SetTag("exchange", message.Exchange)
@@ -181,8 +176,9 @@ func (r *rabbitmqWorker) processMessage(message amqp.Delivery) {
 	eventContext.Write(message.Body)
 
 	for _, handlerFunc := range selectedHandler.HandlerFuncs {
-		if err = handlerFunc(eventContext); err != nil {
+		if err := handlerFunc(eventContext); err != nil {
 			eventContext.SetError(err)
+			trace.SetError(err)
 		}
 	}
 }

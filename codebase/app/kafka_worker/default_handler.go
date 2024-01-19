@@ -1,16 +1,15 @@
 package kafkaworker
 
 import (
-	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory/types"
-	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
 )
 
@@ -69,22 +68,17 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 		header[string(val.Key)] = string(val.Value)
 	}
 
-	var err error
 	trace, ctx := tracer.StartTraceFromHeader(ctx, "KafkaConsumer", header)
-	defer func() {
-		if r := recover(); r != nil {
-			trace.SetTag("panic", true)
-			err = fmt.Errorf("%v", r)
-		}
-		if handler.AutoACK {
-			session.MarkMessage(message, "")
-		}
-		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
-		trace.Finish(tracer.FinishWithError(err))
-		logger.LogGreen("kafka_consumer > trace_url: " + tracer.GetTraceURL(ctx))
-	}()
+	defer trace.Finish(
+		tracer.FinishWithRecoverPanic(func(any) {}),
+		tracer.FinishWithFunc(func() {
+			if handler.AutoACK {
+				session.MarkMessage(message, "")
+			}
+		}),
+	)
 
-	trace.SetTag("brokers", c.opt.brokers)
+	trace.SetTag("brokers", strings.Join(c.opt.brokers, ","))
 	trace.SetTag("topic", message.Topic)
 	trace.SetTag("key", message.Key)
 	trace.SetTag("consumer_group", c.opt.consumerGroup)
@@ -105,8 +99,9 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 	eventContext.Write(message.Value)
 
 	for _, handlerFunc := range handler.HandlerFuncs {
-		if err = handlerFunc(eventContext); err != nil {
+		if err := handlerFunc(eventContext); err != nil {
 			eventContext.SetError(err)
+			trace.SetError(err)
 		}
 	}
 }

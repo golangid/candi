@@ -29,7 +29,7 @@ func (t *taskQueueWorker) serveGraphQLAPI() {
 		graphql.UseFieldResolvers(),
 	}
 	schema := graphql.MustParseSchema(schema, &rootResolver{engine: t}, schemaOpts...)
-	gqlHandler := graphqlserver.NewHandler(schema, graphqlserver.Option{})
+	gqlHandler := graphqlserver.NewHandler(schema, graphqlserver.Option{RootPath: "/graphql"})
 
 	mux := http.NewServeMux()
 	mux.Handle("/", t.opt.basicAuth(http.StripPrefix("/", http.FileServer(dashboard.Dashboard))))
@@ -66,7 +66,6 @@ type rootResolver struct {
 }
 
 func (r *rootResolver) Dashboard(ctx context.Context, input struct{ GC *bool }) (res DashboardResolver) {
-
 	res.Banner = r.engine.opt.dashboardBanner
 	res.Tagline = "Task Queue Worker Dashboard"
 	res.Version = candi.Version
@@ -99,7 +98,6 @@ func (r *rootResolver) Dashboard(ctx context.Context, input struct{ GC *bool }) 
 }
 
 func (r *rootResolver) GetAllJob(ctx context.Context, input struct{ Filter *GetAllJobInputResolver }) (result JobListResolver, err error) {
-
 	if input.Filter == nil {
 		input.Filter = &GetAllJobInputResolver{}
 	}
@@ -110,7 +108,6 @@ func (r *rootResolver) GetAllJob(ctx context.Context, input struct{ Filter *GetA
 }
 
 func (r *rootResolver) GetCountJob(ctx context.Context, input struct{ Filter *GetAllJobInputResolver }) (result int, err error) {
-
 	if input.Filter == nil {
 		input.Filter = &GetAllJobInputResolver{}
 	}
@@ -152,7 +149,6 @@ func (r *rootResolver) DeleteJob(ctx context.Context, input struct{ JobID string
 }
 
 func (r *rootResolver) AddJob(ctx context.Context, input struct{ Param AddJobInputResolver }) (string, error) {
-
 	job := AddJobRequest{
 		TaskName: input.Param.TaskName,
 		MaxRetry: int(input.Param.MaxRetry),
@@ -172,21 +168,18 @@ func (r *rootResolver) AddJob(ctx context.Context, input struct{ Param AddJobInp
 func (r *rootResolver) StopJob(ctx context.Context, input struct {
 	JobID string
 }) (string, error) {
-
 	return "Success stop job " + input.JobID, StopJob(r.engine.ctx, input.JobID)
 }
 
 func (r *rootResolver) RetryJob(ctx context.Context, input struct {
 	JobID string
 }) (string, error) {
-
 	return "Success retry job " + input.JobID, RetryJob(r.engine.ctx, input.JobID)
 }
 
 func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 	TaskName string
 }) (string, error) {
-
 	if _, ok := r.engine.registeredTaskWorkerIndex[input.TaskName]; !ok {
 		return "", fmt.Errorf("task '%s' unregistered, task must one of [%s]",
 			input.TaskName, strings.Join(r.engine.tasks, ", "))
@@ -224,7 +217,6 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 	Filter FilterMutateJobInputResolver
 }) (string, error) {
-
 	go func(ctx context.Context, req *FilterMutateJobInputResolver) {
 
 		filter := req.ToFilter()
@@ -271,7 +263,6 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 func (r *rootResolver) CleanJob(ctx context.Context, input struct {
 	Filter FilterMutateJobInputResolver
 }) (string, error) {
-
 	go func(ctx context.Context, req *FilterMutateJobInputResolver) {
 
 		filter := req.ToFilter()
@@ -309,7 +300,6 @@ func (r *rootResolver) RecalculateSummary(ctx context.Context) (string, error) {
 }
 
 func (r *rootResolver) ClearAllClientSubscriber(ctx context.Context) (string, error) {
-
 	go func() {
 		for k := range r.engine.subscriber.clientTaskSubscribers {
 			r.engine.subscriber.removeTaskListSubscriber(k)
@@ -329,7 +319,6 @@ func (r *rootResolver) ClearAllClientSubscriber(ctx context.Context) (string, er
 }
 
 func (r *rootResolver) KillClientSubscriber(ctx context.Context, input struct{ ClientID string }) (string, error) {
-
 	taskSubs, ok := r.engine.subscriber.clientTaskSubscribers[input.ClientID]
 	if ok {
 		taskSubs.c <- TaskListResolver{Meta: MetaTaskResolver{IsCloseSession: true}}
@@ -353,7 +342,6 @@ func (r *rootResolver) KillClientSubscriber(ctx context.Context, input struct{ C
 }
 
 func (r *rootResolver) GetAllActiveSubscriber(ctx context.Context) (cs []*ClientSubscriber, err error) {
-
 	mapper := make(map[string]*ClientSubscriber)
 	for k := range r.engine.subscriber.clientTaskSubscribers {
 		_, ok := mapper[k]
@@ -420,7 +408,6 @@ func (r *rootResolver) GetDetailConfiguration(ctx context.Context, input struct{
 func (r *rootResolver) SetConfiguration(ctx context.Context, input struct {
 	Config ConfigurationResolver
 }) (res string, err error) {
-
 	if err := r.engine.configuration.setConfiguration(&Configuration{
 		Key: input.Config.Key, Name: input.Config.Name, Value: input.Config.Value, IsActive: input.Config.IsActive,
 	}); err != nil {
@@ -438,14 +425,12 @@ func (r *rootResolver) RunQueuedJob(ctx context.Context, input struct {
 }
 
 func (r *rootResolver) RestoreFromSecondary(ctx context.Context) (res RestoreSecondaryResolver, err error) {
-
 	filter := &Filter{
 		Sort:                "created_at",
 		secondaryPersistent: true,
 		Status:              candihelper.ToStringPtr(string(StatusQueueing)),
 	}
 	res.TotalData = StreamAllJob(ctx, filter, func(job *Job) {
-
 		if err := r.engine.opt.persistent.SaveJob(ctx, job); err != nil {
 			logger.LogE(err.Error())
 			return
@@ -508,7 +493,6 @@ func (r *rootResolver) ListenTaskDashboard(ctx context.Context, input struct {
 }
 
 func (r *rootResolver) ListenAllJob(ctx context.Context, input struct{ Filter *GetAllJobInputResolver }) (<-chan JobListResolver, error) {
-
 	output := make(chan JobListResolver)
 
 	httpHeader := candishared.GetValueFromContext(ctx, candishared.ContextKeyHTTPHeader).(http.Header)
@@ -562,7 +546,6 @@ func (r *rootResolver) ListenDetailJob(ctx context.Context, input struct {
 	JobID  string
 	Filter *GetAllJobHistoryInputResolver
 }) (<-chan JobResolver, error) {
-
 	output := make(chan JobResolver)
 
 	httpHeader := candishared.GetValueFromContext(ctx, candishared.ContextKeyHTTPHeader).(http.Header)

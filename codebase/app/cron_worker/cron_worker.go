@@ -175,17 +175,9 @@ func (c *cronWorker) processJob(job *Job) {
 	}
 	defer c.opt.locker.Unlock(c.getLockKey(job.HandlerName))
 
-	var err error
-	trace, ctx := tracer.StartTraceFromHeader(ctx, "CronScheduler", map[string]string{})
-	defer func() {
-		if r := recover(); r != nil {
-			trace.SetTag("panic", true)
-			err = fmt.Errorf("%v", r)
-		}
-		trace.SetTag("trace_id", tracer.GetTraceID(ctx))
-		trace.Finish(tracer.FinishWithError(err))
-		logger.LogGreen("cron_scheduler > trace_url: " + tracer.GetTraceURL(ctx))
-	}()
+	trace, ctx := tracer.StartTraceFromHeader(ctx, "CronScheduler", make(map[string]string, 0))
+	defer trace.Finish(tracer.FinishWithRecoverPanic(func(any) {}))
+
 	trace.SetTag("job_name", job.HandlerName)
 	trace.Log("job_param", job.Params)
 
@@ -203,8 +195,9 @@ func (c *cronWorker) processJob(job *Job) {
 	eventContext.Write([]byte(job.Params))
 
 	for _, handlerFunc := range job.Handler.HandlerFuncs {
-		if err = handlerFunc(eventContext); err != nil {
+		if err := handlerFunc(eventContext); err != nil {
 			eventContext.SetError(err)
+			trace.SetError(err)
 		}
 	}
 }

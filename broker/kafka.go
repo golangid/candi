@@ -80,8 +80,7 @@ type KafkaBroker struct {
 
 // NewKafkaBroker setup kafka configuration for publisher or consumer, empty option param for default configuration
 func NewKafkaBroker(opts ...KafkaOptionFunc) *KafkaBroker {
-	deferFunc := logger.LogWithDefer("Load Kafka broker configuration... ")
-	defer deferFunc()
+	defer logger.LogWithDefer("Load Kafka broker configuration... ")()
 
 	kb := new(KafkaBroker)
 	kb.brokerHost = env.BaseEnv().Kafka.Brokers
@@ -137,8 +136,7 @@ func (k *KafkaBroker) Health() map[string]error {
 
 // Disconnect method
 func (k *KafkaBroker) Disconnect(ctx context.Context) error {
-	deferFunc := logger.LogWithDefer("kafka: disconnect...")
-	defer deferFunc()
+	defer logger.LogWithDefer("kafka: disconnect...")()
 
 	return k.client.Close()
 }
@@ -147,6 +145,7 @@ func (k *KafkaBroker) Disconnect(ctx context.Context) error {
 type kafkaPublisher struct {
 	producerSync  sarama.SyncProducer
 	producerAsync sarama.AsyncProducer
+	broker        string
 }
 
 // NewKafkaPublisher setup only kafka publisher with client connection
@@ -165,19 +164,22 @@ func NewKafkaPublisher(client sarama.Client, async bool) interfaces.Publisher {
 		return nil
 	}
 
+	brokers := client.Brokers()
+	for i, cl := range brokers {
+		kafkaPublisher.broker += cl.Addr()
+		if i < len(brokers)-1 {
+			kafkaPublisher.broker += ","
+		}
+	}
 	return kafkaPublisher
 }
 
 // PublishMessage method
 func (p *kafkaPublisher) PublishMessage(ctx context.Context, args *candishared.PublisherArgument) (err error) {
-	trace := tracer.StartTrace(ctx, "kafka:publish_message")
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("%v", r)
-		}
-		trace.SetError(err)
-		trace.Finish()
-	}()
+	trace, _ := tracer.StartTraceWithContext(ctx, "kafka:publish_message")
+	defer trace.Finish(
+		tracer.FinishWithRecoverPanic(func(panicMessage any) { err = fmt.Errorf("%v", panicMessage) }),
+	)
 
 	var payload []byte
 	if len(args.Message) > 0 {
@@ -186,6 +188,7 @@ func (p *kafkaPublisher) PublishMessage(ctx context.Context, args *candishared.P
 		payload = candihelper.ToBytes(args.Data)
 	}
 
+	trace.SetTag("brokers", p.broker)
 	trace.SetTag("topic", args.Topic)
 	trace.SetTag("key", args.Key)
 	trace.Log("header", args.Header)
@@ -216,6 +219,7 @@ func (p *kafkaPublisher) PublishMessage(ctx context.Context, args *candishared.P
 
 	if p.producerSync != nil {
 		_, _, err = p.producerSync.SendMessage(msg)
+		trace.SetError(err)
 	} else {
 		p.producerAsync.Input() <- msg
 	}
