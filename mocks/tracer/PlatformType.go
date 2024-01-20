@@ -14,6 +14,20 @@ type PlatformType struct {
 	mock.Mock
 }
 
+// Disconnect provides a mock function with given fields: ctx
+func (_m *PlatformType) Disconnect(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // GetTraceID provides a mock function with given fields: ctx
 func (_m *PlatformType) GetTraceID(ctx context.Context) string {
 	ret := _m.Called(ctx)

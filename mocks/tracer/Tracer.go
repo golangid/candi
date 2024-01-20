@@ -77,22 +77,6 @@ func (_m *Tracer) SetTag(key string, value interface{}) {
 	_m.Called(key, value)
 }
 
-// Tags provides a mock function with given fields:
-func (_m *Tracer) Tags() map[string]interface{} {
-	ret := _m.Called()
-
-	var r0 map[string]interface{}
-	if rf, ok := ret.Get(0).(func() map[string]interface{}); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[string]interface{})
-		}
-	}
-
-	return r0
-}
-
 // NewTracer creates a new instance of Tracer. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewTracer(t interface {
