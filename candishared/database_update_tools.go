@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/golangid/candi/candihelper"
 )
 
 type partialUpdateOption struct {
@@ -34,23 +36,26 @@ func DBUpdateSetIgnoredFields(fields ...string) DBUpdateOptionFunc {
 	}
 }
 
-// DBUpdateGORMExtractorKey struct tag key extractor for gorm model
-func DBUpdateGORMExtractorKey(structTag reflect.StructTag) string {
-	gormTag := structTag.Get("gorm")
-	if !strings.HasPrefix(gormTag, "column:") {
-		return ""
+// DBUpdateGORMExtractorKey struct field key extractor for gorm model
+func DBUpdateGORMExtractorKey(structField reflect.StructField) string {
+	gormTag := structField.Tag.Get("gorm")
+	if strings.HasPrefix(gormTag, "column:") {
+		return strings.Split(strings.TrimPrefix(gormTag, "column:"), ";")[0]
 	}
-	return strings.Split(strings.TrimPrefix(gormTag, "column:"), ";")[0]
+	return candihelper.ToDelimited(structField.Name, '_')
 }
 
-// DBUpdateMongoExtractorKey struct tag key extractor for mongo model
-func DBUpdateMongoExtractorKey(structTag reflect.StructTag) string {
-	return strings.TrimSuffix(structTag.Get("bson"), ",omitempty")
+// DBUpdateMongoExtractorKey struct field key extractor for mongo model
+func DBUpdateMongoExtractorKey(structField reflect.StructField) string {
+	if bsonTag := strings.TrimSuffix(structField.Tag.Get("bson"), ",omitempty"); bsonTag != "" {
+		return bsonTag
+	}
+	return candihelper.ToDelimited(structField.Name, '_')
 }
 
 // DBUpdateTools for construct selected field to update
 type DBUpdateTools struct {
-	KeyExtractorFunc func(structTag reflect.StructTag) string
+	KeyExtractorFunc func(structTag reflect.StructField) string
 	IgnoredFields    []string
 }
 
@@ -85,11 +90,11 @@ func (d DBUpdateTools) ToMap(data interface{}, opts ...DBUpdateOptionFunc) map[s
 			continue
 		}
 
-		isIgnore, _ := strconv.ParseBool(fieldType.Tag.Get("ignoreUpdate"))
 		key := strings.TrimSuffix(fieldType.Tag.Get("json"), ",omitempty")
 		if d.KeyExtractorFunc != nil {
-			key = d.KeyExtractorFunc(fieldType.Tag)
+			key = d.KeyExtractorFunc(fieldType)
 		}
+		isIgnore, _ := strconv.ParseBool(fieldType.Tag.Get("ignoreUpdate"))
 		if key == "" || key == "-" || isIgnore {
 			continue
 		}
