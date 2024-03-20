@@ -36,25 +36,18 @@ func (m *Middleware) HTTPBasicAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("WWW-Authenticate", `Basic realm=""`)
 
-		if err := func(req *http.Request) error {
-			trace := tracer.StartTrace(req.Context(), "Middleware:HTTPBasicAuth")
-			defer trace.Finish()
+		trace := tracer.StartTrace(req.Context(), "Middleware:HTTPBasicAuth")
+		defer trace.Finish()
 
-			authorization := req.Header.Get(candihelper.HeaderAuthorization)
-			trace.Log(candihelper.HeaderAuthorization, authorization)
-			key, err := extractAuthType(BASIC, authorization)
-			if err != nil {
-				trace.SetError(err)
-				return err
-			}
-
-			if err := m.Basic(req.Context(), key); err != nil {
-				trace.SetError(err)
-				return err
-			}
-			return nil
-		}(req); err != nil {
+		authorization := req.Header.Get(candihelper.HeaderAuthorization)
+		trace.Log(candihelper.HeaderAuthorization, authorization)
+		key, err := extractAuthType(BASIC, authorization)
+		if err != nil {
 			wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(w)
+			return
+		}
+
+		if err := m.Basic(req.Context(), key); err != nil {
 			return
 		}
 

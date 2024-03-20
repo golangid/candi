@@ -28,33 +28,27 @@ func (m *Middleware) Bearer(ctx context.Context, tokenString string) (*candishar
 // HTTPBearerAuth http jwt token middleware
 func (m *Middleware) HTTPBearerAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		claim, err := func(req *http.Request) (*candishared.TokenClaim, error) {
-			trace := tracer.StartTrace(req.Context(), "Middleware:HTTPBearerAuth")
-			defer trace.Finish()
+		trace := tracer.StartTrace(req.Context(), "Middleware:HTTPBearerAuth")
+		defer trace.Finish()
 
-			authorization := req.Header.Get(candihelper.HeaderAuthorization)
-			trace.Log(candihelper.HeaderAuthorization, authorization)
-			tokenValue, err := extractAuthType(BEARER, authorization)
-			if err != nil {
-				trace.SetError(err)
-				return nil, err
-			}
-
-			tokenClaim, err := m.Bearer(trace.Context(), tokenValue)
-			if err != nil {
-				trace.SetError(err)
-				return nil, err
-			}
-			trace.Log("token_claim", tokenClaim)
-
-			return tokenClaim, nil
-		}(req)
+		authorization := req.Header.Get(candihelper.HeaderAuthorization)
+		trace.Log(candihelper.HeaderAuthorization, authorization)
+		tokenValue, err := extractAuthType(BEARER, authorization)
 		if err != nil {
+			trace.SetError(err)
 			wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(w)
 			return
 		}
 
-		next.ServeHTTP(w, req.WithContext(candishared.SetToContext(req.Context(), candishared.ContextKeyTokenClaim, claim)))
+		tokenClaim, err := m.Bearer(trace.Context(), tokenValue)
+		if err != nil {
+			trace.SetError(err)
+			wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(w)
+			return
+		}
+		trace.Log("token_claim", tokenClaim)
+
+		next.ServeHTTP(w, req.WithContext(candishared.SetToContext(req.Context(), candishared.ContextKeyTokenClaim, tokenClaim)))
 	})
 }
 

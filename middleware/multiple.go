@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -12,19 +11,13 @@ import (
 	"github.com/golangid/candi/tracer"
 	"github.com/golangid/candi/wrapper"
 	gqltypes "github.com/golangid/graphql-go/types"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // HTTPMultipleAuth mix basic & bearer auth
 func (m *Middleware) HTTPMultipleAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		defer func() {
-			if r := recover(); r != nil {
-				wrapper.NewHTTPResponse(http.StatusInternalServerError, fmt.Sprint(r)).JSON(w)
-			}
-		}()
-
 		ctx := req.Context()
 
 		trace := tracer.StartTrace(ctx, "Middleware:HTTPMultipleAuth")
@@ -46,7 +39,6 @@ func (m *Middleware) HTTPMultipleAuth(next http.Handler) http.Handler {
 			wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(w)
 			return
 		}
-
 		if claimData != nil {
 			ctx = candishared.SetToContext(ctx, candishared.ContextKeyTokenClaim, claimData)
 		}
@@ -69,11 +61,11 @@ func (m *Middleware) GRPCMultipleAuth(ctx context.Context) (context.Context, err
 
 	authType, authVal, ok := strings.Cut(auth, " ")
 	if !ok {
-		return ctx, grpc.Errorf(codes.Unauthenticated, "Invalid authorization")
+		return ctx, status.Errorf(codes.Unauthenticated, "Invalid authorization")
 	}
 	claimData, err := m.checkMultipleAuth(trace.Context(), authType, authVal)
 	if err != nil {
-		return ctx, grpc.Errorf(codes.Unauthenticated, err.Error())
+		return ctx, status.Errorf(codes.Unauthenticated, err.Error())
 	}
 
 	if claimData != nil {
@@ -139,7 +131,6 @@ func (m *Middleware) GraphQLAuth(ctx context.Context, directive *gqltypes.Direct
 }
 
 func (m *Middleware) checkMultipleAuth(ctx context.Context, authType, token string) (claimData *candishared.TokenClaim, err error) {
-
 	switch strings.ToUpper(authType) {
 	case BEARER:
 		claimData, err = m.Bearer(ctx, token)

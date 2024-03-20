@@ -63,6 +63,10 @@ func HTTPMiddlewareCORS(
 				}
 			}
 
+			if allowCredential {
+				res.Header().Set("Access-Control-Allow-Credentials", "true")
+			}
+
 			// Simple request
 			if req.Method != http.MethodOptions {
 				res.Header().Add("Vary", "Origin")
