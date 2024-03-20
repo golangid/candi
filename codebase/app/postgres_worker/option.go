@@ -1,6 +1,7 @@
 package postgresworker
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/golangid/candi/candiutils"
@@ -16,6 +17,7 @@ type (
 		minReconnectInterval  time.Duration
 		maxReconnectInterval  time.Duration
 		onErrorConnectionFunc func(error)
+		dbOption              func(*sql.DB)
 
 		sources map[string]*PostgresSource
 	}
@@ -95,5 +97,12 @@ func AddPostgresDSN(sourceName, dsn string) OptionFunc {
 func SetOnErrorConnectionCallback(callback func(error)) OptionFunc {
 	return func(o *option) {
 		o.onErrorConnectionFunc = callback
+	}
+}
+
+// SetDBOption option func
+func SetDBOption(dbOption func(*sql.DB)) OptionFunc {
+	return func(o *option) {
+		o.dbOption = dbOption
 	}
 }

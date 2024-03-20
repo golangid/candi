@@ -21,6 +21,10 @@ func getListener(source string, opts *option) (*sql.DB, *pq.Listener) {
 		panic(fmt.Errorf(`[POSTGRES-LISTENER] ERROR: %v, ping: %s`, err, candihelper.MaskingPasswordURL(dsn)))
 	}
 
+	if opts.dbOption != nil {
+		opts.dbOption(db)
+	}
+
 	ec := &eventCallback{onErrorFunc: opts.onErrorConnectionFunc}
 	listener := pq.NewListener(dsn, opts.minReconnectInterval, opts.maxReconnectInterval, ec.onEvent)
 	return db, listener
