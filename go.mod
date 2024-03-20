@@ -1,6 +1,6 @@
 module github.com/golangid/candi
 
-go 1.21
+go 1.22
 
 require (
 	github.com/IBM/sarama v1.42.1
@@ -26,7 +26,7 @@ require (
 	go.mongodb.org/mongo-driver v1.13.1
 	go.uber.org/zap v1.26.0
 	google.golang.org/grpc v1.60.1
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.33.0
 )
 
 require (
