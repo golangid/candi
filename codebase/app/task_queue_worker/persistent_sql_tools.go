@@ -14,7 +14,8 @@ func generateAddColumnQuery(driverName, tableName, newColumnName, columnType str
 	switch driverName {
 	case "postgres":
 		q = []string{
-			`SELECT column_name FROM information_schema.columns WHERE table_name='` + tableName + `' AND column_name='` + newColumnName + `'`,
+			`SELECT column_name FROM information_schema.columns ` +
+				`WHERE table_name='` + tableName + `' AND column_name='` + newColumnName + `' AND table_catalog=(SELECT current_database());`,
 			`ALTER TABLE ` + tableName + ` ADD COLUMN IF NOT EXISTS "` + newColumnName + `" ` + columnType,
 		}
 
@@ -26,7 +27,8 @@ func generateAddColumnQuery(driverName, tableName, newColumnName, columnType str
 
 	case "mysql":
 		q = []string{
-			"SELECT `COLUMN_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_NAME` = '" + tableName + "' AND `COLUMN_NAME` = '" + newColumnName + "'",
+			"SELECT `COLUMN_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` " +
+				"WHERE `TABLE_NAME` = '" + tableName + "' AND `COLUMN_NAME` = '" + newColumnName + "' AND `TABLE_SCHEMA` = (SELECT DATABASE());",
 			`ALTER TABLE ` + tableName + " ADD COLUMN `" + newColumnName + "` " + columnType,
 		}
 	}
@@ -104,9 +106,9 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 				"`retries` INTEGER NOT NULL,",
 				"`max_retry` INTEGER NOT NULL,",
 				"`interval` VARCHAR(255) NOT NULL,",
-				"`created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,",
-				"`updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,",
-				"`finished_at` TIMESTAMP NULL,",
+				"`created_at` DATETIME(3) NOT NULL,",
+				"`updated_at` DATETIME(3) NOT NULL,",
+				"`finished_at` DATETIME(3) NULL,",
 				"`status` VARCHAR(255) NOT NULL,",
 				"`error` TEXT NOT NULL,",
 				"`trace_id` VARCHAR(255) NOT NULL,",
@@ -136,8 +138,8 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 				"`status` VARCHAR(255) NOT NULL,",
 				"`error` TEXT NOT NULL,",
 				"`trace_id` VARCHAR(255) NOT NULL,",
-				"`start_at` TIMESTAMP NULL,",
-				"`end_at` TIMESTAMP NULL,",
+				"`start_at` DATETIME(3) NULL,",
+				"`end_at` DATETIME(3) NULL,",
 				`INDEX (job_id),
 				INDEX (start_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE utf8_unicode_ci;`,
 			),
@@ -216,19 +218,12 @@ func (s *SQLPersistent) parseDateString(date string) (t sql.NullTime) {
 			break
 		}
 	}
-	t.Time = candihelper.ToAsiaJakartaTime(t.Time)
 	t.Valid = err == nil
 	return t
 }
 
 func (s *SQLPersistent) parseDate(t time.Time) (res *string) {
-	var date string
-	switch s.driverName {
-	case "postgres", "sqlite3":
-		date = candihelper.ParseTimeToString(t, time.RFC3339Nano)
-	case "mysql":
-		date = candihelper.ParseTimeToString(t, candihelper.DateFormatYYYYMMDDHHmmss)
-	}
+	date := candihelper.ParseTimeToString(t, time.RFC3339Nano)
 	if date == "" {
 		return nil
 	}
