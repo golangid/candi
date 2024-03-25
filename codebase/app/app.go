@@ -20,7 +20,6 @@ type App struct {
 
 // New service app
 func New(service factory.ServiceFactory) *App {
-
 	return &App{
 		service: service,
 	}
@@ -28,7 +27,6 @@ func New(service factory.ServiceFactory) *App {
 
 // Run start app
 func (a *App) Run() {
-
 	if err := a.checkRequired(); err != nil {
 		panic(err)
 	}
@@ -86,10 +84,8 @@ func (a *App) shutdown(forceShutdown chan os.Signal) {
 }
 
 func (a *App) checkRequired() (err error) {
-
 	if len(a.service.GetApplications()) == 0 {
 		return errors.New("No server/worker running")
 	}
-
 	return
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	graphqlserver "github.com/golangid/candi/codebase/app/graphql_server"
+	"github.com/golangid/candi/codebase/interfaces"
 	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/wrapper"
 	"github.com/soheilhy/cmux"
@@ -16,6 +17,7 @@ type (
 		traceMiddleware     func(http.Handler) http.Handler
 		rootMiddlewares     []func(http.Handler) http.Handler
 		rootHandler         http.HandlerFunc
+		routerFunc          func(interfaces.RESTRouter)
 		errorHandler        http.HandlerFunc
 		httpPort            uint16
 		rootPath            string
@@ -139,5 +141,12 @@ func SetTLSConfig(tlsConfig *tls.Config) OptionFunc {
 func SetDisableTrace() OptionFunc {
 	return func(o *option) {
 		o.traceMiddleware = nil
+	}
+}
+
+// AddMountRouter option func
+func AddMountRouter(fn func(interfaces.RESTRouter)) OptionFunc {
+	return func(o *option) {
+		o.routerFunc = fn
 	}
 }

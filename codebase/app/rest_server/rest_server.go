@@ -51,6 +51,9 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 
 	rootPath := mux.Route(server.opt.rootPath, func(chi.Router) {})
 	route := &routeWrapper{router: rootPath}
+	if server.opt.routerFunc != nil {
+		server.opt.routerFunc(route)
+	}
 	for _, m := range service.GetModules() {
 		if h := m.RESTHandler(); h != nil {
 			h.Mount(route)

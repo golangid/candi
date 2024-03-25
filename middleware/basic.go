@@ -31,23 +31,26 @@ func (m *Middleware) Basic(ctx context.Context, key string) error {
 	return m.basicAuthValidator.ValidateBasic(ctx, username, password)
 }
 
+func (m *Middleware) extractHTTPBasic(req *http.Request) error {
+	trace := tracer.StartTrace(req.Context(), "Middleware:HTTPBasicAuth")
+	defer trace.Finish()
+
+	authorization := req.Header.Get(candihelper.HeaderAuthorization)
+	trace.Log(candihelper.HeaderAuthorization, authorization)
+	key, err := extractAuthType(BASIC, authorization)
+	if err != nil {
+		return err
+	}
+
+	return m.Basic(req.Context(), key)
+}
+
 // HTTPBasicAuth http basic auth middleware
 func (m *Middleware) HTTPBasicAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("WWW-Authenticate", `Basic realm=""`)
-
-		trace := tracer.StartTrace(req.Context(), "Middleware:HTTPBasicAuth")
-		defer trace.Finish()
-
-		authorization := req.Header.Get(candihelper.HeaderAuthorization)
-		trace.Log(candihelper.HeaderAuthorization, authorization)
-		key, err := extractAuthType(BASIC, authorization)
-		if err != nil {
+		if err := m.extractHTTPBasic(req); err != nil {
 			wrapper.NewHTTPResponse(http.StatusUnauthorized, err.Error()).JSON(w)
-			return
-		}
-
-		if err := m.Basic(req.Context(), key); err != nil {
 			return
 		}
 
