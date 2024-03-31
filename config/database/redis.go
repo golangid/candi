@@ -67,12 +67,23 @@ func (m *redisInstance) Disconnect(ctx context.Context) (err error) {
 
 // InitRedis connection from environment:
 // REDIS_READ_DSN, REDIS_WRITE_DSN
+// if want to create single connection, use REDIS_WRITE_DSN and set empty for REDIS_READ_DSN
 func InitRedis(opts ...RedisPoolOption) interfaces.RedisPool {
 	defer logger.LogWithDefer("Load Redis connection...")()
 
+	connReadDSN, connWriteDSN := env.BaseEnv().DbRedisReadDSN, env.BaseEnv().DbRedisWriteDSN
+	if connReadDSN == "" {
+		poolConn := ConnectRedis(connWriteDSN, opts...)
+		return &redisInstance{
+			read:  poolConn,
+			write: poolConn,
+			cache: cache.NewRedisCache(poolConn, poolConn),
+		}
+	}
+
 	inst := &redisInstance{
-		read:  ConnectRedis(env.BaseEnv().DbRedisReadDSN, opts...),
-		write: ConnectRedis(env.BaseEnv().DbRedisWriteDSN, opts...),
+		read:  ConnectRedis(connReadDSN, opts...),
+		write: ConnectRedis(connWriteDSN, opts...),
 	}
 	inst.cache = cache.NewRedisCache(inst.read, inst.write)
 	return inst
@@ -86,8 +97,8 @@ func ConnectRedis(dsn string, opts ...RedisPoolOption) *redis.Pool {
 		},
 
 		// default pool config
-		MaxIdle:         80,
-		MaxActive:       500,
+		MaxIdle:         50,
+		MaxActive:       80,
 		IdleTimeout:     20 * time.Minute,
 		MaxConnLifetime: 1 * time.Hour,
 	}

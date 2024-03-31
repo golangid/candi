@@ -55,17 +55,20 @@ func (m *mongoInstance) Disconnect(ctx context.Context) (err error) {
 
 // InitMongoDB return mongo db read & write instance from environment:
 // MONGODB_HOST_WRITE, MONGODB_HOST_READ
+// if want to create single connection, use MONGODB_HOST_WRITE and set empty for MONGODB_HOST_READ
 func InitMongoDB(ctx context.Context, opts ...*options.ClientOptions) interfaces.MongoDatabase {
 	defer logger.LogWithDefer("Load MongoDB connection...")()
 
-	mi := &mongoInstance{}
-	if env.BaseEnv().DbMongoReadHost != "" {
-		mi.read = ConnectMongoDB(ctx, env.BaseEnv().DbMongoReadHost, opts...)
+	connReadDSN, connWriteDSN := env.BaseEnv().DbMongoReadHost, env.BaseEnv().DbMongoWriteHost
+	if connReadDSN == "" {
+		db := ConnectMongoDB(ctx, connWriteDSN, opts...)
+		return &mongoInstance{read: db, write: db}
 	}
-	if env.BaseEnv().DbMongoWriteHost != "" {
-		mi.write = ConnectMongoDB(ctx, env.BaseEnv().DbMongoWriteHost, opts...)
+
+	return &mongoInstance{
+		read:  ConnectMongoDB(ctx, connReadDSN, opts...),
+		write: ConnectMongoDB(ctx, connWriteDSN, opts...),
 	}
-	return mi
 }
 
 // ConnectMongoDB connect to mongodb with dsn

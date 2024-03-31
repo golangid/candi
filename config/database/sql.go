@@ -37,14 +37,25 @@ func (s *sqlInstance) Disconnect(ctx context.Context) (err error) {
 	return s.write.Close()
 }
 
+type SQLDatabaseOption func(db *sql.DB)
+
 // InitSQLDatabase return sql db read & write instance from environment:
 // SQL_DB_READ_DSN, SQL_DB_WRITE_DSN
-func InitSQLDatabase() interfaces.SQLDatabase {
+// if want to create single connection, use SQL_DB_WRITE_DSN and set empty for SQL_DB_READ_DSN
+func InitSQLDatabase(opts ...SQLDatabaseOption) interfaces.SQLDatabase {
 	defer logger.LogWithDefer("Load SQL connection...")()
 
+	connReadDSN, connWriteDSN := env.BaseEnv().DbSQLReadDSN, env.BaseEnv().DbSQLWriteDSN
+	if connReadDSN == "" {
+		db := ConnectSQLDatabase(connWriteDSN, opts...)
+		return &sqlInstance{
+			read: db, write: db,
+		}
+	}
+
 	return &sqlInstance{
-		read:  ConnectSQLDatabase(env.BaseEnv().DbSQLReadDSN),
-		write: ConnectSQLDatabase(env.BaseEnv().DbSQLWriteDSN),
+		read:  ConnectSQLDatabase(connReadDSN, opts...),
+		write: ConnectSQLDatabase(connWriteDSN, opts...),
 	}
 }
 
@@ -76,7 +87,7 @@ func ParseSQLDSN(source string) (driverName string, dsn string) {
 }
 
 // ConnectSQLDatabase connect to sql database with dsn
-func ConnectSQLDatabase(dsn string) *sql.DB {
+func ConnectSQLDatabase(dsn string, opts ...SQLDatabaseOption) *sql.DB {
 	db, err := sql.Open(ParseSQLDSN(dsn))
 	if err != nil {
 		panic(fmt.Sprintf("SQL Connection: %v", err))
@@ -85,5 +96,8 @@ func ConnectSQLDatabase(dsn string) *sql.DB {
 		panic(fmt.Sprintf("SQL Ping: %v", err))
 	}
 
+	for _, opt := range opts {
+		opt(db)
+	}
 	return db
 }

@@ -110,6 +110,10 @@ func (r *RedisBroker) Disconnect(ctx context.Context) error {
 
 // PublishMessage method
 func (r *RedisBroker) PublishMessage(ctx context.Context, args *candishared.PublisherArgument) (err error) {
+	if args.IsDeleteMessage {
+		return r.deleteMessage(ctx, args)
+	}
+
 	trace, ctx := tracer.StartTraceWithContext(ctx, "redis_broker:publish_message")
 	defer func() { trace.Finish(tracer.FinishWithError(err)) }()
 
@@ -157,6 +161,10 @@ func (r *RedisBroker) deleteMessage(ctx context.Context, args *candishared.Publi
 	defer func() { conn.Close(); trace.Finish(tracer.FinishWithError(err)) }()
 
 	conn.Do("HDEL", RedisBrokerKey, args.Key)
+
+	trace.SetTag("topic", args.Topic)
+	trace.SetTag("key", args.Key)
+	trace.Log("message", args.Message)
 
 	b, _ := json.Marshal(RedisMessage{
 		HandlerName: args.Topic, Key: args.Key,
