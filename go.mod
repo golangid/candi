@@ -17,8 +17,8 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
 	github.com/opentracing/opentracing-go v1.2.0
+	github.com/rabbitmq/amqp091-go v1.9.0
 	github.com/soheilhy/cmux v0.1.5
-	github.com/streadway/amqp v1.1.0
 	github.com/stretchr/testify v1.9.0
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	go.mongodb.org/mongo-driver v1.15.0

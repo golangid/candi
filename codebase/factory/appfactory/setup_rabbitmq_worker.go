@@ -12,8 +12,6 @@ func SetupRabbitMQWorker(service factory.ServiceFactory, opts ...rabbitmqworker.
 		rabbitmqworker.SetMaxGoroutines(env.BaseEnv().MaxGoroutines),
 		rabbitmqworker.SetDebugMode(env.BaseEnv().DebugMode),
 		rabbitmqworker.SetConsumerGroup(env.BaseEnv().RabbitMQ.ConsumerGroup),
-		rabbitmqworker.SetExchangeName(env.BaseEnv().RabbitMQ.ExchangeName),
-		rabbitmqworker.SetBrokerHost(env.BaseEnv().RabbitMQ.Broker),
 	}
 	rabbitMQOpts = append(rabbitMQOpts, opts...)
 	return rabbitmqworker.NewWorker(service, rabbitMQOpts...)

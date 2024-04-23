@@ -8,13 +8,14 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/golangid/candi/broker"
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
-	"github.com/streadway/amqp"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type rabbitmqWorker struct {
@@ -22,30 +23,32 @@ type rabbitmqWorker struct {
 	ctxCancelFunc func()
 	opt           option
 
-	ch         *amqp.Channel
+	bk *broker.RabbitMQBroker
+
 	shutdown   chan struct{}
 	isShutdown bool
 	semaphore  []chan struct{}
 	wg         sync.WaitGroup
-	channels   []reflect.SelectCase
+	receiver   []reflect.SelectCase
 	handlers   map[string]types.WorkerHandler
 }
 
 // NewWorker create new rabbitmq consumer
 func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
-	if service.GetDependency().GetBroker(types.RabbitMQ) == nil {
-		panic("Missing RabbitMQ configuration")
+	rabbitMQBroker, ok := service.GetDependency().GetBroker(types.RabbitMQ).(*broker.RabbitMQBroker)
+	if !ok {
+		panic("Missing RabbitMQ broker configuration")
 	}
 
 	worker := &rabbitmqWorker{
 		opt: getDefaultOption(),
+		bk:  rabbitMQBroker,
 	}
 	for _, opt := range opts {
 		opt(&worker.opt)
 	}
 
 	worker.ctx, worker.ctxCancelFunc = context.WithCancel(context.Background())
-	worker.ch = service.GetDependency().GetBroker(types.RabbitMQ).GetConfiguration().(*amqp.Channel)
 
 	worker.shutdown = make(chan struct{}, 1)
 	worker.handlers = make(map[string]types.WorkerHandler)
@@ -56,12 +59,12 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 			h.MountHandlers(&handlerGroup)
 			for _, handler := range handlerGroup.Handlers {
 				logger.LogYellow(fmt.Sprintf(`[RABBITMQ-CONSUMER] (queue): %-15s  --> (module): "%s"`, `"`+handler.Pattern+`"`, m.Name()))
-				queueChan, err := setupQueueConfig(worker.ch, worker.opt.consumerGroup, worker.opt.exchangeName, handler.Pattern)
+				queueChan, err := setupQueueConfig(worker.bk.Channel, worker.opt.consumerGroup, rabbitMQBroker.Exchange, handler.Pattern)
 				if err != nil {
 					panic(err)
 				}
 
-				worker.channels = append(worker.channels, reflect.SelectCase{
+				worker.receiver = append(worker.receiver, reflect.SelectCase{
 					Dir: reflect.SelectRecv, Chan: reflect.ValueOf(queueChan),
 				})
 				worker.handlers[handler.Pattern] = handler
@@ -70,14 +73,13 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 		}
 	}
 
-	fmt.Printf("\x1b[34;1m⇨ RabbitMQ consumer running with %d queue. Broker: %s\x1b[0m\n\n", len(worker.channels),
-		candihelper.MaskingPasswordURL(worker.opt.broker))
+	fmt.Printf("\x1b[34;1m⇨ RabbitMQ consumer running with %d queue. Broker: %s\x1b[0m\n\n", len(worker.receiver),
+		candihelper.MaskingPasswordURL(rabbitMQBroker.BrokerHost))
 
 	return worker
 }
 
 func (r *rabbitmqWorker) Serve() {
-
 	for {
 		select {
 		case <-r.shutdown:
@@ -86,7 +88,7 @@ func (r *rabbitmqWorker) Serve() {
 		default:
 		}
 
-		chosen, value, ok := reflect.Select(r.channels)
+		chosen, value, ok := reflect.Select(r.receiver)
 		if !ok {
 			continue
 		}
@@ -100,9 +102,11 @@ func (r *rabbitmqWorker) Serve() {
 
 			r.wg.Add(1)
 			go func(message amqp.Delivery, idx int) {
+				defer func() {
+					r.wg.Done()
+					<-r.semaphore[idx]
+				}()
 				r.processMessage(message)
-				r.wg.Done()
-				<-r.semaphore[idx]
 			}(msg, chosen)
 		}
 	}
@@ -122,7 +126,7 @@ func (r *rabbitmqWorker) Shutdown(ctx context.Context) {
 	}
 
 	r.wg.Wait()
-	r.ch.Close()
+	r.bk.Channel.Close()
 	r.ctxCancelFunc()
 }
 
@@ -157,7 +161,7 @@ func (r *rabbitmqWorker) processMessage(message amqp.Delivery) {
 		}),
 	)
 
-	trace.SetTag("broker", candihelper.MaskingPasswordURL(r.opt.broker))
+	trace.SetTag("broker", candihelper.MaskingPasswordURL(r.bk.BrokerHost))
 	trace.SetTag("exchange", message.Exchange)
 	trace.SetTag("routing_key", message.RoutingKey)
 	trace.Log("header", message.Headers)

@@ -12,7 +12,7 @@ import (
 	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
-	"github.com/streadway/amqp"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 const (
@@ -26,14 +26,21 @@ type RabbitMQOptionFunc func(*RabbitMQBroker)
 // RabbitMQSetBrokerHost set custom broker host
 func RabbitMQSetBrokerHost(brokers string) RabbitMQOptionFunc {
 	return func(bk *RabbitMQBroker) {
-		bk.brokerHost = brokers
+		bk.BrokerHost = brokers
+	}
+}
+
+// RabbitMQSetExchange set exchange
+func RabbitMQSetExchange(exchange string) RabbitMQOptionFunc {
+	return func(bk *RabbitMQBroker) {
+		bk.Exchange = exchange
 	}
 }
 
 // RabbitMQSetChannel set custom channel configuration
 func RabbitMQSetChannel(ch *amqp.Channel) RabbitMQOptionFunc {
 	return func(bk *RabbitMQBroker) {
-		bk.ch = ch
+		bk.Channel = ch
 	}
 }
 
@@ -46,10 +53,12 @@ func RabbitMQSetPublisher(pub interfaces.Publisher) RabbitMQOptionFunc {
 
 // RabbitMQBroker broker
 type RabbitMQBroker struct {
-	brokerHost string
-	conn       *amqp.Connection
-	ch         *amqp.Channel
-	publisher  interfaces.Publisher
+	publisher interfaces.Publisher
+
+	BrokerHost string
+	Exchange   string
+	Conn       *amqp.Connection
+	Channel    *amqp.Channel
 }
 
 // NewRabbitMQBroker setup rabbitmq configuration for publisher or consumer, default connection from RABBITMQ_BROKER environment
@@ -57,54 +66,55 @@ func NewRabbitMQBroker(opts ...RabbitMQOptionFunc) *RabbitMQBroker {
 	defer logger.LogWithDefer("Load RabbitMQ broker configuration... ")()
 	var err error
 
-	rabbitmq := new(RabbitMQBroker)
-	rabbitmq.brokerHost = env.BaseEnv().RabbitMQ.Broker
+	bk := new(RabbitMQBroker)
+	bk.BrokerHost = env.BaseEnv().RabbitMQ.Broker
+	bk.Exchange = env.BaseEnv().RabbitMQ.ExchangeName
 	for _, opt := range opts {
-		opt(rabbitmq)
+		opt(bk)
 	}
 
-	rabbitmq.conn, err = amqp.Dial(rabbitmq.brokerHost)
+	bk.Conn, err = amqp.Dial(bk.BrokerHost)
 	if err != nil {
 		panic("RabbitMQ: cannot connect to server broker: " + err.Error())
 	}
 
-	if rabbitmq.ch == nil {
-		// set default configuration
-		rabbitmq.ch, err = rabbitmq.conn.Channel()
+	if bk.Channel == nil {
+		// set default channel configuration
+		bk.Channel, err = bk.Conn.Channel()
 		if err != nil {
 			panic("RabbitMQ channel: " + err.Error())
 		}
-		if err := rabbitmq.ch.ExchangeDeclare("amq.direct", "direct", true, false, false, false, nil); err != nil {
+		if err := bk.Channel.ExchangeDeclare("amq.direct", "direct", true, false, false, false, nil); err != nil {
 			panic("RabbitMQ exchange declare direct: " + err.Error())
 		}
-		if err := rabbitmq.ch.ExchangeDeclare(
-			env.BaseEnv().RabbitMQ.ExchangeName, // name
-			"x-delayed-message",                 // type
-			true,                                // durable
-			false,                               // auto-deleted
-			false,                               // internal
-			false,                               // no-wait
+		if err := bk.Channel.ExchangeDeclare(
+			bk.Exchange,         // name
+			"x-delayed-message", // type
+			true,                // durable
+			false,               // auto-deleted
+			false,               // internal
+			false,               // no-wait
 			amqp.Table{
 				"x-delayed-type": "direct",
 			},
 		); err != nil {
 			panic("RabbitMQ exchange declare delayed: " + err.Error())
 		}
-		if err := rabbitmq.ch.Qos(2, 0, false); err != nil {
+		if err := bk.Channel.Qos(2, 0, false); err != nil {
 			panic("RabbitMQ Qos: " + err.Error())
 		}
 	}
 
-	if rabbitmq.publisher == nil {
-		rabbitmq.publisher = NewRabbitMQPublisher(rabbitmq.conn)
+	if bk.publisher == nil {
+		bk.publisher = NewRabbitMQPublisher(bk.Conn, bk.Exchange)
 	}
 
-	return rabbitmq
+	return bk
 }
 
 // GetConfiguration method
 func (r *RabbitMQBroker) GetConfiguration() interface{} {
-	return r.ch
+	return r
 }
 
 // GetPublisher method
@@ -126,18 +136,19 @@ func (r *RabbitMQBroker) Health() map[string]error {
 func (r *RabbitMQBroker) Disconnect(ctx context.Context) error {
 	defer logger.LogWithDefer("rabbitmq: disconnect...")()
 
-	return r.conn.Close()
+	return r.Conn.Close()
 }
 
 // rabbitMQPublisher rabbitmq
 type rabbitMQPublisher struct {
-	conn *amqp.Connection
+	conn     *amqp.Connection
+	exchange string
 }
 
 // NewRabbitMQPublisher setup only rabbitmq publisher with client connection
-func NewRabbitMQPublisher(conn *amqp.Connection) interfaces.Publisher {
+func NewRabbitMQPublisher(conn *amqp.Connection, exchange string) *rabbitMQPublisher {
 	return &rabbitMQPublisher{
-		conn: conn,
+		conn: conn, exchange: exchange,
 	}
 }
 
@@ -158,6 +169,10 @@ func (r *rabbitMQPublisher) PublishMessage(ctx context.Context, args *candishare
 		args.ContentType = candihelper.HeaderMIMEApplicationJSON
 	}
 
+	if args.Header == nil {
+		args.Header = make(map[string]interface{})
+	}
+
 	traceHeader := map[string]string{}
 	trace.InjectRequestHeader(traceHeader)
 	for k, v := range traceHeader {
@@ -173,6 +188,9 @@ func (r *rabbitMQPublisher) PublishMessage(ctx context.Context, args *candishare
 		ContentType:  args.ContentType,
 		Headers:      amqp.Table(args.Header),
 	}
+	if args.Delay > 0 {
+		msg.Headers[RabbitMQDelayHeader] = args.Delay.Milliseconds()
+	}
 
 	if len(args.Message) > 0 {
 		msg.Body = args.Message
@@ -183,8 +201,8 @@ func (r *rabbitMQPublisher) PublishMessage(ctx context.Context, args *candishare
 	trace.Log("header", msg.Headers)
 	trace.Log("message", msg.Body)
 
-	return ch.Publish(
-		env.BaseEnv().RabbitMQ.ExchangeName,
+	return ch.PublishWithContext(ctx,
+		r.exchange,
 		args.Topic, // routing key
 		false,      // mandatory
 		false,      // immediate

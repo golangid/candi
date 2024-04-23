@@ -3,8 +3,6 @@ package rabbitmqworker
 type (
 	option struct {
 		consumerGroup string
-		exchangeName  string
-		broker        string // for log when startup
 		maxGoroutines int
 		debugMode     bool
 	}
@@ -34,23 +32,9 @@ func SetDebugMode(debugMode bool) OptionFunc {
 	}
 }
 
-// SetBrokerHost option func
-func SetBrokerHost(broker string) OptionFunc {
-	return func(o *option) {
-		o.broker = broker
-	}
-}
-
 // SetConsumerGroup option func, for log when startup
 func SetConsumerGroup(consumerGroup string) OptionFunc {
 	return func(o *option) {
 		o.consumerGroup = consumerGroup
-	}
-}
-
-// SetExchangeName option func
-func SetExchangeName(exchangeName string) OptionFunc {
-	return func(o *option) {
-		o.exchangeName = exchangeName
 	}
 }
