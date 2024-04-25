@@ -44,6 +44,13 @@ func NewHTTPResponse(code int, message string, params ...interface{}) *HTTPRespo
 	return commonResponse
 }
 
+// NewHTTPResponse for create common response with meta
+func NewHTTPResponseWithMeta[M any](code int, message string, meta M, params ...any) *HTTPResponse {
+	commonResponse := NewHTTPResponse(code, message, params...)
+	commonResponse.Meta = meta
+	return commonResponse
+}
+
 // JSON for set http JSON response (Content-Type: application/json) with parameter is http response writer
 func (resp *HTTPResponse) JSON(w http.ResponseWriter) error {
 	w.Header().Set(candihelper.HeaderContentType, candihelper.HeaderMIMEApplicationJSON)

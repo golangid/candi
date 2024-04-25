@@ -17,7 +17,7 @@ type (
 		traceMiddleware     func(http.Handler) http.Handler
 		rootMiddlewares     []func(http.Handler) http.Handler
 		rootHandler         http.HandlerFunc
-		routerFunc          func(interfaces.RESTRouter)
+		routerFuncs         []func(interfaces.RESTRouter)
 		errorHandler        http.HandlerFunc
 		httpPort            uint16
 		rootPath            string
@@ -147,6 +147,6 @@ func SetDisableTrace() OptionFunc {
 // AddMountRouter option func
 func AddMountRouter(fn func(interfaces.RESTRouter)) OptionFunc {
 	return func(o *option) {
-		o.routerFunc = fn
+		o.routerFuncs = append(o.routerFuncs, fn)
 	}
 }

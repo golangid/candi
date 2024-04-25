@@ -51,8 +51,8 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 
 	rootPath := mux.Route(server.opt.rootPath, func(chi.Router) {})
 	route := &routeWrapper{router: rootPath}
-	if server.opt.routerFunc != nil {
-		server.opt.routerFunc(route)
+	for _, routerFunc := range server.opt.routerFuncs {
+		routerFunc(route)
 	}
 	for _, m := range service.GetModules() {
 		if h := m.RESTHandler(); h != nil {
@@ -60,12 +60,21 @@ func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 		}
 	}
 
+	countRoute, maxLogRoute := 0, 20
 	chi.Walk(mux, func(method, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
-		if !candihelper.StringInSlice(route, []string{"/", "/memstats/"}) {
+		if candihelper.StringInSlice(route, []string{"/", "/memstats/"}) {
+			return nil
+		}
+
+		countRoute++
+		if countRoute <= maxLogRoute {
 			logger.LogGreen(fmt.Sprintf("[REST-ROUTE] %-6s %-30s", method, strings.TrimSuffix(route, "/")))
 		}
 		return nil
 	})
+	if countRoute > maxLogRoute {
+		logger.LogGreen(fmt.Sprintf("[REST-ROUTE] and %d more", countRoute-maxLogRoute))
+	}
 
 	// inject graphql handler to rest server
 	if server.opt.includeGraphQL {
