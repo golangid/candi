@@ -20,17 +20,24 @@ import (
 // KafkaOptionFunc func type
 type KafkaOptionFunc func(*KafkaBroker)
 
+// KafkaSetWorkerType set worker type
+func KafkaSetWorkerType(workerType types.Worker) KafkaOptionFunc {
+	return func(bk *KafkaBroker) {
+		bk.WorkerType = workerType
+	}
+}
+
 // KafkaSetBrokerHost set custom broker host
 func KafkaSetBrokerHost(brokers []string) KafkaOptionFunc {
 	return func(kb *KafkaBroker) {
-		kb.brokerHost = brokers
+		kb.BrokerHost = brokers
 	}
 }
 
 // KafkaSetConfig set custom sarama configuration
 func KafkaSetConfig(cfg *sarama.Config) KafkaOptionFunc {
 	return func(kb *KafkaBroker) {
-		kb.config = cfg
+		kb.Config = cfg
 	}
 }
 
@@ -61,7 +68,7 @@ func GetDefaultKafkaConfig(additionalConfigFunc ...func(*sarama.Config)) *sarama
 
 	// Consumer config
 	cfg.Consumer.Offsets.Initial = sarama.OffsetOldest
-	cfg.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
+	cfg.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
 
 	for _, additionalFunc := range additionalConfigFunc {
 		additionalFunc(cfg)
@@ -72,43 +79,40 @@ func GetDefaultKafkaConfig(additionalConfigFunc ...func(*sarama.Config)) *sarama
 
 // KafkaBroker configuration
 type KafkaBroker struct {
-	brokerHost []string
-	config     *sarama.Config
-	client     sarama.Client
+	WorkerType types.Worker
+	BrokerHost []string
+	Config     *sarama.Config
+	Client     sarama.Client
 	publisher  interfaces.Publisher
 }
 
-// NewKafkaBroker setup kafka configuration for publisher or consumer, empty option param for default configuration
+// NewKafkaBroker setup kafka configuration for publisher or consumer, empty option param for default configuration (with default worker type is types.Kafka)
 func NewKafkaBroker(opts ...KafkaOptionFunc) *KafkaBroker {
 	defer logger.LogWithDefer("Load Kafka broker configuration... ")()
 
 	kb := new(KafkaBroker)
-	kb.brokerHost = env.BaseEnv().Kafka.Brokers
+	kb.BrokerHost = env.BaseEnv().Kafka.Brokers
+	kb.WorkerType = types.Kafka
 	for _, opt := range opts {
 		opt(kb)
 	}
 
-	if kb.config == nil {
+	if kb.Config == nil {
 		// set default configuration
-		kb.config = GetDefaultKafkaConfig()
+		kb.Config = GetDefaultKafkaConfig()
 	}
 
-	saramaClient, err := sarama.NewClient(kb.brokerHost, kb.config)
+	saramaClient, err := sarama.NewClient(kb.BrokerHost, kb.Config)
 	if err != nil {
-		panic(fmt.Errorf("%s. Brokers: %s", err, strings.Join(kb.brokerHost, ", ")))
+		panic(fmt.Errorf("%s. Brokers: %s", err, strings.Join(kb.BrokerHost, ", ")))
 	}
-	kb.client = saramaClient
+	kb.Client = saramaClient
 
 	if kb.publisher == nil {
 		kb.publisher = NewKafkaPublisher(saramaClient, false) // default publisher is sync
 	}
 
 	return kb
-}
-
-// GetConfiguration method
-func (k *KafkaBroker) GetConfiguration() interface{} {
-	return k.client
 }
 
 // GetPublisher method
@@ -118,7 +122,7 @@ func (k *KafkaBroker) GetPublisher() interfaces.Publisher {
 
 // GetName method
 func (k *KafkaBroker) GetName() types.Worker {
-	return types.Kafka
+	return k.WorkerType
 }
 
 // Health method
@@ -126,7 +130,7 @@ func (k *KafkaBroker) Health() map[string]error {
 	mErr := make(map[string]error)
 
 	var err error
-	if len(k.client.Brokers()) == 0 {
+	if len(k.Client.Brokers()) == 0 {
 		err = errors.New("not ok")
 	}
 	mErr[string(types.Kafka)] = err
@@ -138,7 +142,7 @@ func (k *KafkaBroker) Health() map[string]error {
 func (k *KafkaBroker) Disconnect(ctx context.Context) error {
 	defer logger.LogWithDefer("kafka: disconnect...")()
 
-	return k.client.Close()
+	return k.Client.Close()
 }
 
 // kafkaPublisher kafka publisher

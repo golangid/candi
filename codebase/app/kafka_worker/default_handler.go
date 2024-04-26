@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
+	"github.com/golangid/candi/broker"
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/tracer"
@@ -15,6 +16,7 @@ import (
 
 // consumerHandler represents a Sarama consumer group consumer
 type consumerHandler struct {
+	bk           *broker.KafkaBroker
 	opt          *option
 	topics       []string
 	handlerFuncs map[string]types.WorkerHandler
@@ -78,15 +80,18 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 		}),
 	)
 
-	trace.SetTag("brokers", strings.Join(c.opt.brokers, ","))
+	trace.SetTag("brokers", strings.Join(c.bk.BrokerHost, ","))
 	trace.SetTag("topic", message.Topic)
 	trace.SetTag("key", message.Key)
 	trace.SetTag("consumer_group", c.opt.consumerGroup)
+	if c.bk.WorkerType != types.Kafka {
+		trace.SetTag("worker_type", string(c.bk.WorkerType))
+	}
 	trace.Log("header", header)
 	trace.Log("message", message.Value)
 
 	if c.opt.debugMode {
-		log.Printf("\x1b[35;3mKafka Consumer: message consumed, timestamp = %v, topic = %s\x1b[0m", message.Timestamp, message.Topic)
+		log.Printf("\x1b[35;3mKafka Consumer%s: message consumed, timestamp = %v, topic = %s\x1b[0m", getWorkerTypeLog(c.bk.WorkerType), message.Timestamp, message.Topic)
 	}
 
 	eventContext := c.messagePool.Get().(*candishared.EventContext)

@@ -32,7 +32,12 @@ func (a *App) Run() {
 	}
 
 	errServe := make(chan error)
+	checkExist := make(map[string]struct{})
 	for _, app := range a.service.GetApplications() {
+		if _, ok := checkExist[app.Name()]; ok {
+			panic("Register application: " + app.Name() + " has been registered")
+		}
+		checkExist[app.Name()] = struct{}{}
 		go func(srv factory.AppServerFactory) {
 			defer func() {
 				if r := recover(); r != nil {

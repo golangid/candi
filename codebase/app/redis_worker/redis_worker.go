@@ -30,19 +30,18 @@ type (
 		ctxCancelFunc func()
 		opt           option
 
-		broker      interfaces.Broker
+		bk          *broker.RedisBroker
 		isHaveJob   bool
 		service     factory.ServiceFactory
 		handlers    map[string]types.WorkerHandler
 		wg          sync.WaitGroup
 		semaphore   map[string]chan struct{}
 		messagePool sync.Pool
-		redisPool   *redis.Pool
 	}
 )
 
 // NewWorker create new redis subscriber
-func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
+func NewWorker(service factory.ServiceFactory, bk interfaces.Broker, opts ...OptionFunc) factory.AppServerFactory {
 	workerInstance := &redisWorker{
 		service:   service,
 		opt:       getDefaultOption(),
@@ -55,12 +54,11 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 	}
 
 	redisPool := service.GetDependency().GetRedisPool().WritePool()
-	workerInstance.broker = service.GetDependency().GetBroker(types.RedisSubscriber)
-	if workerInstance.broker == nil {
-		workerInstance.broker = broker.NewRedisBroker(redisPool)
+	workerInstance.bk, _ = bk.(*broker.RedisBroker)
+	if workerInstance.bk == nil {
+		workerInstance.bk = broker.NewRedisBroker(redisPool)
 	}
 	workerInstance.opt.locker = candiutils.NewRedisLocker(redisPool)
-	workerInstance.redisPool = redisPool
 
 	for _, opt := range opts {
 		opt(&workerInstance.opt)
@@ -69,11 +67,11 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 
 	handlers := make(map[string]types.WorkerHandler)
 	for _, m := range service.GetModules() {
-		if h := m.WorkerHandler(types.RedisSubscriber); h != nil {
+		if h := m.WorkerHandler(workerInstance.bk.WorkerType); h != nil {
 			var handlerGroup types.WorkerHandlerGroup
 			h.MountHandlers(&handlerGroup)
 			for _, handler := range handlerGroup.Handlers {
-				logger.LogYellow(fmt.Sprintf(`[REDIS-SUBSCRIBER] (key prefix): %-15s  --> (module): "%s"`, `"`+handler.Pattern+`"`, m.Name()))
+				logger.LogYellow(fmt.Sprintf(`[REDIS-SUBSCRIBER]%s (key prefix): %-15s  --> (module): "%s"`, getWorkerTypeLog(workerInstance.bk.WorkerType), `"`+handler.Pattern+`"`, m.Name()))
 				workerInstance.semaphore[handler.Pattern] = make(chan struct{}, workerInstance.opt.maxGoroutines)
 				handlers[handler.Pattern] = handler
 			}
@@ -83,7 +81,7 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 	if len(handlers) == 0 {
 		log.Println("redis subscriber: no topic provided")
 	} else {
-		fmt.Printf("\x1b[34;1m⇨ Redis pubsub worker running with %d keys\x1b[0m\n\n", len(handlers))
+		fmt.Printf("\x1b[34;1m⇨ Redis pubsub worker%s running with %d keys\x1b[0m\n\n", getWorkerTypeLog(workerInstance.bk.WorkerType), len(handlers))
 	}
 
 	shutdown = make(chan struct{}, 1)
@@ -100,7 +98,7 @@ func (r *redisWorker) Serve() {
 		return
 	}
 
-	psc := r.broker.GetConfiguration().(*redis.PubSubConn)
+	psc := r.bk.InitPubSubConn()
 	for {
 		switch msg := psc.Receive().(type) {
 		case redis.Message:
@@ -125,13 +123,13 @@ func (r *redisWorker) Serve() {
 		case error:
 			// if network connection error, create new connection from pool
 			psc.Close()
-			psc = r.broker.GetConfiguration().(*redis.PubSubConn)
+			psc = r.bk.InitPubSubConn()
 		}
 	}
 }
 
 func (r *redisWorker) Shutdown(ctx context.Context) {
-	defer log.Println("\x1b[33;1mStopping Redis Subscriber:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
+	defer log.Printf("\x1b[33;1mStopping Redis Subscriber%s:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m\n", getWorkerTypeLog(r.bk.WorkerType))
 
 	if !r.isHaveJob {
 		return
@@ -152,7 +150,7 @@ func (r *redisWorker) Shutdown(ctx context.Context) {
 }
 
 func (r *redisWorker) Name() string {
-	return string(types.RedisSubscriber)
+	return string(r.bk.WorkerType)
 }
 
 func (r *redisWorker) processMessage(param broker.RedisMessage) {
@@ -167,7 +165,7 @@ func (r *redisWorker) processMessage(param broker.RedisMessage) {
 	var err error
 	message := []byte(param.Message)
 	if len(message) == 0 {
-		conn := r.redisPool.Get()
+		conn := r.bk.Pool.Get()
 		message, err = redis.Bytes(conn.Do("HGET", broker.RedisBrokerKey, param.Key))
 		if err != nil {
 			return
@@ -186,11 +184,14 @@ func (r *redisWorker) processMessage(param broker.RedisMessage) {
 	defer trace.Finish(tracer.FinishWithRecoverPanic(func(any) {}))
 
 	if r.opt.debugMode {
-		log.Printf("\x1b[35;3mRedis Key Expired Subscriber: executing event topic '%s'\x1b[0m", param.HandlerName)
+		log.Printf("\x1b[35;3mRedis Key Expired Subscriber%s: executing event topic '%s'\x1b[0m", getWorkerTypeLog(r.bk.WorkerType), param.HandlerName)
 	}
 
 	trace.SetTag("handler_name", param.HandlerName)
 	trace.SetTag("event_id", param.EventID)
+	if r.bk.WorkerType != types.RedisSubscriber {
+		trace.SetTag("worker_type", string(r.bk.WorkerType))
+	}
 	trace.Log("message", message)
 
 	eventContext := r.messagePool.Get().(*candishared.EventContext)
@@ -218,4 +219,11 @@ func (r *redisWorker) getLockKey(handlerName, eventID string) string {
 func (r *redisWorker) releaseMessagePool(eventContext *candishared.EventContext) {
 	eventContext.Reset()
 	r.messagePool.Put(eventContext)
+}
+
+func getWorkerTypeLog(name types.Worker) (workerType string) {
+	if name != types.RedisSubscriber {
+		workerType = " [worker_type: " + string(name) + "]"
+	}
+	return
 }

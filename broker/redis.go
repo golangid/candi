@@ -24,6 +24,13 @@ const (
 // RedisOptionFunc func type
 type RedisOptionFunc func(*RedisBroker)
 
+// RedisSetWorkerType set worker type
+func RedisSetWorkerType(workerType types.Worker) RedisOptionFunc {
+	return func(bk *RedisBroker) {
+		bk.WorkerType = workerType
+	}
+}
+
 // RedisSetConfigCommands set config commands
 func RedisSetConfigCommands(commands ...string) RedisOptionFunc {
 	return func(r *RedisBroker) {
@@ -39,15 +46,18 @@ func RedisSetSubscribeChannels(channels ...string) RedisOptionFunc {
 }
 
 type RedisBroker struct {
-	pool              *redis.Pool
+	WorkerType types.Worker
+	Pool       *redis.Pool
+
 	configCommands    []string
 	subscribeChannels []string
 }
 
-// NewRedisBroker setup redis for publish message
+// NewRedisBroker setup redis for publish message (with default worker type is types.RedisSubscriber)
 func NewRedisBroker(pool *redis.Pool, opts ...RedisOptionFunc) *RedisBroker {
 	r := &RedisBroker{
-		pool: pool,
+		WorkerType: types.RedisSubscriber,
+		Pool:       pool,
 		// default config
 		configCommands:    []string{"SET", "notify-keyspace-events", "Ex"},
 		subscribeChannels: []string{"__keyevent@*__:expired"},
@@ -60,9 +70,9 @@ func NewRedisBroker(pool *redis.Pool, opts ...RedisOptionFunc) *RedisBroker {
 	return r
 }
 
-// GetConfiguration method, return redis pubsub connection
-func (r *RedisBroker) GetConfiguration() interface{} {
-	conn := r.pool.Get()
+// InitPubSubConn method, return redis pubsub connection
+func (r *RedisBroker) InitPubSubConn() *redis.PubSubConn {
+	conn := r.Pool.Get()
 
 	var commands []interface{}
 	for _, cmd := range r.configCommands {
@@ -86,14 +96,14 @@ func (r *RedisBroker) GetPublisher() interfaces.Publisher {
 
 // GetName method
 func (r *RedisBroker) GetName() types.Worker {
-	return types.RedisSubscriber
+	return r.WorkerType
 }
 
 // Health method
 func (r *RedisBroker) Health() map[string]error {
 	mErr := make(map[string]error)
 
-	ping := r.pool.Get()
+	ping := r.Pool.Get()
 	_, err := ping.Do("PING")
 	ping.Close()
 	mErr[string(types.RedisSubscriber)] = err
@@ -105,7 +115,7 @@ func (r *RedisBroker) Health() map[string]error {
 func (r *RedisBroker) Disconnect(ctx context.Context) error {
 	defer logger.LogWithDefer("redis: closing pool...")()
 
-	return r.pool.Close()
+	return r.Pool.Close()
 }
 
 // PublishMessage method
@@ -138,7 +148,7 @@ func (r *RedisBroker) PublishMessage(ctx context.Context, args *candishared.Publ
 	trace.Log("delay", args.Delay.String())
 	trace.Log("message", args.Message)
 
-	conn := r.pool.Get()
+	conn := r.Pool.Get()
 	defer conn.Close()
 
 	eventID := uuid.NewString()
@@ -156,7 +166,7 @@ func (r *RedisBroker) PublishMessage(ctx context.Context, args *candishared.Publ
 
 // deleteMessage method
 func (r *RedisBroker) deleteMessage(ctx context.Context, args *candishared.PublisherArgument) (err error) {
-	conn := r.pool.Get()
+	conn := r.Pool.Get()
 	trace := tracer.StartTrace(ctx, "redis_broker:delete_message")
 	defer func() { conn.Close(); trace.Finish(tracer.FinishWithError(err)) }()
 

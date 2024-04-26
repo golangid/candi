@@ -23,6 +23,13 @@ const (
 // RabbitMQOptionFunc func type
 type RabbitMQOptionFunc func(*RabbitMQBroker)
 
+// RabbitMQSetWorkerType set worker type
+func RabbitMQSetWorkerType(workerType types.Worker) RabbitMQOptionFunc {
+	return func(bk *RabbitMQBroker) {
+		bk.WorkerType = workerType
+	}
+}
+
 // RabbitMQSetBrokerHost set custom broker host
 func RabbitMQSetBrokerHost(brokers string) RabbitMQOptionFunc {
 	return func(bk *RabbitMQBroker) {
@@ -55,13 +62,14 @@ func RabbitMQSetPublisher(pub interfaces.Publisher) RabbitMQOptionFunc {
 type RabbitMQBroker struct {
 	publisher interfaces.Publisher
 
+	WorkerType types.Worker
 	BrokerHost string
 	Exchange   string
 	Conn       *amqp.Connection
 	Channel    *amqp.Channel
 }
 
-// NewRabbitMQBroker setup rabbitmq configuration for publisher or consumer, default connection from RABBITMQ_BROKER environment
+// NewRabbitMQBroker setup rabbitmq configuration for publisher or consumer, default connection from RABBITMQ_BROKER environment (with default worker type is types.RabbitMQ)
 func NewRabbitMQBroker(opts ...RabbitMQOptionFunc) *RabbitMQBroker {
 	defer logger.LogWithDefer("Load RabbitMQ broker configuration... ")()
 	var err error
@@ -69,6 +77,7 @@ func NewRabbitMQBroker(opts ...RabbitMQOptionFunc) *RabbitMQBroker {
 	bk := new(RabbitMQBroker)
 	bk.BrokerHost = env.BaseEnv().RabbitMQ.Broker
 	bk.Exchange = env.BaseEnv().RabbitMQ.ExchangeName
+	bk.WorkerType = types.RabbitMQ
 	for _, opt := range opts {
 		opt(bk)
 	}
@@ -112,11 +121,6 @@ func NewRabbitMQBroker(opts ...RabbitMQOptionFunc) *RabbitMQBroker {
 	return bk
 }
 
-// GetConfiguration method
-func (r *RabbitMQBroker) GetConfiguration() interface{} {
-	return r
-}
-
 // GetPublisher method
 func (r *RabbitMQBroker) GetPublisher() interfaces.Publisher {
 	return r.publisher
@@ -124,7 +128,7 @@ func (r *RabbitMQBroker) GetPublisher() interfaces.Publisher {
 
 // GetName method
 func (r *RabbitMQBroker) GetName() types.Worker {
-	return types.RabbitMQ
+	return r.WorkerType
 }
 
 // Health method

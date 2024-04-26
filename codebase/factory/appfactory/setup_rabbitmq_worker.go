@@ -3,6 +3,7 @@ package appfactory
 import (
 	rabbitmqworker "github.com/golangid/candi/codebase/app/rabbitmq_worker"
 	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/config/env"
 )
 
@@ -14,5 +15,5 @@ func SetupRabbitMQWorker(service factory.ServiceFactory, opts ...rabbitmqworker.
 		rabbitmqworker.SetConsumerGroup(env.BaseEnv().RabbitMQ.ConsumerGroup),
 	}
 	rabbitMQOpts = append(rabbitMQOpts, opts...)
-	return rabbitmqworker.NewWorker(service, rabbitMQOpts...)
+	return rabbitmqworker.NewWorker(service, service.GetDependency().GetBroker(types.RabbitMQ), rabbitMQOpts...)
 }

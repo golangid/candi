@@ -11,6 +11,7 @@ type Dependency interface {
 	SetMiddleware(mw interfaces.Middleware)
 
 	GetBroker(types.Worker) interfaces.Broker
+	FetchBroker(func(types.Worker, interfaces.Broker))
 	AddBroker(brokerType types.Worker, b interfaces.Broker)
 
 	GetSQLDatabase() interfaces.SQLDatabase
@@ -137,6 +138,11 @@ func (d *deps) SetMiddleware(mw interfaces.Middleware) {
 }
 func (d *deps) GetBroker(brokerType types.Worker) interfaces.Broker {
 	return d.brokers[brokerType]
+}
+func (d *deps) FetchBroker(fn func(types.Worker, interfaces.Broker)) {
+	for t, bk := range d.brokers {
+		fn(t, bk)
+	}
 }
 func (d *deps) AddBroker(brokerType types.Worker, b interfaces.Broker) {
 	if d.brokers == nil {

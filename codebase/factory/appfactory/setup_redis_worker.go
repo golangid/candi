@@ -3,6 +3,7 @@ package appfactory
 import (
 	redisworker "github.com/golangid/candi/codebase/app/redis_worker"
 	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/config/env"
 )
 
@@ -13,5 +14,5 @@ func SetupRedisWorker(service factory.ServiceFactory, opts ...redisworker.Option
 		redisworker.SetDebugMode(env.BaseEnv().DebugMode),
 	}
 	redisOpts = append(redisOpts, opts...)
-	return redisworker.NewWorker(service, redisOpts...)
+	return redisworker.NewWorker(service, service.GetDependency().GetBroker(types.RedisSubscriber), redisOpts...)
 }

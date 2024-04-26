@@ -3,7 +3,6 @@ package kafkaworker
 type (
 	option struct {
 		consumerGroup string
-		brokers       []string // for log when startup
 		maxGoroutines int
 		debugMode     bool
 	}
@@ -30,13 +29,6 @@ func SetMaxGoroutines(maxGoroutines int) OptionFunc {
 func SetDebugMode(debugMode bool) OptionFunc {
 	return func(o *option) {
 		o.debugMode = debugMode
-	}
-}
-
-// SetBrokers option func
-func SetBrokers(brokers []string) OptionFunc {
-	return func(o *option) {
-		o.brokers = brokers
 	}
 }
 
