@@ -150,10 +150,12 @@ func inputOwnerName() (ownerName string) {
 }
 
 func readInput(cmds ...string) string {
-	logger.Printf("\033[1m%s\033[0m ", strings.Join(cmds, "\n"))
-	fmt.Printf(">> ")
+	if len(cmds) > 0 {
+		logger.Printf("\033[1m%s\033[0m ", strings.Join(cmds, "\n"))
+		fmt.Printf(">> ")
+	}
 	cmdInput, _ := reader.ReadString('\n')
-	return strings.TrimRight(strings.TrimSpace(cmdInput), "\n")
+	return strings.TrimSpace(cmdInput)
 }
 
 func validateDir(dir string) error {

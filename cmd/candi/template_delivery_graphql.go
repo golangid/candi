@@ -62,16 +62,12 @@ import (
 )
 
 // GetAll{{upper (camel .ModuleName)}} resolver
-// GetAll{{upper (camel .ModuleName)}} resolver
 func (q *GraphQLHandler) GetAll{{upper (camel .ModuleName)}}(ctx context.Context, input struct {
 	Filter *struct {
 		candishared.NullableFilter
 		domain.Filter{{upper (camel .ModuleName)}}
 	}
-}) (res struct {
-	Meta candishared.Meta
-	Data []domain.Response{{upper (camel .ModuleName)}}
-}, err error) {
+}) (res domain.Response{{upper (camel .ModuleName)}}List, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}DeliveryGraphQL:GetAll{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
@@ -82,14 +78,8 @@ func (q *GraphQLHandler) GetAll{{upper (camel .ModuleName)}}(ctx context.Context
 	if err := q.validator.ValidateDocument("{{cleanPathModule .ModuleName}}/get_all", filter.Filter{{upper (camel .ModuleName)}}); err != nil {
 		return res, err
 	}
-	data, meta, err := q.uc.{{upper (camel .ModuleName)}}().GetAll{{upper (camel .ModuleName)}}(ctx, &filter.Filter{{upper (camel .ModuleName)}})
-	if err != nil {
-		return res, err
-	}
 
-	res.Data = data
-	res.Meta = meta
-	return
+	return q.uc.{{upper (camel .ModuleName)}}().GetAll{{upper (camel .ModuleName)}}(ctx, &filter.Filter{{upper (camel .ModuleName)}})
 }
 
 // GetDetail{{upper (camel .ModuleName)}} resolver

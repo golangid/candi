@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"runtime"
-	"strings"
 	"text/template"
 )
 
@@ -83,9 +82,7 @@ func main() {
 				"2) Init service\n" +
 				"3) Add module(s) in service\n" +
 				"4) Add delivery handler(s) in module\033[0m\n>> ")
-			cmdInput, _ := reader.ReadString('\n')
-			cmdInput = strings.TrimRight(cmdInput, "\n")
-			flagParam.scopeFlag = cmdInput
+			flagParam.scopeFlag = readInput()
 		}
 
 		scope, ok := scopeMap[flagParam.scopeFlag]
@@ -105,8 +102,9 @@ func selectScope(flagParam flagParameter, scope string) {
 	case InitMonorepo: // 1
 		logger.Printf("\033[1mPlease input monorepo project name (enter for default):\033[0m")
 		fmt.Printf(">> ")
-		if cmdInput, _ := reader.ReadString('\n'); strings.TrimRight(cmdInput, "\n") != "" {
-			flagParam.monorepoProjectName = strings.TrimRight(cmdInput, "\n")
+		cmdInput := readInput()
+		if cmdInput != "" {
+			flagParam.monorepoProjectName = cmdInput
 		}
 		monorepoGenerator(flagParam)
 		return

@@ -52,7 +52,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 	}
 	var sharedDomainFiles, migrationFiles []FileStructure
 
-	for _, mod := range srvConfig.Modules {
+	for i, mod := range srvConfig.Modules {
 		mod.configHeader = srvConfig.configHeader
 		mod.config = srvConfig.config
 		if mod.Skip {
@@ -169,8 +169,10 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 		})
 		migrationFiles = append(migrationFiles, FileStructure{
 			FromTemplate: true, DataSource: mod, Source: templateCmdMigrationInitModule,
-			FileName: time.Now().Format("20060102150405") + "_create_table_" +
-				candihelper.ToDelimited(pluralize.NewClient().Plural(mod.ModuleName), '_') + ".sql",
+			FileName: fmt.Sprintf("%d_create_table_%s.sql",
+				candihelper.ToInt(time.Now().Format("20060102150405"))+i,
+				candihelper.ToDelimited(pluralize.NewClient().Plural(mod.ModuleName), '_'),
+			),
 			SkipFunc: func() bool {
 				return !srvConfig.SQLDeps
 			},
@@ -319,7 +321,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 
 	execGenerator(baseDirectoryFile)
 	if srvConfig.GraphQLHandler {
-		updateGraphQLRoot(&flagParam, srvConfig)
+		updateGraphQLRoot(&flagParam)
 	}
 	updateSharedUsecase(flagParam, srvConfig)
 	updateSharedRepository(flagParam, srvConfig)

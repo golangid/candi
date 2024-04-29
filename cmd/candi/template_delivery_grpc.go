@@ -66,18 +66,18 @@ func (h *GRPCHandler) GetAll{{upper (camel .ModuleName)}}(ctx context.Context, r
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	data, meta, err := h.uc.{{upper (camel .ModuleName)}}().GetAll{{upper (camel .ModuleName)}}(ctx, &filter)
+	result, err := h.uc.{{upper (camel .ModuleName)}}().GetAll{{upper (camel .ModuleName)}}(ctx, &filter)
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, err.Error())
 	}
 
 	resp := &proto.GetAll{{upper (camel .ModuleName)}}Response{
 		Meta: &proto.Meta{
-			Page: int64(meta.Page), Limit: int64(meta.Limit), TotalRecords: int64(meta.TotalRecords), TotalPages: int64(meta.TotalPages),
+			Page: int64(result.Meta.Page), Limit: int64(result.Meta.Limit), TotalRecords: int64(result.Meta.TotalRecords), TotalPages: int64(result.Meta.TotalPages),
 		},
 	}
 
-	for _, d := range data {
+	for _, d := range result.Data {
 		data := &proto.{{upper (camel .ModuleName)}}Model{
 			ID: {{if and .MongoDeps (not .SQLDeps)}}d.ID{{else}}int64(d.ID){{end}}, Field: d.Field, CreatedAt: d.CreatedAt, UpdatedAt: d.UpdatedAt,
 		}

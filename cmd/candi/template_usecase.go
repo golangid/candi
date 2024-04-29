@@ -85,7 +85,6 @@ import (
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	{{ if not (or .SQLDeps .MongoDeps .ArangoDeps) }}// {{end}}"{{.PackagePrefix}}/pkg/shared/repository"
 	"{{$.PackagePrefix}}/pkg/shared/usecase/common"
-	"{{.LibraryName}}/candishared"
 	"{{.LibraryName}}/codebase/factory/dependency"
 	"{{.LibraryName}}/codebase/factory/types"
 	"{{.LibraryName}}/codebase/interfaces"
@@ -93,7 +92,7 @@ import (
 
 // {{upper (camel .ModuleName)}}Usecase abstraction
 type {{upper (camel .ModuleName)}}Usecase interface {
-	GetAll{{upper (camel .ModuleName)}}(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (data []domain.Response{{upper (camel .ModuleName)}}, meta candishared.Meta, err error)
+	GetAll{{upper (camel .ModuleName)}}(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (data domain.Response{{upper (camel .ModuleName)}}List, err error)
 	GetDetail{{upper (camel .ModuleName)}}(ctx context.Context, id {{if and .MongoDeps (not .SQLDeps)}}string{{else}}int{{end}}) (data domain.Response{{upper (camel .ModuleName)}}, err error)
 	Create{{upper (camel .ModuleName)}}(ctx context.Context, data *domain.Request{{upper (camel .ModuleName)}}) (res domain.Response{{upper (camel .ModuleName)}}, err error) 
 	Update{{upper (camel .ModuleName)}}(ctx context.Context, data *domain.Request{{upper (camel .ModuleName)}}) (err error)
@@ -148,20 +147,20 @@ import (
 	"{{.LibraryName}}/tracer"
 )
 
-func (uc *{{camel .ModuleName}}UsecaseImpl) GetAll{{upper (camel .ModuleName)}}(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (results []domain.Response{{upper (camel .ModuleName)}}, meta candishared.Meta, err error) {
+func (uc *{{camel .ModuleName}}UsecaseImpl) GetAll{{upper (camel .ModuleName)}}(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (result domain.Response{{upper (camel .ModuleName)}}List, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}Usecase:GetAll{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	{{if or .SQLDeps .MongoDeps .ArangoDeps}}data, err := uc.repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().FetchAll(ctx, filter)
 	if err != nil {
-		return results, meta, err
+		return result, err
 	}
 	count := uc.repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}.{{upper (camel .ModuleName)}}Repo().Count(ctx, filter)
-	meta = candishared.NewMeta(filter.Page, filter.Limit, count){{end}}
+	result.Meta = candishared.NewMeta(filter.Page, filter.Limit, count){{end}}
 
-	results = make([]domain.Response{{upper (camel .ModuleName)}}, len(data))
+	result.Data = make([]domain.Response{{upper (camel .ModuleName)}}, len(data))
 	for i, detail := range data {
-		results[i].Serialize(&detail)
+		result.Data[i].Serialize(&detail)
 	}
 
 	return

@@ -210,7 +210,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 		readFileAndApply(root.TargetDir+"internal/modules/"+mod.ModuleName+"/module.go", old, new)
 	}
 	if serverHandlers[GraphqlHandler] {
-		updateGraphQLRoot(flagParam, gqlCfg)
+		updateGraphQLRoot(flagParam)
 	}
 }
 
@@ -259,7 +259,7 @@ func Set{{upper (clean $.ServiceName)}}({{lower (clean $.ServiceName)}} {{lower 
 	}
 }
 
-func updateGraphQLRoot(flagParam *flagParameter, cfg serviceConfig) {
+func updateGraphQLRoot(flagParam *flagParameter) {
 	path := "api/graphql/_schema.graphql"
 	if flagParam.serviceName != "" {
 		path = flagParam.outputFlag + flagParam.serviceName + "/" + path

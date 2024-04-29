@@ -63,7 +63,15 @@ func (r *Request{{upper (camel .ModuleName)}}) Deserialize() (res shareddomain.{
 import (
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 	"time"
+
+	"{{.LibraryName}}/candishared"
 )
+
+// Response{{upper (camel .ModuleName)}}List model
+type Response{{upper (camel .ModuleName)}}List struct {
+	Meta candishared.Meta ` + "`json:\"meta\"`" + `
+	Data []Response{{upper (camel .ModuleName)}}   ` + "`json:\"data\"`" + `
+}
 
 // Response{{upper (camel .ModuleName)}} model
 type Response{{upper (camel .ModuleName)}} struct {

@@ -49,6 +49,21 @@ func (h *RestHandler) Mount(root interfaces.RESTRouter) {
 	v1{{upper (camel .ModuleName)}}.DELETE("/:id", h.delete{{upper (camel .ModuleName)}}, h.mw.HTTPPermissionACL("delete{{upper (camel .ModuleName)}}"))
 }
 
+// GetAll{{upper (camel .ModuleName)}} documentation
+// @Summary			Get All {{upper (camel .ModuleName)}}
+// @Description		API for get all {{.ModuleName}}
+// @Tags			{{upper (camel .ModuleName)}}
+// @Accept			json
+// @Produce			json
+// @Param			page	query	string	false	"Page with default value is 1"
+// @Param			limit	query	string	false	"Limit with default value is 10"
+// @Param			search	query	string	false	"Search"
+// @Param			orderBy	query	string	false	"Order By"
+// @Param			sort	query	string	false	"Sort (ASC DESC)"
+// @Success			200	{object}	domain.Response{{upper (camel .ModuleName)}}List
+// @Success			400	{object}	wrapper.HTTPResponse
+// @Security		ApiKeyAuth
+// @Router			/v1/{{kebab .ModuleName}} [get]
 func (h *RestHandler) getAll{{upper (camel .ModuleName)}}(rw http.ResponseWriter, req *http.Request) {
 	trace, ctx := tracer.StartTraceWithContext(req.Context(), "{{upper (camel .ModuleName)}}DeliveryREST:GetAll{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
@@ -66,16 +81,27 @@ func (h *RestHandler) getAll{{upper (camel .ModuleName)}}(rw http.ResponseWriter
 		return
 	}
 
-	data, meta, err := h.uc.{{upper (camel .ModuleName)}}().GetAll{{upper (camel .ModuleName)}}(ctx, &filter)
+	result, err := h.uc.{{upper (camel .ModuleName)}}().GetAll{{upper (camel .ModuleName)}}(ctx, &filter)
 	if err != nil {
 		wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(rw)
 		return
 	}
 
 	message := "Success, with your user id (" + tokenClaim.Subject + ") and role (" + tokenClaim.Role + ")"
-	wrapper.NewHTTPResponse(http.StatusOK, message, meta, data).JSON(rw)
+	wrapper.NewHTTPResponse(http.StatusOK, message, result.Meta, result.Data).JSON(rw)
 }
 
+// GetDetail{{upper (camel .ModuleName)}} documentation
+// @Summary			Get Detail {{upper (camel .ModuleName)}}
+// @Description		API for get detail {{.ModuleName}}
+// @Tags			{{upper (camel .ModuleName)}}
+// @Accept			json
+// @Produce			json
+// @Param			id	path	string	true	"ID"
+// @Success			200	{object}	domain.Response{{upper (camel .ModuleName)}}
+// @Success			400	{object}	wrapper.HTTPResponse
+// @Security		ApiKeyAuth
+// @Router			/v1/{{kebab .ModuleName}}/{id} [get]
 func (h *RestHandler) getDetail{{upper (camel .ModuleName)}}ByID(rw http.ResponseWriter, req *http.Request) {
 	trace, ctx := tracer.StartTraceWithContext(req.Context(), "{{upper (camel .ModuleName)}}DeliveryREST:GetDetail{{upper (camel .ModuleName)}}ByID")
 	defer trace.Finish()
@@ -90,6 +116,17 @@ func (h *RestHandler) getDetail{{upper (camel .ModuleName)}}ByID(rw http.Respons
 	wrapper.NewHTTPResponse(http.StatusOK, "Success", data).JSON(rw)
 }
 
+// Create{{upper (camel .ModuleName)}} documentation
+// @Summary			Create {{upper (camel .ModuleName)}}
+// @Description		API for create {{.ModuleName}}
+// @Tags			{{upper (camel .ModuleName)}}
+// @Accept			json
+// @Produce			json
+// @Param			data	body	domain.Request{{upper (camel .ModuleName)}}	true	"Body Data"
+// @Success			200	{object}	domain.Response{{upper (camel .ModuleName)}}
+// @Success			400	{object}	wrapper.HTTPResponse
+// @Security		ApiKeyAuth
+// @Router			/v1/{{kebab .ModuleName}} [post]
 func (h *RestHandler) create{{upper (camel .ModuleName)}}(rw http.ResponseWriter, req *http.Request) {
 	trace, ctx := tracer.StartTraceWithContext(req.Context(), "{{upper (camel .ModuleName)}}DeliveryREST:Create{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
@@ -115,6 +152,18 @@ func (h *RestHandler) create{{upper (camel .ModuleName)}}(rw http.ResponseWriter
 	wrapper.NewHTTPResponse(http.StatusCreated, "Success", res).JSON(rw)
 }
 
+// Update{{upper (camel .ModuleName)}} documentation
+// @Summary			Update {{upper (camel .ModuleName)}}
+// @Description		API for update {{.ModuleName}}
+// @Tags			{{upper (camel .ModuleName)}}
+// @Accept			json
+// @Produce			json
+// @Param			id	path	string	true	"ID"
+// @Param			data	body	domain.Request{{upper (camel .ModuleName)}}	true	"Body Data"
+// @Success			200	{object}	domain.Response{{upper (camel .ModuleName)}}
+// @Success			400	{object}	wrapper.HTTPResponse
+// @Security		ApiKeyAuth
+// @Router			/v1/{{kebab .ModuleName}}/{id} [put]
 func (h *RestHandler) update{{upper (camel .ModuleName)}}(rw http.ResponseWriter, req *http.Request) {
 	trace, ctx := tracer.StartTraceWithContext(req.Context(), "{{upper (camel .ModuleName)}}DeliveryREST:Update{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
@@ -141,6 +190,17 @@ func (h *RestHandler) update{{upper (camel .ModuleName)}}(rw http.ResponseWriter
 	wrapper.NewHTTPResponse(http.StatusOK, "Success").JSON(rw)
 }
 
+// Delete{{upper (camel .ModuleName)}} documentation
+// @Summary			Delete {{upper (camel .ModuleName)}}
+// @Description		API for delete {{.ModuleName}}
+// @Tags			{{upper (camel .ModuleName)}}
+// @Accept			json
+// @Produce			json
+// @Param			id	path	string	true	"ID"
+// @Success			200	{object}	domain.Response{{upper (camel .ModuleName)}}
+// @Success			400	{object}	wrapper.HTTPResponse
+// @Security		ApiKeyAuth
+// @Router			/v1/{{kebab .ModuleName}}/{id} [delete]
 func (h *RestHandler) delete{{upper (camel .ModuleName)}}(rw http.ResponseWriter, req *http.Request) {
 	trace, ctx := tracer.StartTraceWithContext(req.Context(), "{{upper (camel .ModuleName)}}DeliveryREST:Delete{{upper (camel .ModuleName)}}")
 	defer trace.Finish()

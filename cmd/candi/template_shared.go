@@ -46,6 +46,7 @@ package {{ if .IsMonorepo }}global{{end}}shared
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"{{.LibraryName}}/candihelper"
@@ -131,7 +132,11 @@ func (c *callbacks) after(db *gorm.DB, operation string) {
 		trace.SetTag("db.connection", candihelper.MaskingPasswordURL(env.BaseEnv().DbSQLWriteDSN))
 	}
 	trace.Log("db.query", db.Dialector.Explain(db.Statement.SQL.String(), db.Statement.Vars...))
-	trace.Log("db.rows_affected", db.RowsAffected)
+	if db.Statement.ReflectValue.IsValid() && db.Statement.ReflectValue.Kind() == reflect.Int64 {
+		trace.Log("db.results", db.Statement.ReflectValue.Interface())
+	} else {
+		trace.Log("db.rows_affected", db.RowsAffected)
+	}
 	trace.SetTag("db.table", db.Statement.Table)
 	trace.SetTag("db.method", operation)
 	if db.Statement.Error != nil && db.Statement.Error != gorm.ErrRecordNotFound {
