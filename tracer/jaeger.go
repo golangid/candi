@@ -268,23 +268,23 @@ func (t *jaegerTraceImpl) Finish(opts ...FinishOptionFunc) {
 		}
 	}
 
-	for k, v := range finishOpt.tags {
+	for k, v := range finishOpt.Tags {
 		t.span.SetTag(k, toValue(v))
 	}
 
 	showLogTraceURL := t.isRoot
-	if finishOpt.recoverFunc != nil {
+	if finishOpt.RecoverFunc != nil {
 		if rec := recover(); rec != nil {
-			finishOpt.recoverFunc(rec)
-			finishOpt.err = fmt.Errorf("panic: %v", rec)
+			finishOpt.RecoverFunc(rec)
+			finishOpt.Err = fmt.Errorf("panic: %v", rec)
 			t.isRoot = false
 			t.span.SetTag("panic", true)
 		}
 	}
 
-	if finishOpt.err != nil {
-		t.SetError(finishOpt.err)
-	} else if finishOpt.withStackTraceDetail {
+	if finishOpt.Err != nil {
+		t.SetError(finishOpt.Err)
+	} else if finishOpt.WithStackTraceDetail {
 		var stackTraces []string
 		for i := 1; i < 10 && len(stackTraces) <= 5; i++ {
 			if caller := parseCaller(runtime.Caller(i)); caller != "" {
@@ -294,8 +294,8 @@ func (t *jaegerTraceImpl) Finish(opts ...FinishOptionFunc) {
 		t.logStackTrace(32, t.operationName, stackTraces)
 	}
 
-	if finishOpt.onFinish != nil {
-		finishOpt.onFinish()
+	if finishOpt.OnFinish != nil {
+		finishOpt.OnFinish()
 	}
 	t.span.Finish()
 	if showLogTraceURL {

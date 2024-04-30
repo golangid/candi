@@ -20,11 +20,11 @@ type (
 
 	// FinishOption for option when trace is finished
 	FinishOption struct {
-		tags                 map[string]any
-		err                  error
-		withStackTraceDetail bool
-		recoverFunc          func(panicMessage any)
-		onFinish             func()
+		Tags                 map[string]any
+		Err                  error
+		WithStackTraceDetail bool
+		RecoverFunc          func(panicMessage any)
+		OnFinish             func()
 	}
 
 	// FinishOptionFunc func
@@ -90,34 +90,34 @@ func OptionSetLogAllSpan() OptionFunc {
 // FinishWithError option for add error when finish
 func FinishWithError(err error) FinishOptionFunc {
 	return func(fo *FinishOption) {
-		fo.err = err
+		fo.Err = err
 	}
 }
 
 // FinishWithAdditionalTags option for add tag when finish
 func FinishWithAdditionalTags(tags map[string]interface{}) FinishOptionFunc {
 	return func(fo *FinishOption) {
-		fo.tags = tags
+		fo.Tags = tags
 	}
 }
 
 // FinishWithStackTraceDetail option for add stack trace detail
 func FinishWithStackTraceDetail() FinishOptionFunc {
 	return func(fo *FinishOption) {
-		fo.withStackTraceDetail = true
+		fo.WithStackTraceDetail = true
 	}
 }
 
 // FinishWithRecoverPanic option for add recover func if panic
 func FinishWithRecoverPanic(recoverFunc func(panicMessage any)) FinishOptionFunc {
 	return func(fo *FinishOption) {
-		fo.recoverFunc = recoverFunc
+		fo.RecoverFunc = recoverFunc
 	}
 }
 
 // FinishWithFunc option for add callback function before finish span
 func FinishWithFunc(finishFunc func()) FinishOptionFunc {
 	return func(fo *FinishOption) {
-		fo.onFinish = finishFunc
+		fo.OnFinish = finishFunc
 	}
 }
