@@ -485,17 +485,12 @@ func ToInt(val interface{}) (i int) {
 
 // ByteToString helper with zero allocation
 func ByteToString(b []byte) string {
-	return *(*string)(unsafe.Pointer(&b))
+	return unsafe.String(unsafe.SliceData(b), len(b))
 }
 
 // StringToByte helper with zero allocation
 func StringToByte(s string) (b []byte) {
-	bh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	sh := (*reflect.StringHeader)(unsafe.Pointer(&s))
-	bh.Data = sh.Data
-	bh.Cap = sh.Len
-	bh.Len = sh.Len
-	return b
+	return unsafe.Slice(unsafe.StringData(s), len(s))
 }
 
 // ParseTimeToString helper, return empty string if zero time

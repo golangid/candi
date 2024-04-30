@@ -100,9 +100,11 @@ func (d DBUpdateTools) ToMap(data interface{}, opts ...DBUpdateOptionFunc) map[s
 			continue
 		}
 
-		isSet := true
+		fieldTypeKind := candihelper.ReflectTypeUnwrapPtr(fieldType.Type).Kind()
+		skipSet := fieldTypeKind >= reflect.Array && fieldTypeKind <= reflect.Slice
+
 		val := fieldValue.Interface()
-		if candihelper.ReflectTypeUnwrapPtr(fieldType.Type).Kind() == reflect.Struct {
+		if fieldTypeKind == reflect.Struct {
 			switch t := val.(type) {
 			case driver.Valuer:
 				val, _ = t.Value()
@@ -113,11 +115,11 @@ func (d DBUpdateTools) ToMap(data interface{}, opts ...DBUpdateOptionFunc) map[s
 				jsVal, _ := t.MarshalJSON()
 				val = string(jsVal)
 			default:
-				isSet = false
+				skipSet = true
 			}
 		}
 
-		if !isSet && !mustSet {
+		if skipSet && !mustSet {
 			continue
 		}
 

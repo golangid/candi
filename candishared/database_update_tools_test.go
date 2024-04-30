@@ -23,6 +23,9 @@ func TestDBUpdateToolsSQL(t *testing.T) {
 		No       int
 		IgnoreMe SubModel `gorm:"column:test" json:"ignoreMe" ignoreUpdate:"true"`
 		Rel      SubModel `gorm:"foreignKey:ID" json:"rel"`
+		Multi    []SubModel
+		Map      map[int]SubModel
+		PtrModel *SubModel
 		SubModel
 	}
 	var updated map[string]any
@@ -48,6 +51,7 @@ func TestDBUpdateToolsSQL(t *testing.T) {
 		Model{
 			No: 10, Rel: SubModel{Title: "001"},
 			SubModel: SubModel{ActivatedAt: sql.NullTime{Valid: true, Time: time.Now()}, CityAddress: "Jakarta"},
+			PtrModel: &SubModel{CityAddress: "New"},
 		},
 	)
 	assert.Equal(t, 8, len(updated))
@@ -62,18 +66,20 @@ func TestDBUpdateToolsMongo(t *testing.T) {
 		CityAddress string `bson:"city_address"`
 	}
 	type Model struct {
-		ID       int      `bson:"db_id" json:"id"`
-		Name     *string  `bson:"db_name" json:"name"`
-		Address  string   `bson:"db_address" json:"address"`
-		IgnoreMe SubModel `bson:"-"`
-		Rel      SubModel `bson:"rel" json:"rel"`
+		ID       int     `bson:"db_id" json:"id"`
+		Name     *string `bson:"db_name" json:"name"`
+		Address  string  `bson:"db_address" json:"address"`
+		No       int
+		IgnoreMe SubModel
+		Rel      SubModel   `bson:"rel" json:"rel"`
+		Multi    []SubModel `bson:"multi"`
 		SubModel
 	}
 
 	var updated map[string]any
 
 	updated = DBUpdateTools{KeyExtractorFunc: DBUpdateMongoExtractorKey}.ToMap(
-		&Model{ID: 1, Name: candihelper.ToStringPtr("01"), Address: "street", SubModel: SubModel{Title: "test", CityAddress: "Jakarta"}, Rel: SubModel{Title: "rel sub"}},
+		&Model{ID: 1, Name: candihelper.WrapPtr("01"), Address: "street", SubModel: SubModel{Title: "test", CityAddress: "Jakarta"}, Rel: SubModel{Title: "rel sub"}},
 		DBUpdateSetUpdatedFields("ID", "Name", "Title", "CityAddress"),
 	)
 	assert.Equal(t, 4, len(updated))
@@ -83,7 +89,12 @@ func TestDBUpdateToolsMongo(t *testing.T) {
 	assert.Equal(t, "Jakarta", updated["city_address"])
 
 	updated = DBUpdateTools{KeyExtractorFunc: DBUpdateMongoExtractorKey}.ToMap(
-		&Model{ID: 1, Name: candihelper.ToStringPtr("01"), Address: "street", SubModel: SubModel{Title: "test", CityAddress: "Jakarta"}, Rel: SubModel{Title: "rel sub"}},
+		&Model{
+			ID: 1, Name: candihelper.WrapPtr("01"), Address: "street", No: 100,
+			SubModel: SubModel{Title: "test", CityAddress: "Jakarta"},
+			Rel:      SubModel{Title: "rel sub"},
+			Multi:    make([]SubModel, 0),
+		},
 	)
-	assert.Equal(t, 7, len(updated))
+	assert.Equal(t, 9, len(updated))
 }
