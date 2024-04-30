@@ -1,6 +1,8 @@
 package dependency
 
 import (
+	"log"
+
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/codebase/interfaces"
 )
@@ -137,7 +139,11 @@ func (d *deps) SetMiddleware(mw interfaces.Middleware) {
 	d.mw = mw
 }
 func (d *deps) GetBroker(brokerType types.Worker) interfaces.Broker {
-	return d.brokers[brokerType]
+	bk := d.brokers[brokerType]
+	if bk == nil {
+		log.Panicf(`Broker "%s" is not registered in dependency config`, string(brokerType))
+	}
+	return bk
 }
 func (d *deps) FetchBroker(fn func(types.Worker, interfaces.Broker)) {
 	for t, bk := range d.brokers {
