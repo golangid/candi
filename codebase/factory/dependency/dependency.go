@@ -141,7 +141,7 @@ func (d *deps) SetMiddleware(mw interfaces.Middleware) {
 func (d *deps) GetBroker(brokerType types.Worker) interfaces.Broker {
 	bk := d.brokers[brokerType]
 	if bk == nil {
-		log.Panicf(`Broker "%s" is not registered in dependency config`, string(brokerType))
+		log.Printf("\x1b[31;1m[dependency] Broker \"%s\" is not registered in dependency config\x1b[0m\n", string(brokerType))
 	}
 	return bk
 }
