@@ -197,7 +197,7 @@ func (r *redisWorker) processMessage(param broker.RedisMessage) {
 	eventContext := r.messagePool.Get().(*candishared.EventContext)
 	defer r.releaseMessagePool(eventContext)
 	eventContext.SetContext(ctx)
-	eventContext.SetWorkerType(string(types.RedisSubscriber))
+	eventContext.SetWorkerType(string(r.bk.WorkerType))
 	eventContext.SetHandlerRoute(param.HandlerName)
 	eventContext.SetKey(param.Key)
 	eventContext.SetHeader(map[string]string{

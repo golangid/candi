@@ -97,7 +97,7 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 	eventContext := c.messagePool.Get().(*candishared.EventContext)
 	defer c.releaseMessagePool(eventContext)
 	eventContext.SetContext(ctx)
-	eventContext.SetWorkerType(string(types.Kafka))
+	eventContext.SetWorkerType(string(c.bk.WorkerType))
 	eventContext.SetHandlerRoute(message.Topic)
 	eventContext.SetHeader(header)
 	eventContext.SetKey(string(message.Key))
