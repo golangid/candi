@@ -1,9 +1,13 @@
 package candishared
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/golangid/candi/candihelper"
 )
@@ -37,25 +41,25 @@ func DBUpdateSetIgnoredFields(fields ...string) DBUpdateOptionFunc {
 }
 
 // DBUpdateGORMExtractorKey struct field key extractor for gorm model
-func DBUpdateGORMExtractorKey(structField reflect.StructField) string {
+func DBUpdateGORMExtractorKey(structField reflect.StructField) (string, bool) {
 	gormTag := structField.Tag.Get("gorm")
 	if strings.HasPrefix(gormTag, "column:") {
-		return strings.Split(strings.TrimPrefix(gormTag, "column:"), ";")[0]
+		return strings.Split(strings.TrimPrefix(gormTag, "column:"), ";")[0], false
 	}
-	return candihelper.ToDelimited(structField.Name, '_')
+	return candihelper.ToDelimited(structField.Name, '_'), false
 }
 
 // DBUpdateMongoExtractorKey struct field key extractor for mongo model
-func DBUpdateMongoExtractorKey(structField reflect.StructField) string {
+func DBUpdateMongoExtractorKey(structField reflect.StructField) (string, bool) {
 	if bsonTag := strings.TrimSuffix(structField.Tag.Get("bson"), ",omitempty"); bsonTag != "" {
-		return bsonTag
+		return bsonTag, true
 	}
-	return candihelper.ToDelimited(structField.Name, '_')
+	return candihelper.ToDelimited(structField.Name, '_'), false
 }
 
 // DBUpdateTools for construct selected field to update
 type DBUpdateTools struct {
-	KeyExtractorFunc func(structTag reflect.StructField) string
+	KeyExtractorFunc func(structTag reflect.StructField) (key string, mustSet bool)
 	IgnoredFields    []string
 }
 
@@ -70,17 +74,13 @@ func (d *DBUpdateTools) parseOption(opts ...DBUpdateOptionFunc) (o partialUpdate
 func (d DBUpdateTools) ToMap(data interface{}, opts ...DBUpdateOptionFunc) map[string]interface{} {
 	opt := d.parseOption(opts...)
 
-	dataValue := reflect.ValueOf(data)
-	dataType := reflect.TypeOf(data)
-	if dataValue.Kind() == reflect.Ptr {
-		dataValue = dataValue.Elem()
-		dataType = dataType.Elem()
-	}
+	dataValue := candihelper.ReflectValueUnwrapPtr(reflect.ValueOf(data))
+	dataType := candihelper.ReflectTypeUnwrapPtr(reflect.TypeOf(data))
 	isPartial := len(opt.updateFields) > 0 || len(opt.ignoreFields) > 0
 
 	updateFields := make(map[string]interface{}, 0)
 	for i := 0; i < dataValue.NumField(); i++ {
-		fieldValue := dataValue.Field(i)
+		fieldValue := candihelper.ReflectValueUnwrapPtr(dataValue.Field(i))
 		fieldType := dataType.Field(i)
 
 		if fieldType.Anonymous {
@@ -90,18 +90,35 @@ func (d DBUpdateTools) ToMap(data interface{}, opts ...DBUpdateOptionFunc) map[s
 			continue
 		}
 
+		var mustSet bool
 		key := strings.TrimSuffix(fieldType.Tag.Get("json"), ",omitempty")
 		if d.KeyExtractorFunc != nil {
-			key = d.KeyExtractorFunc(fieldType)
+			key, mustSet = d.KeyExtractorFunc(fieldType)
 		}
 		isIgnore, _ := strconv.ParseBool(fieldType.Tag.Get("ignoreUpdate"))
 		if key == "" || key == "-" || isIgnore {
 			continue
 		}
 
+		isSet := true
 		val := fieldValue.Interface()
-		if fieldValue.Kind() == reflect.Pointer && !fieldValue.IsNil() {
-			val = fieldValue.Elem().Interface()
+		if candihelper.ReflectTypeUnwrapPtr(fieldType.Type).Kind() == reflect.Struct {
+			switch t := val.(type) {
+			case driver.Valuer:
+				val, _ = t.Value()
+			case time.Time:
+			case fmt.Stringer:
+				val = t.String()
+			case json.Marshaler:
+				jsVal, _ := t.MarshalJSON()
+				val = string(jsVal)
+			default:
+				isSet = false
+			}
+		}
+
+		if !isSet && !mustSet {
+			continue
 		}
 
 		if !isPartial {

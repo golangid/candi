@@ -576,3 +576,19 @@ func ElementInSlice[T comparable](el T, list []T) bool {
 	}
 	return false
 }
+
+func ReflectTypeUnwrapPtr(f reflect.Type) reflect.Type {
+	if f.Kind() == reflect.Ptr {
+		return ReflectTypeUnwrapPtr(f.Elem())
+	}
+	return f
+}
+func ReflectValueUnwrapPtr(f reflect.Value) reflect.Value {
+	if f.Kind() == reflect.Ptr {
+		if f.IsNil() {
+			return f
+		}
+		return ReflectValueUnwrapPtr(f.Elem())
+	}
+	return f
+}

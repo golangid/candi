@@ -118,16 +118,12 @@ func ParseFromQueryParam(query URLQueryGetter, target interface{}) (err error) {
 func ParseToQueryParam(source interface{}) (s string) {
 	defer func() { recover() }()
 
-	pValue := reflect.ValueOf(source)
-	pType := reflect.TypeOf(source)
-	if pValue.Kind() == reflect.Ptr {
-		pValue = pValue.Elem()
-		pType = pType.Elem()
-	}
+	pValue := ReflectValueUnwrapPtr(reflect.ValueOf(source))
+	pType := ReflectTypeUnwrapPtr(reflect.TypeOf(source))
 
 	var uri []string
 	for i := 0; i < pValue.NumField(); i++ {
-		field := pValue.Field(i)
+		field := ReflectValueUnwrapPtr(pValue.Field(i))
 		typ := pType.Field(i)
 
 		if typ.PkgPath != "" && !typ.Anonymous { // unexported

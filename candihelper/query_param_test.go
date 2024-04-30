@@ -76,21 +76,21 @@ func TestParseFromQueryParam(t *testing.T) {
 
 func TestParseToQueryParam(t *testing.T) {
 	type VariantRequestParams struct {
-		Filter      string `json:"filter,omitempty"`
-		FilterQuery string `json:"filter[query],omitempty"`
-		FilterSkuNo string `json:"filter[skuNo],omitempty"`
-		Page        int    `json:"page"`
-		Limit       int    `json:"limit"`
-		Ignore      string `json:"-"`
+		Filter      **string `json:"filter,omitempty"`
+		FilterQuery string   `json:"filter[query],omitempty"`
+		FilterSkuNo string   `json:"filter[skuNo],omitempty"`
+		Page        int      `json:"page"`
+		Limit       int      `json:"limit"`
+		Ignore      string   `json:"-"`
 	}
 
 	var param VariantRequestParams
-	param.Filter = "product"
+	param.Filter = WrapPtr(WrapPtr("product"))
 	param.FilterQuery = "kulkas"
 	param.FilterSkuNo = ""
 	param.Page = 1
 	param.Limit = 10
 
 	want := "filter=product&filter[query]=kulkas&page=1&limit=10"
-	assert.Equal(t, want, ParseToQueryParam(&param))
+	assert.Equal(t, want, ParseToQueryParam(WrapPtr(WrapPtr(WrapPtr(param)))))
 }
