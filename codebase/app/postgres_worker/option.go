@@ -6,11 +6,13 @@ import (
 
 	"github.com/golangid/candi/candiutils"
 	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/codebase/interfaces"
 )
 
 type (
 	option struct {
+		workerType            types.Worker
 		maxGoroutines         int
 		debugMode             bool
 		locker                interfaces.Locker
@@ -28,6 +30,7 @@ type (
 
 func getDefaultOption(service factory.ServiceFactory) option {
 	opt := option{
+		workerType:           types.PostgresListener,
 		maxGoroutines:        1,
 		debugMode:            true,
 		sources:              make(map[string]*PostgresSource),
@@ -40,6 +43,13 @@ func getDefaultOption(service factory.ServiceFactory) option {
 		opt.locker = &candiutils.NoopLocker{}
 	}
 	return opt
+}
+
+// SetWorkerType option func
+func SetWorkerType(wt types.Worker) OptionFunc {
+	return func(o *option) {
+		o.workerType = wt
+	}
 }
 
 // SetPostgresDSN option func
