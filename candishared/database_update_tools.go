@@ -1,6 +1,7 @@
 package candishared
 
 import (
+	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
@@ -59,8 +60,9 @@ func DBUpdateMongoExtractorKey(structField reflect.StructField) (string, bool) {
 
 // DBUpdateTools for construct selected field to update
 type DBUpdateTools struct {
-	KeyExtractorFunc func(structTag reflect.StructField) (key string, mustSet bool)
-	IgnoredFields    []string
+	KeyExtractorFunc    func(structTag reflect.StructField) (key string, mustSet bool)
+	FieldValueExtractor func(reflect.Value) (val any, skip bool)
+	IgnoredFields       []string
 }
 
 func (d *DBUpdateTools) parseOption(opts ...DBUpdateOptionFunc) (o partialUpdateOption) {
@@ -100,22 +102,28 @@ func (d DBUpdateTools) ToMap(data interface{}, opts ...DBUpdateOptionFunc) map[s
 			continue
 		}
 
-		fieldTypeKind := candihelper.ReflectTypeUnwrapPtr(fieldType.Type).Kind()
-		skipSet := fieldTypeKind >= reflect.Array && fieldTypeKind <= reflect.Slice
+		val, skipSet := fieldValue.Interface(), false
 
-		val := fieldValue.Interface()
-		if fieldTypeKind == reflect.Struct {
+		if d.FieldValueExtractor != nil {
+			val, skipSet = d.FieldValueExtractor(dataValue.Field(i))
+		} else {
 			switch t := val.(type) {
+			case sql.NamedArg:
+				val = t.Value
+				if t.Name != "" {
+					key = t.Name
+				}
 			case driver.Valuer:
 				val, _ = t.Value()
-			case time.Time:
+			case time.Time, *time.Time, []byte:
 			case fmt.Stringer:
 				val = t.String()
 			case json.Marshaler:
 				jsVal, _ := t.MarshalJSON()
 				val = string(jsVal)
 			default:
-				skipSet = true
+				fieldTypeKind := candihelper.ReflectTypeUnwrapPtr(fieldType.Type).Kind()
+				skipSet = fieldTypeKind == reflect.Struct || (fieldTypeKind >= reflect.Array && fieldTypeKind <= reflect.Slice)
 			}
 		}
 

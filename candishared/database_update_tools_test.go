@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golangid/candi/candihelper"
+	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,15 +18,22 @@ func TestDBUpdateToolsSQL(t *testing.T) {
 		CityAddress string       `gorm:"type:text"`
 	}
 	type Model struct {
-		ID       int     `gorm:"column:db_id;" json:"id"`
-		Name     *string `gorm:"column:db_name;" json:"name"`
-		Address  string  `gorm:"column:db_address" json:"address"`
-		No       int
-		IgnoreMe SubModel `gorm:"column:test" json:"ignoreMe" ignoreUpdate:"true"`
-		Rel      SubModel `gorm:"foreignKey:ID" json:"rel"`
-		Multi    []SubModel
-		Map      map[int]SubModel
-		PtrModel *SubModel
+		ID        int     `gorm:"column:id;" json:"id"`
+		Name      *string `gorm:"column:name;" json:"name"`
+		Address   string  `gorm:"column:address" json:"address"`
+		No        int
+		CreatedAt time.Time
+		IgnoreMe  SubModel `gorm:"column:test" json:"ignoreMe" ignoreUpdate:"true"`
+		Rel       SubModel `gorm:"foreignKey:ID" json:"rel"`
+		Log       []byte
+		StrArr    pq.StringArray
+		IntArr    pq.Int64Array
+		Ch        chan string
+		Multi     []SubModel
+		Map       map[int]SubModel
+		PtrModel  *SubModel
+		DeletedAt *time.Time
+		NamedArg  *sql.NamedArg
 		SubModel
 	}
 	var updated map[string]any
@@ -35,8 +43,8 @@ func TestDBUpdateToolsSQL(t *testing.T) {
 		DBUpdateSetUpdatedFields("ID", "Name", "Title", "CityAddress"),
 	)
 	assert.Equal(t, 4, len(updated))
-	assert.Equal(t, 1, updated["db_id"])
-	assert.Equal(t, "01", updated["db_name"])
+	assert.Equal(t, 1, updated["id"])
+	assert.Equal(t, "01", updated["name"])
 	assert.Equal(t, "test", updated["title"])
 	assert.Equal(t, "Jakarta", updated["city_address"])
 
@@ -44,19 +52,27 @@ func TestDBUpdateToolsSQL(t *testing.T) {
 		Model{ID: 1, Name: candihelper.ToStringPtr("01"), Address: "street", SubModel: SubModel{Title: "test", ActivatedAt: sql.NullTime{Valid: true}}},
 		DBUpdateSetIgnoredFields("ID", "Name", "Title"),
 	)
-	assert.Equal(t, 5, len(updated))
-	assert.Equal(t, "street", updated["db_address"])
+	assert.Equal(t, 10, len(updated))
+	assert.Equal(t, "street", updated["address"])
 
 	updated = DBUpdateTools{KeyExtractorFunc: DBUpdateGORMExtractorKey}.ToMap(
 		Model{
-			No: 10, Rel: SubModel{Title: "001"},
-			SubModel: SubModel{ActivatedAt: sql.NullTime{Valid: true, Time: time.Now()}, CityAddress: "Jakarta"},
-			PtrModel: &SubModel{CityAddress: "New"},
+			No:        10,
+			Multi:     make([]SubModel, 1),
+			Rel:       SubModel{Title: "001"},
+			CreatedAt: time.Now(),
+			SubModel:  SubModel{ActivatedAt: sql.NullTime{Valid: true, Time: time.Now()}, CityAddress: "Jakarta"},
+			PtrModel:  &SubModel{CityAddress: "New"},
+			Log:       []byte(`123`),
+			StrArr:    pq.StringArray{"1", "2", "3"},
+			IntArr:    pq.Int64Array{1, 2, 3},
 		},
 	)
-	assert.Equal(t, 8, len(updated))
+	assert.Equal(t, 13, len(updated))
 	assert.Equal(t, "Jakarta", updated["city_address"])
 	assert.Equal(t, 10, updated["no"])
+	assert.Equal(t, "{\"1\",\"2\",\"3\"}", updated["str_arr"])
+	assert.Equal(t, []byte(`123`), updated["log"])
 }
 
 func TestDBUpdateToolsMongo(t *testing.T) {
