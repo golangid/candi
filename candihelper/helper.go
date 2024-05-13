@@ -191,7 +191,9 @@ func MustParseEnv(target interface{}) {
 
 		val, ok := os.LookupEnv(key)
 		if !ok {
-			mErrs.Append(key, fmt.Errorf("missing %s environment", key))
+			if typ.Tag.Get("optional") != "true" {
+				mErrs.Append(key, fmt.Errorf("missing %s environment", key))
+			}
 			continue
 		}
 
