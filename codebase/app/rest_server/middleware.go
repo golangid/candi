@@ -125,11 +125,12 @@ func HTTPMiddlewareTracer() func(http.Handler) http.Handler {
 			}
 
 			trace, ctx := tracer.StartTraceFromHeader(req.Context(), "REST-Server", header)
-			defer trace.Finish(
-				tracer.FinishWithRecoverPanic(func(any) {
+			defer func() {
+				if rec := recover(); rec != nil {
 					wrapper.NewHTTPResponse(http.StatusInternalServerError, "Something error").JSON(rw)
-				}),
-			)
+				}
+				trace.Finish()
+			}()
 
 			httpDump, _ := httputil.DumpRequest(req, false)
 			trace.Log("http.request", httpDump)

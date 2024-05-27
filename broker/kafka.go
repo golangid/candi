@@ -181,9 +181,12 @@ func NewKafkaPublisher(client sarama.Client, async bool) interfaces.Publisher {
 // PublishMessage method
 func (p *kafkaPublisher) PublishMessage(ctx context.Context, args *candishared.PublisherArgument) (err error) {
 	trace, _ := tracer.StartTraceWithContext(ctx, "kafka:publish_message")
-	defer trace.Finish(
-		tracer.FinishWithRecoverPanic(func(panicMessage any) { err = fmt.Errorf("%v", panicMessage) }),
-	)
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%v", r)
+		}
+		trace.Finish(tracer.FinishWithError(err))
+	}()
 
 	var payload []byte
 	if len(args.Message) > 0 {

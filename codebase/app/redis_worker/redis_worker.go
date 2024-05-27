@@ -181,7 +181,13 @@ func (r *redisWorker) processMessage(param broker.RedisMessage) {
 	}
 
 	trace, ctx := tracer.StartTraceFromHeader(ctx, "RedisSubscriber", make(map[string]string, 0))
-	defer trace.Finish(tracer.FinishWithRecoverPanic(func(any) {}))
+	defer func() {
+		if r := recover(); r != nil {
+			trace.SetTag("panic", true)
+			err = fmt.Errorf("%v", r)
+		}
+		trace.Finish(tracer.FinishWithError(err))
+	}()
 
 	if r.opt.debugMode {
 		log.Printf("\x1b[35;3mRedis Key Expired Subscriber%s: executing event topic '%s'\x1b[0m", getWorkerTypeLog(r.bk.WorkerType), param.HandlerName)

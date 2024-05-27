@@ -67,14 +67,13 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 	}
 
 	trace, ctx := tracer.StartTraceFromHeader(ctx, "GRPC-Server", header)
-	defer trace.Finish(
-		tracer.FinishWithRecoverPanic(func(message any) {
-			err = status.Errorf(codes.Aborted, "%v", message)
-		}),
-		tracer.FinishWithFunc(func() {
-			i.logInterceptor(start, err, info.FullMethod, "GRPC")
-		}),
-	)
+	defer func() {
+		if rec := recover(); rec != nil {
+			err = status.Errorf(codes.Aborted, "%v", rec)
+		}
+		i.logInterceptor(start, err, info.FullMethod, "GRPC")
+		trace.Finish(tracer.FinishWithError(err))
+	}()
 
 	trace.SetTag("method", info.FullMethod)
 	trace.Log("metadata", meta)
@@ -151,14 +150,13 @@ func (i *interceptor) streamTracerInterceptor(srv interface{}, stream grpc.Serve
 	}
 
 	trace, ctx := tracer.StartTraceFromHeader(ctx, "GRPC-STREAM", header)
-	defer trace.Finish(
-		tracer.FinishWithRecoverPanic(func(message any) {
-			err = status.Errorf(codes.Aborted, "%v", message)
-		}),
-		tracer.FinishWithFunc(func() {
-			i.logInterceptor(start, err, info.FullMethod, "GRPC-STREAM")
-		}),
-	)
+	defer func() {
+		if rec := recover(); rec != nil {
+			err = status.Errorf(codes.Aborted, "%v", rec)
+		}
+		i.logInterceptor(start, err, info.FullMethod, "GRPC-STREAM")
+		trace.Finish(tracer.FinishWithError(err))
+	}()
 
 	trace.SetTag("method", info.FullMethod)
 	trace.Log("metadata", meta)

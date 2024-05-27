@@ -159,9 +159,12 @@ func NewRabbitMQPublisher(conn *amqp.Connection, exchange string) *rabbitMQPubli
 // PublishMessage method
 func (r *rabbitMQPublisher) PublishMessage(ctx context.Context, args *candishared.PublisherArgument) (err error) {
 	trace, _ := tracer.StartTraceWithContext(ctx, "rabbitmq:publish_message")
-	defer trace.Finish(
-		tracer.FinishWithRecoverPanic(func(panicMessage any) { err = fmt.Errorf("%v", panicMessage) }),
-	)
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%v", r)
+		}
+		trace.Finish(tracer.FinishWithError(err))
+	}()
 
 	ch, err := r.conn.Channel()
 	if err != nil {

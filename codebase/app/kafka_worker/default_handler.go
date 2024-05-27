@@ -1,6 +1,7 @@
 package kafkaworker
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -70,15 +71,18 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 		header[string(val.Key)] = string(val.Value)
 	}
 
+	var err error
 	trace, ctx := tracer.StartTraceFromHeader(ctx, "KafkaConsumer", header)
-	defer trace.Finish(
-		tracer.FinishWithRecoverPanic(func(any) {}),
-		tracer.FinishWithFunc(func() {
-			if handler.AutoACK {
-				session.MarkMessage(message, "")
-			}
-		}),
-	)
+	defer func() {
+		if r := recover(); r != nil {
+			trace.SetTag("panic", true)
+			err = fmt.Errorf("%v", r)
+		}
+		if handler.AutoACK {
+			session.MarkMessage(message, "")
+		}
+		trace.Finish(tracer.FinishWithError(err))
+	}()
 
 	trace.SetTag("brokers", strings.Join(c.bk.BrokerHost, ","))
 	trace.SetTag("topic", message.Topic)
@@ -104,9 +108,9 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 	eventContext.Write(message.Value)
 
 	for _, handlerFunc := range handler.HandlerFuncs {
-		if err := handlerFunc(eventContext); err != nil {
+		err = handlerFunc(eventContext)
+		if err != nil {
 			eventContext.SetError(err)
-			trace.SetError(err)
 		}
 	}
 }

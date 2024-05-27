@@ -209,8 +209,15 @@ func (p *postgresWorker) execEvent(workerIndex int, data *EventPayload) {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
 
+	var err error
 	trace, ctx := tracer.StartTraceFromHeader(ctx, "PostgresEventListener", make(map[string]string, 0))
-	defer trace.Finish(tracer.FinishWithRecoverPanic(func(any) {}))
+	defer func() {
+		if r := recover(); r != nil {
+			trace.SetTag("panic", true)
+			err = fmt.Errorf("%v", r)
+		}
+		trace.Finish(tracer.FinishWithError(err))
+	}()
 
 	if p.opt.debugMode {
 		var sourceLog string
@@ -258,9 +265,8 @@ func (p *postgresWorker) execEvent(workerIndex int, data *EventPayload) {
 	trace.Log("payload", data)
 
 	for _, handlerFunc := range handler.HandlerFuncs {
-		if err := handlerFunc(eventContext); err != nil {
+		if err = handlerFunc(eventContext); err != nil {
 			eventContext.SetError(err)
-			trace.SetError(err)
 		}
 	}
 }

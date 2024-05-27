@@ -124,18 +124,23 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		result, traceID string
 	})
 	go func(ctx context.Context, job Job) {
-		defer close(eventResultChan)
+		result := struct {
+			err             error
+			result, traceID string
+		}{}
 
 		trace, ctx := tracer.StartTraceFromHeader(ctx, "TaskQueueWorker", make(map[string]string, 0))
-		defer trace.Finish(
-			tracer.FinishWithRecoverPanic(func(panicMessage any) {
-				eventResultChan <- struct {
-					err             error
-					result, traceID string
-				}{err: fmt.Errorf("panic: %v", panicMessage), traceID: tracer.GetTraceID(ctx)}
-			}),
-		)
+		defer func() {
+			if r := recover(); r != nil {
+				trace.SetTag("panic", true)
+				result.err = fmt.Errorf("%v", r)
+			}
+			eventResultChan <- result
+			close(eventResultChan)
+			trace.Finish(tracer.FinishWithError(result.err))
+		}()
 
+		result.traceID = tracer.GetTraceID(ctx)
 		trace.SetTag("job_id", job.ID)
 		trace.SetTag("task_name", job.TaskName)
 		trace.SetTag("retries", job.Retries)
@@ -157,10 +162,6 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		eventContext.SetKey(job.ID)
 		eventContext.WriteString(job.Arguments)
 
-		result := struct {
-			err             error
-			result, traceID string
-		}{traceID: tracer.GetTraceID(ctx)}
 		for i, h := range selectedHandler.HandlerFuncs {
 			if err := h(eventContext); err != nil {
 				if _, isRetry := err.(*candishared.ErrorRetrier); isRetry {
@@ -168,7 +169,6 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 				}
 				eventContext.SetError(err)
 				if i == 0 { // set for main handler
-					trace.SetError(err)
 					result.err = err
 				}
 			}
@@ -176,7 +176,6 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		if respBuff := eventContext.GetResponse(); respBuff != nil {
 			result.result = respBuff.String()
 		}
-		eventResultChan <- result
 	}(ctx, job)
 
 	select {

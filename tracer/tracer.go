@@ -96,10 +96,24 @@ func (noopTracer) SetTag(key string, value interface{})         { return }
 func (noopTracer) InjectRequestHeader(header map[string]string) { return }
 func (noopTracer) SetError(err error)                           { return }
 func (noopTracer) Log(key string, value interface{})            { return }
-func (noopTracer) Finish(opts ...FinishOptionFunc)              { return }
-func (noopTracer) GetTraceID(ctx context.Context) (u string)    { return }
-func (noopTracer) GetTraceURL(ctx context.Context) (u string)   { return }
-func (noopTracer) Disconnect(ctx context.Context) error         { return nil }
+func (noopTracer) Finish(opts ...FinishOptionFunc) {
+	var finishOpt FinishOption
+	for _, opt := range opts {
+		opt(&finishOpt)
+	}
+	if finishOpt.RecoverFunc != nil {
+		if rec := recover(); rec != nil {
+			finishOpt.RecoverFunc(rec)
+		}
+	}
+	if finishOpt.OnFinish != nil {
+		finishOpt.OnFinish()
+	}
+	return
+}
+func (noopTracer) GetTraceID(ctx context.Context) (u string)  { return }
+func (noopTracer) GetTraceURL(ctx context.Context) (u string) { return }
+func (noopTracer) Disconnect(ctx context.Context) error       { return nil }
 func (n noopTracer) StartSpan(ctx context.Context, opName string) Tracer {
 	n.ctx = ctx
 	return &n
