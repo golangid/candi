@@ -597,7 +597,7 @@ func (s *MongoPersistent) Type() string {
 	var commandResult struct {
 		Version string `bson:"version"`
 	}
-	err := s.db.RunCommand(s.ctx, bson.D{{Key: "serverStatus", Value: 1}}).Decode(&commandResult)
+	err := s.db.RunCommand(s.ctx, bson.D{{Key: "buildInfo", Value: 1}}).Decode(&commandResult)
 	logger.LogIfError(err)
 	if commandResult.Version != "" {
 		commandResult.Version = ", version: " + commandResult.Version
