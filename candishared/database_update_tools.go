@@ -58,6 +58,15 @@ func DBUpdateMongoExtractorKey(structField reflect.StructField) (string, bool) {
 	return candihelper.ToDelimited(structField.Name, '_'), false
 }
 
+// DBUpdateSqlExtractorKey struct field key extractor for mongo model
+func DBUpdateSqlExtractorKey(structField reflect.StructField) (string, bool) {
+	sqlTag := structField.Tag.Get("sql")
+	if strings.HasPrefix(sqlTag, "column:") {
+		return strings.Split(strings.TrimPrefix(sqlTag, "column:"), ";")[0], false
+	}
+	return candihelper.ToDelimited(structField.Name, '_'), false
+}
+
 // DBUpdateTools for construct selected field to update
 type DBUpdateTools struct {
 	KeyExtractorFunc    func(structTag reflect.StructField) (key string, mustSet bool)
