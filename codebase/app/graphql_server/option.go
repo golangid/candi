@@ -25,6 +25,7 @@ type (
 		rootResolver        interfaces.GraphQLHandler
 		directiveFuncs      map[string]types.DirectiveFunc
 		tlsConfig           *tls.Config
+		schemaSource        []byte
 	}
 
 	// OptionFunc type
@@ -113,5 +114,12 @@ func AddDirectiveFunc(directiveName string, handlerFunc types.DirectiveFunc) Opt
 func SetTLSConfig(tlsConfig *tls.Config) OptionFunc {
 	return func(o *Option) {
 		o.tlsConfig = tlsConfig
+	}
+}
+
+// SetSchemaSource option func
+func SetSchemaSource(schema []byte) OptionFunc {
+	return func(o *Option) {
+		o.schemaSource = schema
 	}
 }

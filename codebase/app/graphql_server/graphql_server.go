@@ -23,7 +23,6 @@ type graphqlServer struct {
 
 // NewServer create new GraphQL server
 func NewServer(service factory.ServiceFactory, opts ...OptionFunc) factory.AppServerFactory {
-
 	httpEngine := new(http.Server)
 	server := &graphqlServer{
 		httpEngine: httpEngine,

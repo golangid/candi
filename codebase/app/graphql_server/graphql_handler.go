@@ -31,7 +31,9 @@ type Handler interface {
 
 // ConstructHandlerFromService for create public graphql handler (maybe inject to rest handler)
 func ConstructHandlerFromService(service factory.ServiceFactory, opt Option) Handler {
-	gqlSchema := candihelper.LoadAllFile(os.Getenv(candihelper.WORKDIR)+"api/graphql", ".graphql")
+	if len(opt.schemaSource) == 0 {
+		opt.schemaSource = candihelper.LoadAllFile(os.Getenv(candihelper.WORKDIR)+"api/graphql", ".graphql")
+	}
 	var resolver rootResolver
 
 	if opt.rootResolver == nil {
@@ -54,7 +56,7 @@ func ConstructHandlerFromService(service factory.ServiceFactory, opt Option) Han
 				subscriptionResolverValues[rootName] = subscription
 
 				if schema := resolverModule.Schema(); schema != "" {
-					gqlSchema = append(gqlSchema, schema+"\n"...)
+					opt.schemaSource = append(opt.schemaSource, schema+"\n"...)
 				}
 			}
 		}
@@ -64,7 +66,7 @@ func ConstructHandlerFromService(service factory.ServiceFactory, opt Option) Han
 			rootSubscription: constructStruct(subscriptionResolverFields, subscriptionResolverValues),
 		}
 	} else {
-		gqlSchema = append(gqlSchema, opt.rootResolver.Schema()+"\n"...)
+		opt.schemaSource = append(opt.schemaSource, opt.rootResolver.Schema()+"\n"...)
 		resolver = rootResolver{
 			rootQuery:        opt.rootResolver.Query(),
 			rootMutation:     opt.rootResolver.Mutation(),
@@ -99,7 +101,7 @@ func ConstructHandlerFromService(service factory.ServiceFactory, opt Option) Han
 	logger.LogYellow(fmt.Sprintf("[GraphQL] voyager\t\t\t: http://127.0.0.1:%d%s/voyager", opt.httpPort, opt.RootPath))
 
 	return &handlerImpl{
-		schema: graphql.MustParseSchema((string(gqlSchema)), &resolver, schemaOpts...),
+		schema: graphql.MustParseSchema(string(opt.schemaSource), &resolver, schemaOpts...),
 		option: opt,
 	}
 }
@@ -109,6 +111,7 @@ type handlerImpl struct {
 	option Option
 }
 
+// NewHandler init new graphql http handler
 func NewHandler(schema *graphql.Schema, opt Option) Handler {
 	return &handlerImpl{
 		schema: schema,

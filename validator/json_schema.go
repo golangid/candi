@@ -10,40 +10,35 @@ import (
 	"github.com/golangid/gojsonschema"
 )
 
-// JSONSchemaValidator abstraction
-type JSONSchemaValidator interface {
-	ValidateDocument(schemaID string, documentSource interface{}) error
-}
-
 // JSONSchemaValidatorOptionFunc type
-type JSONSchemaValidatorOptionFunc func(*jsonSchemaValidator)
+type JSONSchemaValidatorOptionFunc func(*JSONSchemaValidator)
 
 // SetSchemaStorageJSONSchemaValidatorOption option func
 func SetSchemaStorageJSONSchemaValidatorOption(s Storage) JSONSchemaValidatorOptionFunc {
-	return func(v *jsonSchemaValidator) {
-		v.schemaStorage = s
+	return func(v *JSONSchemaValidator) {
+		v.SchemaStorage = s
 	}
 }
 
 // AddHideErrorListTypeJSONSchemaValidatorOption option func
 func AddHideErrorListTypeJSONSchemaValidatorOption(descType ...string) JSONSchemaValidatorOptionFunc {
-	return func(v *jsonSchemaValidator) {
+	return func(v *JSONSchemaValidator) {
 		for _, e := range descType {
 			v.notShowErrorListType[e] = struct{}{}
 		}
 	}
 }
 
-// jsonSchemaValidator validator
-type jsonSchemaValidator struct {
-	schemaStorage        Storage
+// JSONSchemaValidator validator
+type JSONSchemaValidator struct {
+	SchemaStorage        Storage
 	notShowErrorListType map[string]struct{}
 }
 
 // NewJSONSchemaValidator constructor
-func NewJSONSchemaValidator(opts ...JSONSchemaValidatorOptionFunc) JSONSchemaValidator {
-	v := &jsonSchemaValidator{
-		schemaStorage: NewInMemStorage(os.Getenv(candihelper.WORKDIR) + "api/jsonschema"),
+func NewJSONSchemaValidator(opts ...JSONSchemaValidatorOptionFunc) *JSONSchemaValidator {
+	v := &JSONSchemaValidator{
+		SchemaStorage: NewInMemStorage(os.Getenv(candihelper.WORKDIR) + "api/jsonschema"),
 		notShowErrorListType: map[string]struct{}{
 			"condition_else": {}, "condition_then": {},
 		},
@@ -57,11 +52,12 @@ func NewJSONSchemaValidator(opts ...JSONSchemaValidatorOptionFunc) JSONSchemaVal
 }
 
 // ValidateDocument based on schema id
-func (v *jsonSchemaValidator) ValidateDocument(schemaSource string, documentSource interface{}) error {
-	s, err := v.schemaStorage.Get(schemaSource)
-	if err == nil {
-		schemaSource = strings.ReplaceAll(s, "{{WORKDIR}}", os.Getenv(candihelper.WORKDIR))
+func (v *JSONSchemaValidator) ValidateDocument(schemaSource string, documentSource interface{}) error {
+	s, err := v.SchemaStorage.Get(schemaSource)
+	if err != nil {
+		return err
 	}
+	schemaSource = strings.ReplaceAll(s, "{{WORKDIR}}", os.Getenv(candihelper.WORKDIR))
 
 	schema, err := gojsonschema.NewSchema(gojsonschema.NewStringLoader(schemaSource))
 	if err != nil {

@@ -8,51 +8,46 @@ import (
 	"github.com/golangid/candi/candihelper"
 )
 
-// StructValidator abstraction
-type StructValidator interface {
-	ValidateStruct(data interface{}) error
-}
-
 // StructValidatorOptionFunc type
-type StructValidatorOptionFunc func(*structValidator)
+type StructValidatorOptionFunc func(*StructValidator)
 
 // SetCoreStructValidatorOption option func
 func SetCoreStructValidatorOption(additionalConfigFunc ...func(*validatorengine.Validate)) StructValidatorOptionFunc {
-	return func(v *structValidator) {
+	return func(v *StructValidator) {
 		ve := validatorengine.New()
 		for _, additionalFunc := range additionalConfigFunc {
 			additionalFunc(ve)
 		}
-		v.validator = ve
+		v.Validator = ve
 	}
 }
 
-// structValidator struct
-type structValidator struct {
-	validator *validatorengine.Validate
+// StructValidator struct
+type StructValidator struct {
+	Validator *validatorengine.Validate
 }
 
 // NewStructValidator using go library
 // https://github.com/go-playground/validator (all struct tags will be here)
 // https://godoc.org/github.com/go-playground/validator (documentation using it)
 // NewStructValidator function
-func NewStructValidator(opts ...StructValidatorOptionFunc) StructValidator {
+func NewStructValidator(opts ...StructValidatorOptionFunc) *StructValidator {
 	// set struct validator
-	sv := &structValidator{}
+	sv := &StructValidator{}
 	for _, opt := range opts {
 		opt(sv)
 	}
 
-	if sv.validator == nil {
-		sv.validator = validatorengine.New()
+	if sv.Validator == nil {
+		sv.Validator = validatorengine.New()
 	}
 
 	return sv
 }
 
 // ValidateStruct function
-func (v *structValidator) ValidateStruct(data interface{}) error {
-	if err := v.validator.Struct(data); err != nil {
+func (v *StructValidator) ValidateStruct(data interface{}) error {
+	if err := v.Validator.Struct(data); err != nil {
 		switch errs := err.(type) {
 		case validatorengine.ValidationErrors:
 			multiError := candihelper.NewMultiError()

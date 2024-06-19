@@ -185,6 +185,7 @@ func (c *cronWorker) processJob(job *Job) {
 		trace.Finish(tracer.FinishWithError(err))
 	}()
 
+	trace.SetTag("cron_expr", job.Interval)
 	trace.SetTag("job_name", job.HandlerName)
 	trace.Log("job_param", job.Params)
 

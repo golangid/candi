@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,6 +24,11 @@ type (
 
 	inMemStorage struct {
 		storage map[string]string
+	}
+
+	fsStorage struct {
+		sourceMap map[string]string
+		storage   fs.FS
 	}
 
 	sqlStorage struct {
@@ -129,5 +136,59 @@ func (i *inMemStorage) Get(schemaID string) (string, error) {
 
 func (i *inMemStorage) Store(schemaID string, schema string) error {
 	i.storage[schemaID] = schema
+	return nil
+}
+
+// NewFileSystemStorage constructor
+func NewFileSystemStorage(fileSystem fs.FS, rootPath string) Storage {
+	storage := &fsStorage{
+		sourceMap: make(map[string]string),
+		storage:   fileSystem,
+	}
+
+	fs.WalkDir(fileSystem, rootPath, func(path string, info fs.DirEntry, err error) error {
+		if err != nil {
+			log.Panicf("json schema: %s", err.Error())
+		}
+		if info.IsDir() {
+			return nil
+		}
+
+		fileName := info.Name()
+		if strings.HasSuffix(fileName, ".json") {
+			s, err := fs.ReadFile(fileSystem, path)
+			if err != nil {
+				return fmt.Errorf("%s: %v", fileName, err)
+			}
+
+			var data map[string]interface{}
+			if err := json.Unmarshal(s, &data); err != nil {
+				return fmt.Errorf("%s: %v", fileName, err)
+			}
+
+			id, ok := data["$id"].(string)
+			if !ok {
+				id = strings.Trim(strings.TrimSuffix(strings.TrimPrefix(path, rootPath), ".json"), "/")
+			}
+			storage.sourceMap[id] = path
+		}
+		return nil
+	})
+
+	fmt.Println(storage.sourceMap)
+	return storage
+}
+
+func (i *fsStorage) Get(schemaID string) (string, error) {
+	schemaPath, ok := i.sourceMap[schemaID]
+	if !ok {
+		return "", fmt.Errorf("schema '%s' not found", schemaID)
+	}
+
+	s, err := fs.ReadFile(i.storage, schemaPath)
+	return string(s), err
+}
+
+func (i *fsStorage) Store(schemaID string, schema string) error {
 	return nil
 }
