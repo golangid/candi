@@ -7,13 +7,14 @@ const schema = `schema {
 }
 
 type Query {
-	dashboard(gc: Boolean): DashboardType!
+	dashboard(): DashboardType!
 	get_detail_job(job_id: String!, filter: GetAllJobHistoryInputResolver): JobResolver!
 	get_all_active_subscriber(): [ClientSubscriber!]!
 	get_all_job(filter: GetAllJobInputResolver): JobListResolver!
 	get_count_job(filter: GetAllJobInputResolver): Int!
 	get_all_configuration(): [ConfigurationResolver!]!
 	get_detail_configuration(key: String!): ConfigurationResolver!
+	parse_cron_expression(expr: String!): [String!]!
 }
 
 type Mutation {
@@ -30,6 +31,7 @@ type Mutation {
 	set_configuration(config: SetConfigurationInputResolver!): String!
 	run_queued_job(task_name: String!): String!
 	restore_from_secondary(): RestoreSecondaryResolver!
+	hold_job_task(task_name: String!, is_auto_switch: Boolean!, switch_interval: String, first_switch: String): String!
 }
 
 type Subscription {
@@ -75,9 +77,11 @@ type MetaType {
 	limit: Int!
 	total_pages: Int!
 	total_records: Int!
+	message: String!
 	is_close_session: Boolean!
 	is_loading: Boolean!
 	is_freeze_broadcast: Boolean!
+	is_hold: Boolean!
 	detail: TaskDetailResolver!
 }
 
@@ -104,6 +108,7 @@ type TaskResolver {
 	total_jobs: Int!
 	is_loading: Boolean!
 	loading_message: String!
+	is_hold: Boolean!
 	detail: TaskDetailResolver!
 }
 
@@ -118,6 +123,7 @@ type TaskDetailResolver {
 	success: Int!
 	queueing: Int!
 	stopped: Int!
+	hold: Int!
 }
 
 type JobListResolver {

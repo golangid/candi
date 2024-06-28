@@ -17,6 +17,7 @@ import (
 	dashboard "github.com/golangid/candi-plugin/task-queue-worker/dashboard"
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
+	cronexpr "github.com/golangid/candi/candiutils/cronparser"
 	graphqlserver "github.com/golangid/candi/codebase/app/graphql_server"
 	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/logger"
@@ -65,7 +66,7 @@ type rootResolver struct {
 	engine *taskQueueWorker
 }
 
-func (r *rootResolver) Dashboard(ctx context.Context, input struct{ GC *bool }) (res DashboardResolver) {
+func (r *rootResolver) Dashboard(ctx context.Context) (res DashboardResolver) {
 	res.Banner = r.engine.opt.dashboardBanner
 	res.Tagline = "Task Queue Worker Dashboard"
 	res.Version = candi.Version
@@ -76,10 +77,6 @@ func (r *rootResolver) Dashboard(ctx context.Context, input struct{ GC *bool }) 
 
 	_, isType := r.engine.opt.persistent.(*noopPersistent)
 	res.Config.WithPersistent = !isType
-
-	if input.GC != nil && *input.GC {
-		runtime.GC()
-	}
 
 	// dependency health
 	if err := r.engine.opt.persistent.Ping(ctx); err != nil {
@@ -220,6 +217,8 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 	Filter FilterMutateJobInputResolver
 }) (string, error) {
 	go func(ctx context.Context, req *FilterMutateJobInputResolver) {
+		summary := r.engine.opt.persistent.Summary().FindDetailSummary(ctx, req.TaskName)
+
 		filter := req.ToFilter()
 		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, filter.TaskName, true, "Retrying...")
 
@@ -228,8 +227,12 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 			filter.Statuses = []string{string(StatusFailure), string(StatusStopped)}
 		}
 
-		StreamAllJob(ctx, &filter, func(job *Job) {
+		StreamAllJob(ctx, &filter, func(idx, total int, job *Job) {
 			r.engine.opt.queue.PushJob(ctx, job)
+			r.engine.opt.persistent.Summary().UpdateSummary(r.engine.ctx, filter.TaskName, map[string]interface{}{
+				"is_loading": true, "loading_message": fmt.Sprintf(`Requeueing %d of %d`, idx, total),
+			})
+			r.engine.subscriber.broadcastTaskList(r.engine.ctx)
 		})
 
 		incr := map[string]int64{}
@@ -251,9 +254,9 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 			incr[strings.ToLower(string(StatusQueueing))] += countAffected
 		}
 
-		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, filter.TaskName, false, "")
+		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, filter.TaskName, false, summary.LoadingMessage)
 		r.engine.opt.persistent.Summary().IncrementSummary(ctx, filter.TaskName, incr)
-		r.engine.subscriber.broadcastAllToSubscribers(ctx)
+		r.engine.subscriber.broadcastAllToSubscribers(r.engine.ctx)
 		r.engine.registerNextJob(false, filter.TaskName)
 
 	}(r.engine.ctx, &input.Filter)
@@ -293,7 +296,6 @@ func (r *rootResolver) CleanJob(ctx context.Context, input struct {
 }
 
 func (r *rootResolver) RecalculateSummary(ctx context.Context) (string, error) {
-
 	RecalculateSummary(ctx)
 	r.engine.subscriber.broadcastAllToSubscribers(r.engine.ctx)
 	return "Success recalculate summary", nil
@@ -419,7 +421,7 @@ func (r *rootResolver) SetConfiguration(ctx context.Context, input struct {
 func (r *rootResolver) RunQueuedJob(ctx context.Context, input struct {
 	TaskName string
 }) (res string, err error) {
-	r.engine.checkForUnlockTask(input.TaskName)
+	r.engine.unlockTask(input.TaskName)
 	r.engine.registerNextJob(true, input.TaskName)
 	return "Success", nil
 }
@@ -430,7 +432,7 @@ func (r *rootResolver) RestoreFromSecondary(ctx context.Context) (res RestoreSec
 		secondaryPersistent: true,
 		Status:              candihelper.ToStringPtr(string(StatusQueueing)),
 	}
-	res.TotalData = StreamAllJob(ctx, filter, func(job *Job) {
+	res.TotalData = StreamAllJob(ctx, filter, func(_, _ int, job *Job) {
 		if err := r.engine.opt.persistent.SaveJob(ctx, job); err != nil {
 			logger.LogE(err.Error())
 			return
@@ -598,4 +600,89 @@ func (r *rootResolver) ListenDetailJob(ctx context.Context, input struct {
 	}()
 
 	return output, nil
+}
+
+func (r *rootResolver) HoldJobTask(ctx context.Context, input struct {
+	TaskName       string
+	IsAutoSwitch   bool
+	SwitchInterval *string
+	FirstSwitch    *string
+}) (res string, err error) {
+	summaryTask := r.engine.opt.persistent.Summary().FindDetailSummary(ctx, input.TaskName)
+	if summaryTask.TaskName == "" {
+		return res, errors.New("Task not found")
+	}
+
+	defer r.engine.subscriber.broadcastAllToSubscribers(r.engine.ctx)
+
+	if !input.IsAutoSwitch {
+		r.engine.opt.persistent.Summary().UpdateSummary(ctx, input.TaskName, map[string]interface{}{
+			"is_hold": !summaryTask.IsHold, "loading_message": "Hold Mode",
+		})
+		if !summaryTask.IsHold {
+			return
+		}
+
+		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, true, "Unhold...")
+		r.engine.subscriber.broadcastAllToSubscribers(r.engine.ctx)
+		filter := &Filter{
+			TaskName: input.TaskName, Status: candihelper.WrapPtr(StatusHold.String()),
+			Sort: "created_at",
+		}
+		StreamAllJob(ctx, filter, func(idx, total int, job *Job) {
+			r.engine.opt.queue.PushJob(ctx, job)
+			r.engine.opt.persistent.Summary().UpdateSummary(r.engine.ctx, filter.TaskName, map[string]interface{}{
+				"is_loading": true, "loading_message": fmt.Sprintf(`Requeueing %d of %d`, idx, total),
+			})
+			r.engine.subscriber.broadcastTaskList(r.engine.ctx)
+		})
+
+		matchedCount, affectedRow, _ := r.engine.opt.persistent.UpdateJob(ctx,
+			filter,
+			map[string]interface{}{
+				"status":  StatusQueueing,
+				"retries": 0,
+			},
+		)
+		r.engine.opt.persistent.Summary().IncrementSummary(ctx, filter.TaskName, map[string]int64{
+			strings.ToLower(StatusQueueing.String()): matchedCount,
+			strings.ToLower(StatusHold.String()):     -affectedRow,
+		})
+		r.engine.registerNextJob(false, filter.TaskName)
+		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, input.TaskName, false, "")
+		return
+	}
+
+	if input.SwitchInterval != nil {
+		schedule, err := cronexpr.Parse(*input.SwitchInterval)
+		if err != nil {
+			return "", err
+		}
+
+		date := make([]string, 6)
+		now := time.Now()
+		for i := range date {
+			nextInterval := schedule.NextInterval(now)
+			now = now.Add(nextInterval)
+			date[i] = now.Format(candihelper.DateFormatYYYYMMDDHHmmss)
+		}
+	}
+
+	return "Success", nil
+}
+
+func (r *rootResolver) ParseCronExpression(ctx context.Context, input struct{ Expr string }) (date []string, err error) {
+	schedule, err := cronexpr.Parse(input.Expr)
+	if err != nil {
+		return date, err
+	}
+
+	date = make([]string, 6)
+	now := time.Now()
+	for i := range date {
+		nextInterval := schedule.NextInterval(now)
+		now = now.Add(nextInterval)
+		date[i] = now.Format(candihelper.DateFormatYYYYMMDDHHmmss)
+	}
+	return
 }

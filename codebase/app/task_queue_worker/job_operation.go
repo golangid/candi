@@ -31,7 +31,6 @@ type (
 
 // Validate method
 func (a *AddJobRequest) Validate() error {
-
 	switch {
 	case a.TaskName == "":
 		return errors.New("Task name cannot empty")
@@ -87,6 +86,14 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	newJob.CreatedAt = time.Now()
 	newJob.direct = req.direct
 
+	summary := engine.opt.persistent.Summary().FindDetailSummary(ctx, req.TaskName)
+	if summary.IsHold {
+		newJob.Status = string(StatusHold)
+		newJob.RetryHistories = []RetryHistory{
+			{Status: newJob.Status, StartAt: time.Now(), EndAt: time.Now()},
+		}
+	}
+
 	if err := engine.opt.persistent.SaveJob(ctx, &newJob); err != nil {
 		trace.SetError(err)
 		logger.LogE(fmt.Sprintf("Cannot save job, error: %s", err.Error()))
@@ -100,11 +107,14 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 		strings.ToLower(newJob.Status): 1,
 	})
 	engine.subscriber.broadcastAllToSubscribers(context.Background())
+	if summary.IsHold || summary.IsLoading {
+		return newJob.ID, nil
+	}
 	if n := engine.opt.queue.PushJob(ctx, &newJob); n <= 1 && len(engine.semaphore[workerIndex-1]) == 0 {
 		engine.registerJobToWorker(&newJob)
 	}
 	if engine.opt.locker.HasBeenLocked(engine.getLockKey(newJob.TaskName)) {
-		engine.checkForUnlockTask(newJob.TaskName)
+		engine.unlockTask(newJob.TaskName)
 	}
 
 	return newJob.ID, nil
@@ -248,7 +258,7 @@ func StopJob(ctx context.Context, jobID string) error {
 
 	statusBefore := job.Status
 	if job.Status == string(StatusRetrying) {
-		go engine.stopAllJobInTask(job.TaskName)
+		engine.stopAllJobInTask(job.TaskName)
 	}
 
 	job.Status = string(StatusStopped)
@@ -271,7 +281,7 @@ func StopJob(ctx context.Context, jobID string) error {
 }
 
 // StreamAllJob api func for stream fetch all job
-func StreamAllJob(ctx context.Context, filter *Filter, streamFunc func(job *Job)) (count int) {
+func StreamAllJob(ctx context.Context, filter *Filter, streamFunc func(idx, total int, job *Job)) (count int) {
 	if engine == nil {
 		return
 	}
@@ -295,8 +305,9 @@ func StreamAllJob(ctx context.Context, filter *Filter, streamFunc func(job *Job)
 
 	totalPages := int(math.Ceil(float64(count) / float64(filter.Limit)))
 	for filter.Page <= totalPages {
-		for _, job := range perst.FindAllJob(ctx, filter) {
-			streamFunc(&job)
+		for i, job := range perst.FindAllJob(ctx, filter) {
+			offset := (filter.Page - 1) * filter.Limit
+			streamFunc(offset+i, count, &job)
 		}
 		filter.Page++
 	}
@@ -357,7 +368,7 @@ func UpdateProgressJob(ctx context.Context, jobID string, numProcessed, maxProce
 		engine.globalSemaphore <- struct{}{}
 		go func() {
 			defer func() { <-engine.globalSemaphore }()
-			engine.subscriber.broadcastJobDetail(context.Background())
+			engine.subscriber.broadcastJobDetail(context.WithoutCancel(ctx))
 		}()
 	}
 	return nil

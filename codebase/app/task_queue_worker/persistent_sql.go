@@ -319,7 +319,7 @@ func (s *SQLPersistent) FindAllSummary(ctx context.Context, filter *Filter) (res
 		}
 		where = " WHERE id IN (" + s.parameterize(len(args)) + ")"
 	}
-	query := `SELECT ` + s.formatColumnName("id", "success", "queueing", "retrying", "failure", "stopped", "is_loading") +
+	query := `SELECT ` + s.formatColumnName(TaskSummary{}.GetColumnName()...) +
 		` FROM ` + jobSummaryModelName + where + " ORDER BY id ASC"
 	rows, err := s.db.Query(query, args...)
 	if err != nil {
@@ -328,8 +328,7 @@ func (s *SQLPersistent) FindAllSummary(ctx context.Context, filter *Filter) (res
 	defer rows.Close()
 	for rows.Next() {
 		var detail TaskSummary
-		rows.Scan(&detail.TaskName, &detail.Success, &detail.Queueing, &detail.Retrying,
-			&detail.Failure, &detail.Stopped, &detail.IsLoading)
+		detail.Scan(rows)
 		detail.ID = detail.TaskName
 		result = append(result, detail)
 	}
@@ -349,10 +348,10 @@ func (s *SQLPersistent) FindAllSummary(ctx context.Context, filter *Filter) (res
 	return
 }
 func (s *SQLPersistent) FindDetailSummary(ctx context.Context, taskName string) (result TaskSummary) {
-	s.db.QueryRowContext(ctx, `SELECT `+s.formatColumnName("id", "success", "queueing", "retrying", "failure", "stopped", "is_loading")+
-		` FROM `+jobSummaryModelName+` WHERE id=`+s.parameterize(1), taskName).
-		Scan(&result.TaskName, &result.Success, &result.Queueing, &result.Retrying,
-			&result.Failure, &result.Stopped, &result.IsLoading)
+	row := s.db.QueryRowContext(ctx, `SELECT `+
+		s.formatColumnName(result.GetColumnName()...)+
+		` FROM `+jobSummaryModelName+` WHERE id=`+s.parameterize(1), taskName)
+	result.Scan(row)
 	result.ID = result.TaskName
 	return
 }
@@ -374,12 +373,11 @@ func (s *SQLPersistent) UpdateSummary(ctx context.Context, taskName string, upda
 	}
 	affected, _ := res.RowsAffected()
 	if affected == 0 {
-		args := []interface{}{
-			taskName, candihelper.ToInt(updated["success"]), candihelper.ToInt(updated["queueing"]), candihelper.ToInt(updated["retrying"]),
-			candihelper.ToInt(updated["failure"]), candihelper.ToInt(updated["stopped"]), updated["is_loading"],
-		}
-		query := `INSERT INTO ` + jobSummaryModelName + ` (` +
-			s.formatColumnName("id", "success", "queueing", "retrying", "failure", "stopped", "is_loading") +
+		var task TaskSummary
+		task.TaskName = taskName
+		args := task.ToArgs(updated)
+
+		query := `INSERT INTO ` + jobSummaryModelName + ` (` + s.formatColumnName(task.GetColumnName()...) +
 			`) VALUES (` + s.parameterize(len(args)) + `)`
 		_, err := s.db.Exec(query, args...)
 		if err != nil {
@@ -394,6 +392,7 @@ func (s *SQLPersistent) IncrementSummary(ctx context.Context, taskName string, i
 	}
 
 	var setFields []string
+	updated := make(map[string]any, len(incr))
 	for field, value := range incr {
 		if field == "" {
 			continue
@@ -404,6 +403,7 @@ func (s *SQLPersistent) IncrementSummary(ctx context.Context, taskName string, i
 			val = "+" + candihelper.ToString(value)
 		}
 		setFields = append(setFields, field+"="+field+val)
+		updated[field] = value
 	}
 	query := `UPDATE ` + jobSummaryModelName + ` SET ` + strings.Join(setFields, ",") + ` WHERE id='` + taskName + `'`
 	res, err := s.db.Exec(query)
@@ -413,12 +413,11 @@ func (s *SQLPersistent) IncrementSummary(ctx context.Context, taskName string, i
 	}
 	affected, _ := res.RowsAffected()
 	if affected == 0 {
-		args := []interface{}{
-			taskName, candihelper.ToInt(incr["success"]), candihelper.ToInt(incr["queueing"]), candihelper.ToInt(incr["retrying"]),
-			candihelper.ToInt(incr["failure"]), candihelper.ToInt(incr["stopped"]),
-		}
+		var task TaskSummary
+		task.TaskName = taskName
+		args := task.ToArgs(updated)
 		query := `INSERT INTO ` + jobSummaryModelName + ` (` +
-			s.formatColumnName("id", "success", "queueing", "retrying", "failure", "stopped") +
+			s.formatColumnName(task.GetColumnName()...) +
 			`) VALUES (` + s.parameterize(len(args)) + `)`
 		_, err := s.db.Exec(query, args...)
 		if err != nil {

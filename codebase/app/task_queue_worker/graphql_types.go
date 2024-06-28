@@ -53,6 +53,7 @@ type (
 		TotalJobs      int
 		IsLoading      bool
 		LoadingMessage string
+		IsHold         bool
 		Detail         SummaryDetail
 	}
 	// TaskListResolver resolver
@@ -72,15 +73,17 @@ type (
 		Limit             int
 		TotalRecords      int
 		TotalPages        int
+		Message           string
 		IsCloseSession    bool
 		IsLoading         bool
 		IsFreezeBroadcast bool
+		IsHold            bool
 		Detail            SummaryDetail
 	}
 
 	// SummaryDetail type
 	SummaryDetail struct {
-		Failure, Retrying, Success, Queueing, Stopped int
+		Failure, Retrying, Success, Queueing, Stopped, Hold int
 	}
 
 	// JobListResolver resolver
@@ -287,7 +290,9 @@ func (j *JobResolver) ParseFromJob(job *Job, maxArgsLength int) {
 		j.NextRetryAt = time.Now().Add(delay).In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 	}
 	j.CreatedAt = job.CreatedAt.In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
-	j.FinishedAt = job.FinishedAt.In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
+	if !job.FinishedAt.IsZero() {
+		j.FinishedAt = job.FinishedAt.In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
+	}
 	if job.Retries > job.MaxRetry {
 		j.Retries = job.MaxRetry
 	}
@@ -299,35 +304,35 @@ func (j *JobResolver) ParseFromJob(job *Job, maxArgsLength int) {
 }
 
 func (j *JobListResolver) GetAllJob(ctx context.Context, filter *Filter) {
-
-	var meta MetaJobList
-	var taskDetailSummary []TaskSummary
-
+	var detailSummary TaskSummary
 	if candihelper.PtrToString(filter.Search) != "" ||
 		candihelper.PtrToString(filter.JobID) != "" ||
 		(filter.StartDate != "" && filter.EndDate != "") {
-		taskDetailSummary = engine.opt.persistent.AggregateAllTaskJob(ctx, filter)
+		taskDetailSummary := engine.opt.persistent.AggregateAllTaskJob(ctx, filter)
+		if len(taskDetailSummary) > 0 {
+			detailSummary = taskDetailSummary[0]
+		}
 	} else {
-		taskDetailSummary = engine.opt.persistent.Summary().FindAllSummary(ctx, filter)
+		detailSummary = engine.opt.persistent.Summary().FindDetailSummary(ctx, filter.TaskName)
+		detailSummary.ApplyFilterStatus(filter.Statuses)
 	}
 
-	for _, detailSummary := range taskDetailSummary {
-		detail := detailSummary.ToSummaryDetail()
-		meta.Detail.Failure += detail.Failure
-		meta.Detail.Retrying += detail.Retrying
-		meta.Detail.Success += detail.Success
-		meta.Detail.Queueing += detail.Queueing
-		meta.Detail.Stopped += detail.Stopped
-		meta.TotalRecords += detailSummary.CountTotalJob()
-	}
-	meta.Page, meta.Limit = filter.Page, filter.Limit
-	meta.TotalPages = int(math.Ceil(float64(meta.TotalRecords) / float64(meta.Limit)))
+	detail := detailSummary.ToSummaryDetail()
+	j.Meta.Detail.Failure = detail.Failure
+	j.Meta.Detail.Retrying = detail.Retrying
+	j.Meta.Detail.Success = detail.Success
+	j.Meta.Detail.Queueing = detail.Queueing
+	j.Meta.Detail.Stopped = detail.Stopped
+	j.Meta.Detail.Hold = detail.Hold
+	j.Meta.TotalRecords = detailSummary.CountTotalJob()
+	j.Meta.IsHold = detailSummary.IsHold
+	j.Meta.Message = detailSummary.LoadingMessage
+	j.Meta.Page, j.Meta.Limit = filter.Page, filter.Limit
+	j.Meta.TotalPages = int(math.Ceil(float64(j.Meta.TotalRecords) / float64(j.Meta.Limit)))
 
-	j.Meta = meta
-
-	for _, job := range engine.opt.persistent.FindAllJob(ctx, filter) {
-		var jobResolver JobResolver
-		jobResolver.ParseFromJob(&job, 100)
-		j.Data = append(j.Data, jobResolver)
+	jobs := engine.opt.persistent.FindAllJob(ctx, filter)
+	j.Data = make([]JobResolver, len(jobs))
+	for i, job := range jobs {
+		j.Data[i].ParseFromJob(&job, 100)
 	}
 }

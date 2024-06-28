@@ -99,56 +99,52 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 
 	case "mysql":
 		initTableQueries = map[string]string{
-			jobModelName: fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n%s", jobModelName,
-				"(`id` VARCHAR(255) PRIMARY KEY NOT NULL,",
-				"`task_name` VARCHAR(255) NOT NULL,",
-				"`arguments` TEXT NOT NULL,",
-				"`retries` INTEGER NOT NULL,",
-				"`max_retry` INTEGER NOT NULL,",
-				"`interval` VARCHAR(255) NOT NULL,",
-				"`created_at` DATETIME(3) NOT NULL,",
-				"`updated_at` DATETIME(3) NOT NULL,",
-				"`finished_at` DATETIME(3) NULL,",
-				"`status` VARCHAR(255) NOT NULL,",
-				"`error` TEXT NOT NULL,",
-				"`trace_id` VARCHAR(255) NOT NULL,",
-				"`current_progress` INTEGER NOT NULL,",
-				"`max_progress` INTEGER NOT NULL,",
+			jobModelName: "CREATE TABLE IF NOT EXISTS " + jobModelName + " " +
+				"(`id` VARCHAR(255) PRIMARY KEY NOT NULL," +
+				"`task_name` VARCHAR(255) NOT NULL," +
+				"`arguments` TEXT NOT NULL," +
+				"`retries` INTEGER NOT NULL," +
+				"`max_retry` INTEGER NOT NULL," +
+				"`interval` VARCHAR(255) NOT NULL," +
+				"`created_at` DATETIME(3) NOT NULL," +
+				"`updated_at` DATETIME(3) NOT NULL," +
+				"`finished_at` DATETIME(3) NULL," +
+				"`status` VARCHAR(255) NOT NULL," +
+				"`error` TEXT NOT NULL," +
+				"`trace_id` VARCHAR(255) NOT NULL," +
+				"`current_progress` INTEGER NOT NULL," +
+				"`max_progress` INTEGER NOT NULL," +
 				`INDEX (created_at),
 				INDEX (arguments(255), error(255)),
 				INDEX (task_name, status, created_at),
 				INDEX (task_name),
 				INDEX (status),
 				INDEX (task_name, status)) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE utf8_unicode_ci;`,
-			),
-			jobSummaryModelName: fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s %s %s %s %s %s %s %s\n%s", jobSummaryModelName+
-				"(`id` VARCHAR(255) PRIMARY KEY NOT NULL,",
-				"`success` INTEGER NOT NULL,",
-				"`queueing` INTEGER NOT NULL,",
-				"`retrying` INTEGER NOT NULL,",
-				"`failure` INTEGER NOT NULL,",
-				"`stopped` INTEGER NOT NULL,",
-				"`is_loading` BOOLEAN DEFAULT false,",
-				"`loading_message` VARCHAR(255) NOT NULL DEFAULT '',",
+			jobSummaryModelName: "CREATE TABLE IF NOT EXISTS " + jobSummaryModelName + " " +
+				"(`id` VARCHAR(255) PRIMARY KEY NOT NULL," +
+				"`success` INTEGER NOT NULL," +
+				"`queueing` INTEGER NOT NULL," +
+				"`retrying` INTEGER NOT NULL," +
+				"`failure` INTEGER NOT NULL," +
+				"`stopped` INTEGER NOT NULL," +
+				"`is_loading` BOOLEAN DEFAULT false," +
+				"`loading_message` VARCHAR(255) NOT NULL DEFAULT ''," +
 				`INDEX (id)) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE utf8_unicode_ci;`,
-			),
-			jobHistoryModel: fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s %s %s %s %s %s %s %s\n%s", jobHistoryModel,
-				"(`job_id` VARCHAR(255) NOT NULL,",
-				"`error_stack` VARCHAR(255) NOT NULL,",
-				"`status` VARCHAR(255) NOT NULL,",
-				"`error` TEXT NOT NULL,",
-				"`trace_id` VARCHAR(255) NOT NULL,",
-				"`start_at` DATETIME(3) NULL,",
-				"`end_at` DATETIME(3) NULL,",
+			jobHistoryModel: "CREATE TABLE IF NOT EXISTS " + jobHistoryModel + "" +
+				"(`job_id` VARCHAR(255) NOT NULL," +
+				"`error_stack` VARCHAR(255) NOT NULL," +
+				"`status` VARCHAR(255) NOT NULL," +
+				"`error` TEXT NOT NULL," +
+				"`trace_id` VARCHAR(255) NOT NULL," +
+				"`start_at` DATETIME(3) NULL," +
+				"`end_at` DATETIME(3) NULL," +
 				`INDEX (job_id),
 				INDEX (start_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE utf8_unicode_ci;`,
-			),
-			configurationModelName: fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s %s %s %s %s", configurationModelName,
-				"(`key` VARCHAR(255) PRIMARY KEY NOT NULL,",
-				"`name` VARCHAR(255) NOT NULL,",
-				"`value` VARCHAR(255) NOT NULL,",
+			configurationModelName: "CREATE TABLE IF NOT EXISTS " + configurationModelName + " " +
+				"(`key` VARCHAR(255) PRIMARY KEY NOT NULL," +
+				"`name` VARCHAR(255) NOT NULL," +
+				"`value` VARCHAR(255) NOT NULL," +
 				"`is_active` BOOLEAN DEFAULT false) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE utf8_unicode_ci;",
-			),
 		}
 	}
 
@@ -164,11 +160,14 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 	extraQueries := [][]string{
 		generateAddColumnQuery(s.driverName, jobModelName, "result", "TEXT"),
 		generateAddColumnQuery(s.driverName, jobHistoryModel, "result", "TEXT"),
+		generateAddColumnQuery(s.driverName, jobSummaryModelName, "is_hold", "BOOLEAN"),
+		generateAddColumnQuery(s.driverName, jobSummaryModelName, "hold", "INTEGER"),
 	}
 	for _, queries := range extraQueries {
 		if queries[0] != "" {
 			var columnName string
-			if err := db.QueryRow(queries[0]).Scan(&columnName); err == nil {
+			err := db.QueryRow(queries[0]).Scan(&columnName)
+			if err == nil {
 				continue
 			}
 		}

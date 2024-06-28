@@ -11,7 +11,6 @@ import (
 )
 
 func (t *taskQueueWorker) registerInternalTask() {
-
 	retentionBeat := reflect.SelectCase{Dir: reflect.SelectRecv}
 	internalTaskRetention := &Task{
 		isInternalTask:   true,
@@ -32,16 +31,13 @@ func (t *taskQueueWorker) registerInternalTask() {
 END:
 	t.runningWorkerIndexTask[internalTaskRetention.workerIndex] = internalTaskRetention
 	t.workerChannels = append(t.workerChannels, retentionBeat)
-
 }
 
 func (t *taskQueueWorker) execInternalTask(task *Task) {
-
 	logger.LogIf("running internal task: %s", task.internalTaskName)
 
 	switch task.internalTaskName {
 	case configurationRetentionAgeKey:
-
 		cfg, _ := t.opt.persistent.GetConfiguration(configurationRetentionAgeKey)
 		if !cfg.IsActive {
 			return

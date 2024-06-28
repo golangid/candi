@@ -66,7 +66,6 @@ func initEngine(service factory.ServiceFactory, opts ...OptionFunc) *taskQueueWo
 
 	engine = &taskQueueWorker{
 		service:                   service,
-		ready:                     make(chan struct{}),
 		shutdown:                  make(chan struct{}, 1),
 		refreshWorkerNotif:        make(chan struct{}, 1),
 		opt:                       &opt,

@@ -262,7 +262,6 @@ func (s *MongoPersistent) CountAllJob(ctx context.Context, filter *Filter) int {
 }
 
 func (s *MongoPersistent) AggregateAllTaskJob(ctx context.Context, filter *Filter) (results []TaskSummary) {
-
 	pipeQuery := []bson.M{
 		{
 			"$match": s.toBsonFilter(filter),
@@ -275,6 +274,7 @@ func (s *MongoPersistent) AggregateAllTaskJob(ctx context.Context, filter *Filte
 				"retrying":  bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", StatusRetrying}}, "then": 1, "else": 0}},
 				"failure":   bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", StatusFailure}}, "then": 1, "else": 0}},
 				"stopped":   bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", StatusStopped}}, "then": 1, "else": 0}},
+				"hold":      bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", StatusHold}}, "then": 1, "else": 0}},
 			},
 		},
 		{
@@ -294,6 +294,9 @@ func (s *MongoPersistent) AggregateAllTaskJob(ctx context.Context, filter *Filte
 				},
 				"stopped": bson.M{
 					"$sum": "$stopped",
+				},
+				"hold": bson.M{
+					"$sum": "$hold",
 				},
 			},
 		},
@@ -474,7 +477,6 @@ func (s *MongoPersistent) toBsonFilter(f *Filter) bson.M {
 // summary
 
 func (s *MongoPersistent) FindAllSummary(ctx context.Context, filter *Filter) (result []TaskSummary) {
-
 	query := bson.M{}
 	if filter.TaskName != "" {
 		query["task_name"] = filter.TaskName
@@ -502,12 +504,7 @@ func (s *MongoPersistent) FindAllSummary(ctx context.Context, filter *Filter) (r
 
 	if len(filter.Statuses) > 0 {
 		for i, res := range result {
-			mapRes := res.ToMapResult()
-			newCount := map[string]int{}
-			for _, status := range filter.Statuses {
-				newCount[strings.ToUpper(status)] = mapRes[strings.ToUpper(status)]
-			}
-			res.SetValue(newCount)
+			res.ApplyFilterStatus(filter.Statuses)
 			result[i] = res
 		}
 	}
@@ -597,8 +594,9 @@ func (s *MongoPersistent) Type() string {
 	var commandResult struct {
 		Version string `bson:"version"`
 	}
-	err := s.db.RunCommand(s.ctx, bson.D{{Key: "buildInfo", Value: 1}}).Decode(&commandResult)
-	logger.LogIfError(err)
+	if err := s.db.RunCommand(s.ctx, bson.D{{Key: "buildInfo", Value: 1}}).Decode(&commandResult); err != nil {
+		logger.LogI(err.Error())
+	}
 	if commandResult.Version != "" {
 		commandResult.Version = ", version: " + commandResult.Version
 	}

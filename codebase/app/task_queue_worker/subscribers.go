@@ -148,7 +148,6 @@ func (s *subscriber) broadcastAllToSubscribers(ctx context.Context) {
 }
 
 func (s *subscriber) broadcastTaskList(ctx context.Context) {
-
 	var taskRes TaskListResolver
 	taskRes.Data = make([]TaskResolver, 0)
 	for _, summary := range s.opt.persistent.Summary().FindAllSummary(ctx, &Filter{}) {
@@ -178,7 +177,6 @@ func (s *subscriber) broadcastJobList(ctx context.Context) {
 }
 
 func (s *subscriber) broadcastJobListToClient(ctx context.Context, clientID string) {
-
 	subscriber, ok := s.clientTaskJobListSubscribers[clientID]
 	if !ok {
 		return
@@ -189,7 +187,7 @@ func (s *subscriber) broadcastJobListToClient(ctx context.Context, clientID stri
 		if summary.IsLoading {
 			subscriber.skipBroadcast = summary.IsLoading
 			subscriber.writeDataToChannel(JobListResolver{
-				Meta: MetaJobList{IsLoading: summary.IsLoading},
+				Meta: MetaJobList{IsLoading: summary.IsLoading, Message: summary.LoadingMessage},
 			})
 			return
 		}
@@ -210,7 +208,6 @@ func (s *subscriber) broadcastJobListToClient(ctx context.Context, clientID stri
 }
 
 func (s *subscriber) broadcastJobDetail(ctx context.Context) {
-
 	for clientID, subscriber := range s.clientJobDetailSubscribers {
 		detail, err := s.opt.persistent.FindJobByID(ctx, candihelper.PtrToString(subscriber.filter.JobID), subscriber.filter)
 		if err != nil {
@@ -226,15 +223,17 @@ func (s *subscriber) broadcastJobDetail(ctx context.Context) {
 }
 
 func (s *subscriber) broadcastWhenChangeAllJob(ctx context.Context, taskName string, isLoading bool, loadingMessage string) {
-
 	s.opt.persistent.Summary().UpdateSummary(ctx, taskName, map[string]interface{}{
 		"is_loading": isLoading, "loading_message": loadingMessage,
 	})
 
+	summaries := s.opt.persistent.Summary().FindAllSummary(ctx, &Filter{})
+	mapMessage := make(map[string]string, len(summaries))
 	var taskRes TaskListResolver
-	taskRes.Data = make([]TaskResolver, 0)
-	for _, summary := range s.opt.persistent.Summary().FindAllSummary(ctx, &Filter{}) {
-		taskRes.Data = append(taskRes.Data, summary.ToTaskResolver())
+	taskRes.Data = make([]TaskResolver, len(summaries))
+	for i, summary := range summaries {
+		taskRes.Data[i] = summary.ToTaskResolver()
+		mapMessage[summary.TaskName] = summary.LoadingMessage
 	}
 
 	sort.Slice(taskRes.Data, func(i, j int) bool {
@@ -249,7 +248,7 @@ func (s *subscriber) broadcastWhenChangeAllJob(ctx context.Context, taskName str
 	for _, subscriber := range s.clientTaskJobListSubscribers {
 		subscriber.skipBroadcast = isLoading
 		subscriber.writeDataToChannel(JobListResolver{
-			Meta: MetaJobList{IsLoading: isLoading},
+			Meta: MetaJobList{IsLoading: isLoading, Message: mapMessage[subscriber.filter.TaskName]},
 		})
 	}
 }

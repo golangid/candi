@@ -16,12 +16,12 @@ import (
 )
 
 type taskQueueWorker struct {
-	ctx                                 context.Context
-	ctxCancelFunc                       func()
-	isShutdown                          bool
-	ready, shutdown, refreshWorkerNotif chan struct{}
-	semaphore                           []chan struct{}
-	mutex                               sync.Mutex
+	ctx                          context.Context
+	ctxCancelFunc                func()
+	isShutdown                   bool
+	shutdown, refreshWorkerNotif chan struct{}
+	semaphore                    []chan struct{}
+	mutex                        sync.Mutex
 
 	service        factory.ServiceFactory
 	wg             sync.WaitGroup
@@ -82,7 +82,6 @@ func NewTaskQueueWorker(service factory.ServiceFactory, opts ...OptionFunc) fact
 func (t *taskQueueWorker) prepare() {
 	if len(t.tasks) == 0 {
 		logger.LogYellow("Task Queue Worker: warning, no task provided")
-		t.ready <- struct{}{}
 		return
 	}
 
@@ -90,65 +89,78 @@ func (t *taskQueueWorker) prepare() {
 	t.opt.persistent.Summary().DeleteAllSummary(t.ctx, &Filter{ExcludeTaskNameList: t.tasks})
 	t.opt.persistent.CleanJob(t.ctx, &Filter{ExcludeTaskNameList: t.tasks})
 
-	// get current pending jobs
-	filter := &Filter{
-		Page: 1, Limit: 50,
-		TaskNameList: t.tasks,
-		Sort:         "created_at",
-		Statuses:     []string{string(StatusRetrying), string(StatusQueueing)},
-	}
 	for _, taskName := range t.tasks {
 		t.opt.queue.Clear(t.ctx, taskName)
 		updated := map[string]interface{}{
 			"is_loading": true, "loading_message": "Requeueing...",
 		}
+		summary := t.opt.persistent.Summary().FindDetailSummary(t.ctx, taskName)
+
+		isRequeueing := false
 		for _, status := range []string{
 			StatusRetrying.String(), StatusFailure.String(), StatusSuccess.String(),
-			StatusQueueing.String(), StatusStopped.String(),
+			StatusQueueing.String(), StatusStopped.String(), StatusHold.String(),
 		} {
-			updated[strings.ToLower(status)] = t.opt.persistent.CountAllJob(t.ctx, &Filter{
+			totalJob := t.opt.persistent.CountAllJob(t.ctx, &Filter{
 				TaskName: taskName, Status: &status,
 			})
+			updated[strings.ToLower(status)] = totalJob
+			if (status == string(StatusRetrying) || status == string(StatusQueueing)) && totalJob > 0 {
+				isRequeueing = true
+			}
 		}
 		t.opt.persistent.Summary().UpdateSummary(t.ctx, taskName, updated)
+
+		if isRequeueing {
+			// get current pending jobs
+			go func(filter *Filter) {
+				StreamAllJob(t.ctx, filter, func(idx, total int, job *Job) {
+					if t.opt.locker.HasBeenLocked(t.getLockKey(job.ID)) {
+						return
+					}
+					// update to queueing
+					if job.Status != string(StatusQueueing) {
+						statusBefore := job.Status
+						job.Status = string(StatusQueueing)
+						matchedCount, affectedCount, err := t.opt.persistent.UpdateJob(t.ctx, &Filter{
+							JobID: &job.ID,
+						}, map[string]interface{}{
+							"status": job.Status,
+						})
+						if err != nil {
+							logger.LogE(err.Error())
+							return
+						}
+						t.opt.persistent.Summary().IncrementSummary(t.ctx, job.TaskName, map[string]int64{
+							string(job.Status): affectedCount,
+							statusBefore:       -matchedCount,
+						})
+					}
+					t.opt.queue.PushJob(t.ctx, job)
+					t.opt.persistent.Summary().UpdateSummary(t.ctx, filter.TaskName, map[string]interface{}{
+						"is_loading": true, "loading_message": fmt.Sprintf(`Requeueing %d of %d`, idx, total),
+					})
+					t.subscriber.broadcastTaskList(t.ctx)
+				})
+				t.opt.persistent.Summary().UpdateSummary(t.ctx, filter.TaskName, map[string]interface{}{
+					"is_loading": false, "loading_message": summary.LoadingMessage,
+				})
+				t.registerNextJob(false, filter.TaskName)
+				t.subscriber.broadcastTaskList(t.ctx)
+			}(&Filter{
+				Page: 1, Limit: 100,
+				TaskName: taskName,
+				Sort:     "created_at",
+				Statuses: []string{string(StatusRetrying), string(StatusQueueing)},
+			})
+		} else {
+			t.opt.persistent.Summary().UpdateSummary(t.ctx, taskName, map[string]interface{}{
+				"is_loading": false, "loading_message": summary.LoadingMessage,
+			})
+		}
 	}
-	t.subscriber.broadcastTaskList(t.ctx)
-
-	StreamAllJob(t.ctx, filter, func(job *Job) {
-		if t.opt.locker.HasBeenLocked(t.getLockKey(job.ID)) {
-			return
-		}
-
-		// update to queueing
-		if job.Status != string(StatusQueueing) {
-			statusBefore := job.Status
-			job.Status = string(StatusQueueing)
-			matchedCount, affectedCount, err := t.opt.persistent.UpdateJob(t.ctx, &Filter{
-				JobID: &job.ID,
-			}, map[string]interface{}{
-				"status": job.Status,
-			})
-			if err != nil {
-				logger.LogE(err.Error())
-				return
-			}
-			t.opt.persistent.Summary().IncrementSummary(t.ctx, job.TaskName, map[string]int64{
-				string(job.Status): affectedCount,
-				statusBefore:       -matchedCount,
-			})
-		}
-		t.opt.queue.PushJob(t.ctx, job)
-	})
 
 	t.registerInternalTask()
-	t.ready <- struct{}{}
-
-	for _, taskName := range t.tasks {
-		t.opt.persistent.Summary().UpdateSummary(t.ctx, taskName, map[string]interface{}{
-			"is_loading": false, "loading_message": "",
-		})
-		t.registerNextJob(false, taskName)
-	}
 	t.subscriber.broadcastTaskList(t.ctx)
 }
 
@@ -156,8 +168,6 @@ func (t *taskQueueWorker) Serve() {
 
 	// serve graphql api for communication to dashboard
 	go t.serveGraphQLAPI()
-
-	<-t.ready
 
 	// run worker
 	for {
@@ -219,6 +229,10 @@ func (t *taskQueueWorker) Name() string {
 }
 
 func (t *taskQueueWorker) registerJobToWorker(job *Job) {
+	if job.Status != string(StatusQueueing) {
+		return
+	}
+
 	interval, err := time.ParseDuration(job.Interval)
 	if err != nil || interval <= 0 {
 		logger.LogRed("invalid interval " + job.Interval)

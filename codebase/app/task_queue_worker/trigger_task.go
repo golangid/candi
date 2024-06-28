@@ -28,6 +28,11 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 		return
 	}
 
+	taskDetail := t.opt.persistent.Summary().FindDetailSummary(t.ctx, runningTask.taskName)
+	if taskDetail.IsHold {
+		return
+	}
+
 	t.semaphore[workerIndex-1] <- struct{}{}
 	if t.isShutdown {
 		logger.LogRed("worker has been shutdown")
@@ -59,7 +64,7 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 		lockKey := t.getLockKey(runningTask.taskName)
 		if t.opt.locker.IsLocked(lockKey) {
 			logger.LogI("task_queue_worker > task " + runningTask.taskName + " is locked")
-			t.checkForUnlockTask(runningTask.taskName)
+			t.unlockTask(runningTask.taskName)
 			return
 		}
 		defer t.opt.locker.Unlock(lockKey)
@@ -273,7 +278,7 @@ func (t *taskQueueWorker) getLockKey(jobID string) string {
 	return fmt.Sprintf("%s:task-queue-worker-lock:%s", t.service.Name(), jobID)
 }
 
-func (t *taskQueueWorker) checkForUnlockTask(taskName string) {
+func (t *taskQueueWorker) unlockTask(taskName string) {
 	if count := t.opt.persistent.CountAllJob(t.ctx, &Filter{
 		TaskName: taskName, Status: candihelper.ToStringPtr(StatusRetrying.String()),
 	}); count == 0 {
@@ -297,7 +302,7 @@ func (t *taskQueueWorker) registerNextJob(withStream bool, taskName string) {
 			TaskName: taskName,
 			Sort:     "created_at",
 			Status:   candihelper.ToStringPtr(string(StatusQueueing)),
-		}, func(job *Job) {
+		}, func(_, _ int, job *Job) {
 			t.opt.queue.PushJob(t.ctx, job)
 		})
 		t.registerNextJob(false, taskName)

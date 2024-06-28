@@ -45,6 +45,8 @@ const (
 	StatusQueueing JobStatusEnum = "QUEUEING"
 	// StatusStopped const
 	StatusStopped JobStatusEnum = "STOPPED"
+	// StatusHold const
+	StatusHold JobStatusEnum = "HOLD"
 
 	// HeaderRetries const
 	HeaderRetries = "retries"
