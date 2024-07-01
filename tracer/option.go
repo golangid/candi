@@ -73,6 +73,13 @@ func OptionSetErrorWhitelist(errs []error) OptionFunc {
 	}
 }
 
+// OptionAddErrorWhitelist option func, add no error if error in whitelist
+func OptionAddErrorWhitelist(errs ...error) OptionFunc {
+	return func(o *Option) {
+		o.errorWhitelist = append(o.errorWhitelist, errs...)
+	}
+}
+
 // OptionSetTraceIDExtractor option func, set trace id extractor
 func OptionSetTraceIDExtractor(extractor func(context.Context) string) OptionFunc {
 	return func(o *Option) {

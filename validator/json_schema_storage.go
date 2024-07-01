@@ -175,7 +175,6 @@ func NewFileSystemStorage(fileSystem fs.FS, rootPath string) Storage {
 		return nil
 	})
 
-	fmt.Println(storage.sourceMap)
 	return storage
 }
 
