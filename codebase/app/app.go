@@ -16,13 +16,6 @@ import (
 // Option app option
 type Option func(*App)
 
-// SetManualShutdown set manual shutdown app with app.Shutdown()
-func SetManualShutdown() Option {
-	return func(a *App) {
-		a.manualShutdown = true
-	}
-}
-
 // SetShutdownTimeout set timeout for graceful shutdown
 func SetShutdownTimeout(shutdownTimeout time.Duration) Option {
 	return func(a *App) {
@@ -39,7 +32,7 @@ func SetQuitSignalTrigger(quitSignalTriggers []os.Signal) Option {
 
 // App service
 type App struct {
-	manualShutdown     bool
+	done               chan struct{}
 	shutdownTimeout    time.Duration
 	quitSignal         chan os.Signal
 	quitSignalTriggers []os.Signal
@@ -50,6 +43,7 @@ type App struct {
 func New(service factory.ServiceFactory, opts ...Option) *App {
 	app := &App{
 		service:            service,
+		done:               make(chan struct{}, 1),
 		shutdownTimeout:    1 * time.Minute,
 		quitSignal:         make(chan os.Signal, 1),
 		quitSignalTriggers: []os.Signal{os.Interrupt, syscall.SIGTERM},
@@ -91,36 +85,44 @@ func (a *App) Run() {
 	case e := <-errServe:
 		log.Panic(e)
 	case <-a.quitSignal:
-		if !a.manualShutdown {
-			a.Shutdown()
-		}
+		a.shutdown()
 	}
 }
 
-// Shutdown graceful shutdown all server, panic if there is still a process running when the request exceed given timeout in context
+// Shutdown for manual trigger for shutdown
 func (a *App) Shutdown() {
+	a.quitSignal <- os.Interrupt
+	<-a.done
+}
+
+// shutdown graceful shutdown all server, panic if there is still a process running when the request exceed given timeout in context
+func (a *App) shutdown() {
 	fmt.Println("\x1b[34;1mGracefully shutdown... (press Ctrl+C again to force)\x1b[0m")
 
 	ctx, cancel := context.WithTimeout(context.Background(), a.shutdownTimeout)
-	defer cancel()
+	defer func() {
+		cancel()
+		a.done <- struct{}{}
+	}()
 
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		for _, server := range a.service.GetApplications() {
-			server.Shutdown(ctx)
+		for _, svc := range a.service.GetApplications() {
+			svc.Shutdown(ctx)
 		}
 		done <- struct{}{}
 	}()
 
 	select {
 	case <-done:
-		log.Println("\x1b[32;1mSuccess shutdown all server & worker\x1b[0m")
+		log.Println("\x1b[32;1mSuccess shutdown all application\x1b[0m")
 	case <-a.quitSignal:
-		log.Println("\x1b[31;1mForce shutdown server & worker\x1b[0m")
-		cancel()
+		log.Println("\x1b[31;1mForce shutdown application\x1b[0m")
+		os.Exit(0)
 	case <-ctx.Done():
-		log.Printf("\x1b[31;1mShutdown timeout after %s\x1b[0m", a.shutdownTimeout.String())
+		log.Printf("\x1b[31;1mShutdown timeout after %s. Force shutdown\x1b[0m", a.shutdownTimeout.String())
+		os.Exit(0)
 	}
 }
 
