@@ -23,6 +23,13 @@ func SetShutdownTimeout(shutdownTimeout time.Duration) Option {
 	}
 }
 
+// SetAfterShutdown set do after shutdown
+func SetAfterShutdown(do func()) Option {
+	return func(a *App) {
+		a.afterShutdown = do
+	}
+}
+
 // SetQuitSignalTrigger option
 func SetQuitSignalTrigger(quitSignalTriggers []os.Signal) Option {
 	return func(a *App) {
@@ -33,6 +40,7 @@ func SetQuitSignalTrigger(quitSignalTriggers []os.Signal) Option {
 // App service
 type App struct {
 	done               chan struct{}
+	afterShutdown      func()
 	shutdownTimeout    time.Duration
 	quitSignal         chan os.Signal
 	quitSignalTriggers []os.Signal
@@ -102,6 +110,9 @@ func (a *App) shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), a.shutdownTimeout)
 	defer func() {
 		cancel()
+		if a.afterShutdown != nil {
+			a.afterShutdown()
+		}
 		a.done <- struct{}{}
 	}()
 
