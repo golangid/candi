@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
@@ -159,7 +161,8 @@ func (p *postgresWorker) Serve() {
 
 func (p *postgresWorker) Shutdown(ctx context.Context) {
 	defer func() {
-		log.Printf("\x1b[33;1mStopping Postgres Event Listener%s:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m\n", getWorkerTypeLog(p.opt.workerType))
+		fmt.Printf("\r%s \x1b[33;1mPostgres Event Listener%s:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m%s\n",
+			time.Now().Format(candihelper.TimeFormatLogger), getWorkerTypeLog(p.opt.workerType), strings.Repeat(" ", 20))
 	}()
 
 	p.shutdown <- struct{}{}
@@ -167,9 +170,12 @@ func (p *postgresWorker) Shutdown(ctx context.Context) {
 	for _, sem := range p.semaphores {
 		runningJob += len(sem)
 	}
+	waitingJob := "... "
 	if runningJob != 0 {
-		fmt.Printf("\x1b[34;1mPostgres Event Listener%s:\x1b[0m waiting %d job until done...\n", getWorkerTypeLog(p.opt.workerType), runningJob)
+		waitingJob = fmt.Sprintf("waiting %d job until done... ", runningJob)
 	}
+	fmt.Printf("\r%s \x1b[33;1mPostgres Event Listener%s:\x1b[0m %s",
+		time.Now().Format(candihelper.TimeFormatLogger), getWorkerTypeLog(p.opt.workerType), waitingJob)
 
 	for _, source := range p.opt.sources {
 		source.listener.Close()

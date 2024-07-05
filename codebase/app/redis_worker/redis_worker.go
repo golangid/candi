@@ -7,9 +7,12 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/golangid/candi/broker"
+	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/candiutils"
 	"github.com/golangid/candi/codebase/factory"
@@ -18,10 +21,6 @@ import (
 	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
 	"github.com/gomodule/redigo/redis"
-)
-
-var (
-	refreshWorkerNotif, shutdown chan struct{}
 )
 
 type (
@@ -84,8 +83,6 @@ func NewWorker(service factory.ServiceFactory, bk interfaces.Broker, opts ...Opt
 		fmt.Printf("\x1b[34;1m⇨ Redis pubsub worker%s running with %d keys\x1b[0m\n\n", getWorkerTypeLog(workerInstance.bk.WorkerType), len(handlers))
 	}
 
-	shutdown = make(chan struct{}, 1)
-
 	workerInstance.handlers = handlers
 	workerInstance.isHaveJob = len(handlers) != 0
 	workerInstance.ctx, workerInstance.ctxCancelFunc = context.WithCancel(context.Background())
@@ -129,20 +126,25 @@ func (r *redisWorker) Serve() {
 }
 
 func (r *redisWorker) Shutdown(ctx context.Context) {
-	defer log.Printf("\x1b[33;1mStopping Redis Subscriber%s:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m\n", getWorkerTypeLog(r.bk.WorkerType))
+	defer func() {
+		fmt.Printf("\r%s \x1b[33;1mStopping Redis Subscriber%s:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m%s\n",
+			time.Now().Format(candihelper.TimeFormatLogger), getWorkerTypeLog(r.bk.WorkerType), strings.Repeat(" ", 20))
+	}()
 
 	if !r.isHaveJob {
 		return
 	}
 
-	shutdown <- struct{}{}
 	runningJob := 0
 	for _, sem := range r.semaphore {
 		runningJob += len(sem)
 	}
+	waitingJob := "... "
 	if runningJob != 0 {
-		fmt.Printf("\x1b[34;1mRedis Subscriber:\x1b[0m waiting %d job until done...\n", runningJob)
+		waitingJob = fmt.Sprintf("waiting %d job until done... ", runningJob)
 	}
+	fmt.Printf("\r%s \x1b[33;1mStopping Redis Subscriber%s:\x1b[0m %s",
+		time.Now().Format(candihelper.TimeFormatLogger), getWorkerTypeLog(r.bk.WorkerType), waitingJob)
 
 	r.wg.Wait()
 	r.ctxCancelFunc()

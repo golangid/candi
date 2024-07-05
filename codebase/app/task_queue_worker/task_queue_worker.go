@@ -3,12 +3,12 @@ package taskqueueworker
 import (
 	"context"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
@@ -183,7 +183,10 @@ func (t *taskQueueWorker) Serve() {
 }
 
 func (t *taskQueueWorker) Shutdown(ctx context.Context) {
-	defer log.Println("\x1b[33;1mStopping Task Queue Worker:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
+	defer func() {
+		fmt.Printf("\r%s \x1b[33;1mStopping Task Queue Worker:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m%s\n",
+			time.Now().Format(candihelper.TimeFormatLogger), strings.Repeat(" ", 20))
+	}()
 
 	if len(t.registeredTaskWorkerIndex) == 0 {
 		return
@@ -194,13 +197,15 @@ func (t *taskQueueWorker) Shutdown(ctx context.Context) {
 	t.isShutdown = true
 	t.opt.locker.Reset(t.getLockKey("*"))
 
-	var runningJob int
+	runningJob := 0
 	for _, sem := range t.semaphore {
 		runningJob += len(sem)
 	}
+	waitingJob := "... "
 	if runningJob != 0 {
-		fmt.Printf("\x1b[34;1mTask Queue Worker:\x1b[0m waiting %d job until done...\x1b[0m\n", runningJob)
+		waitingJob = fmt.Sprintf("waiting %d job until done... ", runningJob)
 	}
+	fmt.Printf("\r%s \x1b[33;1mStopping Task Queue Worker:\x1b[0m %s", time.Now().Format(candihelper.TimeFormatLogger), waitingJob)
 
 	t.wg.Wait()
 	for _, task := range t.tasks {

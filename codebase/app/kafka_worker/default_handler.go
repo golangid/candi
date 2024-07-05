@@ -41,7 +41,6 @@ func (c *consumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 	for {
 		select {
 		case message := <-claim.Messages():
-
 			c.processMessage(session, message)
 
 		case <-session.Context().Done():
@@ -52,6 +51,9 @@ func (c *consumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 }
 
 func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, message *sarama.ConsumerMessage) {
+	if message == nil {
+		return
+	}
 	handler, ok := c.handlerFuncs[message.Topic]
 	if !ok {
 		return
@@ -95,7 +97,8 @@ func (c *consumerHandler) processMessage(session sarama.ConsumerGroupSession, me
 	trace.Log("message", message.Value)
 
 	if c.opt.debugMode {
-		log.Printf("\x1b[35;3mKafka Consumer%s: message consumed, timestamp = %v, topic = %s\x1b[0m", getWorkerTypeLog(c.bk.WorkerType), message.Timestamp, message.Topic)
+		log.Printf("\x1b[35;3mKafka Consumer%s: message consumed, timestamp = %v, topic = %s, partition = %d, offset = %d\x1b[0m",
+			getWorkerTypeLog(c.bk.WorkerType), message.Timestamp, message.Topic, message.Partition, message.Offset)
 	}
 
 	eventContext := c.messagePool.Get().(*candishared.EventContext)

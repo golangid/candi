@@ -140,7 +140,7 @@ func (k *KafkaBroker) Health() map[string]error {
 
 // Disconnect method
 func (k *KafkaBroker) Disconnect(ctx context.Context) error {
-	defer logger.LogWithDefer("kafka: disconnect...")()
+	defer logger.LogWithDefer("\x1b[33;5mkafka_broker\x1b[0m: disconnect...")()
 
 	return k.Client.Close()
 }

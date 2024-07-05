@@ -57,7 +57,7 @@ func (m *redisInstance) Cache() interfaces.Cache {
 	return m.cache
 }
 func (m *redisInstance) Disconnect(ctx context.Context) (err error) {
-	defer logger.LogWithDefer("redis: disconnect...")()
+	defer logger.LogWithDefer("\x1b[33;5mredis\x1b[0m: disconnect...")()
 
 	if err := m.read.Close(); err != nil {
 		return err

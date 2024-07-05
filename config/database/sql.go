@@ -29,7 +29,7 @@ func (s *sqlInstance) Health() map[string]error {
 	return mErr
 }
 func (s *sqlInstance) Disconnect(ctx context.Context) (err error) {
-	defer logger.LogWithDefer("sql: disconnect...")()
+	defer logger.LogWithDefer("\x1b[33;5msql\x1b[0m: disconnect...")()
 
 	if err := s.read.Close(); err != nil {
 		return err

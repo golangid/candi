@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -136,7 +137,8 @@ func (c *cronWorker) Serve() {
 
 func (c *cronWorker) Shutdown(ctx context.Context) {
 	defer func() {
-		log.Println("\x1b[33;1mStopping Cron Job Scheduler:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m")
+		fmt.Printf("\r%s \x1b[33;1mStopping Cron Job Scheduler:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m%s\n",
+			time.Now().Format(candihelper.TimeFormatLogger), strings.Repeat(" ", 20))
 	}()
 
 	if len(c.activeJobs) == 0 {
@@ -149,9 +151,11 @@ func (c *cronWorker) Shutdown(ctx context.Context) {
 	for _, sem := range c.semaphore {
 		runningJob += len(sem)
 	}
+	waitingJob := "... "
 	if runningJob != 0 {
-		fmt.Printf("\x1b[34;1mCron Job Scheduler:\x1b[0m waiting %d job until done...\n", runningJob)
+		waitingJob = fmt.Sprintf("waiting %d job until done... ", runningJob)
 	}
+	fmt.Printf("\r%s \x1b[33;1mStopping Cron Job Scheduler:\x1b[0m %s", time.Now().Format(candihelper.TimeFormatLogger), waitingJob)
 
 	c.wg.Wait()
 	c.ctxCancelFunc()

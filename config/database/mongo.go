@@ -45,7 +45,7 @@ func (m *mongoInstance) Health() map[string]error {
 	}
 }
 func (m *mongoInstance) Disconnect(ctx context.Context) (err error) {
-	defer logger.LogWithDefer("mongodb: disconnect...")()
+	defer logger.LogWithDefer("\x1b[33;5mmongodb\x1b[0m: disconnect...")()
 
 	if err := m.write.Client().Disconnect(ctx); err != nil {
 		return err

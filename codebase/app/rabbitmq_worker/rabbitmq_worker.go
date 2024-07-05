@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/golangid/candi/broker"
 	"github.com/golangid/candi/candihelper"
@@ -114,17 +116,23 @@ func (r *rabbitmqWorker) Serve() {
 }
 
 func (r *rabbitmqWorker) Shutdown(ctx context.Context) {
-	defer log.Printf("\x1b[33;1mStopping RabbitMQ Worker%s:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m\n", getWorkerTypeLog(r.bk.WorkerType))
+	defer func() {
+		fmt.Printf("\r%s \x1b[33;1mStopping RabbitMQ Worker%s:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m%s\n",
+			time.Now().Format(candihelper.TimeFormatLogger), getWorkerTypeLog(r.bk.WorkerType), strings.Repeat(" ", 20))
+	}()
 
 	r.shutdown <- struct{}{}
 	r.isShutdown = true
-	var runningJob int
+	runningJob := 0
 	for _, sem := range r.semaphore {
 		runningJob += len(sem)
 	}
+	waitingJob := "... "
 	if runningJob != 0 {
-		fmt.Printf("\x1b[34;1mRabbitMQ Worker%s:\x1b[0m waiting %d job until done...\x1b[0m\n", getWorkerTypeLog(r.bk.WorkerType), runningJob)
+		waitingJob = fmt.Sprintf("waiting %d job until done... ", runningJob)
 	}
+	fmt.Printf("\r%s \x1b[33;1mStopping RabbitMQ Worker%s:\x1b[0m %s",
+		time.Now().Format(candihelper.TimeFormatLogger), getWorkerTypeLog(r.bk.WorkerType), waitingJob)
 
 	r.wg.Wait()
 	r.bk.Channel.Close()

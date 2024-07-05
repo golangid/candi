@@ -11,6 +11,7 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/golangid/candi/broker"
+	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
@@ -117,8 +118,12 @@ func (h *kafkaWorker) Serve() {
 }
 
 func (h *kafkaWorker) Shutdown(ctx context.Context) {
-	defer log.Printf("\x1b[33;1mStopping Kafka Consumer%s:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m\n", getWorkerTypeLog(h.bk.WorkerType))
+	defer func() {
+		fmt.Printf("\r%s \x1b[33;1mStopping Kafka Consumer%s:\x1b[0m \x1b[32;1mSUCCESS\x1b[0m%s\n",
+			time.Now().Format(candihelper.TimeFormatLogger), getWorkerTypeLog(h.bk.WorkerType), strings.Repeat(" ", 20))
+	}()
 
+	fmt.Printf("\r%s \x1b[33;1mStopping Kafka Consumer%s:\x1b[0m ... ", time.Now().Format(candihelper.TimeFormatLogger), getWorkerTypeLog(h.bk.WorkerType))
 	h.cancelFunc()
 	h.engine.Close()
 }

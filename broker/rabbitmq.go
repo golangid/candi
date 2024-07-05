@@ -138,26 +138,26 @@ func (r *RabbitMQBroker) Health() map[string]error {
 
 // Disconnect method
 func (r *RabbitMQBroker) Disconnect(ctx context.Context) error {
-	defer logger.LogWithDefer("rabbitmq: disconnect...")()
+	defer logger.LogWithDefer("\x1b[33;5mrabbitmq_broker\x1b[0m: disconnect...")()
 
 	return r.Conn.Close()
 }
 
-// rabbitMQPublisher rabbitmq
-type rabbitMQPublisher struct {
+// RabbitMQPublisher rabbitmq
+type RabbitMQPublisher struct {
 	conn     *amqp.Connection
 	exchange string
 }
 
 // NewRabbitMQPublisher setup only rabbitmq publisher with client connection
-func NewRabbitMQPublisher(conn *amqp.Connection, exchange string) *rabbitMQPublisher {
-	return &rabbitMQPublisher{
+func NewRabbitMQPublisher(conn *amqp.Connection, exchange string) *RabbitMQPublisher {
+	return &RabbitMQPublisher{
 		conn: conn, exchange: exchange,
 	}
 }
 
 // PublishMessage method
-func (r *rabbitMQPublisher) PublishMessage(ctx context.Context, args *candishared.PublisherArgument) (err error) {
+func (r *RabbitMQPublisher) PublishMessage(ctx context.Context, args *candishared.PublisherArgument) (err error) {
 	trace, _ := tracer.StartTraceWithContext(ctx, "rabbitmq:publish_message")
 	defer func() {
 		if r := recover(); r != nil {
