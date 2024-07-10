@@ -11,9 +11,9 @@ import (
 	{{if not .IsWorkerActive}}// {{end}}"{{.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/delivery/workerhandler"
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
-	"{{.LibraryName}}/codebase/factory/dependency"
-	"{{.LibraryName}}/codebase/factory/types"
-	"{{.LibraryName}}/codebase/interfaces"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/codebase/interfaces"
 )
 
 const (

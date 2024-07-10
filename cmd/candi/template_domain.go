@@ -29,7 +29,7 @@ func ({{upper (camel .ModuleName)}}) CollectionName() string {
 `
 	templateModuleDomain = `package domain
 
-import "{{.LibraryName}}/candishared"
+import "github.com/golangid/candi/candishared"
 
 // Filter{{upper (camel .ModuleName)}} model
 type Filter{{upper (camel .ModuleName)}} struct {
@@ -64,7 +64,7 @@ import (
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 	"time"
 
-	"{{.LibraryName}}/candishared"
+	"github.com/golangid/candi/candishared"
 )
 
 // Response{{upper (camel .ModuleName)}}List model

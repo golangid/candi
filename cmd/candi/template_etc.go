@@ -31,10 +31,8 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /usr/app/
 ENV BUILD_NUMBER=$BUILD_NUMBER
 
-RUN mkdir -p /usr/app/api
 COPY --from=service_builder /usr/app/bin bin
 COPY --from=service_builder /usr/app/.env .env
-COPY --from=service_builder /usr/app/api /usr/app/api
 
 ENTRYPOINT ["./bin"]
 `
@@ -86,7 +84,7 @@ test:
 go {{.GoVersion}}
 
 require (
-	{{.LibraryName}} {{.Version}}
+	github.com/golangid/candi {{.Version}}
 	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
 )
 `
@@ -169,6 +167,21 @@ coverage.txt
 	"required": [ "field" ],
 	"additionalProperties": false
 }
+`
+
+	apiEmbedTemplate = `package api
+
+import "embed"
+
+// JSONSchema schema sources
+//
+//go:embed all:jsonschema
+var JSONSchema embed.FS
+
+// GraphQLSchema schema sources
+//
+{{if not .GraphQLHandler}}// {{end}}//go:embed all:graphql
+var GraphQLSchema embed.FS
 `
 
 	mitLicenseTemplate = `The MIT License (MIT)
@@ -384,10 +397,8 @@ ENV WORKDIR=services/$SERVICE_NAME/
 ENV BUILD_NUMBER=$BUILD_NUMBER
 
 RUN mkdir -p /usr/app/services/$SERVICE_NAME
-RUN mkdir -p /usr/app/services/$SERVICE_NAME/api
 COPY --from=service_builder /usr/app/bin bin
 COPY --from=service_builder /usr/app/services/$SERVICE_NAME/.env /usr/app/services/$SERVICE_NAME/.env
-COPY --from=service_builder /usr/app/services/$SERVICE_NAME/api /usr/app/services/$SERVICE_NAME/api
 
 ENTRYPOINT ["./bin"]
 `

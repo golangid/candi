@@ -5,15 +5,16 @@ const serviceMainTemplate = `// {{.Header}}
 package {{clean $.ServiceName}}
 
 import (
-	"{{.LibraryName}}/codebase/factory"
-	"{{.LibraryName}}/codebase/factory/dependency"
-	"{{.LibraryName}}/codebase/factory/types"
-	"{{.LibraryName}}/config"
-
-	"{{$.PackagePrefix}}/configs"
 {{- range $module := .Modules}}
 	"{{$.PackagePrefix}}/internal/modules/{{$module.ModuleName}}"
 {{- end }}
+
+	"{{$.PackagePrefix}}/configs"
+
+	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/config"
 )
 
 // Service model

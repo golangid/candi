@@ -8,28 +8,28 @@ package configs
 import (
 	"context"
 
+	"{{.PackagePrefix}}/api"
 	` + "{{ if .IsMonorepo }}\"monorepo/sdk\"\n	{{end}}" + `"{{.PackagePrefix}}/pkg/shared"
 	"{{.PackagePrefix}}/pkg/shared/repository"
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
-	"{{.LibraryName}}/broker"
-	"{{.LibraryName}}/candihelper"
-	"{{.LibraryName}}/candishared"
-	"{{.LibraryName}}/candiutils"
-	"{{.LibraryName}}/codebase/factory/dependency"
-	"{{.LibraryName}}/codebase/interfaces"
-	"{{.LibraryName}}/config"
-	{{ if not (or .SQLDeps .MongoDeps .RedisDeps) }}// {{ end }}"{{.LibraryName}}/config/database"
+	"github.com/golangid/candi/broker"
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/candiutils"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/interfaces"
+	"github.com/golangid/candi/config"
+	{{ if not (or .SQLDeps .MongoDeps .RedisDeps) }}// {{ end }}"github.com/golangid/candi/config/database"
 	{{ if .ArangoDeps}} arango "github.com/golangid/candi-plugin/arangodb-adapter" {{ end }}
-	"{{.LibraryName}}/logger"
-	"{{.LibraryName}}/middleware"
-	"{{.LibraryName}}/tracer"
-	"{{.LibraryName}}/validator"
+	"github.com/golangid/candi/logger"
+	"github.com/golangid/candi/middleware"
+	"github.com/golangid/candi/tracer"
+	"github.com/golangid/candi/validator"
 )
 
 // LoadServiceConfigs load selected dependency configuration in this service
 func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
-
 	var sharedEnv shared.Environment
 	candihelper.MustParseEnv(&sharedEnv)
 	shared.SetEnv(sharedEnv)
@@ -41,10 +41,10 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 		jaeger := tracer.InitJaeger(baseCfg.ServiceName)
 		{{if not .RedisDeps}}// {{end}}redisDeps := database.InitRedis()
 		{{if not .SQLDeps}}// {{end}}sqlDeps := database.InitSQLDatabase()
-		{{if not .MongoDeps}}// {{end}}mongoDeps := database.InitMongoDB(ctx)
-		locker := {{if not .RedisDeps}}&candiutils.NoopLocker{}{{else}}candiutils.NewRedisLocker(redisDeps.WritePool()){{end}}` +
-		"{{if .ArangoDeps}}\n		arangoDeps := arango.InitArangoDB(ctx, sharedEnv.DbArangoReadHost, sharedEnv.DbArangoWriteHost){{end}}" + `
+		{{if not .MongoDeps}}// {{end}}mongoDeps := database.InitMongoDB(ctx)` + `{{if .ArangoDeps}}
+		arangoDeps := arango.InitArangoDB(ctx, sharedEnv.DbArangoReadHost, sharedEnv.DbArangoWriteHost){{end}}` + `
 ` + "{{ if .IsMonorepo }}\n		sdk.SetGlobalSDK(\n			// init service client sdk\n		)\n{{end}}" + `
+		locker := {{if not .RedisDeps}}&candiutils.NoopLocker{}{{else}}candiutils.NewRedisLocker(redisDeps.WritePool()){{end}}
 
 		brokerDeps := broker.InitBrokers(
 			{{if not .KafkaHandler}}// {{ end }}broker.NewKafkaBroker(),
@@ -52,10 +52,13 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 			{{if not .RedisSubsHandler}}// {{ end }}broker.NewRedisBroker(redisDeps.WritePool()),
 		)
 
+		validatorDeps := validator.NewValidator()
+		validatorDeps.JSONSchema.SchemaStorage = validator.NewFileSystemStorage(api.JSONSchema, "jsonschema")
+
 		// inject all service dependencies
 		// See all option in dependency package
 		deps = dependency.InitDependency(
-			dependency.SetValidator(validator.NewValidator()),
+			dependency.SetValidator(validatorDeps),
 			dependency.SetBrokers(brokerDeps.GetBrokers()),
 			dependency.SetLocker(locker),
 			{{if not .RedisDeps}}// {{end}}dependency.SetRedisPool(redisDeps),
@@ -120,12 +123,17 @@ func SetEnv(env Environment) {
 
 package configs
 
-import ({{if not .MongoDeps}}
-	taskqueueworker "{{.LibraryName}}/codebase/app/task_queue_worker"{{end}}
-	"{{.LibraryName}}/codebase/factory"
-	"{{.LibraryName}}/codebase/factory/appfactory"
-	"{{.LibraryName}}/config/env"{{if .FiberRestHandler}}
-	
+import (
+	"{{.PackagePrefix}}/api"
+
+	"github.com/golangid/candi/candihelper"
+	graphqlserver "github.com/golangid/candi/codebase/app/graphql_server"{{if not .FiberRestHandler}}
+	restserver "github.com/golangid/candi/codebase/app/rest_server"{{end}}
+	{{if not .MongoDeps}}taskqueueworker "github.com/golangid/candi/codebase/app/task_queue_worker"{{end}}
+	"github.com/golangid/candi/codebase/factory"
+	"github.com/golangid/candi/codebase/factory/appfactory"
+	"github.com/golangid/candi/config/env"{{if .FiberRestHandler}}
+
 	fiberrest "github.com/golangid/candi-plugin/fiber-rest"{{end}}{{if not (or .SQLDeps .MongoDeps)}}
 
 	"database/sql"
@@ -183,9 +191,15 @@ func InitAppFromEnvironmentConfig(service factory.ServiceFactory) (apps []factor
 	}
 
 	if env.BaseEnv().UseREST {
-		apps = append(apps, {{if .FiberRestHandler}}fiberrest.SetupFiberServer(service){{else}}appfactory.SetupRESTServer(service){{end}})
+		apps = append(apps, {{if .FiberRestHandler}}fiberrest.SetupFiberServer(service, fiberrest.AddGraphQLOption(
+			graphqlserver.SetSchemaSource(candihelper.LoadAllFileFromFS(api.GraphQLSchema, ".", ".graphql")),
+		)){{else}}appfactory.SetupRESTServer(service, restserver.AddGraphQLOption(
+			graphqlserver.SetSchemaSource(candihelper.LoadAllFileFromFS(api.GraphQLSchema, ".", ".graphql")),
+		)){{end}})
 	} else if env.BaseEnv().UseGraphQL {
-		apps = append(apps, appfactory.SetupGraphQLServer(service))
+		apps = append(apps, appfactory.SetupGraphQLServer(service, graphqlserver.SetSchemaSource(
+			candihelper.LoadAllFileFromFS(api.GraphQLSchema, ".", ".graphql"),
+		)))
 	}
 	if env.BaseEnv().UseGRPC {
 		apps = append(apps, appfactory.SetupGRPCServer(service))

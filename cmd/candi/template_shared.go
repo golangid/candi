@@ -10,8 +10,8 @@ package shared
 import (
 	"context"
 
-	"{{.LibraryName}}/candishared"
-	"{{.LibraryName}}/logger"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/logger"
 )
 
 // DefaultMiddleware for middleware validator example
@@ -49,9 +49,9 @@ import (
 	"reflect"
 	"strings"
 
-	"{{.LibraryName}}/candihelper"
-	"{{.LibraryName}}/config/env"
-	"{{.LibraryName}}/tracer"
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/config/env"
+	"github.com/golangid/candi/tracer"
 
 	"gorm.io/gorm"
 )

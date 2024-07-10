@@ -36,7 +36,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 		TargetDir: "proto/", IsDir: true,
 	}
 	apiGraphQLStructure := FileStructure{
-		TargetDir: "graphql/", IsDir: true, SkipFunc: func() bool { return !srvConfig.GraphQLHandler },
+		TargetDir: "graphql/", IsDir: true, SkipAll: !srvConfig.GraphQLHandler,
 	}
 	apiJSONSchemaStructure := FileStructure{
 		TargetDir: "jsonschema/", IsDir: true,
@@ -44,7 +44,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 
 	apiGraphQLSchemaStructure := FileStructure{
 		FromTemplate: true, DataSource: srvConfig, Source: defaultGraphqlRootSchema, FileName: "_schema.graphql",
-		SkipFunc: func() bool { return !srvConfig.GraphQLHandler },
+		SkipAll: !srvConfig.GraphQLHandler,
 	}
 
 	moduleStructure := FileStructure{
@@ -52,60 +52,67 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 	}
 	var sharedDomainFiles, migrationFiles []FileStructure
 
+	var newModules []string
 	for i, mod := range srvConfig.Modules {
-		mod.configHeader = srvConfig.configHeader
-		mod.config = srvConfig.config
 		if mod.Skip {
 			continue
 		}
 
+		mod.configHeader = srvConfig.configHeader
+		if flagParam.initService {
+			mod.config = srvConfig.config
+		}
+		newModules = append(newModules, mod.ModuleName)
 		var repoModule = []FileStructure{
 			{FromTemplate: true, DataSource: mod, Source: templateRepositoryAbstraction, FileName: "repository.go"},
 		}
 		repoModule = append(repoModule, parseRepositoryModule(mod)...)
 
+		workerHandlers := []FileStructure{
+			{FromTemplate: true, DataSource: mod, Source: deliveryKafkaTemplate, FileName: "kafka_handler.go", SkipAll: !mod.KafkaHandler},
+			{FromTemplate: true, DataSource: mod, Source: deliveryRedisTemplate, FileName: "redis_handler.go", SkipAll: !mod.RedisSubsHandler},
+			{FromTemplate: true, DataSource: mod, Source: deliveryCronTemplate, FileName: "cron_handler.go", SkipAll: !mod.SchedulerHandler},
+			{FromTemplate: true, DataSource: mod, Source: deliveryTaskQueueTemplate, FileName: "taskqueue_handler.go", SkipAll: !mod.TaskQueueHandler},
+			{FromTemplate: true, DataSource: mod, Source: deliveryPostgresListenerTemplate, FileName: "postgres_listener_handler.go", SkipAll: !mod.PostgresListenerHandler},
+			{FromTemplate: true, DataSource: mod, Source: deliveryRabbitMQTemplate, FileName: "rabbitmq_handler.go", SkipAll: !mod.RabbitMQHandler},
+		}
+		for _, pl := range srvConfig.workerPlugins {
+			workerHandlers = append(workerHandlers, FileStructure{
+				FromTemplate: true, Source: deliveryWorkerPluginTemplate, FileName: strings.ToLower(pl.name) + "_handler.go",
+				DataSource: map[string]string{
+					"PackagePrefix": mod.PackagePrefix, "WorkerPluginName": pl.name, "ModuleName": mod.ModuleName,
+				},
+			})
+		}
 		cleanArchModuleDir := []FileStructure{
 			{
 				TargetDir: "delivery/", IsDir: true,
 				Childs: []FileStructure{
-					{TargetDir: "graphqlhandler/", IsDir: true, SkipFunc: func() bool { return !srvConfig.GraphQLHandler },
+					{TargetDir: "graphqlhandler/", IsDir: true, SkipAll: !mod.GraphQLHandler,
 						Childs: []FileStructure{
 							{FromTemplate: true, DataSource: mod, Source: deliveryGraphqlRootTemplate, FileName: "root_resolver.go"},
 							{FromTemplate: true, DataSource: mod, Source: deliveryGraphqlQueryTemplate, FileName: "query_resolver.go"},
 							{FromTemplate: true, DataSource: mod, Source: deliveryGraphqlMutationTemplate, FileName: "mutation_resolver.go"},
 							{FromTemplate: true, DataSource: mod, Source: deliveryGraphqlSubscriptionTemplate, FileName: "subscription_resolver.go"},
 						}},
-					{TargetDir: "grpchandler/", IsDir: true, SkipFunc: func() bool { return !srvConfig.GRPCHandler },
+					{TargetDir: "grpchandler/", IsDir: true, SkipAll: !mod.GRPCHandler,
 						Childs: []FileStructure{
 							{FromTemplate: true, DataSource: mod, Source: deliveryGRPCTemplate, FileName: "grpchandler.go"},
 						}},
-					{TargetDir: "resthandler/", IsDir: true, SkipFunc: func() bool { return !srvConfig.RestHandler },
+					{TargetDir: "resthandler/", IsDir: true, SkipAll: !mod.RestHandler,
 						Childs: []FileStructure{
 							{FromTemplate: true, DataSource: mod, Source: deliveryRestTemplate, FileName: "resthandler.go"},
 							{FromTemplate: true, DataSource: mod, Source: deliveryRestTestTemplate, FileName: "resthandler_test.go"},
 						}},
-					{TargetDir: "workerhandler/", IsDir: true, Skip: !srvConfig.IsWorkerActive,
-						Childs: []FileStructure{
-							{FromTemplate: true, DataSource: mod, Source: deliveryKafkaTemplate, FileName: "kafka_handler.go",
-								SkipFunc: func() bool { return !srvConfig.KafkaHandler }},
-							{FromTemplate: true, DataSource: mod, Source: deliveryRedisTemplate, FileName: "redis_handler.go",
-								SkipFunc: func() bool { return !srvConfig.RedisSubsHandler }},
-							{FromTemplate: true, DataSource: mod, Source: deliveryCronTemplate, FileName: "cron_handler.go",
-								SkipFunc: func() bool { return !srvConfig.SchedulerHandler }},
-							{FromTemplate: true, DataSource: mod, Source: deliveryTaskQueueTemplate, FileName: "taskqueue_handler.go",
-								SkipFunc: func() bool { return !srvConfig.TaskQueueHandler }},
-							{FromTemplate: true, DataSource: mod, Source: deliveryPostgresListenerTemplate, FileName: "postgres_listener_handler.go",
-								SkipFunc: func() bool { return !srvConfig.PostgresListenerHandler }},
-							{FromTemplate: true, DataSource: mod, Source: deliveryRabbitMQTemplate, FileName: "rabbitmq_handler.go",
-								SkipFunc: func() bool { return !srvConfig.RabbitMQHandler }},
-						}},
+					{TargetDir: "workerhandler/", IsDir: true, Skip: !srvConfig.IsWorkerActive, Childs: workerHandlers},
 				},
 			},
 			{
 				TargetDir: "domain/", IsDir: true,
 				Childs: []FileStructure{
-					{FromTemplate: true, DataSource: mod, Source: templateModuleDomain, FileName: "filter.go"},
+					{FromTemplate: true, DataSource: mod, Source: "package domain\n", FileName: "const.go"},
 					{FromTemplate: true, DataSource: mod, Source: "package domain\n", FileName: "payload.go"},
+					{FromTemplate: true, DataSource: mod, Source: templateModuleDomain, FileName: "filter.go"},
 					{FromTemplate: true, DataSource: mod, Source: templateModuleRequestDomain, FileName: "request.go"},
 					{FromTemplate: true, DataSource: mod, Source: templateModuleResponseDomain, FileName: "response.go"},
 				},
@@ -149,7 +156,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 			Childs: []FileStructure{
 				{FromTemplate: true, DataSource: mod, Source: defaultGRPCProto, FileName: mod.ModuleName + ".proto"},
 			},
-			SkipFunc: func() bool { return !srvConfig.GRPCHandler },
+			SkipAll: !srvConfig.GRPCHandler,
 		})
 		apiJSONSchemaStructure.Childs = append(apiJSONSchemaStructure.Childs, FileStructure{
 			TargetDir: mod.ModuleName + "/", IsDir: true,
@@ -160,7 +167,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 		})
 		apiGraphQLStructure.Childs = append(apiGraphQLStructure.Childs, FileStructure{
 			FromTemplate: true, DataSource: mod, Source: defaultGraphqlSchema, FileName: mod.ModuleName + ".graphql",
-			SkipFunc: func() bool { return !srvConfig.GraphQLHandler },
+			SkipAll: !srvConfig.GraphQLHandler,
 		})
 
 		// for shared domain
@@ -173,9 +180,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 				candihelper.ToInt(time.Now().Format("20060102150405"))+i,
 				candihelper.ToDelimited(pluralize.NewClient().Plural(mod.ModuleName), '_'),
 			),
-			SkipFunc: func() bool {
-				return !srvConfig.SQLDeps
-			},
+			SkipAll: !srvConfig.SQLDeps,
 		})
 	}
 
@@ -187,25 +192,27 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 		},
 	}
 
-	internalServiceStructure.Childs = append(internalServiceStructure.Childs, FileStructure{
-		FromTemplate: true, DataSource: srvConfig, Source: serviceMainTemplate, FileName: "service.go",
-	})
-
+	var fileUpdates []fileUpdate
 	var baseDirectoryFile FileStructure
 	baseDirectoryFile.TargetDir = flagParam.outputFlag + srvConfig.ServiceName + "/"
 	baseDirectoryFile.DataSource = srvConfig
 	baseDirectoryFile.IsDir = true
 	switch scope {
 	case InitService:
+		internalServiceStructure.Childs = append(internalServiceStructure.Childs, FileStructure{
+			FromTemplate: true, DataSource: srvConfig, Source: serviceMainTemplate, FileName: "service.go",
+		})
+
 		apiGraphQLStructure.Childs = append(apiGraphQLStructure.Childs, []FileStructure{
 			apiGraphQLSchemaStructure,
 			{FromTemplate: true, DataSource: srvConfig, Source: templateGraphqlCommon, FileName: "_common.graphql",
-				SkipFunc: func() bool { return !srvConfig.GraphQLHandler }},
+				SkipAll: !srvConfig.GraphQLHandler},
 		}...)
 		apiStructure.Childs = []FileStructure{
 			apiGraphQLStructure,
 			apiProtoStructure,
 			apiJSONSchemaStructure,
+			{FromTemplate: true, Source: apiEmbedTemplate, FileName: "api.go"},
 		}
 		migrationFiles = append(migrationFiles, FileStructure{FromTemplate: true, DataSource: srvConfig,
 			Source: templateCmdMigrationInitTable, FileName: "00000000000000_init_tables.go"})
@@ -216,13 +223,9 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 				{TargetDir: "migration/", IsDir: true, Childs: []FileStructure{
 					{FileName: ".gitkeep"},
 					{FromTemplate: true, DataSource: srvConfig, Source: templateCmdMigration, FileName: "migration.go",
-						SkipFunc: func() bool {
-							return !srvConfig.SQLDeps
-						}},
+						SkipAll: !srvConfig.SQLDeps},
 					{TargetDir: "migrations/", IsDir: true, Childs: migrationFiles,
-						SkipFunc: func() bool {
-							return !srvConfig.SQLDeps
-						}},
+						SkipAll: !srvConfig.SQLDeps},
 				}},
 			},
 		}
@@ -258,9 +261,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 			}},
 			{FromTemplate: true, DataSource: srvConfig, Source: gitignoreTemplate, FileName: ".gitignore"},
 			{FromTemplate: true, DataSource: srvConfig, Source: makefileTemplate, FileName: "Makefile"},
-			{FromTemplate: true, DataSource: srvConfig, Source: dockerfileTemplate, FileName: "Dockerfile", SkipFunc: func() bool {
-				return isWorkdirMonorepo()
-			}},
+			{FromTemplate: true, DataSource: srvConfig, Source: dockerfileTemplate, FileName: "Dockerfile", SkipAll: isWorkdirMonorepo()},
 			{FromTemplate: true, DataSource: srvConfig, Source: cmdMainTemplate, FileName: "main.go"},
 			{FromTemplate: true, DataSource: srvConfig, Source: envTemplate, FileName: ".env"},
 			{FromTemplate: true, DataSource: srvConfig, Source: envTemplate, FileName: ".env.sample"},
@@ -284,9 +285,7 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 			TargetDir: "cmd/", IsDir: true, Skip: true, Childs: []FileStructure{
 				{TargetDir: "migration/", IsDir: true, Skip: true, Childs: []FileStructure{
 					{TargetDir: "migrations/", IsDir: true, Skip: true, Childs: migrationFiles},
-				}, SkipFunc: func() bool {
-					return !srvConfig.SQLDeps
-				}},
+				}, SkipAll: !srvConfig.SQLDeps},
 			},
 		}
 		configsStructure.Skip = true
@@ -302,6 +301,12 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 		internalServiceStructure.Childs = append(internalServiceStructure.Childs, moduleStructure)
 		apiStructure.Skip = true
 		apiProtoStructure.SkipIfExist, apiGraphQLStructure.SkipIfExist, apiJSONSchemaStructure.SkipIfExist = true, true, true
+		apiGraphQLStructure.Childs = append(apiGraphQLStructure.Childs, []FileStructure{
+			{FromTemplate: true, DataSource: srvConfig, Source: defaultGraphqlRootSchema, FileName: "_schema.graphql",
+				SkipIfExist: true, SkipAll: !srvConfig.GraphQLHandler},
+			{FromTemplate: true, DataSource: srvConfig, Source: templateGraphqlCommon, FileName: "_common.graphql",
+				SkipIfExist: true, SkipAll: !srvConfig.GraphQLHandler},
+		}...)
 		apiStructure.Childs = []FileStructure{
 			apiProtoStructure, apiGraphQLStructure, apiJSONSchemaStructure,
 		}
@@ -317,21 +322,37 @@ func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceCo
 		if flagParam.serviceName != "" && srvConfig.IsMonorepo {
 			baseDirectoryFile.TargetDir = flagParam.outputFlag + flagParam.serviceName + "/"
 		}
+
+		var newModuleImports, newModuleInits []string
+		for _, moduleName := range newModules {
+			newModuleImports = append(newModuleImports,
+				fmt.Sprintf(`"%s/internal/modules/%s"`, srvConfig.PackagePrefix, cleanSpecialChar.Replace(moduleName)),
+			)
+			newModuleInits = append(newModuleInits, cleanSpecialChar.Replace(moduleName)+".NewModule(deps),")
+		}
+		fileUpdates = append(fileUpdates, []fileUpdate{
+			{filepath: baseDirectoryFile.TargetDir + "internal/service.go",
+				oldContent: "import (",
+				newContent: fmt.Sprintf("import (\n	%s", strings.Join(newModuleImports, "\n	"))},
+			{filepath: baseDirectoryFile.TargetDir + "internal/service.go",
+				oldContent: "modules := []factory.ModuleFactory{",
+				newContent: fmt.Sprintf("modules := []factory.ModuleFactory{\n		%s", strings.Join(newModuleInits, "\n	"))},
+		}...)
 	}
 
 	execGenerator(baseDirectoryFile)
-	if srvConfig.GraphQLHandler {
-		updateGraphQLRoot(&flagParam)
-	}
 	updateSharedUsecase(flagParam, srvConfig)
 	updateSharedRepository(flagParam, srvConfig)
+
+	for _, fu := range append(fileUpdates, getNeedFileUpdates(&srvConfig)...) {
+		fu.readFileAndApply()
+	}
 }
 
 func monorepoGenerator(flagParam flagParameter) {
 	var srvConfig serviceConfig
 	srvConfig.Header = fmt.Sprintf("Code generated by candi %s.", candi.Version)
 	srvConfig.IsMonorepo = true
-	srvConfig.LibraryName = flagParam.libraryNameFlag
 	sdkStructure := FileStructure{
 		TargetDir: "sdk/", IsDir: true, Childs: []FileStructure{
 			{FileName: ".gitkeep"},
@@ -366,7 +387,7 @@ func execGenerator(fl FileStructure) {
 		goto execChild
 	}
 
-	if fl.SkipFunc != nil && fl.SkipFunc() {
+	if fl.SkipAll {
 		return
 	}
 

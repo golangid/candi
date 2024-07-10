@@ -12,20 +12,18 @@ import (
 
 func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers, workerHandler map[string]bool) {
 	var mod moduleConfig
-	gqlCfg := cfg
-	gqlCfg.Modules = nil
+	modCfg := cfg
+	modCfg.Modules = nil
 	for _, m := range cfg.Modules {
 		if flagParam.moduleName == m.ModuleName {
 			mod = m
-			gqlCfg.Modules = append(gqlCfg.Modules, m)
+			modCfg.Modules = append(modCfg.Modules, m)
 			flagParam.modules = append(flagParam.modules, m.ModuleName)
 			continue
 		}
 
 		if isDirExist(strings.TrimPrefix(flagParam.outputFlag+flagParam.serviceName+"/internal/modules/"+m.ModuleName+"/delivery/graphqlhandler", "/")) {
-			m.configHeader = cfg.configHeader
-			m.config = cfg.config
-			gqlCfg.Modules = append(gqlCfg.Modules, m)
+			modCfg.Modules = append(modCfg.Modules, m)
 		}
 	}
 
@@ -33,24 +31,19 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 		log.Fatal("module is empty")
 	}
 
-	mod.configHeader = cfg.configHeader
-	mod.config = cfg.config
-
 	apiProtoStructure := FileStructure{
 		TargetDir: "proto/", IsDir: true, SkipIfExist: true,
 	}
 	apiGraphQLStructure := FileStructure{
 		TargetDir: "graphql/", IsDir: true, SkipIfExist: true, Childs: []FileStructure{
-			{FromTemplate: true, DataSource: gqlCfg, Source: defaultGraphqlRootSchema, FileName: "_schema.graphql", SkipIfExist: true},
-			{FromTemplate: true, DataSource: gqlCfg, SkipIfExist: true, Source: templateGraphqlCommon, FileName: "_common.graphql"},
+			{FromTemplate: true, DataSource: modCfg, Source: defaultGraphqlRootSchema, FileName: "_schema.graphql", SkipIfExist: true},
+			{FromTemplate: true, DataSource: modCfg, SkipIfExist: true, Source: templateGraphqlCommon, FileName: "_common.graphql"},
 		},
 	}
 	deliveryStructure := FileStructure{
 		TargetDir: "delivery/", IsDir: true, SkipIfExist: true,
 	}
 
-	replaceEnv, replaceConfigs, replaceMainModule := make(map[string]string), make(map[string]string), make(map[string]string)
-	deliveryPackageDir := fmt.Sprintf(`"%s/internal/modules/%s/delivery`, mod.PackagePrefix, mod.ModuleName)
 	for handler := range serverHandlers {
 		switch handler {
 		case RestHandler:
@@ -60,9 +53,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 					{FromTemplate: true, DataSource: mod, Source: deliveryRestTemplate, FileName: "resthandler.go"},
 				},
 			})
-			replaceEnv["USE_REST=false"] = "USE_REST=true"
-			replaceMainModule["// mod.restHandler"] = "mod.restHandler"
-			replaceMainModule["// "+deliveryPackageDir+"/resthandler"] = deliveryPackageDir + "/resthandler"
+
 		case GrpcHandler:
 			apiProtoStructure.Childs = append(apiProtoStructure.Childs, FileStructure{
 				TargetDir: mod.ModuleName + "/", IsDir: true,
@@ -75,9 +66,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 					{FromTemplate: true, DataSource: mod, Source: deliveryGRPCTemplate, FileName: "grpchandler.go"},
 				},
 			})
-			replaceEnv["USE_GRPC=false"] = "USE_GRPC=true"
-			replaceMainModule["// mod.grpcHandler"] = "mod.grpcHandler"
-			replaceMainModule["// "+deliveryPackageDir+"/grpchandler"] = deliveryPackageDir + "/grpchandler"
+
 		case GraphqlHandler:
 			apiGraphQLStructure.Childs = append(apiGraphQLStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: defaultGraphqlSchema, FileName: mod.ModuleName + ".graphql",
@@ -91,9 +80,6 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 					{FromTemplate: true, DataSource: mod, Source: deliveryGraphqlSubscriptionTemplate, FileName: "subscription_resolver.go"},
 				},
 			})
-			replaceEnv["USE_GRAPHQL=false"] = "USE_GRAPHQL=true"
-			replaceMainModule["// mod.graphqlHandler"] = "mod.graphqlHandler"
-			replaceMainModule["// "+deliveryPackageDir+"/graphqlhandler"] = deliveryPackageDir + "/graphqlhandler"
 		}
 	}
 
@@ -108,6 +94,15 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 	deliveryWorkerStructure := FileStructure{
 		TargetDir: "workerhandler/", IsDir: true, SkipIfExist: true, Skip: !cfg.IsWorkerActive,
 	}
+
+	for _, pl := range cfg.workerPlugins {
+		deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
+			FromTemplate: true, Source: deliveryWorkerPluginTemplate, FileName: strings.ToLower(pl.name) + "_handler.go",
+			DataSource: map[string]string{
+				"PackagePrefix": mod.PackagePrefix, "WorkerPluginName": pl.name, "ModuleName": mod.ModuleName,
+			},
+		})
+	}
 	mod.KafkaHandler = isDirExist(strings.TrimPrefix(flagParam.outputFlag+flagParam.serviceName+"/internal/modules/"+mod.ModuleName+"/delivery/workerhandler/kafka_handler.go", "/"))
 	mod.SchedulerHandler = isDirExist(strings.TrimPrefix(flagParam.outputFlag+flagParam.serviceName+"/internal/modules/"+mod.ModuleName+"/delivery/workerhandler/cron_handler.go", "/"))
 	mod.RedisSubsHandler = isDirExist(strings.TrimPrefix(flagParam.outputFlag+flagParam.serviceName+"/internal/modules/"+mod.ModuleName+"/delivery/workerhandler/redis_handler.go", "/"))
@@ -121,52 +116,40 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: deliveryKafkaTemplate, FileName: "kafka_handler.go",
 			})
-			replaceEnv["USE_KAFKA_CONSUMER=false"] = "USE_KAFKA_CONSUMER=true"
-			replaceConfigs["// broker.SetKafka(broker.NewKafkaBroker())"] = "	broker.SetKafka(broker.NewKafkaBroker())"
-			replaceMainModule["// types.Kafka"] = "types.Kafka"
-			replaceMainModule["// "+deliveryPackageDir+"/workerhandler"] = deliveryPackageDir + "/workerhandler"
+
 		case SchedulerHandler:
 			mod.SchedulerHandler = true
 			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: deliveryCronTemplate, FileName: "cron_handler.go",
 			})
-			replaceEnv["USE_CRON_SCHEDULER=false"] = "USE_CRON_SCHEDULER=true"
-			replaceMainModule["// types.Scheduler"] = "types.Scheduler"
-			replaceMainModule["// "+deliveryPackageDir+"/workerhandler"] = deliveryPackageDir + "/workerhandler"
+
 		case RedissubsHandler:
 			mod.RedisSubsHandler = true
 			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: deliveryRedisTemplate, FileName: "redis_handler.go",
 			})
-			replaceEnv["USE_REDIS_SUBSCRIBER=false"] = "USE_REDIS_SUBSCRIBER=true"
-			replaceMainModule["// types.RedisSubscriber"] = "types.RedisSubscriber"
+
 		case TaskqueueHandler:
 			mod.TaskQueueHandler = true
 			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: deliveryTaskQueueTemplate, FileName: "taskqueue_handler.go",
 			})
-			replaceEnv["USE_TASK_QUEUE_WORKER=false"] = "USE_TASK_QUEUE_WORKER=true"
-			replaceMainModule["// types.TaskQueue"] = "types.TaskQueue"
-			replaceMainModule["// "+deliveryPackageDir+"/workerhandler"] = deliveryPackageDir + "/workerhandler"
+
 		case PostgresListenerHandler:
 			mod.PostgresListenerHandler = true
 			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: deliveryPostgresListenerTemplate, FileName: "postgres_listener_handler.go",
 			})
-			replaceEnv["USE_POSTGRES_LISTENER_WORKER=false"] = "USE_POSTGRES_LISTENER_WORKER=true"
-			replaceMainModule["// types.PostgresListener"] = "types.PostgresListener"
-			replaceMainModule["// "+deliveryPackageDir+"/workerhandler"] = deliveryPackageDir + "/workerhandler"
+
 		case RabbitmqHandler:
 			mod.RabbitMQHandler = true
 			deliveryWorkerStructure.Childs = append(deliveryWorkerStructure.Childs, FileStructure{
 				FromTemplate: true, DataSource: mod, Source: deliveryRabbitMQTemplate, FileName: "rabbitmq_handler.go",
 			})
-			replaceEnv["USE_RABBITMQ_CONSUMER=false"] = "USE_RABBITMQ_CONSUMER=true"
-			replaceConfigs["// broker.SetRabbitMQ(broker.NewRabbitMQBroker())"] = "	broker.SetRabbitMQ(broker.NewRabbitMQBroker())"
-			replaceMainModule["// types.RabbitMQ"] = "types.RabbitMQ"
-			replaceMainModule["// "+deliveryPackageDir+"/workerhandler"] = deliveryPackageDir + "/workerhandler"
+
 		}
 	}
+
 	apiStructure := FileStructure{
 		TargetDir: "api/", IsDir: true, Skip: true, Childs: []FileStructure{
 			apiProtoStructure, apiGraphQLStructure,
@@ -188,29 +171,21 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 	root := FileStructure{
 		Skip: true, Childs: []FileStructure{
 			apiStructure, internalServiceStructure, {
-				Source: gqlCfg.toJSONString(), FileName: "candi.json",
+				Source: modCfg.toJSONString(), FileName: "candi.json",
 			},
 		},
 	}
 
 	if isWorkdirMonorepo() {
-		root.TargetDir = cfg.OutputDir + cfg.ServiceName + "/"
+		root.TargetDir = flagParam.outputFlag + cfg.ServiceName + "/"
 	}
 
 	execGenerator(root)
 
-	for old, new := range replaceEnv {
-		readFileAndApply(root.TargetDir+".env", old, new)
-		readFileAndApply(root.TargetDir+".env.sample", old, new)
-	}
-	for old, new := range replaceConfigs {
-		readFileAndApply(root.TargetDir+"configs/configs.go", old, new)
-	}
-	for old, new := range replaceMainModule {
-		readFileAndApply(root.TargetDir+"internal/modules/"+mod.ModuleName+"/module.go", old, new)
-	}
-	if serverHandlers[GraphqlHandler] {
-		updateGraphQLRoot(flagParam)
+	modCfg.flag = flagParam
+	modCfg.Modules = []moduleConfig{mod}
+	for _, fu := range getNeedFileUpdates(&modCfg) {
+		fu.readFileAndApply()
 	}
 }
 
@@ -257,24 +232,6 @@ func Set{{upper (clean $.ServiceName)}}({{lower (clean $.ServiceName)}} {{lower 
 		}
 		execGenerator(globalShared)
 	}
-}
-
-func updateGraphQLRoot(flagParam *flagParameter) {
-	path := "api/graphql/_schema.graphql"
-	if flagParam.serviceName != "" {
-		path = flagParam.outputFlag + flagParam.serviceName + "/" + path
-	}
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return
-	}
-	for _, moduleName := range flagParam.modules {
-		cleanMod, cleanUpperMod := candihelper.ToCamelCase(moduleName), strings.Title(candihelper.ToCamelCase(moduleName))
-		b = bytes.ReplaceAll(b, []byte("@candi:queryRoot"), []byte(fmt.Sprintf("@candi:queryRoot\n	%s: %sQueryResolver @auth(authType: BEARER)", cleanMod, cleanUpperMod)))
-		b = bytes.ReplaceAll(b, []byte("@candi:mutationRoot"), []byte(fmt.Sprintf("@candi:mutationRoot\n	%s: %sMutationResolver @auth(authType: BEARER)", cleanMod, cleanUpperMod)))
-		b = bytes.ReplaceAll(b, []byte("@candi:subscriptionRoot"), []byte(fmt.Sprintf("@candi:subscriptionRoot\n	%s: %sSubscriptionResolver", cleanMod, cleanUpperMod)))
-	}
-	os.WriteFile(path, b, 0644)
 }
 
 func updateSharedUsecase(flagParam flagParameter, cfg serviceConfig) {

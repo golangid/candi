@@ -8,8 +8,8 @@ package graphqlhandler
 import (
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 	
-	"{{.LibraryName}}/codebase/factory/dependency"
-	"{{.LibraryName}}/codebase/interfaces"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/interfaces"
 )
 
 // GraphQLHandler model
@@ -56,9 +56,9 @@ import (
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 
-	"{{.LibraryName}}/candihelper"
-	"{{.LibraryName}}/candishared"
-	"{{.LibraryName}}/tracer"
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/tracer"
 )
 
 // GetAll{{upper (camel .ModuleName)}} resolver
@@ -101,7 +101,7 @@ import (
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 
-	"{{.LibraryName}}/tracer"
+	"github.com/golangid/candi/tracer"
 )
 
 // Create{{upper (camel .ModuleName)}} resolver
@@ -160,7 +160,7 @@ import (
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 
-	"{{.LibraryName}}/logger"{{if and .MongoDeps (not .SQLDeps)}}
+	"github.com/golangid/candi/logger"{{if and .MongoDeps (not .SQLDeps)}}
 
 	"github.com/google/uuid"{{end}}
 )

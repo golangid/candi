@@ -106,7 +106,7 @@ import (
 	"net/http"
 	"time"
 
-	"{{.LibraryName}}/candiutils"
+	"github.com/golangid/candi/candiutils"
 )
 
 type {{lower (clean $.ServiceName)}}RESTImpl struct {

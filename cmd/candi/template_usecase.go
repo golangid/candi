@@ -11,7 +11,7 @@ import (
 	// @candi:usecaseImport
 	"{{$.PackagePrefix}}/pkg/shared/usecase/common"
 
-	"{{.LibraryName}}/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/dependency"
 )
 
 type (
@@ -86,7 +86,7 @@ import (
 	{{ if not (or .SQLDeps .MongoDeps .ArangoDeps) }}// {{end}}"{{.PackagePrefix}}/pkg/shared/repository"
 	"{{$.PackagePrefix}}/pkg/shared/usecase/common"
 
-	"{{.LibraryName}}/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/dependency"
 )
 
 // {{upper (camel .ModuleName)}}Usecase abstraction
@@ -127,8 +127,8 @@ import (
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 
-	"{{.LibraryName}}/candishared"
-	"{{.LibraryName}}/tracer"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/tracer"
 )
 
 func (uc *{{camel .ModuleName}}UsecaseImpl) GetAll{{upper (camel .ModuleName)}}(ctx context.Context, filter *domain.Filter{{upper (camel .ModuleName)}}) (result domain.Response{{upper (camel .ModuleName)}}List, err error) {
@@ -211,7 +211,7 @@ import (
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 
-	"{{.LibraryName}}/tracer"
+	"github.com/golangid/candi/tracer"
 )
 
 func (uc *{{camel .ModuleName}}UsecaseImpl) GetDetail{{upper (camel .ModuleName)}}(ctx context.Context, id {{if and .MongoDeps (not .SQLDeps)}}string{{else}}int{{end}}) (result domain.Response{{upper (camel .ModuleName)}}, err error) {
@@ -269,7 +269,7 @@ import (
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 
-	"{{.LibraryName}}/tracer"
+	"github.com/golangid/candi/tracer"
 )
 
 func (uc *{{camel .ModuleName}}UsecaseImpl) Create{{upper (camel .ModuleName)}}(ctx context.Context, req *domain.Request{{upper (camel .ModuleName)}}) (result domain.Response{{upper (camel .ModuleName)}}, err error) {
@@ -332,8 +332,8 @@ import (
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 
-	"{{.LibraryName}}/candishared"
-	"{{.LibraryName}}/tracer"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/tracer"
 )
 
 func (uc *{{camel .ModuleName}}UsecaseImpl) Update{{upper (camel .ModuleName)}}(ctx context.Context, data *domain.Request{{upper (camel .ModuleName)}}) (err error) {
@@ -426,7 +426,7 @@ import (
 	
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"{{end}}
 
-	"{{.LibraryName}}/tracer"
+	"github.com/golangid/candi/tracer"
 )
 
 func (uc *{{camel .ModuleName}}UsecaseImpl) Delete{{upper (camel .ModuleName)}}(ctx context.Context, id {{if and .MongoDeps (not .SQLDeps)}}string{{else}}int{{end}}) (err error) {
@@ -477,8 +477,8 @@ package usecase
 import (
 	"testing"
 
-	mockdeps "{{.LibraryName}}/mocks/codebase/factory/dependency"
-	mockinterfaces "{{.LibraryName}}/mocks/codebase/interfaces"
+	mockdeps "github.com/golangid/candi/mocks/codebase/factory/dependency"
+	mockinterfaces "github.com/golangid/candi/mocks/codebase/interfaces"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

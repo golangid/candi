@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/golangid/candi/candihelper"
@@ -13,8 +13,7 @@ import (
 func parseInput(flagParam *flagParameter) (srvConfig serviceConfig) {
 	defer func() { srvConfig.parseDefaultHeader() }()
 
-	serviceHandlers := make(map[string]bool)
-	workerHandlers := make(map[string]bool)
+	handlers := make(map[string]bool)
 	dependencies := make(map[string]bool)
 	var cmdInput string
 	var deliveryHandlerOption string
@@ -22,7 +21,6 @@ func parseInput(flagParam *flagParameter) (srvConfig serviceConfig) {
 	var newModules []moduleConfig
 
 	srvConfig = loadSavedConfig(flagParam)
-	srvConfig.IsMonorepo = flagParam.isMonorepo
 
 	scope, ok := scopeMap[flagParam.scopeFlag]
 	switch scope {
@@ -31,6 +29,7 @@ func parseInput(flagParam *flagParameter) (srvConfig serviceConfig) {
 		srvConfig.ServiceName = flagParam.serviceName
 
 	case AddModule:
+		flagParam.addModule = true
 		if flagParam.isMonorepo {
 		stageInputServiceNameModule:
 			flagParam.serviceName = readInput("Please input existing service name to be added module(s):")
@@ -96,10 +95,6 @@ stageInputModules:
 	sort.Strings(flagParam.modules)
 	srvConfig.Modules = append(srvConfig.Modules, newModules...)
 
-	if scope == AddModule {
-		srvConfig.disableAllHandler()
-	}
-
 stageSelectServerHandler:
 	deliveryHandlerOption, deliveryHandlerMap = filterServerHandler(&srvConfig, flagParam)
 	if len(deliveryHandlerMap) == 0 {
@@ -109,7 +104,7 @@ stageSelectServerHandler:
 	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
 		opt := strings.TrimSpace(str)
 		if serverName, ok := deliveryHandlerMap[opt]; ok {
-			if serviceHandlers[serverName] {
+			if handlers[serverName] {
 				fmt.Printf(RedFormat, "Duplicate server handler type")
 				goto stageSelectServerHandler
 			}
@@ -127,7 +122,7 @@ stageSelectServerHandler:
 				}
 			}
 
-			serviceHandlers[serverName] = true
+			handlers[serverName] = true
 		} else if str != "" {
 			fmt.Printf(RedFormat, "Invalid option, try again")
 			goto stageSelectServerHandler
@@ -139,52 +134,76 @@ stageSelectWorkerHandlers:
 	cmdInput = readInput("Please select worker handlers (separated by comma, enter for skip)\n" + deliveryHandlerOption)
 	for _, str := range strings.Split(strings.Trim(cmdInput, ","), ",") {
 		if workerName, ok := deliveryHandlerMap[strings.TrimSpace(str)]; ok {
-			workerHandlers[workerName] = true
+			handlers[workerName] = true
 		} else if str != "" {
 			fmt.Printf(RedFormat, "Invalid option, try again")
 			goto stageSelectWorkerHandlers
 		}
 	}
 
-	if len(serviceHandlers) == 0 && len(workerHandlers) == 0 {
+	if len(handlers) == 0 {
 		fmt.Printf(RedFormat, "No server/worker handler selected, try again")
 		goto stageSelectServerHandler
 	}
 
-	if scope == AddModule || scope == AddHandler {
-		if b, ok := serviceHandlers[RestHandler]; ok {
-			srvConfig.RestHandler = b
+	srvConfig.workerPlugins = make(map[string]plugin)
+	for k, v := range handlers {
+		if !v {
+			continue
 		}
-		if b, ok := serviceHandlers[GrpcHandler]; ok {
-			srvConfig.GRPCHandler = b
+		switch k {
+		case RestHandler:
+			srvConfig.RestHandler = v
+		case GrpcHandler:
+			srvConfig.GRPCHandler = v
+		case GraphqlHandler:
+			srvConfig.GraphQLHandler = v
+		case KafkaHandler:
+			srvConfig.KafkaHandler = v
+		case SchedulerHandler:
+			srvConfig.SchedulerHandler = v
+		case RedissubsHandler:
+			srvConfig.RedisSubsHandler = v
+		case TaskqueueHandler:
+			srvConfig.TaskQueueHandler = v
+		case PostgresListenerHandler:
+			srvConfig.PostgresListenerHandler = v
+		case RabbitmqHandler:
+			srvConfig.RabbitMQHandler = v
+		default:
+			plg := plugins[k]
+			if !slices.Contains(srvConfig.WorkerPlugins, k) {
+				srvConfig.WorkerPlugins = append(srvConfig.WorkerPlugins, k)
+			} else {
+				plg.editAppFactory = nil
+				plg.editConfig = nil
+			}
+			srvConfig.workerPlugins[k] = plg
 		}
-		if b, ok := serviceHandlers[GraphqlHandler]; ok {
-			srvConfig.GraphQLHandler = b
-		}
-		if b, ok := workerHandlers[KafkaHandler]; ok {
-			srvConfig.KafkaHandler = b
-		}
-		if b, ok := workerHandlers[SchedulerHandler]; ok {
-			srvConfig.SchedulerHandler = b
-		}
-		if b, ok := workerHandlers[RedissubsHandler]; ok {
-			srvConfig.RedisSubsHandler = b
-		}
-		if b, ok := workerHandlers[TaskqueueHandler]; ok {
-			srvConfig.TaskQueueHandler = b
-		}
-		if b, ok := workerHandlers[PostgresListenerHandler]; ok {
-			srvConfig.PostgresListenerHandler = b
-		}
-		if b, ok := workerHandlers[RabbitmqHandler]; ok {
-			srvConfig.RabbitMQHandler = b
-		}
-		srvConfig.checkWorkerActive()
+	}
+	srvConfig.checkWorkerActive()
 
-		srvConfig.OutputDir = flagParam.outputFlag
+	for i := range srvConfig.Modules {
+		srvConfig.Modules[i].config = srvConfig.config
+		srvConfig.Modules[i].configHeader = srvConfig.configHeader
+		srvConfig.Modules[i].RestHandler = handlers[RestHandler]
+		srvConfig.Modules[i].GRPCHandler = handlers[GrpcHandler]
+		srvConfig.Modules[i].GraphQLHandler = handlers[GraphqlHandler]
+		srvConfig.Modules[i].KafkaHandler = handlers[KafkaHandler]
+		srvConfig.Modules[i].SchedulerHandler = handlers[SchedulerHandler]
+		srvConfig.Modules[i].RedisSubsHandler = handlers[RedissubsHandler]
+		srvConfig.Modules[i].TaskQueueHandler = handlers[TaskqueueHandler]
+		srvConfig.Modules[i].PostgresListenerHandler = handlers[PostgresListenerHandler]
+		srvConfig.Modules[i].RabbitMQHandler = handlers[RabbitmqHandler]
+		srvConfig.Modules[i].WorkerPlugins = srvConfig.WorkerPlugins
+		srvConfig.Modules[i].checkWorkerActive()
+	}
+
+	if scope == AddModule || scope == AddHandler {
+		srvConfig.OutputDir = ""
 		if scope == AddHandler {
 			srvConfig.parseDefaultHeader()
-			scopeAddHandler(flagParam, srvConfig, serviceHandlers, workerHandlers)
+			scopeAddHandler(flagParam, srvConfig, handlers, handlers)
 		}
 		return
 	}
@@ -204,7 +223,7 @@ stageSelectDependencies:
 			goto stageSelectDependencies
 		}
 	}
-	if workerHandlers[RedissubsHandler] && !dependencies[RedisDeps] {
+	if handlers[RedissubsHandler] && !dependencies[RedisDeps] {
 		fmt.Printf(RedFormat, "Redis Subscriber need redis, try again")
 		goto stageSelectDependencies
 	}
@@ -229,7 +248,7 @@ stageSelectDependencies:
 		}
 	}
 
-	if workerHandlers[PostgresListenerHandler] && (!dependencies[SqldbDeps] || srvConfig.SQLDriver != "postgres") {
+	if handlers[PostgresListenerHandler] && (!dependencies[SqldbDeps] || srvConfig.SQLDriver != "postgres") {
 		fmt.Printf(RedFormat, "Postgres Event Listener Worker need Postgres config, try again")
 		goto stageSelectDependencies
 	}
@@ -256,23 +275,6 @@ stageUseLicense:
 		}
 	}
 
-	// custom package name
-	if packageOptions := strings.Split(os.Getenv(CandiPackagesEnv), ","); len(packageOptions) > 1 {
-	stageSelectPackageName:
-		cliWording := "Please select package name (choose one)\n"
-		inputPackageName := make(map[string]string, len(packageOptions))
-		for i, packageOpt := range packageOptions {
-			inputPackageName[strconv.Itoa(i+1)] = packageOpt
-			cliWording += strconv.Itoa(i+1) + ") " + packageOpt + "\n"
-		}
-		cmdInput = readInput(strings.TrimSpace(cliWording))
-		srvConfig.LibraryName, ok = inputPackageName[cmdInput]
-		if !ok {
-			fmt.Printf(RedFormat, "Invalid option, try again")
-			goto stageSelectPackageName
-		}
-	}
-
 	if flagParam.packagePrefixFlag != "" {
 		flagParam.packagePrefixFlag = strings.TrimSuffix(flagParam.packagePrefixFlag, "/") + "/"
 		srvConfig.PackagePrefix = flagParam.packagePrefixFlag + srvConfig.ServiceName
@@ -285,17 +287,7 @@ stageUseLicense:
 		srvConfig.ProtoSource = srvConfig.PackagePrefix + "/api/proto"
 	}
 
-	srvConfig.LibraryName = flagParam.libraryNameFlag
 	srvConfig.IsMonorepo = flagParam.isMonorepo
-	srvConfig.RestHandler = serviceHandlers[RestHandler]
-	srvConfig.GRPCHandler = serviceHandlers[GrpcHandler]
-	srvConfig.GraphQLHandler = serviceHandlers[GraphqlHandler]
-	srvConfig.KafkaHandler = workerHandlers[KafkaHandler]
-	srvConfig.SchedulerHandler = workerHandlers[SchedulerHandler]
-	srvConfig.RedisSubsHandler = workerHandlers[RedissubsHandler]
-	srvConfig.TaskQueueHandler = workerHandlers[TaskqueueHandler]
-	srvConfig.PostgresListenerHandler = workerHandlers[PostgresListenerHandler]
-	srvConfig.RabbitMQHandler = workerHandlers[RabbitmqHandler]
 	srvConfig.RedisDeps = dependencies[RedisDeps]
 	srvConfig.SQLDeps, srvConfig.MongoDeps, srvConfig.ArangoDeps = dependencies[SqldbDeps], dependencies[MongodbDeps], dependencies[ArangodbDeps]
 	srvConfig.checkWorkerActive()

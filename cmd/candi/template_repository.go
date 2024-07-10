@@ -10,7 +10,7 @@ import (
 	
 	{{ if .ArangoDeps}} arango "github.com/golangid/candi-plugin/arangodb-adapter" {{ end }}
 
-	"{{.LibraryName}}/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/dependency"
 )
 
 var (
@@ -38,8 +38,8 @@ import (
 
 	// @candi:repositoryImport
 
-	"{{.LibraryName}}/candishared"
-	"{{.LibraryName}}/tracer"` +
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/tracer"` +
 		`{{if .SQLUseGORM}}
 
 	{{ if .IsMonorepo }}"monorepo/globalshared"{{else}}"{{$.PackagePrefix}}/pkg/shared"{{end}}
@@ -333,7 +333,7 @@ import (
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 
-	"{{.LibraryName}}/candishared"
+	"github.com/golangid/candi/candishared"
 )
 
 // {{upper (camel .ModuleName)}}Repository abstract interface
@@ -362,9 +362,9 @@ import (
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 
-	"{{.LibraryName}}/candihelper"
-	"{{.LibraryName}}/candishared"
-	"{{.LibraryName}}/tracer"
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/tracer"
 )
 
 type {{camel .ModuleName}}RepoMongo struct {
@@ -506,7 +506,7 @@ import (
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 
-	"{{.LibraryName}}/tracer"
+	"github.com/golangid/candi/tracer"
 )
 
 type {{camel .ModuleName}}RepoArango struct {
@@ -577,8 +577,8 @@ import (
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 
-	"{{.LibraryName}}/candishared"
-	"{{.LibraryName}}/tracer"` +
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/tracer"` +
 		`{{if .SQLUseGORM}}
 
 	{{ if .IsMonorepo }}"monorepo/globalshared"{{else}}"{{$.PackagePrefix}}/pkg/shared"{{end}}

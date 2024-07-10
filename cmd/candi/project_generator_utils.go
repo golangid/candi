@@ -188,27 +188,33 @@ func loadSavedConfig(flagParam *flagParameter) serviceConfig {
 	json.Unmarshal(b, &savedConfig)
 	for i := range savedConfig.Modules {
 		savedConfig.Modules[i].Skip = true
+		savedConfig.Modules[i].config = savedConfig.config
+		savedConfig.Modules[i].configHeader = savedConfig.configHeader
 	}
 	if err := checkVersion(candi.Version, savedConfig.Version); err != nil {
 		log.Fatal(err)
 	}
 	savedConfig.Version = candi.Version
 	savedConfig.IsMonorepo = flagParam.isMonorepo
+	savedConfig.OutputDir = flagParam.outputFlag
 	return savedConfig
 }
 
 func filterServerHandler(cfg *serviceConfig, flagParam *flagParameter) (wording string, handlers map[string]string) {
 	handlers = make(map[string]string)
 	var options []string
-	if !cfg.RestHandler || (flagParam.addHandler && validateDir(flagParam.getFullModuleChildDir("delivery", "resthandler")) != nil) {
+	if flagParam.addModule || (!cfg.RestHandler ||
+		(flagParam.addHandler && validateDir(flagParam.getFullModuleChildDir("delivery", "resthandler")) != nil)) {
 		options = append(options, fmt.Sprintf("%d) REST API", len(options)+1))
 		handlers[strconv.Itoa(len(options))] = RestHandler
 	}
-	if !cfg.GRPCHandler || (flagParam.addHandler && validateDir(flagParam.getFullModuleChildDir("delivery", "grpchandler")) != nil) {
+	if flagParam.addModule || (!cfg.GRPCHandler ||
+		(flagParam.addHandler && validateDir(flagParam.getFullModuleChildDir("delivery", "grpchandler")) != nil)) {
 		options = append(options, fmt.Sprintf("%d) GRPC", len(options)+1))
 		handlers[strconv.Itoa(len(options))] = GrpcHandler
 	}
-	if !cfg.GraphQLHandler || (flagParam.addHandler && validateDir(flagParam.getFullModuleChildDir("delivery", "graphqlhandler")) != nil) {
+	if flagParam.addModule || (!cfg.GraphQLHandler ||
+		(flagParam.addHandler && validateDir(flagParam.getFullModuleChildDir("delivery", "graphqlhandler")) != nil)) {
 		options = append(options, fmt.Sprintf("%d) GraphQL", len(options)+1))
 		handlers[strconv.Itoa(len(options))] = GraphqlHandler
 	}
@@ -220,47 +226,212 @@ func filterServerHandler(cfg *serviceConfig, flagParam *flagParameter) (wording 
 func filterWorkerHandler(cfg *serviceConfig, flagParam *flagParameter) (wording string, handlers map[string]string) {
 	handlers = make(map[string]string)
 	var options []string
-	if !cfg.KafkaHandler || (flagParam.addHandler &&
-		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "kafka_handler.go")) != nil) {
+	if flagParam.addModule || (!cfg.KafkaHandler || (flagParam.addHandler &&
+		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "kafka_handler.go")) != nil)) {
 		options = append(options, fmt.Sprintf("%d) Kafka Consumer", len(options)+1))
 		handlers[strconv.Itoa(len(options))] = KafkaHandler
 	}
-	if !cfg.SchedulerHandler || (flagParam.addHandler &&
-		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "cron_handler.go")) != nil) {
-		options = append(options, fmt.Sprintf("%d) Scheduler", len(options)+1))
+	if flagParam.addModule || (!cfg.SchedulerHandler || (flagParam.addHandler &&
+		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "cron_handler.go")) != nil)) {
+		options = append(options, fmt.Sprintf("%d) Cron Scheduler", len(options)+1))
 		handlers[strconv.Itoa(len(options))] = SchedulerHandler
 	}
-	if !cfg.RedisSubsHandler || (flagParam.addHandler &&
-		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "redis_handler.go")) != nil) {
+	if flagParam.addModule || (!cfg.RedisSubsHandler || (flagParam.addHandler &&
+		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "redis_handler.go")) != nil)) {
 		options = append(options, fmt.Sprintf("%d) Redis Subscriber", len(options)+1))
 		handlers[strconv.Itoa(len(options))] = RedissubsHandler
 	}
-	if !cfg.TaskQueueHandler || (flagParam.addHandler &&
-		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "taskqueue_handler.go")) != nil) {
+	if flagParam.addModule || (!cfg.TaskQueueHandler || (flagParam.addHandler &&
+		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "taskqueue_handler.go")) != nil)) {
 		options = append(options, fmt.Sprintf("%d) Task Queue Worker", len(options)+1))
 		handlers[strconv.Itoa(len(options))] = TaskqueueHandler
 	}
-	if !cfg.PostgresListenerHandler || (flagParam.addHandler &&
-		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "postgres_listener_handler.go")) != nil) {
+	if flagParam.addModule || (!cfg.PostgresListenerHandler || (flagParam.addHandler &&
+		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "postgres_listener_handler.go")) != nil)) {
 		options = append(options, fmt.Sprintf("%d) Postgres Event Listener Worker", len(options)+1))
 		handlers[strconv.Itoa(len(options))] = PostgresListenerHandler
 	}
-	if !cfg.RabbitMQHandler || (flagParam.addHandler &&
-		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "rabbitmq_handler.go")) != nil) {
+	if flagParam.addModule || (!cfg.RabbitMQHandler || (flagParam.addHandler &&
+		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", "rabbitmq_handler.go")) != nil)) {
 		options = append(options, fmt.Sprintf("%d) RabbitMQ Consumer", len(options)+1))
 		handlers[strconv.Itoa(len(options))] = RabbitmqHandler
+	}
+	if flagParam.addModule || flagParam.initService || (flagParam.addHandler &&
+		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", strings.ToLower(pluginGCPPubSubWorker)+"_handler.go")) != nil) {
+		options = append(options, fmt.Sprintf("%d) GCP PubSub Subscriber (plugin)", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = pluginGCPPubSubWorker
+	}
+	if flagParam.addModule || flagParam.initService || (flagParam.addHandler &&
+		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", strings.ToLower(pluginSTOMPWorker)+"_handler.go")) != nil) {
+		options = append(options, fmt.Sprintf("%d) AMQ (STOMP) Consumer (plugin)", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = pluginSTOMPWorker
 	}
 
 	wording = strings.Join(options, "\n")
 	return
 }
 
-func readFileAndApply(filepath string, oldContent, newContent string) {
-	b, err := os.ReadFile(filepath)
+func getNeedFileUpdates(srvConfig *serviceConfig) (fileUpdates []fileUpdate) {
+	rootDir := srvConfig.getRootDir()
+	if srvConfig.RestHandler {
+		fileUpdates = append(fileUpdates, []fileUpdate{
+			{filepath: rootDir + ".env", oldContent: "USE_REST=false", newContent: "USE_REST=true"},
+			{filepath: rootDir + ".env.sample", oldContent: "USE_REST=false", newContent: "USE_REST=true"},
+		}...)
+	}
+	if srvConfig.GRPCHandler {
+		fileUpdates = append(fileUpdates, []fileUpdate{
+			{filepath: rootDir + ".env", oldContent: "USE_GRPC=false", newContent: "USE_GRPC=true"},
+			{filepath: rootDir + ".env.sample", oldContent: "USE_GRPC=false", newContent: "USE_GRPC=true"},
+		}...)
+	}
+	if srvConfig.GraphQLHandler {
+		fileUpdates = append(fileUpdates, []fileUpdate{
+			{filepath: rootDir + ".env", oldContent: "USE_GRAPHQL=false", newContent: "USE_GRAPHQL=true"},
+			{filepath: rootDir + ".env.sample", oldContent: "USE_GRAPHQL=false", newContent: "USE_GRAPHQL=true"},
+			{filepath: rootDir + "api/api.go", oldContent: "// //go:embed all:graphql", newContent: "//go:embed all:graphql"},
+		}...)
+	}
+
+	if srvConfig.KafkaHandler {
+		fileUpdates = append(fileUpdates, []fileUpdate{
+			{filepath: rootDir + ".env", oldContent: "USE_KAFKA_CONSUMER=false", newContent: "USE_KAFKA_CONSUMER=true"},
+			{filepath: rootDir + ".env.sample", oldContent: "USE_KAFKA_CONSUMER=false", newContent: "USE_KAFKA_CONSUMER=true"},
+			{filepath: rootDir + "configs/configs.go", oldContent: "// broker.NewKafkaBroker(),", newContent: "broker.NewKafkaBroker(),"},
+		}...)
+	}
+	if srvConfig.SchedulerHandler {
+		fileUpdates = append(fileUpdates, []fileUpdate{
+			{filepath: rootDir + ".env", oldContent: "USE_CRON_SCHEDULER=false", newContent: "USE_CRON_SCHEDULER=true"},
+			{filepath: rootDir + ".env.sample", oldContent: "USE_CRON_SCHEDULER=false", newContent: "USE_CRON_SCHEDULER=true"},
+		}...)
+	}
+	if srvConfig.RedisSubsHandler {
+		fileUpdates = append(fileUpdates, []fileUpdate{
+			{filepath: rootDir + ".env", oldContent: "USE_REDIS_SUBSCRIBER=false", newContent: "USE_REDIS_SUBSCRIBER=true"},
+			{filepath: rootDir + ".env.sample", oldContent: "USE_REDIS_SUBSCRIBER=false", newContent: "USE_REDIS_SUBSCRIBER=true"},
+			{filepath: rootDir + "configs/configs.go", oldContent: "// broker.NewRedisBroker(redisDeps.WritePool()),", newContent: "broker.NewRedisBroker(redisDeps.WritePool()),"},
+		}...)
+	}
+	if srvConfig.TaskQueueHandler {
+		fileUpdates = append(fileUpdates, []fileUpdate{
+			{filepath: rootDir + ".env", oldContent: "USE_TASK_QUEUE_WORKER=false", newContent: "USE_TASK_QUEUE_WORKER=true"},
+			{filepath: rootDir + ".env.sample", oldContent: "USE_TASK_QUEUE_WORKER=false", newContent: "USE_TASK_QUEUE_WORKER=true"},
+		}...)
+	}
+	if srvConfig.PostgresListenerHandler {
+		fileUpdates = append(fileUpdates, []fileUpdate{
+			{filepath: rootDir + ".env", oldContent: "USE_POSTGRES_LISTENER_WORKER=false", newContent: "USE_POSTGRES_LISTENER_WORKER=true"},
+			{filepath: rootDir + ".env.sample", oldContent: "USE_POSTGRES_LISTENER_WORKER=false", newContent: "USE_POSTGRES_LISTENER_WORKER=true"},
+		}...)
+	}
+	if srvConfig.RabbitMQHandler {
+		fileUpdates = append(fileUpdates, []fileUpdate{
+			{filepath: rootDir + ".env", oldContent: "USE_RABBITMQ_CONSUMER=false", newContent: "USE_RABBITMQ_CONSUMER=true"},
+			{filepath: rootDir + ".env.sample", oldContent: "USE_RABBITMQ_CONSUMER=false", newContent: "USE_RABBITMQ_CONSUMER=true"},
+			{filepath: rootDir + "configs/configs.go", oldContent: "// broker.NewRabbitMQBroker(),", newContent: "broker.NewRabbitMQBroker(),"},
+		}...)
+	}
+
+	for _, module := range srvConfig.Modules {
+		if module.Skip && !srvConfig.flag.addHandler {
+			continue
+		}
+		moduleName := cleanSpecialChar.Replace(module.ModuleName)
+		deliveryPackageDir := fmt.Sprintf(`"%s/internal/modules/%s/delivery`, module.PackagePrefix, moduleName)
+
+		if module.RestHandler {
+			fileUpdates = append(fileUpdates, []fileUpdate{
+				{filepath: rootDir + "internal/modules/" + moduleName + "/module.go",
+					oldContent: "// mod.restHandler", newContent: "mod.restHandler"},
+				{filepath: rootDir + "internal/modules/" + moduleName + "/module.go",
+					oldContent: "// " + deliveryPackageDir + "/resthandler", newContent: deliveryPackageDir + "/resthandler"},
+			}...)
+		}
+		if module.GRPCHandler {
+			fileUpdates = append(fileUpdates, []fileUpdate{
+				{filepath: rootDir + "internal/modules/" + moduleName + "/module.go",
+					oldContent: "// mod.grpcHandler", newContent: "mod.grpcHandler"},
+				{filepath: rootDir + "internal/modules/" + moduleName + "/module.go",
+					oldContent: "// " + deliveryPackageDir + "/grpchandler", newContent: deliveryPackageDir + "/grpchandler"},
+			}...)
+		}
+		if module.GraphQLHandler {
+			cleanMod, cleanUpperMod := candihelper.ToCamelCase(module.ModuleName), strings.Title(candihelper.ToCamelCase(module.ModuleName))
+			fileUpdates = append(fileUpdates, []fileUpdate{
+				{filepath: rootDir + "api/graphql/_schema.graphql",
+					oldContent: "type Query {", newContent: fmt.Sprintf("type Query {\n	%s: %sQueryResolver @auth(authType: BEARER)", cleanMod, cleanUpperMod)},
+				{filepath: rootDir + "api/graphql/_schema.graphql",
+					oldContent: "type Mutation {", newContent: fmt.Sprintf("type Mutation {\n	%s: %sMutationResolver @auth(authType: BEARER)", cleanMod, cleanUpperMod)},
+				{filepath: rootDir + "api/graphql/_schema.graphql",
+					oldContent: "type Subscription {", newContent: fmt.Sprintf("type Subscription {\n	%s: %sSubscriptionResolver", cleanMod, cleanUpperMod)},
+				{filepath: rootDir + "internal/modules/" + moduleName + "/module.go",
+					oldContent: "// mod.graphqlHandler", newContent: "mod.graphqlHandler"},
+				{filepath: rootDir + "internal/modules/" + moduleName + "/module.go",
+					oldContent: "// " + deliveryPackageDir + "/graphqlhandler", newContent: deliveryPackageDir + "/graphqlhandler"},
+			}...)
+		}
+		if workerActivations := module.constructModuleWorkerActivation(); len(workerActivations) > 0 {
+			fileUpdates = append(fileUpdates, fileUpdate{
+				filepath:   rootDir + "internal/modules/" + moduleName + "/module.go",
+				oldContent: "// " + deliveryPackageDir + "/workerhandler", newContent: deliveryPackageDir + "/workerhandler",
+			})
+			for _, workerActivation := range workerActivations {
+				fileUpdates = append(fileUpdates, fileUpdate{
+					filepath:   rootDir + "internal/modules/" + moduleName + "/module.go",
+					oldContent: "// " + workerActivation, newContent: workerActivation,
+				})
+			}
+		}
+	}
+
+	for _, pl := range srvConfig.workerPlugins {
+		for before, after := range pl.editConfig {
+			fileUpdates = append(fileUpdates, fileUpdate{
+				filepath: rootDir + "configs/configs.go", oldContent: before, newContent: after,
+			})
+		}
+		for before, after := range pl.editAppFactory {
+			fileUpdates = append(fileUpdates, fileUpdate{
+				filepath: rootDir + "configs/app_factory.go", oldContent: before, newContent: after,
+			})
+		}
+		for _, module := range srvConfig.Modules {
+			if module.Skip {
+				continue
+			}
+			moduleName := cleanSpecialChar.Replace(module.ModuleName)
+			deliveryPackageDir := fmt.Sprintf(`"%s/internal/modules/%s/delivery`, module.PackagePrefix, moduleName)
+			if !module.IsWorkerActive {
+				fileUpdates = append(fileUpdates, fileUpdate{
+					filepath:   rootDir + "internal/modules/" + moduleName + "/module.go",
+					oldContent: "// " + deliveryPackageDir + "/workerhandler",
+					newContent: deliveryPackageDir + "/workerhandler",
+				})
+			}
+			for before, after := range pl.editModule {
+				fileUpdates = append(fileUpdates, fileUpdate{
+					filepath:   rootDir + "internal/modules/" + moduleName + "/module.go",
+					oldContent: before, newContent: after,
+				})
+			}
+		}
+	}
+	return fileUpdates
+}
+
+type fileUpdate struct {
+	filepath   string
+	oldContent string
+	newContent string
+}
+
+func (f *fileUpdate) readFileAndApply() {
+	b, err := os.ReadFile(f.filepath)
 	if err != nil {
 		return
 	}
-	os.WriteFile(filepath, bytes.Replace(b, []byte(oldContent), []byte(newContent), -1), 0644)
+	os.WriteFile(f.filepath, bytes.Replace(b, []byte(f.oldContent), []byte(f.newContent), -1), 0644)
 }
 
 func getDefaultPackageName() (packageName string) {

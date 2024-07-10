@@ -14,13 +14,13 @@ import (
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
-	"{{.LibraryName}}/candihelper"
-	"{{.LibraryName}}/candishared"
-	restserver "{{.LibraryName}}/codebase/app/rest_server"
-	"{{.LibraryName}}/codebase/factory/dependency"
-	"{{.LibraryName}}/codebase/interfaces"
-	"{{.LibraryName}}/tracer"
-	"{{.LibraryName}}/wrapper"
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
+	restserver "github.com/golangid/candi/codebase/app/rest_server"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/interfaces"
+	"github.com/golangid/candi/tracer"
+	"github.com/golangid/candi/wrapper"
 )
 
 // RestHandler handler
@@ -230,10 +230,10 @@ import (
 	mockusecase "{{$.PackagePrefix}}/pkg/mocks/modules/{{cleanPathModule .ModuleName}}/usecase"
 	mocksharedusecase "{{$.PackagePrefix}}/pkg/mocks/shared/usecase"
 
-	"{{.LibraryName}}/candihelper"
-	"{{.LibraryName}}/candishared"
-	mockdeps "{{.LibraryName}}/mocks/codebase/factory/dependency"
-	mockinterfaces "{{.LibraryName}}/mocks/codebase/interfaces"
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
+	mockdeps "github.com/golangid/candi/mocks/codebase/factory/dependency"
+	mockinterfaces "github.com/golangid/candi/mocks/codebase/interfaces"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

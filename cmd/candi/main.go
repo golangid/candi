@@ -118,5 +118,7 @@ func selectScope(flagParam flagParameter, scope string) {
 	if flagParam.isMonorepo {
 		flagParam.parseMonorepoFlag()
 	}
-	projectGenerator(flagParam, scope, parseInput(&flagParam))
+	cfg := parseInput(&flagParam)
+	cfg.flag = &flagParam
+	projectGenerator(flagParam, scope, cfg)
 }

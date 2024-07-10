@@ -93,7 +93,6 @@ type configHeader struct {
 	GoVersion     string
 	Version       string
 	Header        string `json:"-"`
-	LibraryName   string
 	ServiceName   string
 	PackagePrefix string
 	ProtoSource   string
@@ -110,12 +109,22 @@ type config struct {
 	PostgresListenerHandler, RabbitMQHandler, IsWorkerActive           bool
 	RedisDeps, SQLDeps, MongoDeps, SQLUseGORM, ArangoDeps              bool
 	SQLDriver                                                          string
+	WorkerPlugins                                                      []string
 }
 
 type serviceConfig struct {
 	configHeader
 	config
-	Modules []moduleConfig
+	Modules       []moduleConfig
+	flag          *flagParameter    `json:"-"`
+	workerPlugins map[string]plugin `json:"-"`
+}
+
+func (s *serviceConfig) getRootDir() (rootDir string) {
+	if s.IsMonorepo || s.flag.initService {
+		return s.flag.outputFlag + s.ServiceName + "/"
+	}
+	return
 }
 
 func (s *serviceConfig) parseDefaultHeader() {
@@ -125,13 +134,15 @@ func (s *serviceConfig) parseDefaultHeader() {
 	s.GoVersion = getGoVersion()
 }
 
-func (s *serviceConfig) checkWorkerActive() {
+func (s *config) checkWorkerActive() bool {
 	s.IsWorkerActive = s.KafkaHandler ||
 		s.SchedulerHandler ||
 		s.RedisSubsHandler ||
 		s.PostgresListenerHandler ||
 		s.TaskQueueHandler ||
-		s.RabbitMQHandler
+		s.RabbitMQHandler ||
+		len(s.WorkerPlugins) > 0
+	return s.IsWorkerActive
 }
 func (s *serviceConfig) disableAllHandler() {
 	s.RestHandler = false
@@ -158,6 +169,28 @@ type moduleConfig struct {
 	Skip         bool `json:"-"`
 }
 
+func (m *moduleConfig) constructModuleWorkerActivation() (workerActivations []string) {
+	if m.KafkaHandler {
+		workerActivations = append(workerActivations, "types.Kafka")
+	}
+	if m.SchedulerHandler {
+		workerActivations = append(workerActivations, "types.Scheduler")
+	}
+	if m.RedisSubsHandler {
+		workerActivations = append(workerActivations, "types.RedisSubscriber")
+	}
+	if m.TaskQueueHandler {
+		workerActivations = append(workerActivations, "types.TaskQueue")
+	}
+	if m.PostgresListenerHandler {
+		workerActivations = append(workerActivations, "types.PostgresListener")
+	}
+	if m.RabbitMQHandler {
+		workerActivations = append(workerActivations, "types.RabbitMQ")
+	}
+	return workerActivations
+}
+
 // FileStructure model
 type FileStructure struct {
 	TargetDir    string
@@ -167,7 +200,7 @@ type FileStructure struct {
 	Source       string
 	FileName     string
 	Skip         bool
-	SkipFunc     func() bool `json:"-"`
+	SkipAll      bool
 	SkipIfExist  bool
 	Childs       []FileStructure
 }

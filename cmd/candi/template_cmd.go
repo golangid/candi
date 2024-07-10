@@ -12,8 +12,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"{{else if eq .SQLDriver "sqlite3"}}
 	_ "github.com/mattn/go-sqlite3"{{end}}
 
-	"{{.LibraryName}}/codebase/app"
-	"{{.LibraryName}}/config"
+	"github.com/golangid/candi/codebase/app"
+	"github.com/golangid/candi/config"
 
 	service "{{.PackagePrefix}}/internal"
 )
@@ -40,19 +40,19 @@ func main() {
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
-	"os"
+	"os"{{if eq .SQLDriver "mysql"}}
+	"strings"{{end}}
 
 	"{{$.PackagePrefix}}/cmd/migration/migrations"
 
-	"{{.LibraryName}}/candihelper"
-	"{{.LibraryName}}/config/database"
-	"{{.LibraryName}}/config/env"
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/config/env"
 
 	"github.com/pressly/goose/v3"
 
-	{{if eq .SQLDriver "postgres"}}_ "github.com/lib/pq"{{else if eq .SQLDriver "mysql"}}_ "github.com/go-sql-driver/mysql"{{else if eq .SQLDriver "sqlite3"}}_ "github.com/mattn/go-sqlite3"{{end}}
 	{{if eq .SQLDriver "sqlite3"}}"gorm.io/driver/sqlite"{{else}}"gorm.io/driver/{{.SQLDriver}}"{{end}}
 	"gorm.io/gorm"
 )
@@ -63,7 +63,22 @@ var (
 
 func main() {
 	env.Load("{{.ServiceName}}")
-	sqlDeps := database.InitSQLDatabase()
+	ctx := context.Background()
+
+	{{if eq .SQLDriver "mysql"}}dsn := strings.TrimLeft(env.BaseEnv().DbSQLWriteDSN, "mysql://"){{else}}dsn := env.BaseEnv().DbSQLWriteDSN{{end}}
+	gormWrite, err := gorm.Open({{if eq .SQLDriver "sqlite3"}}sqlite.Dialector{Conn: sqlDeps.WriteDB()}{{else}}{{ .SQLDriver }}.New({{ .SQLDriver }}.Config{
+		DSN: dsn,
+	}){{end}}, &gorm.Config{
+		SkipDefaultTransaction:                   true,
+		DisableForeignKeyConstraintWhenMigrating: true,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	db, err := gormWrite.DB()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	flags.Parse(os.Args[1:])
 	args := flags.Args()
@@ -72,6 +87,7 @@ func main() {
 		arguments = append(arguments, args[3:]...)
 	}
 
+	goose.SetDialect("{{.SQLDriver}}")
 	dir := os.Getenv("WORKDIR") + "cmd/migration/migrations"
 	switch args[0] {
 	case "create":
@@ -79,34 +95,22 @@ func main() {
 		if len(args) > 2 {
 			migrationType = args[2]
 		}
-		if err := goose.Create(sqlDeps.WriteDB(), dir, args[1], migrationType); err != nil {
+		if err := goose.Create(db, dir, args[1], migrationType); err != nil {
 			log.Fatalf("goose %v: %v", args[1], err)
 		}
 
 	default:
-		if err := goose.SetDialect("{{ .SQLDriver }}"); err != nil {
-			log.Fatal(err)
-		}
-		if err := goose.Run(args[0], sqlDeps.WriteDB(), dir, arguments...); err != nil {
-			log.Fatalf("goose %v: %v", args[0], err)
-		}
-
 		if migrateTables := migrations.GetMigrateTables(); len(migrateTables) > 0 {
-			gormWrite, err := gorm.Open({{if eq .SQLDriver "sqlite3"}}sqlite.Dialector{Conn: sqlDeps.WriteDB()}{{else}}{{ .SQLDriver }}.New({{ .SQLDriver }}.Config{
-				Conn: sqlDeps.WriteDB(),
-			}){{end}}, &gorm.Config{
-				SkipDefaultTransaction:                   true,
-				DisableForeignKeyConstraintWhenMigrating: true,
-			})
-			if err != nil {
-				log.Fatal(err)
-			}
 			tx := gormWrite.Begin()
-			if err := tx.AutoMigrate(migrateTables...); err != nil {
+			if err := gormWrite.AutoMigrate(migrateTables...); err != nil {
 				tx.Rollback()
 				log.Fatal(err)
 			}
 			tx.Commit()
+		}
+
+		if err := goose.RunWithOptionsContext(ctx, args[0], db, dir, arguments, goose.WithAllowMissing()); err != nil {
+			log.Fatalf("goose %v: %v", args[0], err)
 		}
 	}
 	log.Printf("\x1b[32;1mMigration to \"%s\" success\x1b[0m\n", candihelper.MaskingPasswordURL(env.BaseEnv().DbSQLWriteDSN))
@@ -115,13 +119,11 @@ func main() {
 
 	templateCmdMigrationInitTable = `package migrations
 
-var (
-	migrateTables []interface{}
-)
-
 // GetMigrateTables get migrate table list
-func GetMigrateTables() []interface{} {
-	return migrateTables
+func GetMigrateTables() []any {
+	return []any{
+		// add db model from shared domain
+	}
 }
 `
 

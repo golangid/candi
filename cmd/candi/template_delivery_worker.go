@@ -10,11 +10,11 @@ import (
 
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
-	"{{.LibraryName}}/candishared"
-	"{{.LibraryName}}/codebase/factory/dependency"
-	"{{.LibraryName}}/codebase/factory/types"
-	"{{.LibraryName}}/codebase/interfaces"
-	"{{.LibraryName}}/tracer"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/codebase/interfaces"
+	"github.com/golangid/candi/tracer"
 )
 
 // KafkaHandler struct
@@ -38,7 +38,7 @@ func (h *KafkaHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 
 // ProcessMessage from kafka consumer
 func (h *KafkaHandler) handle{{upper (camel .ModuleName)}}(eventContext *candishared.EventContext) error {
-	trace, _ := tracer.StartTraceWithContext(eventContext.Context(), "{{upper (camel .ModuleName)}}DeliveryKafka:Handle{{upper (camel .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(eventContext.Context(), "{{upper (camel .ModuleName)}}DeliveryKafka:Handle{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	fmt.Printf("message consumed in handler %s. key: %s, message: %s\n", eventContext.HandlerRoute(), eventContext.Key(), eventContext.Message())
@@ -46,7 +46,7 @@ func (h *KafkaHandler) handle{{upper (camel .ModuleName)}}(eventContext *candish
 	// exec usecase
 	// h.uc.SomethingUsecase()
 
-	return nil
+	return ctx.Err()
 }
 `
 
@@ -59,12 +59,12 @@ import (
 
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
-	"{{.LibraryName}}/candishared"
-	cronworker "{{.LibraryName}}/codebase/app/cron_worker"
-	"{{.LibraryName}}/codebase/factory/dependency"
-	"{{.LibraryName}}/codebase/factory/types"
-	"{{.LibraryName}}/codebase/interfaces"
-	"{{.LibraryName}}/tracer"
+	"github.com/golangid/candi/candishared"
+	cronworker "github.com/golangid/candi/codebase/app/cron_worker"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/codebase/interfaces"
+	"github.com/golangid/candi/tracer"
 )
 
 // CronHandler struct
@@ -87,7 +87,7 @@ func (h *CronHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 }
 
 func (h *CronHandler) handle{{upper (camel .ModuleName)}}(eventContext *candishared.EventContext) error {
-	trace, _ := tracer.StartTraceWithContext(eventContext.Context(), "{{upper (camel .ModuleName)}}DeliveryCron:Handle{{upper (camel .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(eventContext.Context(), "{{upper (camel .ModuleName)}}DeliveryCron:Handle{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	fmt.Printf("cron: execute in handler %s, message: %s\n", eventContext.HandlerRoute(), eventContext.Message())
@@ -95,7 +95,7 @@ func (h *CronHandler) handle{{upper (camel .ModuleName)}}(eventContext *candisha
 	// exec usecase
 	// h.uc.SomethingUsecase()
 
-	return nil
+	return ctx.Err()
 }
 `
 
@@ -108,11 +108,11 @@ import (
 
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
-	"{{.LibraryName}}/candishared"
-	"{{.LibraryName}}/codebase/factory/dependency"
-	"{{.LibraryName}}/codebase/factory/types"
-	"{{.LibraryName}}/codebase/interfaces"
-	"{{.LibraryName}}/tracer"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/codebase/interfaces"
+	"github.com/golangid/candi/tracer"
 )
 
 // RedisHandler struct
@@ -135,7 +135,7 @@ func (h *RedisHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 }
 
 func (h *RedisHandler) handle{{upper (camel .ModuleName)}}(eventContext *candishared.EventContext) error {
-	trace, _ := tracer.StartTraceWithContext(eventContext.Context(), "{{upper (camel .ModuleName)}}DeliveryRedis:Handle{{upper (camel .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(eventContext.Context(), "{{upper (camel .ModuleName)}}DeliveryRedis:Handle{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	fmt.Printf("redis subs: execute handler %s with message %s\n", eventContext.HandlerRoute(), eventContext.Message())
@@ -143,7 +143,7 @@ func (h *RedisHandler) handle{{upper (camel .ModuleName)}}(eventContext *candish
 	// exec usecase
 	// h.uc.SomethingUsecase()
 
-	return nil
+	return ctx.Err()
 }
 `
 
@@ -157,12 +157,12 @@ import (
 
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
-	"{{.LibraryName}}/candishared"
-	taskqueueworker "{{.LibraryName}}/codebase/app/task_queue_worker"
-	"{{.LibraryName}}/codebase/factory/dependency"
-	"{{.LibraryName}}/codebase/factory/types"
-	"{{.LibraryName}}/codebase/interfaces"
-	"{{.LibraryName}}/tracer"
+	"github.com/golangid/candi/candishared"
+	taskqueueworker "github.com/golangid/candi/codebase/app/task_queue_worker"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/codebase/interfaces"
+	"github.com/golangid/candi/tracer"
 )
 
 // TaskQueueHandler struct
@@ -187,7 +187,7 @@ func (h *TaskQueueHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 }
 
 func (h *TaskQueueHandler) handleTask{{upper (camel .ModuleName)}}(eventContext *candishared.EventContext) error {
-	trace, _ := tracer.StartTraceWithContext(eventContext.Context(), "{{upper (camel .ModuleName)}}DeliveryTaskQueue:HandleTask{{upper (camel .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(eventContext.Context(), "{{upper (camel .ModuleName)}}DeliveryTaskQueue:HandleTask{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	fmt.Printf("executing task '%s' has been %s retry, with message: %s\n",
@@ -198,7 +198,8 @@ func (h *TaskQueueHandler) handleTask{{upper (camel .ModuleName)}}(eventContext 
 
 	// exec usecase
 	// h.uc.SomethingUsecase()
-	time.Sleep(1*time.Second) // just for example process
+	time.Sleep(1 * time.Second) // just for example process
+	_ = ctx.Err()
 
 	return &candishared.ErrorRetrier{
 		Delay:   1 * time.Second,
@@ -217,13 +218,13 @@ import (
 
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
-	"{{.LibraryName}}/candihelper"
-	"{{.LibraryName}}/candishared"
-	postgresworker "{{.LibraryName}}/codebase/app/postgres_worker"
-	"{{.LibraryName}}/codebase/factory/dependency"
-	"{{.LibraryName}}/codebase/factory/types"
-	"{{.LibraryName}}/codebase/interfaces"
-	"{{.LibraryName}}/tracer"
+	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
+	postgresworker "github.com/golangid/candi/codebase/app/postgres_worker"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/codebase/interfaces"
+	"github.com/golangid/candi/tracer"
 )
 
 // PostgresListenerHandler struct
@@ -246,7 +247,7 @@ func (h *PostgresListenerHandler) MountHandlers(group *types.WorkerHandlerGroup)
 }
 
 func (h *PostgresListenerHandler) handleDataChangeOn{{upper (camel .ModuleName)}}(eventContext *candishared.EventContext) error {
-	trace, _ := tracer.StartTraceWithContext(eventContext.Context(), "{{upper (camel .ModuleName)}}DeliveryPostgresListener:HandleDataChange{{upper (camel .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(eventContext.Context(), "{{upper (camel .ModuleName)}}DeliveryPostgresListener:HandleDataChange{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	var payload postgresworker.EventPayload
@@ -260,7 +261,7 @@ func (h *PostgresListenerHandler) handleDataChangeOn{{upper (camel .ModuleName)}
 	// exec usecase
 	// h.uc.SomethingUsecase()
 
-	return nil
+	return ctx.Err()
 }
 `
 
@@ -273,11 +274,11 @@ import (
 
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
-	"{{.LibraryName}}/candishared"
-	"{{.LibraryName}}/codebase/factory/dependency"
-	"{{.LibraryName}}/codebase/factory/types"
-	"{{.LibraryName}}/codebase/interfaces"
-	"{{.LibraryName}}/tracer"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/codebase/interfaces"
+	"github.com/golangid/candi/tracer"
 )
 
 // RabbitMQHandler struct
@@ -300,7 +301,7 @@ func (h *RabbitMQHandler) MountHandlers(group *types.WorkerHandlerGroup) {
 }
 
 func (h *RabbitMQHandler) handleQueue{{upper (camel .ModuleName)}}(eventContext *candishared.EventContext) error {
-	trace, _ := tracer.StartTraceWithContext(eventContext.Context(), "{{upper (camel .ModuleName)}}DeliveryRabbitMQ:HandleQueue{{upper (camel .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(eventContext.Context(), "{{upper (camel .ModuleName)}}DeliveryRabbitMQ:HandleQueue{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	fmt.Printf("message consumed by module {{.ModuleName}}. message: %s\n", eventContext.Message())
@@ -308,7 +309,7 @@ func (h *RabbitMQHandler) handleQueue{{upper (camel .ModuleName)}}(eventContext 
 	// exec usecase
 	// h.uc.SomethingUsecase()
 
-	return nil
+	return ctx.Err()
 }
 `
 
@@ -321,11 +322,11 @@ import (
 
 	"{{.PackagePrefix}}/pkg/shared/usecase"
 
-	"{{.LibraryName}}/candishared"
-	"{{.LibraryName}}/codebase/factory/dependency"
-	"{{.LibraryName}}/codebase/factory/types"
-	"{{.LibraryName}}/codebase/interfaces"
-	"{{.LibraryName}}/tracer"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/codebase/interfaces"
+	"github.com/golangid/candi/tracer"
 )
 
 // {{.WorkerPluginName}}Handler struct
@@ -348,7 +349,7 @@ func (h *{{.WorkerPluginName}}Handler) MountHandlers(group *types.WorkerHandlerG
 }
 
 func (h *{{.WorkerPluginName}}Handler) handleTopic{{upper (camel .ModuleName)}}(eventContext *candishared.EventContext) error {
-	trace, _ := tracer.StartTraceWithContext(eventContext.Context(), "{{upper (camel .ModuleName)}}Delivery{{.WorkerPluginName}}:HandleTopic{{upper (camel .ModuleName)}}")
+	trace, ctx := tracer.StartTraceWithContext(eventContext.Context(), "{{upper (camel .ModuleName)}}Delivery{{.WorkerPluginName}}:HandleTopic{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
 	fmt.Printf("message consumed by module {{.ModuleName}}. message: %s\n", eventContext.Context())
@@ -356,7 +357,7 @@ func (h *{{.WorkerPluginName}}Handler) handleTopic{{upper (camel .ModuleName)}}(
 	// exec usecase
 	// h.uc.SomethingUsecase()
 
-	return nil
+	return ctx.Err()
 }
 `
 )

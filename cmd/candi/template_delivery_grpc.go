@@ -16,11 +16,11 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"{{.LibraryName}}/candishared"
-	"{{.LibraryName}}/codebase/factory/dependency"
-	"{{.LibraryName}}/codebase/factory/types"
-	"{{.LibraryName}}/codebase/interfaces"
-	"{{.LibraryName}}/tracer"
+	"github.com/golangid/candi/candishared"
+	"github.com/golangid/candi/codebase/factory/dependency"
+	"github.com/golangid/candi/codebase/factory/types"
+	"github.com/golangid/candi/codebase/interfaces"
+	"github.com/golangid/candi/tracer"
 )
 
 // GRPCHandler rpc handler
