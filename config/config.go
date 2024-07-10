@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"syscall"
 	"time"
 
@@ -56,7 +57,7 @@ func (c *Config) LoadFunc(depsFunc func(context.Context) []interfaces.Closer) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				result <- fmt.Errorf("Failed init configuration :=> %v", r)
+				result <- fmt.Errorf("Failed init configuration :=> %v.\n%s\n", r, debug.Stack())
 			}
 			close(result)
 		}()
