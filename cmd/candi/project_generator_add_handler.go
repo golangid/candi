@@ -171,7 +171,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 	root := FileStructure{
 		Skip: true, Childs: []FileStructure{
 			apiStructure, internalServiceStructure, {
-				Source: modCfg.toJSONString(), FileName: "candi.json",
+				Source: cfg.toJSONString(), FileName: "candi.json",
 			},
 		},
 	}

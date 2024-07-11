@@ -70,6 +70,19 @@ func parseInput(flagParam *flagParameter) (srvConfig serviceConfig) {
 			goto stageReadInputModule
 		}
 		goto stageSelectServerHandler
+
+	case AddUsecase:
+	stageAddUsecaseReadInputModule:
+		flagParam.moduleName = candihelper.ToDelimited(readInput("Please input existing module name to be added usecase(s):"), '-')
+		moduleDir := flagParam.getFullModuleChildDir()
+		if err := validateDir(moduleDir); err != nil {
+			fmt.Print(err.Error())
+			goto stageAddUsecaseReadInputModule
+		}
+
+		flagParam.serviceName = srvConfig.ServiceName
+		addUsecase(flagParam, readInput("Please input usecase name:"))
+		return
 	}
 
 stageInputModules:

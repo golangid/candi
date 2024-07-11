@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"text/template"
 	"time"
@@ -16,7 +17,7 @@ import (
 
 var (
 	scopeMap = map[string]string{
-		"1": InitMonorepo, "2": InitService, "3": AddModule, "4": AddHandler,
+		"1": InitMonorepo, "2": InitService, "3": AddModule, "4": AddHandler, "5": AddUsecase,
 	}
 
 	dependencyMap = map[string]string{
@@ -203,4 +204,23 @@ type FileStructure struct {
 	SkipAll      bool
 	SkipIfExist  bool
 	Childs       []FileStructure
+}
+
+func (f *FileStructure) parseTemplate() (buff []byte) {
+	if f.FromTemplate {
+		if f.Source != "" {
+			buff = loadTemplate(f.Source, f.DataSource)
+		} else {
+			lastDir := filepath.Dir(f.TargetDir)
+			buff = defaultDataSource(lastDir[strings.LastIndex(lastDir, "/")+1:])
+		}
+	} else {
+		buff = []byte(f.Source)
+	}
+	return
+}
+
+func (f *FileStructure) writeFile(targetPath string) error {
+	fmt.Printf("creating %s...\n", targetPath+"/"+f.FileName)
+	return os.WriteFile(targetPath+"/"+f.FileName, f.parseTemplate(), 0644)
 }

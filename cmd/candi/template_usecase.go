@@ -503,4 +503,20 @@ func TestNew{{upper (camel .ModuleName)}}Usecase(t *testing.T) {
 	assert.NotNil(t, uc)
 }
 `
+
+	templateNewUsecase = `package usecase
+
+import (
+	"context"
+
+	"github.com/golangid/candi/tracer"
+)
+
+func (uc *{{camel .ModuleName}}UsecaseImpl) {{upper (camel .UsecaseName)}}(ctx context.Context) (err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}Usecase:{{upper (camel .UsecaseName)}}")
+	defer trace.Finish()
+
+	return
+}
+`
 )

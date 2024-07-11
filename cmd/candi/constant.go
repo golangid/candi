@@ -8,6 +8,7 @@ const (
 	InitMonorepo       = "initMonorepo"
 	RunServiceMonorepo = "runServiceMonorepo"
 	AddHandler         = "addHandler"
+	AddUsecase         = "addUsecase"
 
 	RestHandler             = "restHandler"
 	GrpcHandler             = "grpcHandler"

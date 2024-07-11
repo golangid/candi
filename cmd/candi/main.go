@@ -81,7 +81,8 @@ func main() {
 				"1) Init monorepo codebase\n" +
 				"2) Init service\n" +
 				"3) Add module(s) in service\n" +
-				"4) Add delivery handler(s) in module\033[0m\n>> ")
+				"4) Add delivery handler(s) in module\n" +
+				"5) Add usecase(s) in module\033[0m\n>> ")
 			flagParam.scopeFlag = readInput()
 		}
 
@@ -108,7 +109,7 @@ func selectScope(flagParam flagParameter, scope string) {
 		}
 		monorepoGenerator(flagParam)
 		return
-	case RunServiceMonorepo: // 5
+	case RunServiceMonorepo: // 6
 		serviceRunner(flagParam.serviceName)
 		return
 	case InitService:
