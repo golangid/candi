@@ -30,6 +30,7 @@ func scopeAddHandler(flagParam *flagParameter, cfg serviceConfig, serverHandlers
 	if mod.ModuleName == "" {
 		log.Fatal("module is empty")
 	}
+	mod.configHeader = cfg.configHeader
 
 	apiProtoStructure := FileStructure{
 		TargetDir: "proto/", IsDir: true, SkipIfExist: true,

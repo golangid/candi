@@ -509,10 +509,12 @@ func TestNew{{upper (camel .ModuleName)}}Usecase(t *testing.T) {
 import (
 	"context"
 
+	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
+
 	"github.com/golangid/candi/tracer"
 )
 
-func (uc *{{camel .ModuleName}}UsecaseImpl) {{upper (camel .UsecaseName)}}(ctx context.Context) (err error) {
+func (uc *{{camel .ModuleName}}UsecaseImpl) {{upper (camel .UsecaseName)}}(ctx context.Context, req *domain.Request{{upper (camel .UsecaseName)}}) (resp domain.Response{{upper (camel .UsecaseName)}}, err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "{{upper (camel .ModuleName)}}Usecase:{{upper (camel .UsecaseName)}}")
 	defer trace.Finish()
 

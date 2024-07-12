@@ -17,7 +17,7 @@ import (
 
 var (
 	scopeMap = map[string]string{
-		"1": InitMonorepo, "2": InitService, "3": AddModule, "4": AddHandler, "5": AddUsecase,
+		"1": InitMonorepo, "2": InitService, "3": AddModule, "4": AddHandler, "5": AddUsecase, "6": ApplyUsecase,
 	}
 
 	dependencyMap = map[string]string{

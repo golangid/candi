@@ -1,5 +1,11 @@
 package main
 
+import (
+	"strings"
+
+	"github.com/golangid/candi/candihelper"
+)
+
 const (
 	deliveryGraphqlRootTemplate = `// {{.Header}}
 
@@ -285,3 +291,18 @@ enum FilterSortEnum {
 }
 `
 )
+
+func getGraphQLFuncTemplate(moduleName, usecaseName string) string {
+	moduleName, usecaseName = strings.Title(moduleName), strings.Title(usecaseName)
+	return `// ` + usecaseName + ` resolver
+func (m *GraphQLHandler) ` + usecaseName + `(ctx context.Context, input struct{ Data domain.Request` + usecaseName + ` }) (data domain.Response` + usecaseName + `, err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "` + moduleName + `DeliveryGraphQL:` + usecaseName + `")
+	defer trace.Finish()
+
+	// if err := h.validator.ValidateDocument("` + strings.ToLower(moduleName) + `/` + candihelper.ToDelimited(usecaseName, '-') + `", body); err != nil {
+	// 	return data, err
+	// }
+	return m.uc.` + moduleName + `().` + usecaseName + `(ctx, &input.Data)
+}
+`
+}

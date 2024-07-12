@@ -15,7 +15,7 @@ import (
 )
 
 func projectGenerator(flagParam flagParameter, scope string, srvConfig serviceConfig) {
-	if flagParam.addHandler || scope == AddUsecase {
+	if flagParam.addHandler || scope == AddUsecase || scope == ApplyUsecase {
 		return
 	}
 

@@ -118,37 +118,6 @@ func isWorkdirMonorepo() bool {
 	return (errSdk == nil) && (errService == nil)
 }
 
-func inputServiceName() (serviceName string) {
-	serviceName = readInput("Please input service name:")
-	_, err := os.Stat(serviceName)
-	var errMessage string
-	if strings.TrimSpace(serviceName) == "" {
-		errMessage = "Service name cannot empty"
-	}
-	if !os.IsNotExist(err) {
-		errMessage = "Folder already exists"
-	}
-	if errMessage != "" {
-		fmt.Printf(RedFormat, errMessage+", try again")
-		serviceName = inputServiceName()
-	}
-	return
-}
-
-func inputOwnerName() (ownerName string) {
-	ownerName = readInput("Please input owner name:")
-	var errMessage string
-	if strings.TrimSpace(ownerName) == "" {
-		errMessage = "Owner name cannot empty"
-	}
-
-	if errMessage != "" {
-		fmt.Printf(RedFormat, errMessage+", try again")
-		ownerName = inputOwnerName()
-	}
-	return
-}
-
 func readInput(cmds ...string) string {
 	if len(cmds) > 0 {
 		logger.Printf("\033[1m%s\033[0m ", strings.Join(cmds, "\n"))
@@ -424,14 +393,34 @@ type fileUpdate struct {
 	filepath   string
 	oldContent string
 	newContent string
+
+	skipContains string
 }
 
 func (f *fileUpdate) readFileAndApply() {
+	fmt.Printf("updating %s...\n", f.filepath)
 	b, err := os.ReadFile(f.filepath)
 	if err != nil {
 		return
 	}
-	os.WriteFile(f.filepath, bytes.Replace(b, []byte(f.oldContent), []byte(f.newContent), -1), 0644)
+	if f.skipContains != "" && bytes.Contains(b, []byte(f.skipContains)) {
+		fmt.Printf("skip for %s...\n", f.filepath)
+		return
+	}
+	os.WriteFile(f.filepath, bytes.ReplaceAll(b, []byte(f.oldContent), []byte(f.newContent)), 0644)
+}
+
+func (f *fileUpdate) addContent() {
+	fmt.Printf("updating %s...\n", f.filepath)
+	b, err := os.ReadFile(f.filepath)
+	if err != nil {
+		return
+	}
+	if f.skipContains != "" && bytes.Contains(b, []byte(f.skipContains)) {
+		fmt.Printf("skip for %s...\n", f.filepath)
+		return
+	}
+	os.WriteFile(f.filepath, append(b, "\n"+f.newContent...), 0644)
 }
 
 func getDefaultPackageName() (packageName string) {
@@ -472,4 +461,57 @@ func checkVersion(cli, project string) error {
 		}
 	}
 	return nil
+}
+
+func getAllModuleHandler(path string) (wording string, handlers map[string]string) {
+	handlers = make(map[string]string)
+	var options []string
+	path += "/delivery"
+	if validateDir(path+"/resthandler") == nil {
+		options = append(options, fmt.Sprintf("%d) REST API", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = RestHandler
+	}
+	if validateDir(path+"/grpchandler") == nil {
+		options = append(options, fmt.Sprintf("%d) GRPC", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = GrpcHandler
+	}
+	if validateDir(path+"/graphqlhandler") == nil {
+		options = append(options, fmt.Sprintf("%d) GraphQL", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = GraphqlHandler
+	}
+	if validateDir(path+"/workerhandler/kafka_handler.go") == nil {
+		options = append(options, fmt.Sprintf("%d) Kafka Consumer", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = KafkaHandler
+	}
+	if validateDir(path+"/workerhandler/cron_handler.go") == nil {
+		options = append(options, fmt.Sprintf("%d) Cron Scheduler", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = SchedulerHandler
+	}
+	if validateDir(path+"/workerhandler/redis_handler.go") == nil {
+		options = append(options, fmt.Sprintf("%d) Redis Subscriber", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = RedissubsHandler
+	}
+	if validateDir(path+"/workerhandler/taskqueue_handler.go") == nil {
+		options = append(options, fmt.Sprintf("%d) Task Queue Worker", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = TaskqueueHandler
+	}
+	if validateDir(path+"/workerhandler/postgres_listener_handler.go") == nil {
+		options = append(options, fmt.Sprintf("%d) Postgres Event Listener Worker", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = PostgresListenerHandler
+	}
+	if validateDir(path+"/workerhandler/rabbitmq_handler.go") == nil {
+		options = append(options, fmt.Sprintf("%d) RabbitMQ Consumer", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = RabbitmqHandler
+	}
+	if validateDir(path+"/workerhandler/"+strings.ToLower(pluginGCPPubSubWorker)+"_handler.go") == nil {
+		options = append(options, fmt.Sprintf("%d) GCP PubSub Subscriber (plugin)", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = RabbitmqHandler
+	}
+	if validateDir(path+"/workerhandler/"+strings.ToLower(pluginSTOMPWorker)+"_handler.go") == nil {
+		options = append(options, fmt.Sprintf("%d) AMQ (STOMP) Consumer (plugin)", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = RabbitmqHandler
+	}
+
+	wording = strings.Join(options, "\n")
+	return
 }

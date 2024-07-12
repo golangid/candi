@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"os"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -25,63 +25,58 @@ func parseInput(flagParam *flagParameter) (srvConfig serviceConfig) {
 	scope, ok := scopeMap[flagParam.scopeFlag]
 	switch scope {
 	case InitService:
-		flagParam.serviceName = inputServiceName()
+		flagParam.serviceName = cliStageInputServiceName()
 		srvConfig.ServiceName = flagParam.serviceName
 
 	case AddModule:
 		flagParam.addModule = true
 		if flagParam.isMonorepo {
-		stageInputServiceNameModule:
-			flagParam.serviceName = readInput("Please input existing service name to be added module(s):")
-			_, err := os.Stat(flagParam.outputFlag + flagParam.serviceName)
-			var errMessage string
-			if strings.TrimSpace(flagParam.serviceName) == "" {
-				errMessage = "Service name cannot empty"
-			}
-			if os.IsNotExist(err) {
-				errMessage = fmt.Sprintf(`Service "%s" is not exist in "%s" directory`, flagParam.serviceName, flagParam.outputFlag)
-			}
-			if errMessage != "" {
-				fmt.Printf(RedFormat, errMessage+", try again")
-				goto stageInputServiceNameModule
-			}
+			flagParam.serviceName = cliStageInputExistingServiceName(flagParam.outputFlag,
+				"Please input existing service name to be added module(s):")
 			srvConfig = loadSavedConfig(flagParam)
 		}
 
 	case AddHandler:
 		flagParam.addHandler = true
 		if flagParam.isMonorepo {
-		stageInputServiceName:
-			flagParam.serviceName = readInput("Please input existing service name to be added delivery handler(s):")
-			srvConfig.ServiceName = flagParam.serviceName
-			if err := flagParam.validateServiceName(); err != nil {
-				fmt.Print(err.Error())
-				goto stageInputServiceName
-			}
+			flagParam.serviceName = cliStageInputExistingServiceName(flagParam.outputFlag,
+				"Please input existing service name to be added delivery handler(s):")
 			srvConfig = loadSavedConfig(flagParam)
 			srvConfig.ServiceName = flagParam.serviceName
 		}
 
-	stageReadInputModule:
-		flagParam.moduleName = candihelper.ToDelimited(readInput("Please input existing module name to be added delivery handler(s):"), '-')
-		moduleDir := flagParam.getFullModuleChildDir()
-		if err := validateDir(moduleDir); err != nil {
-			fmt.Print(err.Error())
-			goto stageReadInputModule
-		}
+		flagParam.moduleName = cliStageInputModule(filepath.Join(flagParam.outputFlag, flagParam.serviceName, "internal/modules"),
+			"Please input existing module name to be added delivery handler(s):")
 		goto stageSelectServerHandler
 
 	case AddUsecase:
-	stageAddUsecaseReadInputModule:
-		flagParam.moduleName = candihelper.ToDelimited(readInput("Please input existing module name to be added usecase(s):"), '-')
-		moduleDir := flagParam.getFullModuleChildDir()
-		if err := validateDir(moduleDir); err != nil {
-			fmt.Print(err.Error())
-			goto stageAddUsecaseReadInputModule
+		if flagParam.isMonorepo {
+			flagParam.serviceName = cliStageInputExistingServiceName(flagParam.outputFlag,
+				"Please input existing service name to be added usecase(s):")
 		}
+		flagParam.moduleName = cliStageInputModule(filepath.Join(flagParam.outputFlag, flagParam.serviceName, "internal/modules"),
+			"Please input existing module name to be added usecase:")
+		ucName := cliStageInputUsecaseName(flagParam.getFullModuleChildDir())
+		deliveryHandlers := cliStageInputExistingDelivery(flagParam.getFullModuleChildDir())
+		if flagParam.serviceName == "" {
+			flagParam.serviceName = srvConfig.ServiceName
+		}
+		addUsecase(flagParam, ucName, deliveryHandlers)
+		return
 
-		flagParam.serviceName = srvConfig.ServiceName
-		addUsecase(flagParam, readInput("Please input usecase name:"))
+	case ApplyUsecase:
+		if flagParam.isMonorepo {
+			flagParam.serviceName = cliStageInputExistingServiceName(flagParam.outputFlag,
+				"Please input existing service name:")
+		}
+		flagParam.moduleName = cliStageInputModule(filepath.Join(flagParam.outputFlag, flagParam.serviceName, "internal/modules"),
+			"Please input existing module name:")
+		ucName := cliStageInputExistingUsecaseName(flagParam.getFullModuleChildDir())
+		deliveryHandlers := cliStageInputExistingDelivery(flagParam.getFullModuleChildDir())
+		if flagParam.serviceName == "" {
+			flagParam.serviceName = srvConfig.ServiceName
+		}
+		applyUsecaseToDelivery(flagParam, ucName, deliveryHandlers)
 		return
 	}
 

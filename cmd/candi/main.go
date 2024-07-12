@@ -82,7 +82,8 @@ func main() {
 				"2) Init service\n" +
 				"3) Add module(s) in service\n" +
 				"4) Add delivery handler(s) in module\n" +
-				"5) Add usecase(s) in module\033[0m\n>> ")
+				"5) Add usecase in module\n" +
+				"6) Apply usecase to delivery(s) in module\033[0m\n>> ")
 			flagParam.scopeFlag = readInput()
 		}
 

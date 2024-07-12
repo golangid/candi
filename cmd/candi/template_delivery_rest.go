@@ -1,5 +1,11 @@
 package main
 
+import (
+	"strings"
+
+	"github.com/golangid/candi/candihelper"
+)
+
 const (
 	deliveryRestTemplate = `// {{.Header}}
 
@@ -441,3 +447,31 @@ func TestRestHandler_delete{{upper (camel .ModuleName)}}(t *testing.T) {
 }
 `
 )
+
+func getRestFuncTemplate(moduleName, usecaseName string) string {
+	moduleName, usecaseName = strings.Title(moduleName), strings.Title(usecaseName)
+	return `func (h *RestHandler) ` + candihelper.ToCamelCase(usecaseName) + `(rw http.ResponseWriter, req *http.Request) {
+	trace, ctx := tracer.StartTraceWithContext(req.Context(), "` + moduleName + `DeliveryREST:` + usecaseName + `")
+	defer trace.Finish()
+
+	body, _ := io.ReadAll(req.Body)
+	var payload domain.Request` + usecaseName + `
+	// if err := h.validator.ValidateDocument("` + strings.ToLower(moduleName) + `/` + candihelper.ToDelimited(usecaseName, '-') + `", body); err != nil {
+	// 	wrapper.NewHTTPResponse(http.StatusBadRequest, "Failed validate payload", err).JSON(rw)
+	// 	return
+	// }
+	if err := json.Unmarshal(body, &payload); err != nil {
+		wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(rw)
+		return
+	}
+
+	res, err := h.uc.` + moduleName + `().` + usecaseName + `(ctx, &payload)
+	if err != nil {
+		wrapper.NewHTTPResponse(http.StatusBadRequest, err.Error()).JSON(rw)
+		return
+	}
+
+	wrapper.NewHTTPResponse(http.StatusOK, "Success", res).JSON(rw)
+}
+`
+}

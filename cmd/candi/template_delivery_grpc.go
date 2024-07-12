@@ -1,5 +1,9 @@
 package main
 
+import (
+	"strings"
+)
+
 const (
 	deliveryGRPCTemplate = `// {{.Header}}
 
@@ -223,3 +227,27 @@ message BaseResponse {
 }
 `
 )
+
+func getGRPCFuncTemplate(moduleName, usecaseName string) string {
+	moduleName, usecaseName = strings.Title(moduleName), strings.Title(usecaseName)
+	return `// ` + usecaseName + ` rpc method
+func (h *GRPCHandler) ` + usecaseName + `(ctx context.Context, req *proto.Request` + usecaseName + `) (resp *proto.Response` + usecaseName + `, err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "` + moduleName + `DeliveryGRPC:` + usecaseName + `")
+	defer trace.Finish()
+
+	// tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using GRPCBearerAuth in middleware for this handler
+
+	var payload domain.Request` + usecaseName + `
+	// serialize proto request to Request` + usecaseName + `
+	_, err = h.uc.` + moduleName + `().` + usecaseName + `(ctx, &payload)
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, err.Error())
+	}
+
+	resp = &proto.Response` + usecaseName + `{
+		// serialize response to proto message
+	}
+	return resp, nil
+}
+`
+}
