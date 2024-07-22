@@ -13,7 +13,7 @@ import (
 func TestDBUpdateToolsSQL(t *testing.T) {
 	type SubModel struct {
 		Title       string       `gorm:"column:title" json:"title"`
-		Profile     string       `gorm:"column:profile" json:"profile"`
+		Profile     string       `gorm:"column:profile;default:null" json:"profile"`
 		ActivatedAt sql.NullTime `gorm:"column:activated_at" json:"activatedAt"`
 		CityAddress string       `gorm:"type:text"`
 	}
@@ -37,6 +37,13 @@ func TestDBUpdateToolsSQL(t *testing.T) {
 		SubModel
 	}
 	var updated map[string]any
+
+	updated = DBUpdateTools{KeyExtractorFunc: DBUpdateGORMExtractorKey}.ToMap(
+		&SubModel{Title: "test", CityAddress: "Jakarta"},
+		DBUpdateSetUpdatedFields("Profile"),
+	)
+	assert.Equal(t, 1, len(updated))
+	assert.Equal(t, nil, updated["profile"])
 
 	updated = DBUpdateTools{KeyExtractorFunc: DBUpdateGORMExtractorKey}.ToMap(
 		&Model{ID: 1, Name: candihelper.ToStringPtr("01"), Address: "street", SubModel: SubModel{Title: "test", CityAddress: "Jakarta"}, Rel: SubModel{Title: "rel sub"}},
