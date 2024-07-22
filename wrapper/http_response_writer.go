@@ -1,7 +1,10 @@
 package wrapper
 
 import (
+	"bufio"
 	"bytes"
+	"errors"
+	"net"
 	"net/http"
 )
 
@@ -65,4 +68,13 @@ func (w *WrapHTTPResponseWriter) WriteHeader(statusCode int) {
 
 	// Write the status code onward.
 	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+// Hijack method
+func (w *WrapHTTPResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	h, ok := w.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, errors.New("hijack not supported")
+	}
+	return h.Hijack()
 }
