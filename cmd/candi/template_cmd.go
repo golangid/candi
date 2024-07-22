@@ -41,6 +41,7 @@ package main
 
 import (
 	"context"
+	"embed"
 	"flag"
 	"log"
 	"os"{{if eq .SQLDriver "mysql"}}
@@ -56,6 +57,9 @@ import (
 	{{if eq .SQLDriver "sqlite3"}}"gorm.io/driver/sqlite"{{else}}"gorm.io/driver/{{.SQLDriver}}"{{end}}
 	"gorm.io/gorm"
 )
+
+//go:embed migrations/*.sql
+var migrationSource embed.FS
 
 var (
 	flags = flag.NewFlagSet("goose", flag.ExitOnError)
@@ -88,14 +92,14 @@ func main() {
 	}
 
 	goose.SetDialect("{{.SQLDriver}}")
-	dir := os.Getenv("WORKDIR") + "cmd/migration/migrations"
+	goose.SetBaseFS(migrationSource)
 	switch args[0] {
 	case "create":
 		migrationType := "sql"
 		if len(args) > 2 {
 			migrationType = args[2]
 		}
-		if err := goose.Create(db, dir, args[1], migrationType); err != nil {
+		if err := goose.Create(db, "migrations", args[1], migrationType); err != nil {
 			log.Fatalf("goose %v: %v", args[1], err)
 		}
 
@@ -109,7 +113,7 @@ func main() {
 			tx.Commit()
 		}
 
-		if err := goose.RunWithOptionsContext(ctx, args[0], db, dir, arguments, goose.WithAllowMissing()); err != nil {
+		if err := goose.RunWithOptionsContext(ctx, args[0], db, "migrations", arguments, goose.WithAllowMissing()); err != nil {
 			log.Fatalf("goose %v: %v", args[0], err)
 		}
 	}

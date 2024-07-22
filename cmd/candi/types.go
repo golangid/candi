@@ -221,6 +221,6 @@ func (f *FileStructure) parseTemplate() (buff []byte) {
 }
 
 func (f *FileStructure) writeFile(targetPath string) error {
-	fmt.Printf("creating %s...\n", targetPath+"/"+f.FileName)
-	return os.WriteFile(targetPath+"/"+f.FileName, f.parseTemplate(), 0644)
+	fmt.Printf("creating %s...\n", filepath.Join(targetPath, f.FileName))
+	return os.WriteFile(filepath.Join(targetPath, f.FileName), f.parseTemplate(), 0644)
 }

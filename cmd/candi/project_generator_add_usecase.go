@@ -13,10 +13,10 @@ func addUsecase(flagParam *flagParameter, usecaseName string, deliveryHandlers [
 	targetDir := ""
 	packagePrefix := flagParam.serviceName
 	if isWorkdirMonorepo() {
-		targetDir = filepath.Join(flagParam.outputFlag, flagParam.serviceName) + "/"
+		targetDir = filepath.Join(flagParam.outputFlag, flagParam.serviceName)
 		packagePrefix = filepath.Join(flagParam.packagePrefixFlag, flagParam.serviceName)
 	}
-	moduleDir := targetDir + "internal/modules/" + flagParam.moduleName
+	moduleDir := filepath.Join(targetDir, "internal", "modules", flagParam.moduleName)
 
 	newUsecase := FileStructure{
 		FromTemplate: true, DataSource: map[string]any{
@@ -26,7 +26,7 @@ func addUsecase(flagParam *flagParameter, usecaseName string, deliveryHandlers [
 		Source:   templateNewUsecase,
 		FileName: candihelper.ToDelimited(usecaseName, '_') + ".go",
 	}
-	if err := newUsecase.writeFile(moduleDir + "/usecase"); err != nil {
+	if err := newUsecase.writeFile(filepath.Join(moduleDir, "usecase")); err != nil {
 		log.Fatal(err)
 	}
 
@@ -34,7 +34,7 @@ func addUsecase(flagParam *flagParameter, usecaseName string, deliveryHandlers [
 	ucName := strings.Title(candihelper.ToCamelCase(usecaseName))
 	replaceFiles := []fileUpdate{
 		{
-			filepath:   moduleDir + "/usecase/usecase.go",
+			filepath:   filepath.Join(moduleDir, "usecase", "usecase.go"),
 			oldContent: `type ` + modName + `Usecase interface {`,
 			newContent: `type ` + modName + `Usecase interface {
 	` + ucName + `(ctx context.Context, req *domain.Request` + ucName + `) (resp domain.Response` + ucName + `, err error)`,
@@ -43,7 +43,7 @@ func addUsecase(flagParam *flagParameter, usecaseName string, deliveryHandlers [
 
 	var fileUpdateContent []fileUpdate
 	for _, dType := range []string{"Request", "Response"} {
-		fileLoc := moduleDir + "/domain/" + strings.ToLower(dType) + ".go"
+		fileLoc := filepath.Join(moduleDir, "domain", strings.ToLower(dType)+".go")
 		if _, err := os.Stat(fileLoc); os.IsNotExist(err) {
 			os.WriteFile(fileLoc, []byte("package domain\n\n"), 0644)
 		}
@@ -82,10 +82,10 @@ func getUpdateFileInExistingDelivery(flagParam *flagParameter, usecaseName strin
 	targetDir := ""
 	packagePrefix := flagParam.serviceName
 	if isWorkdirMonorepo() {
-		targetDir = filepath.Join(flagParam.outputFlag, flagParam.serviceName) + "/"
+		targetDir = filepath.Join(flagParam.outputFlag, flagParam.serviceName)
 		packagePrefix = filepath.Join(flagParam.packagePrefixFlag, flagParam.serviceName)
 	}
-	moduleDir := targetDir + "internal/modules/" + flagParam.moduleName
+	moduleDir := filepath.Join(targetDir, "internal", "modules", flagParam.moduleName)
 	modName := strings.Title(candihelper.ToCamelCase(flagParam.moduleName))
 	ucName := strings.Title(candihelper.ToCamelCase(usecaseName))
 
@@ -117,7 +117,7 @@ func getUpdateFileInExistingDelivery(flagParam *flagParameter, usecaseName strin
 		case GrpcHandler:
 			fu.newContent = getGRPCFuncTemplate(modName, ucName)
 			fu.skipContains = "func (h *GRPCHandler) " + ucName
-			protoSource := targetDir + "api/proto/" + flagParam.moduleName + "/" + flagParam.moduleName + ".proto"
+			protoSource := filepath.Join(targetDir, "api", "proto", flagParam.moduleName, flagParam.moduleName+".proto")
 			replaceFiles = append(replaceFiles, []fileUpdate{
 				{filepath: protoSource,
 					oldContent: `service ` + modName + `Handler {`,
@@ -138,7 +138,7 @@ message Response` + ucName + ` {
 		case GraphqlHandler:
 			fu.newContent = getGraphQLFuncTemplate(modName, ucName)
 			fu.skipContains = "func (m *GraphQLHandler) " + ucName
-			gqlSchemaSource := targetDir + "api/graphql/" + flagParam.moduleName + ".graphql"
+			gqlSchemaSource := filepath.Join(targetDir, "api", "graphql", flagParam.moduleName+".graphql")
 			replaceFiles = append(replaceFiles, []fileUpdate{
 				{filepath: gqlSchemaSource, oldContent: `type ` + modName + `QueryResolver {`,
 					newContent: `type ` + modName + `QueryResolver {
