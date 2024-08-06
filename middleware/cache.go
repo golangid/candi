@@ -73,10 +73,6 @@ func (m *Middleware) HTTPCache(next http.Handler) http.Handler {
 		cacheKey := req.Method + ":" + strings.TrimSuffix(req.URL.String(), "/")
 		trace.SetTag("key", cacheKey)
 		if cacheVal, err := m.cache.Get(ctx, cacheKey); err == nil {
-			if ttl, err := m.cache.GetTTL(ctx, cacheKey); err == nil {
-				res.Header().Add(candihelper.HeaderExpires, time.Now().In(time.UTC).Add(ttl).Format(time.RFC1123))
-			}
-
 			var data cacheData
 			if err := json.Unmarshal(cacheVal, &data); err != nil {
 				m.cache.Delete(ctx, cacheKey)

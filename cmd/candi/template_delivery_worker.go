@@ -371,7 +371,7 @@ func (h *{{.WorkerPluginName}}Handler) handleTopic{{upper (camel .ModuleName)}}(
 func getWorkerFuncTemplate(workerName, moduleName, usecaseName string) string {
 	moduleName, usecaseName = strings.Title(moduleName), strings.Title(usecaseName)
 	return `func (h *` + workerName + `Handler) ` + candihelper.ToCamelCase(usecaseName) + `(eventContext *candishared.EventContext) error {
-	trace, ctx := tracer.StartTraceWithContext(eventContext.Context(), "` + moduleName + `DeliveryRedis:` + usecaseName + `")
+	trace, ctx := tracer.StartTraceWithContext(eventContext.Context(), "` + moduleName + `Delivery` + workerName + `:` + usecaseName + `")
 	defer trace.Finish()
 
 	var payload domain.Request` + usecaseName + `

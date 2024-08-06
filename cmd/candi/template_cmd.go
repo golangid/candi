@@ -99,7 +99,7 @@ func main() {
 		if len(args) > 2 {
 			migrationType = args[2]
 		}
-		if err := goose.Create(db, "migrations", args[1], migrationType); err != nil {
+		if err := goose.Create(db, os.Getenv("WORKDIR") + "cmd/migration/migrations", args[1], migrationType); err != nil {
 			log.Fatalf("goose %v: %v", args[1], err)
 		}
 
