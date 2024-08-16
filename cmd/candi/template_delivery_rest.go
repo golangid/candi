@@ -94,7 +94,9 @@ func (h *RestHandler) getAll{{upper (camel .ModuleName)}}(rw http.ResponseWriter
 	}
 
 	message := "Success, with your user id (" + tokenClaim.Subject + ") and role (" + tokenClaim.Role + ")"
-	wrapper.NewHTTPResponse(http.StatusOK, message, result.Meta, result.Data).JSON(rw)
+	response := wrapper.NewHTTPResponse(http.StatusOK, message, result.Data)
+	response.Meta = result.Meta
+	response.JSON(rw)
 }
 
 // GetDetail{{upper (camel .ModuleName)}} documentation
@@ -289,10 +291,9 @@ func TestRestHandler_getAll{{upper (camel .ModuleName)}}(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			{{camel .ModuleName}}Usecase := &mockusecase.{{upper (camel .ModuleName)}}Usecase{}
 			{{camel .ModuleName}}Usecase.On("GetAll{{upper (camel .ModuleName)}}", mock.Anything, mock.Anything).Return(
-				[]domain.Response{{upper (camel .ModuleName)}}{}, candishared.Meta{}, tt.wantUsecaseError)
+				domain.Response{{upper (camel .ModuleName)}}List{}, tt.wantUsecaseError)
 			mockValidator := &mockinterfaces.Validator{}
 			mockValidator.On("ValidateDocument", mock.Anything, mock.Anything).Return(tt.wantValidateError)
 
@@ -322,7 +323,6 @@ func TestRestHandler_getDetail{{upper (camel .ModuleName)}}ByID(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			{{camel .ModuleName}}Usecase := &mockusecase.{{upper (camel .ModuleName)}}Usecase{}
 			{{camel .ModuleName}}Usecase.On("GetDetail{{upper (camel .ModuleName)}}", mock.Anything, mock.Anything).Return(domain.Response{{upper (camel .ModuleName)}}{}, tt.wantUsecaseError)
 			mockValidator := &mockinterfaces.Validator{}
@@ -333,7 +333,7 @@ func TestRestHandler_getDetail{{upper (camel .ModuleName)}}ByID(t *testing.T) {
 
 			handler := RestHandler{uc: uc, validator: mockValidator}
 
-			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tt.reqBody))
+			req := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(tt.reqBody))
 			req = req.WithContext(candishared.SetToContext(req.Context(), candishared.ContextKeyTokenClaim, &candishared.TokenClaim{}))
 			req.Header.Add(candihelper.HeaderContentType, candihelper.HeaderMIMEApplicationJSON)
 			res := httptest.NewRecorder()
@@ -357,7 +357,6 @@ func TestRestHandler_create{{upper (camel .ModuleName)}}(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			{{camel .ModuleName}}Usecase := &mockusecase.{{upper (camel .ModuleName)}}Usecase{}
 			{{camel .ModuleName}}Usecase.On("Create{{upper (camel .ModuleName)}}", mock.Anything, mock.Anything).Return(domain.Response{{upper (camel .ModuleName)}}{}, tt.wantUsecaseError)
 			mockValidator := &mockinterfaces.Validator{}
@@ -394,7 +393,6 @@ func TestRestHandler_update{{upper (camel .ModuleName)}}(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			{{camel .ModuleName}}Usecase := &mockusecase.{{upper (camel .ModuleName)}}Usecase{}
 			{{camel .ModuleName}}Usecase.On("Update{{upper (camel .ModuleName)}}", mock.Anything, mock.Anything, mock.Anything).Return(tt.wantUsecaseError)
 			mockValidator := &mockinterfaces.Validator{}
@@ -405,7 +403,7 @@ func TestRestHandler_update{{upper (camel .ModuleName)}}(t *testing.T) {
 
 			handler := RestHandler{uc: uc, validator: mockValidator}
 
-			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tt.reqBody))
+			req := httptest.NewRequest(http.MethodPut, "/", strings.NewReader(tt.reqBody))
 			req = req.WithContext(candishared.SetToContext(req.Context(), candishared.ContextKeyTokenClaim, &candishared.TokenClaim{}))
 			req.Header.Add(candihelper.HeaderContentType, candihelper.HeaderMIMEApplicationJSON)
 			res := httptest.NewRecorder()
@@ -426,7 +424,6 @@ func TestRestHandler_delete{{upper (camel .ModuleName)}}(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			{{camel .ModuleName}}Usecase := &mockusecase.{{upper (camel .ModuleName)}}Usecase{}
 			{{camel .ModuleName}}Usecase.On("Delete{{upper (camel .ModuleName)}}", mock.Anything, mock.Anything).Return(tt.wantUsecaseError)
 			mockValidator := &mockinterfaces.Validator{}
@@ -437,7 +434,7 @@ func TestRestHandler_delete{{upper (camel .ModuleName)}}(t *testing.T) {
 
 			handler := RestHandler{uc: uc, validator: mockValidator}
 
-			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tt.reqBody))
+			req := httptest.NewRequest(http.MethodDelete, "/", strings.NewReader(tt.reqBody))
 			req.Header.Add(candihelper.HeaderContentType, candihelper.HeaderMIMEApplicationJSON)
 			res := httptest.NewRecorder()
 			handler.delete{{upper (camel .ModuleName)}}(res, req)
