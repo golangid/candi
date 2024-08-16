@@ -156,12 +156,12 @@ func (uc *{{camel .ModuleName}}UsecaseImpl) GetAll{{upper (camel .ModuleName)}}(
 import (
 	"context"
 	"errors"
+	"testing"
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	mockrepo "{{$.PackagePrefix}}/pkg/mocks/modules/{{cleanPathModule .ModuleName}}/repository"
 	mocksharedrepo "{{$.PackagePrefix}}/pkg/mocks/shared/repository"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -169,7 +169,6 @@ import (
 
 func Test_{{camel .ModuleName}}UsecaseImpl_GetAll{{upper (camel .ModuleName)}}(t *testing.T) {
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
-
 		{{camel .ModuleName}}Repo := &mockrepo.{{upper (camel .ModuleName)}}Repository{}
 		{{camel .ModuleName}}Repo.On("FetchAll", mock.Anything, mock.Anything, mock.Anything).Return([]shareddomain.{{upper (camel .ModuleName)}}{}, nil)
 		{{camel .ModuleName}}Repo.On("Count", mock.Anything, mock.Anything).Return(10)
@@ -181,12 +180,11 @@ func Test_{{camel .ModuleName}}UsecaseImpl_GetAll{{upper (camel .ModuleName)}}(t
 			repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}: repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}},
 		}
 
-		_, _, err := uc.GetAll{{upper (camel .ModuleName)}}(context.Background(), &domain.Filter{{upper (camel .ModuleName)}}{})
+		_, err := uc.GetAll{{upper (camel .ModuleName)}}(context.Background(), &domain.Filter{{upper (camel .ModuleName)}}{})
 		assert.NoError(t, err)
 	})
 
 	t.Run("Testcase #2: Negative", func(t *testing.T) {
-
 		{{camel .ModuleName}}Repo := &mockrepo.{{upper (camel .ModuleName)}}Repository{}
 		{{camel .ModuleName}}Repo.On("FetchAll", mock.Anything, mock.Anything, mock.Anything).Return([]shareddomain.{{upper (camel .ModuleName)}}{}, errors.New("Error"))
 		{{camel .ModuleName}}Repo.On("Count", mock.Anything, mock.Anything).Return(10)
@@ -198,7 +196,7 @@ func Test_{{camel .ModuleName}}UsecaseImpl_GetAll{{upper (camel .ModuleName)}}(t
 			repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}}: repo{{if .SQLDeps}}SQL{{else if .MongoDeps}}Mongo{{else if .ArangoDeps}}Arango{{end}},
 		}
 
-		_, _, err := uc.GetAll{{upper (camel .ModuleName)}}(context.Background(), &domain.Filter{{upper (camel .ModuleName)}}{})
+		_, err := uc.GetAll{{upper (camel .ModuleName)}}(context.Background(), &domain.Filter{{upper (camel .ModuleName)}}{})
 		assert.Error(t, err)
 	})
 }
@@ -233,11 +231,11 @@ func (uc *{{camel .ModuleName}}UsecaseImpl) GetDetail{{upper (camel .ModuleName)
 
 import (
 	"context"
+	"testing"
 
 	mockrepo "{{$.PackagePrefix}}/pkg/mocks/modules/{{cleanPathModule .ModuleName}}/repository"
 	mocksharedrepo "{{$.PackagePrefix}}/pkg/mocks/shared/repository"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -245,7 +243,6 @@ import (
 
 func Test_{{camel .ModuleName}}UsecaseImpl_GetDetail{{upper (camel .ModuleName)}}(t *testing.T) {
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
-
 		{{camel .ModuleName}}Repo := &mockrepo.{{upper (camel .ModuleName)}}Repository{}
 		{{camel .ModuleName}}Repo.On("Find", mock.Anything, mock.Anything).Return(shareddomain.{{upper (camel .ModuleName)}}{}, nil)
 
@@ -296,11 +293,11 @@ func (uc *{{camel .ModuleName}}UsecaseImpl) Create{{upper (camel .ModuleName)}}(
 
 import (
 	"context"
+	"testing"
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	mockrepo "{{$.PackagePrefix}}/pkg/mocks/modules/{{cleanPathModule .ModuleName}}/repository"
 	mocksharedrepo "{{$.PackagePrefix}}/pkg/mocks/shared/repository"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -308,7 +305,6 @@ import (
 
 func Test_{{camel .ModuleName}}UsecaseImpl_Create{{upper (camel .ModuleName)}}(t *testing.T) {
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
-
 		{{camel .ModuleName}}Repo := &mockrepo.{{upper (camel .ModuleName)}}Repository{}
 		{{camel .ModuleName}}Repo.On("Save", mock.Anything, mock.Anything).Return(nil)
 
@@ -359,12 +355,12 @@ func (uc *{{camel .ModuleName}}UsecaseImpl) Update{{upper (camel .ModuleName)}}(
 import (
 	"context"
 	"errors"
+	"testing"
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	mockrepo "{{$.PackagePrefix}}/pkg/mocks/modules/{{cleanPathModule .ModuleName}}/repository"
 	mocksharedrepo "{{$.PackagePrefix}}/pkg/mocks/shared/repository"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -373,7 +369,6 @@ import (
 func Test_{{camel .ModuleName}}UsecaseImpl_Update{{upper (camel .ModuleName)}}(t *testing.T) {
 	ctx := context.Background()
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
-
 		{{camel .ModuleName}}Repo := &mockrepo.{{upper (camel .ModuleName)}}Repository{}
 		{{camel .ModuleName}}Repo.On("Find", mock.Anything, mock.Anything).Return(shareddomain.{{upper (camel .ModuleName)}}{}, nil)
 		{{camel .ModuleName}}Repo.On("Save", mock.Anything, mock.Anything, mock.AnythingOfType("candishared.DBUpdateOptionFunc")).Return(nil)
@@ -396,7 +391,6 @@ func Test_{{camel .ModuleName}}UsecaseImpl_Update{{upper (camel .ModuleName)}}(t
 	})
 
 	t.Run("Testcase #2: Negative", func(t *testing.T) {
-
 		{{camel .ModuleName}}Repo := &mockrepo.{{upper (camel .ModuleName)}}Repository{}
 		{{camel .ModuleName}}Repo.On("Find", mock.Anything, mock.Anything).Return(shareddomain.{{upper (camel .ModuleName)}}{}, errors.New("Error"))
 		{{camel .ModuleName}}Repo.On("Save", mock.Anything, mock.Anything, mock.AnythingOfType("candishared.DBUpdateOptionFunc")).Return(nil)
@@ -442,10 +436,10 @@ func (uc *{{camel .ModuleName}}UsecaseImpl) Delete{{upper (camel .ModuleName)}}(
 
 import (
 	"context"
+	"testing"
 
 	mockrepo "{{$.PackagePrefix}}/pkg/mocks/modules/{{cleanPathModule .ModuleName}}/repository"
 	mocksharedrepo "{{$.PackagePrefix}}/pkg/mocks/shared/repository"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -453,7 +447,6 @@ import (
 
 func Test_{{camel .ModuleName}}UsecaseImpl_Delete{{upper (camel .ModuleName)}}(t *testing.T) {
 	t.Run("Testcase #1: Positive", func(t *testing.T) {
-
 		{{camel .ModuleName}}Repo := &mockrepo.{{upper (camel .ModuleName)}}Repository{}
 		{{camel .ModuleName}}Repo.On("Delete", mock.Anything, mock.Anything).Return(nil)
 
