@@ -155,7 +155,7 @@ func Load(serviceName string) {
 		}
 		env.TaskQueueDashboardPort = uint16(port)
 		env.TaskQueueDashboardMaxClientSubscribers, _ = strconv.Atoi(os.Getenv("TASK_QUEUE_DASHBOARD_MAX_CLIENT"))
-		if env.TaskQueueDashboardPort <= 0 || env.TaskQueueDashboardMaxClientSubscribers > 10 {
+		if env.TaskQueueDashboardMaxClientSubscribers <= 0 || env.TaskQueueDashboardMaxClientSubscribers > 10 {
 			env.TaskQueueDashboardMaxClientSubscribers = 10 // default
 		}
 	}

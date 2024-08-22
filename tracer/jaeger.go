@@ -186,11 +186,11 @@ func (j *jaegerPlatform) Disconnect(ctx context.Context) error { return j.closer
 
 // jaeger span tracer implementation
 type jaegerTraceImpl struct {
-	ctx           context.Context
-	span          opentracing.Span
-	operationName string
-	isRoot        bool
-	errWhitelist  []error
+	ctx             context.Context
+	span            opentracing.Span
+	operationName   string
+	isRoot, isPanic bool
+	errWhitelist    []error
 }
 
 // Context get active context
@@ -204,6 +204,8 @@ func (t *jaegerTraceImpl) SetTag(key string, value interface{}) {
 		return
 	}
 
+	v, _ := value.(bool)
+	t.isPanic = key == "panic" && v
 	t.span.SetTag(key, toValue(value))
 }
 
@@ -242,7 +244,7 @@ func (t *jaegerTraceImpl) SetError(err error) {
 	t.span.LogKV("error.message", err.Error())
 
 	var stackTraces []string
-	for i := 1; i < 10 && len(stackTraces) <= 5 && !t.isRoot; i++ {
+	for i := 1; i < 10 && len(stackTraces) <= 5 && (!t.isRoot || t.isPanic); i++ {
 		if caller := parseCaller(runtime.Caller(i)); caller != "" {
 			stackTraces = append(stackTraces, caller)
 		}
@@ -291,7 +293,7 @@ func (t *jaegerTraceImpl) Finish(opts ...FinishOptionFunc) {
 				stackTraces = append(stackTraces, caller)
 			}
 		}
-		t.logStackTrace(32, t.operationName, stackTraces)
+		t.logStackTrace(0, t.operationName, stackTraces)
 	}
 
 	if finishOpt.OnFinish != nil {
@@ -304,7 +306,11 @@ func (t *jaegerTraceImpl) Finish(opts ...FinishOptionFunc) {
 }
 
 func (t *jaegerTraceImpl) logStackTrace(color int, header string, stackTraces []string) {
-	log.Printf("\x1b[%d;5m%s\x1b[0m", color, strings.Join(append([]string{header}, stackTraces...), "\n"))
+	format := "%s"
+	if color > 0 {
+		format = "\x1b[" + strconv.Itoa(color) + ";5m%s\x1b[0m"
+	}
+	log.Printf(format, strings.Join(append([]string{header}, stackTraces...), "\n"))
 	if len(stackTraces) > 0 {
 		t.span.LogKV("stacktrace", strings.Join(stackTraces, "\n"))
 	}

@@ -127,6 +127,8 @@ func HTTPMiddlewareTracer() func(http.Handler) http.Handler {
 			trace, ctx := tracer.StartTraceFromHeader(req.Context(), "REST-Server", header)
 			defer func() {
 				if rec := recover(); rec != nil {
+					trace.SetTag("panic", true)
+					trace.SetError(fmt.Errorf("%v", rec))
 					wrapper.NewHTTPResponse(http.StatusInternalServerError, "Something error").JSON(rw)
 				}
 				trace.Finish()
