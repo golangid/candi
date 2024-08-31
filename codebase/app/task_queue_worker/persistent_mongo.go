@@ -359,7 +359,6 @@ func (s *MongoPersistent) SaveJob(ctx context.Context, job *Job, retryHistories 
 }
 
 func (s *MongoPersistent) UpdateJob(ctx context.Context, filter *Filter, updated map[string]interface{}, retryHistories ...RetryHistory) (matchedCount, affectedRow int64, err error) {
-
 	updated["updated_at"] = time.Now()
 	updateQuery := bson.M{
 		"$set": bson.M(updated),
@@ -388,7 +387,6 @@ func (s *MongoPersistent) UpdateJob(ctx context.Context, filter *Filter, updated
 }
 
 func (s *MongoPersistent) CleanJob(ctx context.Context, filter *Filter) (affectedRow int64) {
-
 	res, err := s.db.Collection(jobModelName).DeleteMany(ctx, s.toBsonFilter(filter))
 	if err != nil {
 		logger.LogE(err.Error())

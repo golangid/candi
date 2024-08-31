@@ -92,3 +92,8 @@ func initEngine(service factory.ServiceFactory, opts ...OptionFunc) *taskQueueWo
 
 	return engine
 }
+
+// GetPersistent get active persistent for manage job data
+func GetPersistent() Persistent {
+	return engine.opt.persistent
+}

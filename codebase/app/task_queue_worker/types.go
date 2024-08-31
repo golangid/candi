@@ -25,6 +25,11 @@ type (
 
 	// JobStatusEnum enum status
 	JobStatusEnum string
+
+	jobResult struct {
+		err                         error
+		result, traceID, stackTrace string
+	}
 )
 
 // String method

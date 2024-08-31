@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/golangid/candi/tracer"
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -22,8 +21,6 @@ func NewRedisQueue(redisPool *redis.Pool) QueueStorage {
 }
 
 func (r *redisQueue) PushJob(ctx context.Context, job *Job) (n int64) {
-	tracer.Log(ctx, "redis.queue:push_job", job.ID)
-
 	conn := r.pool.Get()
 	defer conn.Close()
 
@@ -38,8 +35,6 @@ func (r *redisQueue) PopJob(ctx context.Context, taskName string) string {
 	return id
 }
 func (r *redisQueue) NextJob(ctx context.Context, taskName string) string {
-	tracer.Log(ctx, "redis.queue:next_job", taskName)
-
 	conn := r.pool.Get()
 	defer conn.Close()
 
@@ -60,11 +55,10 @@ func (r *redisQueue) Clear(ctx context.Context, taskName string) {
 	conn.Do("DEL", taskName)
 }
 func (r *redisQueue) Ping() error {
+	conn := r.pool.Get()
+	defer conn.Close()
 
-	ping := r.pool.Get()
-	defer ping.Close()
-
-	_, err := ping.Do("PING")
+	_, err := conn.Do("PING")
 	if err != nil {
 		return errors.New("redis ping: " + err.Error())
 	}

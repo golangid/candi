@@ -137,6 +137,10 @@ func (t *taskQueueWorker) prepare() {
 						})
 					}
 					t.opt.queue.PushJob(t.ctx, job)
+
+					if total > 500 && idx%500 != 0 {
+						return
+					}
 					t.opt.persistent.Summary().UpdateSummary(t.ctx, filter.TaskName, map[string]interface{}{
 						"is_loading": true, "loading_message": fmt.Sprintf(`Requeueing %d of %d`, idx, total),
 					})
@@ -165,7 +169,6 @@ func (t *taskQueueWorker) prepare() {
 }
 
 func (t *taskQueueWorker) Serve() {
-
 	// serve graphql api for communication to dashboard
 	go t.serveGraphQLAPI()
 

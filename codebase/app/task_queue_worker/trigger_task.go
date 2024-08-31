@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -124,21 +125,16 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		return
 	}
 
-	eventResultChan := make(chan struct {
-		err             error
-		result, traceID string
-	})
+	eventResultChan := make(chan jobResult)
 	go func(ctx context.Context, job Job) {
-		result := struct {
-			err             error
-			result, traceID string
-		}{}
+		result := jobResult{}
 
 		trace, ctx := tracer.StartTraceFromHeader(ctx, "TaskQueueWorker", make(map[string]string, 0))
 		defer func() {
 			if r := recover(); r != nil {
 				trace.SetTag("panic", true)
 				result.err = fmt.Errorf("%v", r)
+				result.stackTrace = string(debug.Stack())
 			}
 			eventResultChan <- result
 			close(eventResultChan)
@@ -194,6 +190,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		job.Status = string(StatusSuccess)
 		job.Error = ""
 		job.Result = eventResult.result
+		job.ErrorStack = eventResult.stackTrace
 		if eventResult.err != nil {
 			isError = true
 			job.Error = eventResult.err.Error()
@@ -201,7 +198,6 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 
 			switch e := eventResult.err.(type) {
 			case *candishared.ErrorRetrier:
-				job.ErrorStack = e.StackTrace
 				if job.Retries < job.MaxRetry {
 					if e.Delay <= 0 {
 						e.Delay = defaultInterval
@@ -289,19 +285,18 @@ func (t *taskQueueWorker) unlockTask(taskName string) {
 func (t *taskQueueWorker) registerNextJob(withStream bool, taskName string) {
 	nextJobID := t.opt.queue.NextJob(t.ctx, taskName)
 	if nextJobID != "" {
-		if nextJob, err := t.opt.persistent.FindJobByID(t.ctx, nextJobID, nil); err == nil {
-			t.registerJobToWorker(&nextJob)
-			return
+		nextJob, _ := t.opt.persistent.FindJobByID(t.ctx, nextJobID, nil)
+		if nextJob.Status != string(StatusQueueing) {
+			t.opt.queue.PopJob(t.ctx, taskName) // remove unused job (job not found maybe if not save job after success)
+			t.registerNextJob(false, taskName)
 		}
-
-		t.opt.queue.PopJob(t.ctx, taskName) // remove unused job (job not found maybe if not save job after success)
-		t.registerNextJob(false, taskName)
+		t.registerJobToWorker(&nextJob)
 
 	} else if withStream {
 		StreamAllJob(t.ctx, &Filter{
 			TaskName: taskName,
 			Sort:     "created_at",
-			Status:   candihelper.ToStringPtr(string(StatusQueueing)),
+			Status:   candihelper.WrapPtr(string(StatusQueueing)),
 		}, func(_, _ int, job *Job) {
 			t.opt.queue.PushJob(t.ctx, job)
 		})

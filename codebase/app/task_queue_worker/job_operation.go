@@ -86,6 +86,7 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	newJob.CreatedAt = time.Now()
 	newJob.direct = req.direct
 
+	ctx = context.WithoutCancel(ctx)
 	summary := engine.opt.persistent.Summary().FindDetailSummary(ctx, req.TaskName)
 	if summary.IsHold {
 		newJob.Status = string(StatusHold)
@@ -106,7 +107,7 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	engine.opt.persistent.Summary().IncrementSummary(ctx, newJob.TaskName, map[string]int64{
 		strings.ToLower(newJob.Status): 1,
 	})
-	engine.subscriber.broadcastAllToSubscribers(context.Background())
+	engine.subscriber.broadcastAllToSubscribers(ctx)
 	if summary.IsHold || summary.IsLoading {
 		return newJob.ID, nil
 	}
@@ -280,7 +281,7 @@ func StopJob(ctx context.Context, jobID string) error {
 	return nil
 }
 
-// StreamAllJob api func for stream fetch all job
+// StreamAllJob api func for stream fetch all job, return total job
 func StreamAllJob(ctx context.Context, filter *Filter, streamFunc func(idx, total int, job *Job)) (count int) {
 	if engine == nil {
 		return
@@ -299,8 +300,8 @@ func StreamAllJob(ctx context.Context, filter *Filter, streamFunc func(idx, tota
 	}
 
 	count = perst.CountAllJob(ctx, filter)
-	if count == 0 {
-		return
+	if count == 0 || streamFunc == nil {
+		return count
 	}
 
 	totalPages := int(math.Ceil(float64(count) / float64(filter.Limit)))
