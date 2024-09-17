@@ -123,3 +123,10 @@ func SetSchemaSource(schema []byte) OptionFunc {
 		o.schemaSource = schema
 	}
 }
+
+// AddSchema option func
+func AddSchema(schema []byte) OptionFunc {
+	return func(o *Option) {
+		o.schemaSource = append(o.schemaSource, schema...)
+	}
+}
