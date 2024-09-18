@@ -103,7 +103,6 @@ func (h *kafkaWorker) Serve() {
 						log.Fatal(errCode.Error())
 					}
 				}
-				time.Sleep(time.Second)
 			}
 
 			if ctx.Err() != nil {

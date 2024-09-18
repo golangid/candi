@@ -58,9 +58,9 @@ func GetDefaultKafkaConfig(additionalConfigFunc ...func(*sarama.Config)) *sarama
 	// set default configuration
 	cfg := sarama.NewConfig()
 	cfg.Version, _ = sarama.ParseKafkaVersion(version)
+	cfg.ClientID = env.BaseEnv().Kafka.ClientID
 
 	// Producer config
-	cfg.ClientID = env.BaseEnv().Kafka.ClientID
 	cfg.Producer.Retry.Max = 15
 	cfg.Producer.Retry.Backoff = 50 * time.Millisecond
 	cfg.Producer.RequiredAcks = sarama.WaitForAll
