@@ -1,10 +1,15 @@
 package dependency
 
 import (
+	"context"
 	"log"
 
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/codebase/interfaces"
+)
+
+const (
+	primary = "primary"
 )
 
 // Dependency base
@@ -16,9 +21,16 @@ type Dependency interface {
 	FetchBroker(func(types.Worker, interfaces.Broker))
 	AddBroker(brokerType types.Worker, b interfaces.Broker)
 
+	// get primary sql database
 	GetSQLDatabase() interfaces.SQLDatabase
+	// get primary mongo database
 	GetMongoDatabase() interfaces.MongoDatabase
+	// get primary redis pool
 	GetRedisPool() interfaces.RedisPool
+
+	GetSQLDatabaseByKey(key string) interfaces.SQLDatabase
+	GetMongoDatabaseByKey(key string) interfaces.MongoDatabase
+	GetRedisPoolByKey(key string) interfaces.RedisPool
 
 	GetKey() interfaces.RSAKey
 	SetKey(i interfaces.RSAKey)
@@ -29,26 +41,14 @@ type Dependency interface {
 	GetLocker() interfaces.Locker
 	SetLocker(v interfaces.Locker)
 
-	GetExtended(key string) interface{}
-	AddExtended(key string, value interface{})
+	GetExtended(key string) any
+	AddExtended(key string, value any)
+
+	interfaces.Closer
 }
 
 // Option func type
 type Option func(*deps)
-
-type deps struct {
-	mw        interfaces.Middleware
-	brokers   map[types.Worker]interfaces.Broker
-	sqlDB     interfaces.SQLDatabase
-	mongoDB   interfaces.MongoDatabase
-	redisPool interfaces.RedisPool
-	key       interfaces.RSAKey
-	validator interfaces.Validator
-	locker    interfaces.Locker
-	extended  map[string]interface{}
-}
-
-var stdDeps = new(deps)
 
 // SetMiddleware option func
 func SetMiddleware(mw interfaces.Middleware) Option {
@@ -64,24 +64,60 @@ func SetBrokers(brokers map[types.Worker]interfaces.Broker) Option {
 	}
 }
 
-// SetSQLDatabase option func
+// SetSQLDatabase option func, set primary sql database instance
 func SetSQLDatabase(db interfaces.SQLDatabase) Option {
 	return func(d *deps) {
-		d.sqlDB = db
+		d.sqlDB = initEmptyMap(d.sqlDB)
+		d.sqlDB[primary] = db
 	}
 }
 
-// SetMongoDatabase option func
+// AddSQLDatabase option func, add new another sql database instance
+func AddSQLDatabase(key string, db interfaces.SQLDatabase) Option {
+	return func(d *deps) {
+		d.sqlDB = initEmptyMap(d.sqlDB)
+		if _, ok := d.sqlDB[key]; ok {
+			log.Panicf("sql db for '%s' has been registered", key)
+		}
+		d.sqlDB[key] = db
+	}
+}
+
+// SetMongoDatabase option func, set primary mongo database instance
 func SetMongoDatabase(db interfaces.MongoDatabase) Option {
 	return func(d *deps) {
-		d.mongoDB = db
+		d.mongoDB = initEmptyMap(d.mongoDB)
+		d.mongoDB[primary] = db
 	}
 }
 
-// SetRedisPool option func
+// AddMongoDatabase option func, add new another mongo database instance
+func AddMongoDatabase(key string, db interfaces.MongoDatabase) Option {
+	return func(d *deps) {
+		d.mongoDB = initEmptyMap(d.mongoDB)
+		if _, ok := d.mongoDB[key]; ok {
+			log.Panicf("mongodb for '%s' has been registered", key)
+		}
+		d.mongoDB[key] = db
+	}
+}
+
+// SetRedisPool option func, set primary redis pool instance
 func SetRedisPool(db interfaces.RedisPool) Option {
 	return func(d *deps) {
-		d.redisPool = db
+		d.redisPool = initEmptyMap(d.redisPool)
+		d.redisPool[primary] = db
+	}
+}
+
+// AddRedisPool option func, add new another redis pool instance
+func AddRedisPool(key string, db interfaces.RedisPool) Option {
+	return func(d *deps) {
+		d.redisPool = initEmptyMap(d.redisPool)
+		if _, ok := d.redisPool[key]; ok {
+			log.Panicf("redis pool for '%s' has been registered", key)
+		}
+		d.redisPool[key] = db
 	}
 }
 
@@ -107,133 +143,30 @@ func SetLocker(lock interfaces.Locker) Option {
 }
 
 // SetExtended option func
-func SetExtended(ext map[string]interface{}) Option {
+func SetExtended(ext map[string]any) Option {
 	return func(d *deps) {
 		d.extended = ext
 	}
 }
 
 // AddExtended option function for add extended
-func AddExtended(key string, value interface{}) Option {
+func AddExtended(key string, value any) Option {
 	return func(d *deps) {
-		if d.extended == nil {
-			d.extended = make(map[string]interface{})
-		}
+		d.extended = initEmptyMap(d.extended)
 		d.extended[key] = value
 	}
 }
 
-// InitDependency constructor
-func InitDependency(opts ...Option) Dependency {
-	for _, o := range opts {
-		o(stdDeps)
+func initEmptyMap[K comparable, T any](data map[K]T) map[K]T {
+	if data == nil {
+		data = make(map[K]T)
 	}
-
-	return stdDeps
+	return data
 }
 
-func (d *deps) GetMiddleware() interfaces.Middleware {
-	return d.mw
-}
-func (d *deps) SetMiddleware(mw interfaces.Middleware) {
-	d.mw = mw
-}
-func (d *deps) GetBroker(brokerType types.Worker) interfaces.Broker {
-	bk := d.brokers[brokerType]
-	if bk == nil {
-		log.Printf("\x1b[31;1m[dependency] Broker \"%s\" is not registered in dependency config\x1b[0m\n", string(brokerType))
+func safeClose(ctx context.Context, d interfaces.Closer) error {
+	if d != nil {
+		return d.Disconnect(ctx)
 	}
-	return bk
-}
-func (d *deps) FetchBroker(fn func(types.Worker, interfaces.Broker)) {
-	for t, bk := range d.brokers {
-		fn(t, bk)
-	}
-}
-func (d *deps) AddBroker(brokerType types.Worker, b interfaces.Broker) {
-	if d.brokers == nil {
-		d.brokers = make(map[types.Worker]interfaces.Broker)
-	}
-	d.brokers[brokerType] = b
-}
-func (d *deps) GetSQLDatabase() interfaces.SQLDatabase {
-	return d.sqlDB
-}
-func (d *deps) GetMongoDatabase() interfaces.MongoDatabase {
-	return d.mongoDB
-}
-func (d *deps) GetRedisPool() interfaces.RedisPool {
-	return d.redisPool
-}
-func (d *deps) GetKey() interfaces.RSAKey {
-	return d.key
-}
-func (d *deps) SetKey(i interfaces.RSAKey) {
-	d.key = i
-}
-func (d *deps) GetValidator() interfaces.Validator {
-	return d.validator
-}
-func (d *deps) SetValidator(v interfaces.Validator) {
-	d.validator = v
-}
-func (d *deps) GetLocker() interfaces.Locker {
-	return d.locker
-}
-func (d *deps) SetLocker(v interfaces.Locker) {
-	d.locker = v
-}
-func (d *deps) GetExtended(key string) interface{} {
-	return d.extended[key]
-}
-func (d *deps) AddExtended(key string, value interface{}) {
-	if d.extended == nil {
-		d.extended = make(map[string]interface{})
-	}
-	d.extended[key] = value
-}
-
-// GetMiddleware free function for get middleware
-func GetMiddleware() interfaces.Middleware {
-	return stdDeps.mw
-}
-
-// GetBroker free function for get broker
-func GetBroker(brokerType types.Worker) interfaces.Broker {
-	return stdDeps.brokers[brokerType]
-}
-
-// GetSQLDatabase free function for get sql database
-func GetSQLDatabase() interfaces.SQLDatabase {
-	return stdDeps.sqlDB
-}
-
-// GetMongoDatabase free function for get mongo database
-func GetMongoDatabase() interfaces.MongoDatabase {
-	return stdDeps.mongoDB
-}
-
-// GetRedisPool free function for get redis pool
-func GetRedisPool() interfaces.RedisPool {
-	return stdDeps.redisPool
-}
-
-// GetKey free function for get key (RSA)
-func GetKey() interfaces.RSAKey {
-	return stdDeps.key
-}
-
-// GetValidator free function for get validator
-func GetValidator() interfaces.Validator {
-	return stdDeps.validator
-}
-
-// GetLocker free function for get validator
-func GetLocker() interfaces.Locker {
-	return stdDeps.locker
-}
-
-// GetExtended free function for get extended
-func GetExtended(key string) interface{} {
-	return stdDeps.extended[key]
+	return nil
 }

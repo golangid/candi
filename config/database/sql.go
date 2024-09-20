@@ -7,34 +7,49 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/golangid/candi/codebase/interfaces"
 	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/logger"
 )
 
-type sqlInstance struct {
-	read, write *sql.DB
+type SQLInstance struct {
+	DBRead, DBWrite *sql.DB
 }
 
-func (s *sqlInstance) ReadDB() *sql.DB {
-	return s.read
+func (s *SQLInstance) ReadDB() *sql.DB {
+	return s.DBRead
 }
-func (s *sqlInstance) WriteDB() *sql.DB {
-	return s.write
+
+func (s *SQLInstance) WriteDB() *sql.DB {
+	return s.DBWrite
 }
-func (s *sqlInstance) Health() map[string]error {
+
+func (s *SQLInstance) Health() map[string]error {
 	mErr := make(map[string]error)
-	mErr["sql_read"] = s.read.Ping()
-	mErr["sql_write"] = s.write.Ping()
+	if s.DBRead != nil {
+		mErr["sql_read"] = s.DBRead.Ping()
+	}
+	if s.DBWrite != nil {
+		mErr["sql_write"] = s.DBWrite.Ping()
+	}
 	return mErr
 }
-func (s *sqlInstance) Disconnect(ctx context.Context) (err error) {
+
+func (s *SQLInstance) Disconnect(ctx context.Context) (err error) {
 	defer logger.LogWithDefer("\x1b[33;5msql\x1b[0m: disconnect...")()
 
-	if err := s.read.Close(); err != nil {
-		return err
+	if s.DBRead != nil {
+		if err := s.DBRead.Close(); err != nil {
+			return err
+		}
 	}
-	return s.write.Close()
+	if s.DBWrite != nil {
+		err = s.DBWrite.Close()
+	}
+	return
+}
+
+func (s *SQLInstance) Close() (err error) {
+	return s.Disconnect(context.Background())
 }
 
 type SQLDatabaseOption func(db *sql.DB)
@@ -42,20 +57,20 @@ type SQLDatabaseOption func(db *sql.DB)
 // InitSQLDatabase return sql db read & write instance from environment:
 // SQL_DB_READ_DSN, SQL_DB_WRITE_DSN
 // if want to create single connection, use SQL_DB_WRITE_DSN and set empty for SQL_DB_READ_DSN
-func InitSQLDatabase(opts ...SQLDatabaseOption) interfaces.SQLDatabase {
+func InitSQLDatabase(opts ...SQLDatabaseOption) *SQLInstance {
 	defer logger.LogWithDefer("Load SQL connection...")()
 
 	connReadDSN, connWriteDSN := env.BaseEnv().DbSQLReadDSN, env.BaseEnv().DbSQLWriteDSN
 	if connReadDSN == "" {
 		db := ConnectSQLDatabase(connWriteDSN, opts...)
-		return &sqlInstance{
-			read: db, write: db,
+		return &SQLInstance{
+			DBRead: db, DBWrite: db,
 		}
 	}
 
-	return &sqlInstance{
-		read:  ConnectSQLDatabase(connReadDSN, opts...),
-		write: ConnectSQLDatabase(connWriteDSN, opts...),
+	return &SQLInstance{
+		DBRead:  ConnectSQLDatabase(connReadDSN, opts...),
+		DBWrite: ConnectSQLDatabase(connWriteDSN, opts...),
 	}
 }
 

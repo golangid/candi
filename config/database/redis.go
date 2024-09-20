@@ -17,75 +17,88 @@ type RedisPoolOption func(pool *redis.Pool)
 func RedisPoolOptionSetMaxIdle(count int) RedisPoolOption {
 	return func(pool *redis.Pool) { pool.MaxIdle = count }
 }
+
 func RedisPoolOptionSetMaxActive(count int) RedisPoolOption {
 	return func(pool *redis.Pool) { pool.MaxActive = count }
 }
+
 func RedisPoolOptionSetIdleTimeout(dur time.Duration) RedisPoolOption {
 	return func(pool *redis.Pool) { pool.IdleTimeout = dur }
 }
+
 func RedisPoolOptionSetMaxConnLifetime(dur time.Duration) RedisPoolOption {
 	return func(pool *redis.Pool) { pool.MaxConnLifetime = dur }
 }
 
-type redisInstance struct {
-	read, write *redis.Pool
-	cache       interfaces.Cache
+type RedisInstance struct {
+	DBRead, DBWrite *redis.Pool
+	ICache          interfaces.Cache
 }
 
-func (m *redisInstance) ReadPool() *redis.Pool {
-	return m.read
+func (m *RedisInstance) ReadPool() *redis.Pool {
+	return m.DBRead
 }
-func (m *redisInstance) WritePool() *redis.Pool {
-	return m.write
+
+func (m *RedisInstance) WritePool() *redis.Pool {
+	return m.DBWrite
 }
-func (m *redisInstance) Health() map[string]error {
+
+func (m *RedisInstance) Health() map[string]error {
 	mErr := make(map[string]error)
-
-	connWrite := m.write.Get()
-	defer connWrite.Close()
-	_, err := connWrite.Do("PING")
-	mErr["redis_write"] = err
-
-	connRead := m.write.Get()
-	defer connRead.Close()
-	_, err = connRead.Do("PING")
-	mErr["redis_read"] = err
-
+	if m.DBWrite != nil {
+		connWrite := m.DBWrite.Get()
+		defer connWrite.Close()
+		_, err := connWrite.Do("PING")
+		mErr["redis_write"] = err
+	}
+	if m.DBRead != nil {
+		connRead := m.DBWrite.Get()
+		defer connRead.Close()
+		_, err := connRead.Do("PING")
+		mErr["redis_read"] = err
+	}
 	return mErr
 }
-func (m *redisInstance) Cache() interfaces.Cache {
-	return m.cache
+
+func (m *RedisInstance) Cache() interfaces.Cache {
+	return m.ICache
 }
-func (m *redisInstance) Disconnect(ctx context.Context) (err error) {
+
+func (m *RedisInstance) Disconnect(ctx context.Context) (err error) {
 	defer logger.LogWithDefer("\x1b[33;5mredis\x1b[0m: disconnect...")()
 
-	if err := m.read.Close(); err != nil {
-		return err
+	if m.DBRead != nil {
+		if err := m.DBRead.Close(); err != nil {
+			return err
+		}
 	}
-	return m.write.Close()
+	if m.DBWrite != nil {
+		err = m.DBWrite.Close()
+	}
+	return
 }
 
 // InitRedis connection from environment:
 // REDIS_READ_DSN, REDIS_WRITE_DSN
 // if want to create single connection, use REDIS_WRITE_DSN and set empty for REDIS_READ_DSN
-func InitRedis(opts ...RedisPoolOption) interfaces.RedisPool {
+func InitRedis(opts ...RedisPoolOption) *RedisInstance {
 	defer logger.LogWithDefer("Load Redis connection...")()
 
 	connReadDSN, connWriteDSN := env.BaseEnv().DbRedisReadDSN, env.BaseEnv().DbRedisWriteDSN
 	if connReadDSN == "" {
 		poolConn := ConnectRedis(connWriteDSN, opts...)
-		return &redisInstance{
-			read:  poolConn,
-			write: poolConn,
-			cache: cache.NewRedisCache(poolConn, poolConn),
+		return &RedisInstance{
+			DBRead:  poolConn,
+			DBWrite: poolConn,
+			ICache:  cache.NewRedisCache(poolConn, poolConn),
 		}
 	}
 
-	inst := &redisInstance{
-		read:  ConnectRedis(connReadDSN, opts...),
-		write: ConnectRedis(connWriteDSN, opts...),
+	inst := &RedisInstance{
+		DBRead:  ConnectRedis(connReadDSN, opts...),
+		DBWrite: ConnectRedis(connWriteDSN, opts...),
 	}
-	inst.cache = cache.NewRedisCache(inst.read, inst.write)
+	inst.ICache = cache.NewRedisCache(inst.DBRead, inst.DBWrite)
 	return inst
 }
 

@@ -68,13 +68,7 @@ func LoadServiceConfigs(baseCfg *config.Config) (deps dependency.Dependency) {
 			// ... add more dependencies
 		)
 		return []interfaces.Closer{ // throw back to base config for close connection when application shutdown
-			jaeger,
-			brokerDeps,
-			locker,
-			{{if not .RedisDeps}}// {{end}}redisDeps,
-			{{if not .SQLDeps}}// {{end}}sqlDeps,
-			{{if not .MongoDeps}}// {{end}}mongoDeps,{{if .ArangoDeps}}
-			arangoDeps,{{end}}
+			jaeger, deps,
 		}
 	})
 

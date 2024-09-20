@@ -3,7 +3,10 @@
 package mocks
 
 import (
+	context "context"
+
 	interfaces "github.com/golangid/candi/codebase/interfaces"
+
 	mock "github.com/stretchr/testify/mock"
 
 	types "github.com/golangid/candi/codebase/factory/types"
@@ -22,6 +25,24 @@ func (_m *Dependency) AddBroker(brokerType types.Worker, b interfaces.Broker) {
 // AddExtended provides a mock function with given fields: key, value
 func (_m *Dependency) AddExtended(key string, value interface{}) {
 	_m.Called(key, value)
+}
+
+// Disconnect provides a mock function with given fields: ctx
+func (_m *Dependency) Disconnect(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Disconnect")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // FetchBroker provides a mock function with given fields: _a0
@@ -149,6 +170,26 @@ func (_m *Dependency) GetMongoDatabase() interfaces.MongoDatabase {
 	return r0
 }
 
+// GetMongoDatabaseByKey provides a mock function with given fields: key
+func (_m *Dependency) GetMongoDatabaseByKey(key string) interfaces.MongoDatabase {
+	ret := _m.Called(key)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetMongoDatabaseByKey")
+	}
+
+	var r0 interfaces.MongoDatabase
+	if rf, ok := ret.Get(0).(func(string) interfaces.MongoDatabase); ok {
+		r0 = rf(key)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(interfaces.MongoDatabase)
+		}
+	}
+
+	return r0
+}
+
 // GetRedisPool provides a mock function with given fields:
 func (_m *Dependency) GetRedisPool() interfaces.RedisPool {
 	ret := _m.Called()
@@ -169,6 +210,26 @@ func (_m *Dependency) GetRedisPool() interfaces.RedisPool {
 	return r0
 }
 
+// GetRedisPoolByKey provides a mock function with given fields: key
+func (_m *Dependency) GetRedisPoolByKey(key string) interfaces.RedisPool {
+	ret := _m.Called(key)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRedisPoolByKey")
+	}
+
+	var r0 interfaces.RedisPool
+	if rf, ok := ret.Get(0).(func(string) interfaces.RedisPool); ok {
+		r0 = rf(key)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(interfaces.RedisPool)
+		}
+	}
+
+	return r0
+}
+
 // GetSQLDatabase provides a mock function with given fields:
 func (_m *Dependency) GetSQLDatabase() interfaces.SQLDatabase {
 	ret := _m.Called()
@@ -180,6 +241,26 @@ func (_m *Dependency) GetSQLDatabase() interfaces.SQLDatabase {
 	var r0 interfaces.SQLDatabase
 	if rf, ok := ret.Get(0).(func() interfaces.SQLDatabase); ok {
 		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(interfaces.SQLDatabase)
+		}
+	}
+
+	return r0
+}
+
+// GetSQLDatabaseByKey provides a mock function with given fields: key
+func (_m *Dependency) GetSQLDatabaseByKey(key string) interfaces.SQLDatabase {
+	ret := _m.Called(key)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSQLDatabaseByKey")
+	}
+
+	var r0 interfaces.SQLDatabase
+	if rf, ok := ret.Get(0).(func(string) interfaces.SQLDatabase); ok {
+		r0 = rf(key)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(interfaces.SQLDatabase)
