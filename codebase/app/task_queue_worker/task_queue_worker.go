@@ -10,6 +10,7 @@ import (
 
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
+	cronexpr "github.com/golangid/candi/candiutils/cronparser"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
@@ -238,8 +239,12 @@ func (t *taskQueueWorker) registerJobToWorker(job *Job) {
 
 	interval, err := time.ParseDuration(job.Interval)
 	if err != nil || interval <= 0 {
-		logger.LogRed("invalid interval " + job.Interval)
-		return
+		schedule, err := cronexpr.Parse(job.Interval)
+		if err != nil {
+			logger.LogRed("invalid interval " + job.Interval)
+			return
+		}
+		interval = schedule.NextInterval(time.Now())
 	}
 
 	t.mutex.Lock()

@@ -191,6 +191,7 @@ input AddJobInputResolver {
 	max_retry: Int!
 	args: String!
 	retry_interval: String
+	cron_expression: String
 }
 
 input GetAllJobInputResolver {
@@ -242,8 +243,9 @@ input FilterMutateJobInputResolver {
 
 // AddJobInputResolver model
 type AddJobInputResolver struct {
-	TaskName      string
-	MaxRetry      int
-	Args          string
-	RetryInterval *string
+	TaskName       string
+	MaxRetry       int
+	Args           string
+	RetryInterval  *string
+	CronExpression *string
 }

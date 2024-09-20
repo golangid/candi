@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golangid/candi/candihelper"
+	cronexpr "github.com/golangid/candi/candiutils/cronparser"
 )
 
 type (
@@ -286,14 +287,19 @@ func (j *JobResolver) ParseFromJob(job *Job, maxArgsLength int) {
 	if job.Status == string(StatusSuccess) {
 		j.Error = ""
 	}
-	if delay, err := time.ParseDuration(job.Interval); err == nil && job.Status == string(StatusQueueing) {
-		j.NextRetryAt = time.Now().Add(delay).In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
+
+	if job.Status == string(StatusQueueing) {
+		if delay, err := time.ParseDuration(job.Interval); err == nil {
+			j.NextRetryAt = time.Now().Add(delay).In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
+		} else if schedule, err := cronexpr.Parse(job.Interval); err == nil {
+			j.NextRetryAt = schedule.Next(time.Now()).Format(time.RFC3339)
+		}
 	}
 	j.CreatedAt = job.CreatedAt.In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 	if !job.FinishedAt.IsZero() {
 		j.FinishedAt = job.FinishedAt.In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 	}
-	if job.Retries > job.MaxRetry {
+	if job.MaxRetry > 0 && job.Retries > job.MaxRetry {
 		j.Retries = job.MaxRetry
 	}
 

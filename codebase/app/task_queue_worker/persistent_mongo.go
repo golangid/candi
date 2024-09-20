@@ -462,6 +462,11 @@ func (s *MongoPersistent) toBsonFilter(f *Filter) bson.M {
 			},
 		})
 	}
+	if f.MaxRetry != nil {
+		pipeQuery = append(pipeQuery, bson.M{
+			"max_retry": *f.MaxRetry,
+		})
+	}
 
 	if len(pipeQuery) > 0 {
 		return bson.M{

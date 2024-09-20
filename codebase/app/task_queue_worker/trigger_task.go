@@ -97,7 +97,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		ctx = tracer.SkipTraceContext(ctx)
 	}
 
-	isContextCanceled, isUpdateArgs, isError, startAt := false, false, false, time.Now()
+	isContextCanceled, isUpdateArgs, startAt := false, false, time.Now()
 	job.Retries++
 	statusBefore := strings.ToLower(job.Status)
 	job.Status = string(StatusRetrying)
@@ -179,10 +179,12 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		}
 	}(ctx, job)
 
+	var jobHistoryStatus string
 	select {
 	case <-ctx.Done():
 		job.Error = "Job has been stopped when running (context canceled)"
 		job.Status = string(StatusStopped)
+		jobHistoryStatus = job.Status
 		isContextCanceled = true
 
 	case eventResult := <-eventResultChan:
@@ -191,37 +193,46 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 		job.Error = ""
 		job.Result = eventResult.result
 		job.ErrorStack = eventResult.stackTrace
+		jobHistoryStatus = job.Status
+
 		if eventResult.err != nil {
-			isError = true
 			job.Error = eventResult.err.Error()
 			job.Status = string(StatusFailure)
+			jobHistoryStatus = job.Status
+		}
 
-			switch e := eventResult.err.(type) {
-			case *candishared.ErrorRetrier:
-				if job.Retries < job.MaxRetry {
-					if e.Delay <= 0 {
-						e.Delay = defaultInterval
-					}
+		if job.MaxRetry == 0 { // cron mode
+			job.Status = string(StatusQueueing)
+			t.opt.queue.PushJob(ctx, &job)
+			goto FINISH
+		}
 
-					job.Status = string(StatusQueueing)
-					job.Interval = e.Delay.String()
-					if e.NewRetryIntervalFunc != nil {
-						job.Interval = e.NewRetryIntervalFunc(job.Retries).String()
-					}
-
-					// update job arguments if in error retry contains new args payload
-					if len(e.NewArgsPayload) > 0 {
-						job.Arguments = string(e.NewArgsPayload)
-						isUpdateArgs = true
-					}
-					t.opt.queue.PushJob(ctx, &job)
-				} else {
-					logger.LogRed("TaskQueueWorker: Still error for task '" + job.TaskName + "' (job id: " + job.ID + ")")
+		switch e := eventResult.err.(type) {
+		case *candishared.ErrorRetrier:
+			if job.Retries < job.MaxRetry {
+				if e.Delay <= 0 {
+					e.Delay = defaultInterval
 				}
+
+				job.Status = string(StatusQueueing)
+				job.Interval = e.Delay.String()
+				if e.NewRetryIntervalFunc != nil {
+					job.Interval = e.NewRetryIntervalFunc(job.Retries).String()
+				}
+
+				// update job arguments if in error retry contains new args payload
+				if len(e.NewArgsPayload) > 0 {
+					job.Arguments = string(e.NewArgsPayload)
+					isUpdateArgs = true
+				}
+				t.opt.queue.PushJob(ctx, &job)
+			} else {
+				logger.LogRed("TaskQueueWorker: Still error for task '" + job.TaskName + "' (job id: " + job.ID + ")")
 			}
 		}
 	}
 
+FINISH:
 	job.FinishedAt = time.Now()
 	incr := map[string]int64{}
 	if ok, _ := runningTask.handler.Configs[TaskOptionDeleteJobAfterSuccess].(bool); ok && job.Status == string(StatusSuccess) {
@@ -248,8 +259,8 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			StartAt: startAt, EndAt: job.FinishedAt,
 			ErrorStack: job.ErrorStack, Result: job.Result,
 		}
-		if isError {
-			retryHistory.Status = StatusFailure.String()
+		if jobHistoryStatus != "" {
+			retryHistory.Status = jobHistoryStatus
 		}
 		matchedCount, affectedCount, err := t.opt.persistent.UpdateJob(
 			t.ctx, &Filter{JobID: &job.ID}, updated, retryHistory,

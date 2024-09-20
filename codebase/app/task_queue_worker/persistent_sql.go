@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -479,6 +480,9 @@ func (s *SQLPersistent) toQueryFilter(f *Filter) (where string, err error) {
 	}
 	if f.BeforeCreatedAt != nil && !f.BeforeCreatedAt.IsZero() {
 		conditions = append(conditions, s.formatColumnName("created_at")+" <= '"+f.BeforeCreatedAt.Format(time.RFC3339)+"'")
+	}
+	if f.MaxRetry != nil {
+		conditions = append(conditions, "max_retry='"+strconv.Itoa(*f.MaxRetry)+"'")
 	}
 
 	if len(conditions) == 0 {

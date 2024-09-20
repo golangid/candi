@@ -158,6 +158,8 @@ func (r *rootResolver) AddJob(ctx context.Context, input struct{ Param AddJobInp
 			return "", err
 		}
 		job.RetryInterval = interval
+	} else if input.Param.CronExpression != nil {
+		job.CronExpression = *input.Param.CronExpression
 	}
 	return AddJob(ctx, &job)
 }

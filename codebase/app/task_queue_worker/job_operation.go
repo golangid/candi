@@ -13,6 +13,7 @@ import (
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/candiutils"
+	cronexpr "github.com/golangid/candi/candiutils/cronparser"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
@@ -21,16 +22,28 @@ import (
 type (
 	// AddJobRequest request model
 	AddJobRequest struct {
-		TaskName      string        `json:"task_name"`
-		MaxRetry      int           `json:"max_retry"`
-		Args          []byte        `json:"args"`
-		RetryInterval time.Duration `json:"retry_interval"`
-		direct        bool
+		TaskName       string        `json:"task_name"`
+		MaxRetry       int           `json:"max_retry"`
+		Args           []byte        `json:"args"`
+		RetryInterval  time.Duration `json:"retry_interval"`
+		CronExpression string        `json:"cron_expression"`
+
+		direct   bool              `json:"-"`
+		schedule cronexpr.Schedule `json:"-"`
 	}
 )
 
 // Validate method
 func (a *AddJobRequest) Validate() error {
+	if a.CronExpression != "" {
+		schedule, err := cronexpr.Parse(a.CronExpression)
+		if err != nil {
+			return err
+		}
+		a.schedule = schedule
+		return nil
+	}
+
 	switch {
 	case a.TaskName == "":
 		return errors.New("Task name cannot empty")
@@ -81,6 +94,16 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	newJob.Interval = defaultInterval.String()
 	if req.RetryInterval > 0 {
 		newJob.Interval = req.RetryInterval.String()
+	}
+	if req.CronExpression != "" {
+		if totalJob := engine.opt.persistent.CountAllJob(ctx, &Filter{
+			TaskName: req.TaskName, MaxRetry: candihelper.WrapPtr(0),
+			Statuses: []string{string(StatusQueueing), string(StatusRetrying)},
+		}); totalJob > 0 {
+			return jobID, fmt.Errorf("there is running cron job in task '%s'", req.TaskName)
+		}
+		newJob.Interval = req.CronExpression
+		newJob.NextRetryAt = req.schedule.Next(time.Now()).Format(time.RFC3339)
 	}
 	newJob.Status = string(StatusQueueing)
 	newJob.CreatedAt = time.Now()
@@ -211,8 +234,11 @@ func RetryJob(ctx context.Context, jobID string) error {
 	engine.opt.locker.Unlock(engine.getLockKey(job.TaskName))
 	engine.opt.locker.Unlock(engine.getLockKey(job.ID))
 
+	if _, err := cronexpr.Parse(job.Interval); err != nil {
+		job.Interval = defaultInterval.String()
+	}
+
 	statusBefore := job.Status
-	job.Interval = defaultInterval.String()
 	job.Status = string(StatusQueueing)
 	if (job.Status == string(StatusFailure)) || (job.Retries >= job.MaxRetry) {
 		job.Retries = 0
@@ -246,10 +272,6 @@ func RetryJob(ctx context.Context, jobID string) error {
 func StopJob(ctx context.Context, jobID string) error {
 	if engine == nil {
 		return errWorkerInactive
-	}
-
-	if ctx.Err() != nil {
-		ctx = context.Background()
 	}
 
 	job, err := engine.opt.persistent.FindJobByID(ctx, jobID, nil)

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/golangid/candi/candihelper"
+	cronexpr "github.com/golangid/candi/candiutils/cronparser"
 )
 
 const (
@@ -33,6 +34,7 @@ type Filter struct {
 	EndDate             string     `json:"endDate,omitempty"`
 	BeforeCreatedAt     *time.Time `json:"beforeCreatedAt,omitempty"`
 	Count               int        `json:"count,omitempty"`
+	MaxRetry            *int       `json:"maxRetry,omitempty"`
 	secondaryPersistent bool       `json:"-"`
 }
 
@@ -179,7 +181,9 @@ type Job struct {
 	MaxProgress     int            `bson:"max_progress" json:"max_progress"`
 	RetryHistories  []RetryHistory `bson:"retry_histories" json:"retry_histories"`
 	NextRetryAt     string         `bson:"-" json:"-"`
-	direct          bool           `bson:"-" json:"-"`
+
+	direct   bool              `bson:"-" json:"-"`
+	schedule cronexpr.Schedule `json:"-"`
 }
 
 // RetryHistory model
