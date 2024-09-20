@@ -197,16 +197,20 @@ func (i *interceptor) logInterceptor(startTime time.Time, err error, fullMethod 
 
 	end := time.Now()
 	var status = "OK"
-	statusColor := candihelper.Green
+	statusColor := []byte{27, 91, 57, 55, 59, 52, 50, 109} // green
 	if err != nil {
-		statusColor = candihelper.Red
+		statusColor = []byte{27, 91, 57, 55, 59, 52, 49, 109} // red
 		status = "ERROR"
 	}
 
 	fmt.Fprintf(os.Stdout, "%s[%s]%s %s %v | %s %-5s %s | %13v | %s\n",
-		candihelper.Cyan, reqType, candihelper.Reset, i.opt.tcpPort,
+		[]byte{27, 91, 57, 55, 59, 52, 54, 109}, // cyan
+		reqType,
+		[]byte{27, 91, 48, 109}, // reset
+		i.opt.tcpPort,
 		end.Format("2006/01/02 - 15:04:05"),
-		statusColor, status, candihelper.Reset,
+		statusColor, status,
+		[]byte{27, 91, 48, 109}, // reset
 		end.Sub(startTime),
 		fullMethod,
 	)

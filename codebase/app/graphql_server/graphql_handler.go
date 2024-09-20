@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"os"
 	"reflect"
 	"runtime"
 	"strconv"
+	"strings"
 
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
@@ -300,12 +302,16 @@ type panicLogger struct{}
 // LogPanic is used to log recovered panic values that occur during query execution
 // https://github.com/graph-gophers/graphql-go/blob/master/log/log.go#L19 + custom add log to trace
 func (l *panicLogger) LogPanic(ctx context.Context, value interface{}) {
-	const size = 2 << 10
-	buf := make([]byte, size)
-	buf = buf[:runtime.Stack(buf, false)]
-
-	tracer.Log(ctx, "gql_panic", value)
-	tracer.Log(ctx, "gql_panic_trace", buf)
+	var stackTraces []string
+	for i := 2; i < 10 && len(stackTraces) <= 5; i++ {
+		_, file, line, ok := runtime.Caller(i)
+		if !ok {
+			continue
+		}
+		stackTraces = append(stackTraces, file+":"+strconv.Itoa(line))
+	}
+	log.Printf("\x1b[31;5m%s\x1b[0m", strings.Join(append([]string{fmt.Sprintf("%v", value)}, stackTraces...), "\n"))
+	tracer.Log(ctx, "stacktraces", strings.Join(stackTraces, "\n"))
 }
 
 func extractRealIPHeader(req *http.Request) string {

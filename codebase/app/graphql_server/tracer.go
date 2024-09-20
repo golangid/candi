@@ -11,7 +11,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/tracer"
@@ -70,20 +69,24 @@ func (t *graphqlTracer) TraceField(ctx context.Context, label, typeName, fieldNa
 	return ctx, func(data []byte, err *gqlerrors.QueryError) {
 		end := time.Now()
 		if env.BaseEnv().DebugMode && !trivial && !gqlTypeNotShowLog[typeName] && fieldName != schemaRootInstropectionField {
-			statusColor := candihelper.Green
+			statusColor := []byte{27, 91, 57, 55, 59, 52, 50, 109} // green
 			status := " OK  "
 			if err != nil {
-				statusColor = candihelper.Red
+				statusColor = []byte{27, 91, 57, 55, 59, 52, 49, 109} // red
 				status = "ERROR"
 			}
 
-			fmt.Fprintf(os.Stdout, "%s[GRAPHQL]%s => %s %10s %s | %v | %s %s %s | %13v | %s %s %s\n",
-				candihelper.White, candihelper.Reset,
-				candihelper.Blue, typeName, candihelper.Reset,
-				end.Format("2006/01/02 - 15:04:05"),
-				statusColor, status, candihelper.Reset,
+			fmt.Fprintf(os.Stdout, "%s[GRAPHQL]%s => %s %10s %s | %v | %s %s %s | %5s | \x1b[35;1m%s\x1b[0m\n",
+				[]byte{27, 91, 57, 48, 59, 52, 55, 109}, // white
+				[]byte{27, 91, 48, 109},                 // reset
+				[]byte{27, 91, 57, 55, 59, 52, 52, 109}, // blue
+				typeName,
+				[]byte{27, 91, 48, 109}, // reset
+				end.Format("2006-01-02 15:04:05"),
+				statusColor, status,
+				[]byte{27, 91, 48, 109}, // reset
 				end.Sub(start),
-				candihelper.Magenta, label, candihelper.Reset,
+				label,
 			)
 		}
 	}
