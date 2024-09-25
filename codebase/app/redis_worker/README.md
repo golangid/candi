@@ -84,7 +84,16 @@ import (
 
 func (uc *usecaseImpl) someUsecase(ctx context.Context) {
 	// scheduled exec to "scheduled-push-notif" handler after 5 minutes from now
-	key := candihelper.BuildRedisPubSubKeyTopic("scheduled-push-notif", map[string]string{"message": "hello"})
-	uc.cache.Set(ctx, key, "ok", 5*time.Minute)
+
+	timerDuration, _ := time.ParseDuration("5m")
+	message := "hello"
+	job := candishared.PublisherArgument{
+		Topic: "foobar",
+		Key:   "foo_007",
+		Message: candihelper.ToBytes(message),
+		Delay: timerDuration,
+		IsDeleteMessage: true,
+	}
+	uc.deps.GetBroker(types.RedisSubscriber).GetPublisher().PublishMessage(ctx, &job)
 }
 ```

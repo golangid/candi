@@ -304,7 +304,7 @@ $ make docker
 		"$ candi -init\n" +
 		"```\n" +
 		`
-### If include GRPC handler, run this command (must install ` + "`protoc`" + ` compiler min version ` + "`libprotoc` 3.14.0`" + `)
+### If include GRPC handler, run this command (must install ` + "`protoc`" + ` compiler min version ` + "`libprotoc 3.14.0`" + `)
 
 ` + "```" + `
 $ make proto service={{service_name}}

@@ -249,7 +249,7 @@ func NewPostgresListenerHandler(uc usecase.Usecase, deps dependency.Dependency) 
 
 // MountHandlers mount handler group
 func (h *PostgresListenerHandler) MountHandlers(group *types.WorkerHandlerGroup) {
-	group.Add("{{snake .ModuleName}}s", h.handleDataChangeOn{{upper (camel .ModuleName)}}) // listen data change on table "{{.ModuleName}}s"
+	group.Add("{{plural .ModuleName}}", h.handleDataChangeOn{{upper (camel .ModuleName)}}) // listen data change on table "{{plural .ModuleName}}"
 }
 
 func (h *PostgresListenerHandler) handleDataChangeOn{{upper (camel .ModuleName)}}(eventContext *candishared.EventContext) error {

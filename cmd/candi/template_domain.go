@@ -19,12 +19,12 @@ type {{upper (camel .ModuleName)}} struct {
 {{if .SQLUseGORM}}
 // TableName return table name of {{upper (camel .ModuleName)}} model
 func ({{upper (camel .ModuleName)}}) TableName() string {
-	return "{{snake .ModuleName}}s"
+	return "{{plural .ModuleName}}"
 }{{end}}
 {{if or .MongoDeps .ArangoDeps}}
 // CollectionName return collection name of {{upper (camel .ModuleName)}} model
 func ({{upper (camel .ModuleName)}}) CollectionName() string {
-	return "{{snake .ModuleName}}s"
+	return "{{plural .ModuleName}}"
 }{{end}}
 `
 	templateModuleDomain = `package domain
