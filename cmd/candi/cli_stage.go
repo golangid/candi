@@ -10,7 +10,7 @@ import (
 )
 
 func cliStageInputServiceName() (serviceName string) {
-	serviceName = readInput("Please input service name:")
+	serviceName = candihelper.ToDelimited(readInput("Please input service name:"), '-')
 	_, err := os.Stat(serviceName)
 	var errMessage string
 	if strings.TrimSpace(serviceName) == "" {
@@ -42,7 +42,7 @@ func inputOwnerName() (ownerName string) {
 
 func cliStageInputExistingServiceName(prefixPath, cmd string) string {
 stageInputServiceName:
-	serviceName := readInput(cmd)
+	serviceName := candihelper.ToDelimited(readInput(cmd), '-')
 	_, err := os.Stat(filepath.Join(prefixPath, serviceName))
 	var errMessage string
 	if strings.TrimSpace(serviceName) == "" {

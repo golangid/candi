@@ -101,9 +101,9 @@ $ make run
 If include GRPC handler, run `$ make proto` for generate rpc files from proto (must install `protoc` compiler min version `libprotoc 3.14.0`)
 
 ## Server handlers example:
-* [**Example REST API in delivery layer**](https://github.com/golangid/backend-microservices/tree/master/services/user-service/internal/modules/auth/delivery/resthandler)
-* [**Example gRPC in delivery layer**](https://github.com/golangid/backend-microservices/blob/master/services/storage-service/internal/modules/storage/delivery/grpchandler/grpchandler.go)
-* [**Example GraphQL in delivery layer**](https://github.com/golangid/backend-microservices/tree/master/services/user-service/internal/modules/auth/delivery/graphqlhandler)
+* [**Example REST API in delivery layer**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/services/user-service/internal/modules/auth/delivery/resthandler/resthandler.go)
+* [**Example gRPC in delivery layer**](https://github.com/agungdwiprasetyo/backend-microservices/blob/master/services/storage-service/internal/modules/storage/delivery/grpchandler/grpchandler.go)
+* [**Example GraphQL in delivery layer**](https://github.com/agungdwiprasetyo/backend-microservices/tree/master/services/user-service/internal/modules/auth/delivery/graphqlhandler)
 
 ## Worker handlers example:
 * [**Example Cron worker in delivery layer**](https://github.com/golangid/candi/tree/master/codebase/app/cron_worker) (Static Scheduler)
