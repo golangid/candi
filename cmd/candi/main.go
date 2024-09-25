@@ -8,6 +8,8 @@ import (
 	"os"
 	"runtime"
 	"text/template"
+
+	"github.com/golangid/candi/candihelper"
 )
 
 func main() {
@@ -104,7 +106,7 @@ func selectScope(flagParam flagParameter, scope string) {
 	case InitMonorepo: // 1
 		logger.Printf("\033[1mPlease input monorepo project name (enter for default):\033[0m")
 		fmt.Printf(">> ")
-		cmdInput := readInput()
+		cmdInput := candihelper.ToDelimited(readInput(), '-')
 		if cmdInput != "" {
 			flagParam.monorepoProjectName = cmdInput
 		}
