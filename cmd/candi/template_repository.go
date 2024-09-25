@@ -621,7 +621,7 @@ func (r *{{camel .ModuleName}}RepoSQL) FetchAll(ctx context.Context, filter *dom
 	if len(args) > 0 {
 		where = " WHERE " + where
 	}
-	query := fmt.Sprintf("SELECT id, field, created_at, updated_at FROM {{snake .ModuleName}}s%s ORDER BY %s %s LIMIT %d OFFSET %d",
+	query := fmt.Sprintf("SELECT id, field, created_at, updated_at FROM {{plural .ModuleName}}%s ORDER BY %s %s LIMIT %d OFFSET %d",
 		where, filter.OrderBy, filter.Sort, filter.Limit, filter.CalculateOffset())
 	trace.Log("query", query)
 	rows, err := r.readDB.Query(query, args...)
@@ -650,7 +650,7 @@ func (r *{{camel .ModuleName}}RepoSQL) Count(ctx context.Context, filter *domain
 	if len(args) > 0 {
 		where = " WHERE " + where
 	}
-	query := "SELECT COUNT(*) FROM {{snake .ModuleName}}s" + where
+	query := "SELECT COUNT(*) FROM {{plural .ModuleName}}" + where
 	r.readDB.QueryRow(query, args...).Scan(&count)
 	trace.Log("query", query)
 	trace.Log("args", args){{end}}
@@ -664,7 +664,7 @@ func (r *{{camel .ModuleName}}RepoSQL) Find(ctx context.Context, filter *domain.
 
 	{{if .SQLUseGORM}}err = r.setFilter{{upper (camel .ModuleName)}}({{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, r.readDB), filter).First(&result).Error
 	{{else}}where, args := r.setFilter{{upper (camel .ModuleName)}}(filter)
-	query := "SELECT id, field, created_at, updated_at FROM {{snake .ModuleName}}s WHERE " + where + " LIMIT 1"
+	query := "SELECT id, field, created_at, updated_at FROM {{plural .ModuleName}} WHERE " + where + " LIMIT 1"
 	trace.Log("query", query)
 	trace.Log("args", args)
 	err = r.readDB.QueryRow(query, args...).
@@ -697,7 +697,7 @@ func (r *{{camel .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddom
 		data.CreatedAt = time.Now()
 	}
 	if data.ID == 0 {
-		query = "INSERT INTO {{snake .ModuleName}}s (field, created_at, updated_at) VALUES ({{if eq .SQLDriver "postgres"}}$1,$2,$3{{else}}?,?,?{{end}})"
+		query = "INSERT INTO {{plural .ModuleName}} (field, created_at, updated_at) VALUES ({{if eq .SQLDriver "postgres"}}$1,$2,$3{{else}}?,?,?{{end}})"
 		args = []interface{}{data.Field, data.CreatedAt, data.UpdatedAt}
 	} else {
 		var updatedFields []string{{if eq .SQLDriver "postgres"}}
@@ -707,7 +707,7 @@ func (r *{{camel .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddom
 			updatedFields = append(updatedFields, {{if eq .SQLDriver "postgres"}}fmt.Sprintf("%s=$%d", field, i))
 			i++{{else}}fmt.Sprintf("%s=?", field)){{end}}
 		}
-		query = fmt.Sprintf("UPDATE {{snake .ModuleName}}s SET %s WHERE id={{if eq .SQLDriver "postgres"}}$%d", strings.Join(updatedFields, ", "), i){{else}}?", strings.Join(updatedFields, ", ")){{end}}
+		query = fmt.Sprintf("UPDATE {{plural .ModuleName}} SET %s WHERE id={{if eq .SQLDriver "postgres"}}$%d", strings.Join(updatedFields, ", "), i){{else}}?", strings.Join(updatedFields, ", ")){{end}}
 		args = append(args, data.ID)
 	}
 	trace.Log("query", query)
@@ -745,7 +745,7 @@ func (r *{{camel .ModuleName}}RepoSQL) Delete(ctx context.Context, filter *domai
 	if len(args) == 0 {
 		return errors.New("Cannot empty filter")
 	}
-	query :=  "DELETE FROM {{snake .ModuleName}}s WHERE " + where
+	query :=  "DELETE FROM {{plural .ModuleName}} WHERE " + where
 	trace.Log("query", query)
 	trace.Log("args", args)
 	var stmt *sql.Stmt
