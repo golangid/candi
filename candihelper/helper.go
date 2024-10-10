@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"net/url"
 	"os"
@@ -178,14 +179,17 @@ func MustParseEnv(target any) {
 		}
 
 		typ := pType.Field(i)
+		key := typ.Tag.Get("env")
+		isSkipKey := key == "" || key == "-"
+
 		if typ.Anonymous ||
-			(typ.Type.Kind() == reflect.Struct && !reflect.DeepEqual(field.Interface(), time.Time{})) { // embedded struct or struct field
+			(typ.Type.Kind() == reflect.Struct && isSkipKey &&
+				!reflect.DeepEqual(field.Interface(), time.Time{})) { // embedded struct or struct field
 			MustParseEnv(field.Addr().Interface())
 			continue
 		}
 
-		key := typ.Tag.Get("env")
-		if key == "" || key == "-" {
+		if isSkipKey {
 			continue
 		}
 
@@ -246,8 +250,22 @@ func MustParseEnv(target any) {
 			if separator == "" {
 				separator = ","
 			}
-			field.Set(reflect.ValueOf(strings.Split(val, separator)))
+			if val != "" {
+				field.Set(reflect.ValueOf(strings.Split(val, separator)))
+			}
 
+		default:
+			var err error
+			switch typ.Tag.Get("encoding") {
+			case "xml":
+				err = xml.Unmarshal([]byte(val), field.Addr().Interface())
+			default:
+				err = json.Unmarshal([]byte(val), field.Addr().Interface())
+			}
+			if err != nil {
+				mErrs.Append(key, fmt.Errorf("env '%s': %v", key, err))
+				continue
+			}
 		}
 	}
 
