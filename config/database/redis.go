@@ -52,7 +52,7 @@ func (m *RedisInstance) Health() map[string]error {
 		mErr["redis_write"] = err
 	}
 	if m.DBRead != nil {
-		connRead := m.DBWrite.Get()
+		connRead := m.DBRead.Get()
 		defer connRead.Close()
 		_, err := connRead.Do("PING")
 		mErr["redis_read"] = err
