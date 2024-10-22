@@ -30,7 +30,7 @@ type graphqlTracer struct {
 }
 
 // TraceQuery method, intercept incoming query and add tracing
-func (t *graphqlTracer) TraceQuery(ctx context.Context, queryString string, operationName string, variables map[string]interface{}, varTypes map[string]*introspection.Type) (context.Context, gqltrace.QueryFinishFunc) {
+func (t *graphqlTracer) TraceQuery(ctx context.Context, queryString string, operationName string, variables map[string]any, varTypes map[string]*introspection.Type) (context.Context, gqltrace.QueryFinishFunc) {
 	headers, _ := ctx.Value(candishared.ContextKeyHTTPHeader).(http.Header)
 	header := make(map[string]string, len(headers))
 	for key := range headers {
@@ -64,7 +64,7 @@ func (t *graphqlTracer) TraceQuery(ctx context.Context, queryString string, oper
 }
 
 // TraceField method, intercept field per query and check middleware
-func (t *graphqlTracer) TraceField(ctx context.Context, label, typeName, fieldName string, trivial bool, args map[string]interface{}) (context.Context, gqltrace.FieldFinishFunc) {
+func (t *graphqlTracer) TraceField(ctx context.Context, label, typeName, fieldName string, trivial bool, args map[string]any) (context.Context, gqltrace.FieldFinishFunc) {
 	start := time.Now()
 	return ctx, func(data []byte, err *gqlerrors.QueryError) {
 		end := time.Now()

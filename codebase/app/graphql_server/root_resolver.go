@@ -4,24 +4,24 @@ import "reflect"
 
 // rootResolver root
 type rootResolver struct {
-	rootQuery        interface{}
-	rootMutation     interface{}
-	rootSubscription interface{}
+	rootQuery        any
+	rootMutation     any
+	rootSubscription any
 }
 
-func (r *rootResolver) Query() interface{} {
+func (r *rootResolver) Query() any {
 	return r.rootQuery
 }
-func (r *rootResolver) Mutation() interface{} {
+func (r *rootResolver) Mutation() any {
 	return r.rootMutation
 }
-func (r *rootResolver) Subscription() interface{} {
+func (r *rootResolver) Subscription() any {
 	return r.rootSubscription
 }
 
 // for creating dynamic struct utils
 
-func appendStructField(fieldName string, fieldValue interface{}, structFields *[]reflect.StructField) {
+func appendStructField(fieldName string, fieldValue any, structFields *[]reflect.StructField) {
 	if fieldValue == nil {
 		return
 	}
@@ -31,7 +31,7 @@ func appendStructField(fieldName string, fieldValue interface{}, structFields *[
 	})
 }
 
-func constructStruct(structFields []reflect.StructField, structValue map[string]interface{}) interface{} {
+func constructStruct(structFields []reflect.StructField, structValue map[string]any) any {
 	if len(structFields) == 0 {
 		return &struct{}{}
 	}

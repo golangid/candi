@@ -56,21 +56,21 @@ func LogGreen(str string) {
 }
 
 // RedColor func
-func RedColor(str interface{}) string {
+func RedColor(str any) string {
 	return fmt.Sprintf("\x1b[31;5m%v\x1b[0m", str)
 }
 
 // GreenColor func
-func GreenColor(str interface{}) string {
+func GreenColor(str any) string {
 	return fmt.Sprintf("\x1b[32;5m%v\x1b[0m", str)
 }
 
 // YellowColor func
-func YellowColor(str interface{}) string {
+func YellowColor(str any) string {
 	return fmt.Sprintf("\x1b[33;5m%v\x1b[0m", str)
 }
 
 // CyanColor func
-func CyanColor(str interface{}) string {
+func CyanColor(str any) string {
 	return fmt.Sprintf("\x1b[36;5m%v\x1b[0m", str)
 }

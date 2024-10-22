@@ -15,7 +15,7 @@ type (
 		CountAllJob(ctx context.Context, filter *Filter) int
 		AggregateAllTaskJob(ctx context.Context, filter *Filter) (result []TaskSummary)
 		SaveJob(ctx context.Context, job *Job, retryHistories ...RetryHistory) (err error)
-		UpdateJob(ctx context.Context, filter *Filter, updated map[string]interface{}, retryHistories ...RetryHistory) (matchedCount, affectedRow int64, err error)
+		UpdateJob(ctx context.Context, filter *Filter, updated map[string]any, retryHistories ...RetryHistory) (matchedCount, affectedRow int64, err error)
 		CleanJob(ctx context.Context, filter *Filter) (affectedRow int64)
 		DeleteJob(ctx context.Context, id string) (job Job, err error)
 		Type() string
@@ -62,7 +62,7 @@ func (n *noopPersistent) AggregateAllTaskJob(ctx context.Context, filter *Filter
 func (n *noopPersistent) SaveJob(ctx context.Context, job *Job, retryHistories ...RetryHistory) (err error) {
 	return
 }
-func (n *noopPersistent) UpdateJob(ctx context.Context, filter *Filter, updated map[string]interface{}, retryHistories ...RetryHistory) (matchedCount, affectedRow int64, err error) {
+func (n *noopPersistent) UpdateJob(ctx context.Context, filter *Filter, updated map[string]any, retryHistories ...RetryHistory) (matchedCount, affectedRow int64, err error) {
 	return
 }
 func (n *noopPersistent) CleanJob(ctx context.Context, filter *Filter) (affectedRow int64) {

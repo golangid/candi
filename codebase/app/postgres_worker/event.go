@@ -72,8 +72,8 @@ type (
 		IsTooLongPayload bool        `json:"is_too_long_payload,omitempty"`
 		OldID            string      `json:"old_id"`
 		NewID            string      `json:"new_id"`
-		Old              interface{} `json:"old"`
-		New              interface{} `json:"new"`
+		Old              any `json:"old"`
+		New              any `json:"new"`
 	}
 )
 

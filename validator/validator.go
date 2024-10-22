@@ -38,11 +38,11 @@ func NewValidator(opts ...OptionFunc) *Validator {
 }
 
 // ValidateDocument method using jsonschema with input is json source
-func (v *Validator) ValidateDocument(reference string, document interface{}) error {
+func (v *Validator) ValidateDocument(reference string, document any) error {
 	return v.JSONSchema.ValidateDocument(reference, document)
 }
 
 // ValidateStruct method, rules from struct tag using github.com/go-playground/validator
-func (v *Validator) ValidateStruct(data interface{}) error {
+func (v *Validator) ValidateStruct(data any) error {
 	return v.StructValidator.ValidateStruct(data)
 }

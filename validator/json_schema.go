@@ -52,7 +52,7 @@ func NewJSONSchemaValidator(opts ...JSONSchemaValidatorOptionFunc) *JSONSchemaVa
 }
 
 // ValidateDocument based on schema id
-func (v *JSONSchemaValidator) ValidateDocument(schemaSource string, documentSource interface{}) error {
+func (v *JSONSchemaValidator) ValidateDocument(schemaSource string, documentSource any) error {
 	s, err := v.SchemaStorage.Get(schemaSource)
 	if err != nil {
 		return err

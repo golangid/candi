@@ -23,7 +23,7 @@ func (_m *Dependency) AddBroker(brokerType types.Worker, b interfaces.Broker) {
 }
 
 // AddExtended provides a mock function with given fields: key, value
-func (_m *Dependency) AddExtended(key string, value interface{}) {
+func (_m *Dependency) AddExtended(key string, value any) {
 	_m.Called(key, value)
 }
 
@@ -71,19 +71,19 @@ func (_m *Dependency) GetBroker(_a0 types.Worker) interfaces.Broker {
 }
 
 // GetExtended provides a mock function with given fields: key
-func (_m *Dependency) GetExtended(key string) interface{} {
+func (_m *Dependency) GetExtended(key string) any {
 	ret := _m.Called(key)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetExtended")
 	}
 
-	var r0 interface{}
-	if rf, ok := ret.Get(0).(func(string) interface{}); ok {
+	var r0 any
+	if rf, ok := ret.Get(0).(func(string) any); ok {
 		r0 = rf(key)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
+			r0 = ret.Get(0).(any)
 		}
 	}
 

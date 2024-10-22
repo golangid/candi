@@ -120,7 +120,7 @@ func (uc *usecaseImpl) UsecaseToPublishMessage(ctx context.Context) error {
 	err := uc.rabbitmqPub.PublishMessage(ctx, &candishared.PublisherArgument{
 		Topic:  "example-topic",
 		Data:   "hello world"
-		Header: map[string]interface{}{
+		Header: map[string]any{
 			broker.RabbitMQDelayHeader: 5000, // if you want set delay consume your message by active consumer for 5 seconds
 		},
 	})

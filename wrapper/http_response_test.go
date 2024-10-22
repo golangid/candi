@@ -24,7 +24,7 @@ func TestNewHTTPResponse(t *testing.T) {
 	type args struct {
 		code    int
 		message string
-		params  []interface{}
+		params  []any
 	}
 	tests := []struct {
 		name string
@@ -36,7 +36,7 @@ func TestNewHTTPResponse(t *testing.T) {
 			args: args{
 				code:    http.StatusOK,
 				message: "Fetch all data",
-				params: []interface{}{
+				params: []any{
 					[]Data{{ID: "061499700032"}, {ID: "061499700033"}},
 					candishared.Meta{Page: 1, Limit: 10, TotalPages: 10, TotalRecords: 100},
 				},
@@ -54,7 +54,7 @@ func TestNewHTTPResponse(t *testing.T) {
 			args: args{
 				code:    http.StatusOK,
 				message: "Get detail data",
-				params: []interface{}{
+				params: []any{
 					Data{ID: "061499700032"},
 				},
 			},
@@ -82,7 +82,7 @@ func TestNewHTTPResponse(t *testing.T) {
 			args: args{
 				code:    http.StatusBadRequest,
 				message: "id cannot be empty",
-				params:  []interface{}{multiError},
+				params:  []any{multiError},
 			},
 			want: &HTTPResponse{
 				Success: false,
@@ -96,7 +96,7 @@ func TestNewHTTPResponse(t *testing.T) {
 			args: args{
 				code:    http.StatusBadRequest,
 				message: "Failed validate",
-				params:  []interface{}{errors.New("error")},
+				params:  []any{errors.New("error")},
 			},
 			want: &HTTPResponse{
 				Success: false,

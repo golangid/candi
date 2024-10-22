@@ -177,7 +177,7 @@ func (r *RabbitMQPublisher) PublishMessage(ctx context.Context, args *candishare
 	}
 
 	if args.Header == nil {
-		args.Header = make(map[string]interface{})
+		args.Header = make(map[string]any)
 	}
 
 	traceHeader := map[string]string{}

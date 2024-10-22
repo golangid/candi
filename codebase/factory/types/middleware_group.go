@@ -20,7 +20,7 @@ func (mw MiddlewareGroup) Add(fullMethod string, middlewareFunc ...MiddlewareFun
 }
 
 // AddProto register proto for grpc middleware
-func (mw MiddlewareGroup) AddProto(protoDesc protoreflect.FileDescriptor, handler interface{}, middlewareFunc ...MiddlewareFunc) {
+func (mw MiddlewareGroup) AddProto(protoDesc protoreflect.FileDescriptor, handler any, middlewareFunc ...MiddlewareFunc) {
 	serviceName := fmt.Sprintf("/%s/", protoDesc.Services().Get(0).FullName())
 	var fullMethodName string
 	switch h := handler.(type) {

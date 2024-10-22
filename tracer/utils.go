@@ -75,7 +75,7 @@ func SetError(ctx context.Context, err error) {
 }
 
 // Log trace
-func Log(ctx context.Context, key string, value interface{}) {
+func Log(ctx context.Context, key string, value any) {
 	span := opentracing.SpanFromContext(ctx)
 	if span == nil {
 		return
@@ -85,7 +85,7 @@ func Log(ctx context.Context, key string, value interface{}) {
 }
 
 // LogEvent trace
-func LogEvent(ctx context.Context, event string, payload ...interface{}) {
+func LogEvent(ctx context.Context, event string, payload ...any) {
 	span := opentracing.SpanFromContext(ctx)
 	if span == nil {
 		return

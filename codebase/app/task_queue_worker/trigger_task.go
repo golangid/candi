@@ -102,7 +102,7 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 	statusBefore := strings.ToLower(job.Status)
 	job.Status = string(StatusRetrying)
 	matchedCount, affectedCount, err := t.opt.persistent.UpdateJob(
-		t.ctx, &Filter{JobID: &job.ID}, map[string]interface{}{"status": job.Status},
+		t.ctx, &Filter{JobID: &job.ID}, map[string]any{"status": job.Status},
 	)
 	if err != nil {
 		logger.LogE(err.Error())
@@ -240,7 +240,7 @@ FINISH:
 		incr = map[string]int64{statusBefore: -1}
 
 	} else {
-		updated := map[string]interface{}{
+		updated := map[string]any{
 			"retries": job.Retries, "finished_at": job.FinishedAt, "status": job.Status,
 			"interval": job.Interval, "error": job.Error, "trace_id": job.TraceID,
 			"result": job.Result,
@@ -249,7 +249,7 @@ FINISH:
 			updated["arguments"] = job.Arguments
 		}
 		if isContextCanceled {
-			updated = map[string]interface{}{
+			updated = map[string]any{
 				"error": job.Error, "trace_id": job.TraceID,
 			}
 		}

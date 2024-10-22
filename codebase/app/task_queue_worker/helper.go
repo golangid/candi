@@ -7,8 +7,8 @@ var (
 	errWorkerInactive      = errors.New("Worker is inactive")
 )
 
-func convertIncrementMap(mp map[string]int) map[string]interface{} {
-	res := make(map[string]interface{})
+func convertIncrementMap(mp map[string]int) map[string]any {
+	res := make(map[string]any)
 	for k, v := range mp {
 		res[k] = v
 	}

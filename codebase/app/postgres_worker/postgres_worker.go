@@ -51,7 +51,7 @@ func NewWorker(service factory.ServiceFactory, opts ...OptionFunc) factory.AppSe
 		semaphores: make(map[string]chan struct{}),
 		shutdown:   make(chan struct{}, 1),
 		messagePool: sync.Pool{
-			New: func() interface{} {
+			New: func() any {
 				return candishared.NewEventContext(bytes.NewBuffer(make([]byte, 0, 256)))
 			},
 		},

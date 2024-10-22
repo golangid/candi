@@ -40,9 +40,9 @@ func ConstructHandlerFromService(service factory.ServiceFactory, opt Option) Han
 
 	if opt.rootResolver == nil {
 		// create dynamic struct
-		queryResolverValues := make(map[string]interface{})
-		mutationResolverValues := make(map[string]interface{})
-		subscriptionResolverValues := make(map[string]interface{})
+		queryResolverValues := make(map[string]any)
+		mutationResolverValues := make(map[string]any)
+		subscriptionResolverValues := make(map[string]any)
 		var queryResolverFields, mutationResolverFields, subscriptionResolverFields []reflect.StructField
 		for _, m := range service.GetModules() {
 			if resolverModule := m.GraphQLHandler(); resolverModule != nil {
@@ -126,7 +126,7 @@ func (s *handlerImpl) ServeGraphQL() http.HandlerFunc {
 		var params struct {
 			Query         string                 `json:"query"`
 			OperationName string                 `json:"operationName"`
-			Variables     map[string]interface{} `json:"variables"`
+			Variables     map[string]any `json:"variables"`
 		}
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
@@ -301,7 +301,7 @@ type panicLogger struct{}
 
 // LogPanic is used to log recovered panic values that occur during query execution
 // https://github.com/graph-gophers/graphql-go/blob/master/log/log.go#L19 + custom add log to trace
-func (l *panicLogger) LogPanic(ctx context.Context, value interface{}) {
+func (l *panicLogger) LogPanic(ctx context.Context, value any) {
 	var stackTraces []string
 	for i := 2; i < 10 && len(stackTraces) <= 5; i++ {
 		_, file, line, ok := runtime.Caller(i)

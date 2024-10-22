@@ -28,19 +28,19 @@ func (_m *GraphQLErrorResolver) Error() string {
 }
 
 // Extensions provides a mock function with given fields:
-func (_m *GraphQLErrorResolver) Extensions() map[string]interface{} {
+func (_m *GraphQLErrorResolver) Extensions() map[string]any {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Extensions")
 	}
 
-	var r0 map[string]interface{}
-	if rf, ok := ret.Get(0).(func() map[string]interface{}); ok {
+	var r0 map[string]any
+	if rf, ok := ret.Get(0).(func() map[string]any); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[string]interface{})
+			r0 = ret.Get(0).(map[string]any)
 		}
 	}
 

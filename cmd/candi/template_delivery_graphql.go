@@ -33,17 +33,17 @@ func NewGraphQLHandler(uc usecase.Usecase, deps dependency.Dependency) *GraphQLH
 }
 
 // Query method
-func (h *GraphQLHandler) Query() interface{} {
+func (h *GraphQLHandler) Query() any {
 	return h
 }
 
 // Mutation method
-func (h *GraphQLHandler) Mutation() interface{} {
+func (h *GraphQLHandler) Mutation() any {
 	return h
 }
 
 // Subscription method
-func (h *GraphQLHandler) Subscription() interface{} {
+func (h *GraphQLHandler) Subscription() any {
 	return h
 }
 

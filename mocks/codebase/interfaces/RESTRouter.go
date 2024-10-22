@@ -16,11 +16,11 @@ type RESTRouter struct {
 
 // CONNECT provides a mock function with given fields: pattern, h, middlewares
 func (_m *RESTRouter) CONNECT(pattern string, h http.HandlerFunc, middlewares ...func(http.Handler) http.Handler) {
-	_va := make([]interface{}, len(middlewares))
+	_va := make([]any, len(middlewares))
 	for _i := range middlewares {
 		_va[_i] = middlewares[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, pattern, h)
 	_ca = append(_ca, _va...)
 	_m.Called(_ca...)
@@ -28,11 +28,11 @@ func (_m *RESTRouter) CONNECT(pattern string, h http.HandlerFunc, middlewares ..
 
 // DELETE provides a mock function with given fields: pattern, h, middlewares
 func (_m *RESTRouter) DELETE(pattern string, h http.HandlerFunc, middlewares ...func(http.Handler) http.Handler) {
-	_va := make([]interface{}, len(middlewares))
+	_va := make([]any, len(middlewares))
 	for _i := range middlewares {
 		_va[_i] = middlewares[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, pattern, h)
 	_ca = append(_ca, _va...)
 	_m.Called(_ca...)
@@ -40,11 +40,11 @@ func (_m *RESTRouter) DELETE(pattern string, h http.HandlerFunc, middlewares ...
 
 // GET provides a mock function with given fields: pattern, h, middlewares
 func (_m *RESTRouter) GET(pattern string, h http.HandlerFunc, middlewares ...func(http.Handler) http.Handler) {
-	_va := make([]interface{}, len(middlewares))
+	_va := make([]any, len(middlewares))
 	for _i := range middlewares {
 		_va[_i] = middlewares[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, pattern, h)
 	_ca = append(_ca, _va...)
 	_m.Called(_ca...)
@@ -52,11 +52,11 @@ func (_m *RESTRouter) GET(pattern string, h http.HandlerFunc, middlewares ...fun
 
 // Group provides a mock function with given fields: pattern, middlewares
 func (_m *RESTRouter) Group(pattern string, middlewares ...func(http.Handler) http.Handler) interfaces.RESTRouter {
-	_va := make([]interface{}, len(middlewares))
+	_va := make([]any, len(middlewares))
 	for _i := range middlewares {
 		_va[_i] = middlewares[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, pattern)
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
@@ -79,11 +79,11 @@ func (_m *RESTRouter) Group(pattern string, middlewares ...func(http.Handler) ht
 
 // HEAD provides a mock function with given fields: pattern, h, middlewares
 func (_m *RESTRouter) HEAD(pattern string, h http.HandlerFunc, middlewares ...func(http.Handler) http.Handler) {
-	_va := make([]interface{}, len(middlewares))
+	_va := make([]any, len(middlewares))
 	for _i := range middlewares {
 		_va[_i] = middlewares[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, pattern, h)
 	_ca = append(_ca, _va...)
 	_m.Called(_ca...)
@@ -91,11 +91,11 @@ func (_m *RESTRouter) HEAD(pattern string, h http.HandlerFunc, middlewares ...fu
 
 // HandleFunc provides a mock function with given fields: pattern, h, middlewares
 func (_m *RESTRouter) HandleFunc(pattern string, h http.HandlerFunc, middlewares ...func(http.Handler) http.Handler) {
-	_va := make([]interface{}, len(middlewares))
+	_va := make([]any, len(middlewares))
 	for _i := range middlewares {
 		_va[_i] = middlewares[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, pattern, h)
 	_ca = append(_ca, _va...)
 	_m.Called(_ca...)
@@ -103,11 +103,11 @@ func (_m *RESTRouter) HandleFunc(pattern string, h http.HandlerFunc, middlewares
 
 // OPTIONS provides a mock function with given fields: pattern, h, middlewares
 func (_m *RESTRouter) OPTIONS(pattern string, h http.HandlerFunc, middlewares ...func(http.Handler) http.Handler) {
-	_va := make([]interface{}, len(middlewares))
+	_va := make([]any, len(middlewares))
 	for _i := range middlewares {
 		_va[_i] = middlewares[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, pattern, h)
 	_ca = append(_ca, _va...)
 	_m.Called(_ca...)
@@ -115,11 +115,11 @@ func (_m *RESTRouter) OPTIONS(pattern string, h http.HandlerFunc, middlewares ..
 
 // PATCH provides a mock function with given fields: pattern, h, middlewares
 func (_m *RESTRouter) PATCH(pattern string, h http.HandlerFunc, middlewares ...func(http.Handler) http.Handler) {
-	_va := make([]interface{}, len(middlewares))
+	_va := make([]any, len(middlewares))
 	for _i := range middlewares {
 		_va[_i] = middlewares[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, pattern, h)
 	_ca = append(_ca, _va...)
 	_m.Called(_ca...)
@@ -127,11 +127,11 @@ func (_m *RESTRouter) PATCH(pattern string, h http.HandlerFunc, middlewares ...f
 
 // POST provides a mock function with given fields: pattern, h, middlewares
 func (_m *RESTRouter) POST(pattern string, h http.HandlerFunc, middlewares ...func(http.Handler) http.Handler) {
-	_va := make([]interface{}, len(middlewares))
+	_va := make([]any, len(middlewares))
 	for _i := range middlewares {
 		_va[_i] = middlewares[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, pattern, h)
 	_ca = append(_ca, _va...)
 	_m.Called(_ca...)
@@ -139,11 +139,11 @@ func (_m *RESTRouter) POST(pattern string, h http.HandlerFunc, middlewares ...fu
 
 // PUT provides a mock function with given fields: pattern, h, middlewares
 func (_m *RESTRouter) PUT(pattern string, h http.HandlerFunc, middlewares ...func(http.Handler) http.Handler) {
-	_va := make([]interface{}, len(middlewares))
+	_va := make([]any, len(middlewares))
 	for _i := range middlewares {
 		_va[_i] = middlewares[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, pattern, h)
 	_ca = append(_ca, _va...)
 	_m.Called(_ca...)
@@ -151,11 +151,11 @@ func (_m *RESTRouter) PUT(pattern string, h http.HandlerFunc, middlewares ...fun
 
 // TRACE provides a mock function with given fields: pattern, h, middlewares
 func (_m *RESTRouter) TRACE(pattern string, h http.HandlerFunc, middlewares ...func(http.Handler) http.Handler) {
-	_va := make([]interface{}, len(middlewares))
+	_va := make([]any, len(middlewares))
 	for _i := range middlewares {
 		_va[_i] = middlewares[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, pattern, h)
 	_ca = append(_ca, _va...)
 	_m.Called(_ca...)
@@ -163,11 +163,11 @@ func (_m *RESTRouter) TRACE(pattern string, h http.HandlerFunc, middlewares ...f
 
 // Use provides a mock function with given fields: middlewares
 func (_m *RESTRouter) Use(middlewares ...func(http.Handler) http.Handler) {
-	_va := make([]interface{}, len(middlewares))
+	_va := make([]any, len(middlewares))
 	for _i := range middlewares {
 		_va[_i] = middlewares[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, _va...)
 	_m.Called(_ca...)
 }

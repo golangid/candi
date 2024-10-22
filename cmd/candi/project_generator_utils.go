@@ -41,7 +41,7 @@ func parseRepositoryModule(data moduleConfig) (repos []FileStructure) {
 	return
 }
 
-func loadTemplate(source string, sourceData interface{}) []byte {
+func loadTemplate(source string, sourceData any) []byte {
 	var byteBuff = new(bytes.Buffer)
 	defer byteBuff.Reset()
 
@@ -94,7 +94,7 @@ func formatTemplate() template.FuncMap {
 	}
 }
 
-func mergeMap(dest, source map[string]interface{}) {
+func mergeMap(dest, source map[string]any) {
 	for k, v := range source {
 		dest[k] = v
 	}

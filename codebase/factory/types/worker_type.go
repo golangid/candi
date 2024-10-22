@@ -14,7 +14,7 @@ type (
 		HandlerFuncs []WorkerHandlerFunc
 		DisableTrace bool
 		AutoACK      bool
-		Configs      map[string]interface{}
+		Configs      map[string]any
 	}
 
 	// WorkerHandlerOptionFunc types
@@ -53,10 +53,10 @@ func WorkerHandlerOptionAutoACK(auto bool) WorkerHandlerOptionFunc {
 }
 
 // WorkerHandlerOptionAddConfig set config
-func WorkerHandlerOptionAddConfig(key string, value interface{}) WorkerHandlerOptionFunc {
+func WorkerHandlerOptionAddConfig(key string, value any) WorkerHandlerOptionFunc {
 	return func(wh *WorkerHandler) {
 		if wh.Configs == nil {
-			wh.Configs = map[string]interface{}{}
+			wh.Configs = map[string]any{}
 		}
 		wh.Configs[key] = value
 	}

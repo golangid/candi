@@ -48,13 +48,13 @@ type GRPCMiddleware interface {
 
 // GraphQLMiddleware interface, common middleware for graphql handler, as directive in graphql schema
 type GraphQLMiddleware interface {
-	GraphQLAuth(ctx context.Context, directive *gqltypes.Directive, input interface{}) (context.Context, error)
+	GraphQLAuth(ctx context.Context, directive *gqltypes.Directive, input any) (context.Context, error)
 
 	// GraphQLPermissionACL method.
 	// This middleware required TokenValidator (GraphQLAuth middleware with BEARER must executed before) for extract userID
 	// default from `Subject` field in token claim payload
 	// or you can custom extract user id with `SetUserIDExtractor` option when construct middleware in configs
-	GraphQLPermissionACL(ctx context.Context, directive *gqltypes.Directive, input interface{}) (context.Context, error)
+	GraphQLPermissionACL(ctx context.Context, directive *gqltypes.Directive, input any) (context.Context, error)
 }
 
 // TokenValidator abstract interface for jwt validator
