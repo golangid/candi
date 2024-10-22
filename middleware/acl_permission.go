@@ -67,7 +67,7 @@ func (m *Middleware) HTTPPermissionACL(permissionCode string) func(http.Handler)
 }
 
 // GraphQLPermissionACL graphql resolver for check acl permission
-func (m *Middleware) GraphQLPermissionACL(ctx context.Context, directive *gqltypes.Directive, input interface{}) (context.Context, error) {
+func (m *Middleware) GraphQLPermissionACL(ctx context.Context, directive *gqltypes.Directive, input any) (context.Context, error) {
 	trace := tracer.StartTrace(ctx, "Middleware:GraphQLPermissionACL")
 	defer trace.Finish()
 
@@ -75,7 +75,7 @@ func (m *Middleware) GraphQLPermissionACL(ctx context.Context, directive *gqltyp
 	if permissionCode == nil {
 		return ctx, candishared.NewGraphQLErrorResolver(
 			"Missing permissionCode argument in directive @"+directive.Name.Name+" definition",
-			map[string]interface{}{
+			map[string]any{
 				"code":    403,
 				"success": false,
 			})
@@ -89,7 +89,7 @@ func (m *Middleware) GraphQLPermissionACL(ctx context.Context, directive *gqltyp
 		trace.SetError(err)
 		return ctx, candishared.NewGraphQLErrorResolver(
 			err.Error(),
-			map[string]interface{}{
+			map[string]any{
 				"code":    403,
 				"success": false,
 			})

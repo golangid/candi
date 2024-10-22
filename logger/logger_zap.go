@@ -57,15 +57,15 @@ func Log(level zapcore.Level, message string, context string, scope string) {
 }
 
 // LogWithField func
-func LogWithField(level zapcore.Level, fields map[string]interface{}) {
-	var message interface{}
-	var args []interface{}
+func LogWithField(level zapcore.Level, fields map[string]any) {
+	var message any
+	var args []any
 	for k, v := range fields {
 		if k == "message" {
 			message = v
 			continue
 		}
-		args = append(args, []interface{}{k, v}...)
+		args = append(args, []any{k, v}...)
 	}
 	entry := zap.S().With(args...)
 	setEntryType(level, entry, message)
@@ -91,7 +91,7 @@ func LogPanicIfError(err error) {
 }
 
 // LogEf error with format
-func LogEf(format string, i ...interface{}) {
+func LogEf(format string, i ...any) {
 	zap.S().Errorf(format, i...)
 }
 
@@ -101,11 +101,11 @@ func LogI(message string) {
 }
 
 // LogIf info with format
-func LogIf(format string, i ...interface{}) {
+func LogIf(format string, i ...any) {
 	zap.S().Infof(format, i...)
 }
 
-func setEntryType(level zapcore.Level, entry *zap.SugaredLogger, msg interface{}) {
+func setEntryType(level zapcore.Level, entry *zap.SugaredLogger, msg any) {
 	switch level {
 	case zapcore.DebugLevel:
 		entry.Debug(msg)

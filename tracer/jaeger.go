@@ -199,7 +199,7 @@ func (t *jaegerTraceImpl) Context() context.Context {
 }
 
 // SetTag set tags in tracer span
-func (t *jaegerTraceImpl) SetTag(key string, value interface{}) {
+func (t *jaegerTraceImpl) SetTag(key string, value any) {
 	if t.span == nil {
 		return
 	}
@@ -253,7 +253,7 @@ func (t *jaegerTraceImpl) SetError(err error) {
 }
 
 // Log set log data
-func (t *jaegerTraceImpl) Log(key string, value interface{}) {
+func (t *jaegerTraceImpl) Log(key string, value any) {
 	t.span.LogKV(key, toValue(value))
 }
 

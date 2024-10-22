@@ -14,13 +14,13 @@ type HTTPResponse struct {
 	Success bool        `json:"success"`
 	Code    int         `json:"code"`
 	Message string      `json:"message"`
-	Meta    interface{} `json:"meta,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
-	Errors  interface{} `json:"errors,omitempty"`
+	Meta    any `json:"meta,omitempty"`
+	Data    any `json:"data,omitempty"`
+	Errors  any `json:"errors,omitempty"`
 }
 
 // NewHTTPResponse for create common response
-func NewHTTPResponse(code int, message string, params ...interface{}) *HTTPResponse {
+func NewHTTPResponse(code int, message string, params ...any) *HTTPResponse {
 	commonResponse := new(HTTPResponse)
 
 	for _, param := range params {

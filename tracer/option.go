@@ -102,7 +102,7 @@ func FinishWithError(err error) FinishOptionFunc {
 }
 
 // FinishWithAdditionalTags option for add tag when finish
-func FinishWithAdditionalTags(tags map[string]interface{}) FinishOptionFunc {
+func FinishWithAdditionalTags(tags map[string]any) FinishOptionFunc {
 	return func(fo *FinishOption) {
 		fo.Tags = tags
 	}

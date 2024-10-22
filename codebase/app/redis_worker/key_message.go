@@ -17,7 +17,7 @@ type RedisMessage struct {
 }
 
 // CreateRedisPubSubMessage create new redis pubsub message
-func CreateRedisPubSubMessage(topic string, message interface{}) string {
+func CreateRedisPubSubMessage(topic string, message any) string {
 	key, _ := json.Marshal(RedisMessage{
 		EventID: uuid.NewString(), HandlerName: topic, Message: string(candihelper.ToBytes(message)),
 	})
@@ -25,7 +25,7 @@ func CreateRedisPubSubMessage(topic string, message interface{}) string {
 }
 
 // DeleteRedisPubSubMessage delete redis key pubsub message pattern
-func DeleteRedisPubSubMessage(topic string, message interface{}) string {
+func DeleteRedisPubSubMessage(topic string, message any) string {
 	b, _ := json.Marshal(RedisMessage{
 		HandlerName: topic, Message: string(candihelper.ToBytes(message)),
 	})

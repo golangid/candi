@@ -27,9 +27,9 @@ type interceptor struct {
 func chainUnaryServer(interceptors ...grpc.UnaryServerInterceptor) grpc.UnaryServerInterceptor {
 	n := len(interceptors)
 
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		chainer := func(currentInter grpc.UnaryServerInterceptor, currentHandler grpc.UnaryHandler) grpc.UnaryHandler {
-			return func(currentCtx context.Context, currentReq interface{}) (interface{}, error) {
+			return func(currentCtx context.Context, currentReq any) (any, error) {
 				return currentInter(currentCtx, currentReq, info, currentHandler)
 			}
 		}
@@ -44,7 +44,7 @@ func chainUnaryServer(interceptors ...grpc.UnaryServerInterceptor) grpc.UnarySer
 }
 
 // unaryTracerInterceptor for extract incoming tracer
-func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 	start := time.Now()
 	meta, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -93,7 +93,7 @@ func (i *interceptor) unaryTracerInterceptor(ctx context.Context, req interface{
 	return
 }
 
-func (i *interceptor) unaryMiddlewareInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+func (i *interceptor) unaryMiddlewareInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 	ctx, err = i.middlewareInterceptor(ctx, info.FullMethod)
 	if err != nil {
 		return nil, err
@@ -108,9 +108,9 @@ func (i *interceptor) unaryMiddlewareInterceptor(ctx context.Context, req interf
 func chainStreamServer(interceptors ...grpc.StreamServerInterceptor) grpc.StreamServerInterceptor {
 	n := len(interceptors)
 
-	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		chainer := func(currentInter grpc.StreamServerInterceptor, currentHandler grpc.StreamHandler) grpc.StreamHandler {
-			return func(currentSrv interface{}, currentStream grpc.ServerStream) error {
+			return func(currentSrv any, currentStream grpc.ServerStream) error {
 				return currentInter(currentSrv, currentStream, info, currentHandler)
 			}
 		}
@@ -125,7 +125,7 @@ func chainStreamServer(interceptors ...grpc.StreamServerInterceptor) grpc.Stream
 }
 
 // streamTracerInterceptor for extract incoming tracer
-func (i *interceptor) streamTracerInterceptor(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+func (i *interceptor) streamTracerInterceptor(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
 	start := time.Now()
 	ctx := stream.Context()
 	meta, ok := metadata.FromIncomingContext(ctx)
@@ -165,7 +165,7 @@ func (i *interceptor) streamTracerInterceptor(srv interface{}, stream grpc.Serve
 	return
 }
 
-func (i *interceptor) streamMiddlewareInterceptor(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+func (i *interceptor) streamMiddlewareInterceptor(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
 	ctx, err := i.middlewareInterceptor(stream.Context(), info.FullMethod)
 	if err != nil {
 		return err

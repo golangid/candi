@@ -56,7 +56,7 @@ func NewFileLocalStorage(schemaLocationDir string) Storage {
 				return fmt.Errorf("%s: %v", fileName, err)
 			}
 
-			var data map[string]interface{}
+			var data map[string]any
 			if err := json.Unmarshal(s, &data); err != nil {
 				return fmt.Errorf("%s: %v", fileName, err)
 			}
@@ -110,7 +110,7 @@ func NewInMemStorage(schemaLocationDir string) Storage {
 				return fmt.Errorf("%s: %v", fileName, err)
 			}
 
-			var data map[string]interface{}
+			var data map[string]any
 			if err := json.Unmarshal(s, &data); err != nil {
 				return fmt.Errorf("%s: %v", fileName, err)
 			}
@@ -161,7 +161,7 @@ func NewFileSystemStorage(fileSystem fs.FS, rootPath string) Storage {
 				return fmt.Errorf("%s: %v", fileName, err)
 			}
 
-			var data map[string]interface{}
+			var data map[string]any
 			if err := json.Unmarshal(s, &data); err != nil {
 				return fmt.Errorf("%s: %v", fileName, err)
 			}

@@ -76,7 +76,7 @@ func (m *Middleware) GRPCMultipleAuth(ctx context.Context) (context.Context, err
 }
 
 // GraphQLAuth for graphql resolver
-func (m *Middleware) GraphQLAuth(ctx context.Context, directive *gqltypes.Directive, input interface{}) (context.Context, error) {
+func (m *Middleware) GraphQLAuth(ctx context.Context, directive *gqltypes.Directive, input any) (context.Context, error) {
 	trace := tracer.StartTrace(ctx, "Middleware:GraphQLAuthDirective")
 	defer trace.Finish()
 
@@ -87,7 +87,7 @@ func (m *Middleware) GraphQLAuth(ctx context.Context, directive *gqltypes.Direct
 
 	headerAuthType, headerAuthVal, ok := strings.Cut(authorization, " ")
 	if !ok {
-		return ctx, candishared.NewGraphQLErrorResolver("Invalid authorization", map[string]interface{}{
+		return ctx, candishared.NewGraphQLErrorResolver("Invalid authorization", map[string]any{
 			"code": 401, "success": false,
 		})
 	}
@@ -96,7 +96,7 @@ func (m *Middleware) GraphQLAuth(ctx context.Context, directive *gqltypes.Direct
 	if authTypeValue == nil {
 		return ctx, candishared.NewGraphQLErrorResolver(
 			"Missing authType argument in directive @"+directive.Name.Name+" definition",
-			map[string]interface{}{"code": 401, "success": false},
+			map[string]any{"code": 401, "success": false},
 		)
 	}
 
@@ -104,20 +104,20 @@ func (m *Middleware) GraphQLAuth(ctx context.Context, directive *gqltypes.Direct
 	if _, ok := map[string]struct{}{BEARER: {}, BASIC: {}, MULTIPLE: {}}[authType]; !ok {
 		return ctx, candishared.NewGraphQLErrorResolver(
 			"Invalid authType direction name. Must BASIC, BEARER, or MULTIPLE",
-			map[string]interface{}{"code": 401, "success": false},
+			map[string]any{"code": 401, "success": false},
 		)
 	}
 
 	if authType != MULTIPLE && authType != strings.ToUpper(headerAuthType) {
 		return ctx, candishared.NewGraphQLErrorResolver(
 			"Mismatch authType definition from directive @"+directive.Name.Name+" (required: "+authType+", given: "+strings.ToUpper(headerAuthType)+")",
-			map[string]interface{}{"code": 401, "success": false},
+			map[string]any{"code": 401, "success": false},
 		)
 	}
 
 	claimData, err := m.checkMultipleAuth(trace.Context(), headerAuthType, headerAuthVal)
 	if err != nil {
-		return ctx, candishared.NewGraphQLErrorResolver(err.Error(), map[string]interface{}{
+		return ctx, candishared.NewGraphQLErrorResolver(err.Error(), map[string]any{
 			"code": 401, "success": false,
 		})
 	}

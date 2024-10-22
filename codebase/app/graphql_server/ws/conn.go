@@ -26,10 +26,10 @@ const (
 
 type wsConnection interface {
 	Close() error
-	ReadJSON(v interface{}) error
+	ReadJSON(v any) error
 	SetReadLimit(limit int64)
 	SetWriteDeadline(t time.Time) error
-	WriteJSON(v interface{}) error
+	WriteJSON(v any) error
 }
 
 type sendFunc func(id string, omType operationMessageType, payload json.RawMessage)
@@ -44,14 +44,14 @@ type operationMessage struct {
 type startMessagePayload struct {
 	OperationName string                 `json:"operationName"`
 	Query         string                 `json:"query"`
-	Variables     map[string]interface{} `json:"variables"`
+	Variables     map[string]any `json:"variables"`
 }
 
 type initMessagePayload struct{}
 
 // GraphQLService interface
 type GraphQLService interface {
-	Subscribe(ctx context.Context, document string, operationName string, variableValues map[string]interface{}) (payloads <-chan interface{}, err error)
+	Subscribe(ctx context.Context, document string, operationName string, variableValues map[string]any) (payloads <-chan any, err error)
 }
 
 type connection struct {

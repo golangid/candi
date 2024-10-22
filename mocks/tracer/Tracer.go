@@ -36,11 +36,11 @@ func (_m *Tracer) Context() context.Context {
 
 // Finish provides a mock function with given fields: opts
 func (_m *Tracer) Finish(opts ...tracer.FinishOptionFunc) {
-	_va := make([]interface{}, len(opts))
+	_va := make([]any, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, _va...)
 	_m.Called(_ca...)
 }
@@ -51,7 +51,7 @@ func (_m *Tracer) InjectRequestHeader(header map[string]string) {
 }
 
 // Log provides a mock function with given fields: key, value
-func (_m *Tracer) Log(key string, value interface{}) {
+func (_m *Tracer) Log(key string, value any) {
 	_m.Called(key, value)
 }
 
@@ -81,7 +81,7 @@ func (_m *Tracer) SetError(err error) {
 }
 
 // SetTag provides a mock function with given fields: key, value
-func (_m *Tracer) SetTag(key string, value interface{}) {
+func (_m *Tracer) SetTag(key string, value any) {
 	_m.Called(key, value)
 }
 

@@ -46,7 +46,7 @@ func NewStructValidator(opts ...StructValidatorOptionFunc) *StructValidator {
 }
 
 // ValidateStruct function
-func (v *StructValidator) ValidateStruct(data interface{}) error {
+func (v *StructValidator) ValidateStruct(data any) error {
 	if err := v.Validator.Struct(data); err != nil {
 		switch errs := err.(type) {
 		case validatorengine.ValidationErrors:

@@ -18,10 +18,10 @@ var (
 type Tracer interface {
 	Context() context.Context
 	NewContext() context.Context
-	SetTag(key string, value interface{})
+	SetTag(key string, value any)
 	InjectRequestHeader(header map[string]string)
 	SetError(err error)
-	Log(key string, value interface{})
+	Log(key string, value any)
 	Finish(opts ...FinishOptionFunc)
 }
 
@@ -92,10 +92,10 @@ type noopTracer struct{ ctx context.Context }
 
 func (n noopTracer) Context() context.Context                   { return n.ctx }
 func (n noopTracer) NewContext() context.Context                { return n.ctx }
-func (noopTracer) SetTag(key string, value interface{})         { return }
+func (noopTracer) SetTag(key string, value any)         { return }
 func (noopTracer) InjectRequestHeader(header map[string]string) { return }
 func (noopTracer) SetError(err error)                           { return }
-func (noopTracer) Log(key string, value interface{})            { return }
+func (noopTracer) Log(key string, value any)            { return }
 func (noopTracer) Finish(opts ...FinishOptionFunc) {
 	var finishOpt FinishOption
 	for _, opt := range opts {

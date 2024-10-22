@@ -69,7 +69,7 @@ func (r *RedisCache) GetTTL(ctx context.Context, key string) (dur time.Duration,
 }
 
 // Set method
-func (r *RedisCache) Set(ctx context.Context, key string, value interface{}, expire time.Duration) (err error) {
+func (r *RedisCache) Set(ctx context.Context, key string, value any, expire time.Duration) (err error) {
 	trace, ctx := tracer.StartTraceWithContext(ctx, "redis:set")
 	defer func() { trace.Finish(tracer.FinishWithError(err)) }()
 

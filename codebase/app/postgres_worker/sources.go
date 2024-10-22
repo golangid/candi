@@ -64,7 +64,7 @@ func (p *PostgresSource) execTriggerQuery(tableName string) error {
 	return nil
 }
 
-func (p *PostgresSource) findDetailData(tableName, id string) interface{} {
+func (p *PostgresSource) findDetailData(tableName, id string) any {
 	rows, err := p.db.Query(`SELECT * FROM `+tableName+` WHERE id=$1`, id)
 	if err != nil {
 		return nil
@@ -76,10 +76,10 @@ func (p *PostgresSource) findDetailData(tableName, id string) interface{} {
 		return nil
 	}
 
-	results := make(map[string]interface{}, len(columns))
+	results := make(map[string]any, len(columns))
 	if rows.Next() {
-		values := make([]interface{}, len(columns))
-		columnVals := make([]interface{}, len(columns))
+		values := make([]any, len(columns))
+		columnVals := make([]any, len(columns))
 		for i := range values {
 			columnVals[i] = &values[i]
 		}

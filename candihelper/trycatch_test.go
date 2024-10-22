@@ -49,7 +49,7 @@ func TestTryCatch_Do(t *testing.T) {
 	t.Run("Test Catch Panic interface conversion", func(t *testing.T) {
 		TryCatch{
 			Try: func() {
-				var a interface{}
+				var a any
 				a = 10
 				fmt.Println(a.(string))
 			},

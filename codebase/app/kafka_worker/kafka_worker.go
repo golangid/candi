@@ -76,7 +76,7 @@ func NewWorker(service factory.ServiceFactory, bk interfaces.Broker, opts ...Opt
 	consumerHandler.ready = make(chan struct{})
 	consumerHandler.opt = &worker.opt
 	consumerHandler.messagePool = sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return candishared.NewEventContext(bytes.NewBuffer(make([]byte, 0, 256)))
 		},
 	}

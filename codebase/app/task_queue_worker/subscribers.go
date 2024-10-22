@@ -223,7 +223,7 @@ func (s *subscriber) broadcastJobDetail(ctx context.Context) {
 }
 
 func (s *subscriber) broadcastWhenChangeAllJob(ctx context.Context, taskName string, isLoading bool, loadingMessage string) {
-	s.opt.persistent.Summary().UpdateSummary(ctx, taskName, map[string]interface{}{
+	s.opt.persistent.Summary().UpdateSummary(ctx, taskName, map[string]any{
 		"is_loading": isLoading, "loading_message": loadingMessage,
 	})
 

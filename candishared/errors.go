@@ -7,23 +7,23 @@ import (
 // GraphQLErrorResolver graphql error with extensions
 type GraphQLErrorResolver interface {
 	Error() string
-	Extensions() map[string]interface{}
+	Extensions() map[string]any
 }
 
 type resolveErrorImpl struct {
 	message    string
-	extensions map[string]interface{}
+	extensions map[string]any
 }
 
 func (r *resolveErrorImpl) Error() string {
 	return r.message
 }
-func (r *resolveErrorImpl) Extensions() map[string]interface{} {
+func (r *resolveErrorImpl) Extensions() map[string]any {
 	return r.extensions
 }
 
 // NewGraphQLErrorResolver constructor
-func NewGraphQLErrorResolver(errMesage string, extensions map[string]interface{}) GraphQLErrorResolver {
+func NewGraphQLErrorResolver(errMesage string, extensions map[string]any) GraphQLErrorResolver {
 	return &resolveErrorImpl{
 		message: errMesage, extensions: extensions,
 	}
