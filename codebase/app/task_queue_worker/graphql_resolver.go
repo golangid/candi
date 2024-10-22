@@ -186,7 +186,7 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 
 	go func(ctx context.Context, taskName string) {
 		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, taskName, true, "Stopping...")
-		r.engine.opt.persistent.Summary().UpdateSummary(ctx, input.TaskName, map[string]interface{}{
+		r.engine.opt.persistent.Summary().UpdateSummary(ctx, input.TaskName, map[string]any{
 			"is_hold": true,
 		})
 		r.engine.stopAllJobInTask(taskName)
@@ -198,7 +198,7 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 				&Filter{
 					TaskName: taskName, Status: &status,
 				},
-				map[string]interface{}{
+				map[string]any{
 					"status": StatusStopped,
 				},
 			)
@@ -209,7 +209,7 @@ func (r *rootResolver) StopAllJob(ctx context.Context, input struct {
 			incrQuery[strings.ToLower(string(StatusStopped))] += countAffected
 		}
 
-		r.engine.opt.persistent.Summary().UpdateSummary(ctx, input.TaskName, map[string]interface{}{
+		r.engine.opt.persistent.Summary().UpdateSummary(ctx, input.TaskName, map[string]any{
 			"is_hold": false,
 		})
 		r.engine.subscriber.broadcastWhenChangeAllJob(ctx, taskName, false, "")
@@ -240,7 +240,7 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 			if total > 200 && idx%200 != 0 {
 				return
 			}
-			r.engine.opt.persistent.Summary().UpdateSummary(r.engine.ctx, filter.TaskName, map[string]interface{}{
+			r.engine.opt.persistent.Summary().UpdateSummary(r.engine.ctx, filter.TaskName, map[string]any{
 				"is_loading": true, "loading_message": fmt.Sprintf(`Requeueing %d of %d`, idx, total),
 			})
 			r.engine.subscriber.broadcastTaskList(r.engine.ctx)
@@ -253,7 +253,7 @@ func (r *rootResolver) RetryAllJob(ctx context.Context, input struct {
 					TaskName: filter.TaskName, Status: &status,
 					Search: filter.Search, StartDate: filter.StartDate, EndDate: filter.EndDate,
 				},
-				map[string]interface{}{
+				map[string]any{
 					"status":  StatusQueueing,
 					"retries": 0,
 				},
@@ -626,7 +626,7 @@ func (r *rootResolver) HoldJobTask(ctx context.Context, input struct {
 	defer r.engine.subscriber.broadcastAllToSubscribers(r.engine.ctx)
 
 	if !input.IsAutoSwitch {
-		r.engine.opt.persistent.Summary().UpdateSummary(ctx, input.TaskName, map[string]interface{}{
+		r.engine.opt.persistent.Summary().UpdateSummary(ctx, input.TaskName, map[string]any{
 			"is_hold": !summaryTask.IsHold, "loading_message": "Hold Mode",
 		})
 		if !summaryTask.IsHold {
@@ -644,7 +644,7 @@ func (r *rootResolver) HoldJobTask(ctx context.Context, input struct {
 			if total > 200 && idx%200 != 0 {
 				return
 			}
-			r.engine.opt.persistent.Summary().UpdateSummary(r.engine.ctx, filter.TaskName, map[string]interface{}{
+			r.engine.opt.persistent.Summary().UpdateSummary(r.engine.ctx, filter.TaskName, map[string]any{
 				"is_loading": true, "loading_message": fmt.Sprintf(`Requeueing %d of %d`, idx, total),
 			})
 			r.engine.subscriber.broadcastTaskList(r.engine.ctx)
@@ -652,7 +652,7 @@ func (r *rootResolver) HoldJobTask(ctx context.Context, input struct {
 
 		matchedCount, affectedRow, _ := r.engine.opt.persistent.UpdateJob(ctx,
 			filter,
-			map[string]interface{}{
+			map[string]any{
 				"status":  StatusQueueing,
 				"retries": 0,
 			},

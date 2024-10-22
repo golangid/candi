@@ -63,7 +63,7 @@ func (_m *Summary) IncrementSummary(ctx context.Context, taskName string, incr m
 }
 
 // UpdateSummary provides a mock function with given fields: ctx, taskName, updated
-func (_m *Summary) UpdateSummary(ctx context.Context, taskName string, updated map[string]interface{}) {
+func (_m *Summary) UpdateSummary(ctx context.Context, taskName string, updated map[string]any) {
 	_m.Called(ctx, taskName, updated)
 }
 

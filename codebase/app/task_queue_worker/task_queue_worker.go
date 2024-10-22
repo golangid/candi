@@ -92,7 +92,7 @@ func (t *taskQueueWorker) prepare() {
 
 	for _, taskName := range t.tasks {
 		t.opt.queue.Clear(t.ctx, taskName)
-		updated := map[string]interface{}{
+		updated := map[string]any{
 			"is_loading": true, "loading_message": "Requeueing...",
 		}
 		summary := t.opt.persistent.Summary().FindDetailSummary(t.ctx, taskName)
@@ -125,7 +125,7 @@ func (t *taskQueueWorker) prepare() {
 						job.Status = string(StatusQueueing)
 						matchedCount, affectedCount, err := t.opt.persistent.UpdateJob(t.ctx, &Filter{
 							JobID: &job.ID,
-						}, map[string]interface{}{
+						}, map[string]any{
 							"status": job.Status,
 						})
 						if err != nil {
@@ -142,12 +142,12 @@ func (t *taskQueueWorker) prepare() {
 					if total > 500 && idx%500 != 0 {
 						return
 					}
-					t.opt.persistent.Summary().UpdateSummary(t.ctx, filter.TaskName, map[string]interface{}{
+					t.opt.persistent.Summary().UpdateSummary(t.ctx, filter.TaskName, map[string]any{
 						"is_loading": true, "loading_message": fmt.Sprintf(`Requeueing %d of %d`, idx, total),
 					})
 					t.subscriber.broadcastTaskList(t.ctx)
 				})
-				t.opt.persistent.Summary().UpdateSummary(t.ctx, filter.TaskName, map[string]interface{}{
+				t.opt.persistent.Summary().UpdateSummary(t.ctx, filter.TaskName, map[string]any{
 					"is_loading": false, "loading_message": summary.LoadingMessage,
 				})
 				t.registerNextJob(false, filter.TaskName)
@@ -159,7 +159,7 @@ func (t *taskQueueWorker) prepare() {
 				Statuses: []string{string(StatusRetrying), string(StatusQueueing)},
 			})
 		} else {
-			t.opt.persistent.Summary().UpdateSummary(t.ctx, taskName, map[string]interface{}{
+			t.opt.persistent.Summary().UpdateSummary(t.ctx, taskName, map[string]any{
 				"is_loading": false, "loading_message": summary.LoadingMessage,
 			})
 		}

@@ -224,11 +224,11 @@ func (_m *Persistent) Ping(ctx context.Context) error {
 
 // SaveJob provides a mock function with given fields: ctx, job, retryHistories
 func (_m *Persistent) SaveJob(ctx context.Context, job *taskqueueworker.Job, retryHistories ...taskqueueworker.RetryHistory) error {
-	_va := make([]interface{}, len(retryHistories))
+	_va := make([]any, len(retryHistories))
 	for _i := range retryHistories {
 		_va[_i] = retryHistories[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, ctx, job)
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
@@ -309,12 +309,12 @@ func (_m *Persistent) Type() string {
 }
 
 // UpdateJob provides a mock function with given fields: ctx, filter, updated, retryHistories
-func (_m *Persistent) UpdateJob(ctx context.Context, filter *taskqueueworker.Filter, updated map[string]interface{}, retryHistories ...taskqueueworker.RetryHistory) (int64, int64, error) {
-	_va := make([]interface{}, len(retryHistories))
+func (_m *Persistent) UpdateJob(ctx context.Context, filter *taskqueueworker.Filter, updated map[string]any, retryHistories ...taskqueueworker.RetryHistory) (int64, int64, error) {
+	_va := make([]any, len(retryHistories))
 	for _i := range retryHistories {
 		_va[_i] = retryHistories[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, ctx, filter, updated)
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
@@ -326,22 +326,22 @@ func (_m *Persistent) UpdateJob(ctx context.Context, filter *taskqueueworker.Fil
 	var r0 int64
 	var r1 int64
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, *taskqueueworker.Filter, map[string]interface{}, ...taskqueueworker.RetryHistory) (int64, int64, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *taskqueueworker.Filter, map[string]any, ...taskqueueworker.RetryHistory) (int64, int64, error)); ok {
 		return rf(ctx, filter, updated, retryHistories...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *taskqueueworker.Filter, map[string]interface{}, ...taskqueueworker.RetryHistory) int64); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *taskqueueworker.Filter, map[string]any, ...taskqueueworker.RetryHistory) int64); ok {
 		r0 = rf(ctx, filter, updated, retryHistories...)
 	} else {
 		r0 = ret.Get(0).(int64)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *taskqueueworker.Filter, map[string]interface{}, ...taskqueueworker.RetryHistory) int64); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *taskqueueworker.Filter, map[string]any, ...taskqueueworker.RetryHistory) int64); ok {
 		r1 = rf(ctx, filter, updated, retryHistories...)
 	} else {
 		r1 = ret.Get(1).(int64)
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, *taskqueueworker.Filter, map[string]interface{}, ...taskqueueworker.RetryHistory) error); ok {
+	if rf, ok := ret.Get(2).(func(context.Context, *taskqueueworker.Filter, map[string]any, ...taskqueueworker.RetryHistory) error); ok {
 		r2 = rf(ctx, filter, updated, retryHistories...)
 	} else {
 		r2 = ret.Error(2)

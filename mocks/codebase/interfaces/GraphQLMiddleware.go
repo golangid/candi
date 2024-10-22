@@ -16,7 +16,7 @@ type GraphQLMiddleware struct {
 }
 
 // GraphQLAuth provides a mock function with given fields: ctx, directive, input
-func (_m *GraphQLMiddleware) GraphQLAuth(ctx context.Context, directive *types.Directive, input interface{}) (context.Context, error) {
+func (_m *GraphQLMiddleware) GraphQLAuth(ctx context.Context, directive *types.Directive, input any) (context.Context, error) {
 	ret := _m.Called(ctx, directive, input)
 
 	if len(ret) == 0 {
@@ -25,10 +25,10 @@ func (_m *GraphQLMiddleware) GraphQLAuth(ctx context.Context, directive *types.D
 
 	var r0 context.Context
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *types.Directive, interface{}) (context.Context, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *types.Directive, any) (context.Context, error)); ok {
 		return rf(ctx, directive, input)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *types.Directive, interface{}) context.Context); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *types.Directive, any) context.Context); ok {
 		r0 = rf(ctx, directive, input)
 	} else {
 		if ret.Get(0) != nil {
@@ -36,7 +36,7 @@ func (_m *GraphQLMiddleware) GraphQLAuth(ctx context.Context, directive *types.D
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *types.Directive, interface{}) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *types.Directive, any) error); ok {
 		r1 = rf(ctx, directive, input)
 	} else {
 		r1 = ret.Error(1)
@@ -46,7 +46,7 @@ func (_m *GraphQLMiddleware) GraphQLAuth(ctx context.Context, directive *types.D
 }
 
 // GraphQLPermissionACL provides a mock function with given fields: ctx, directive, input
-func (_m *GraphQLMiddleware) GraphQLPermissionACL(ctx context.Context, directive *types.Directive, input interface{}) (context.Context, error) {
+func (_m *GraphQLMiddleware) GraphQLPermissionACL(ctx context.Context, directive *types.Directive, input any) (context.Context, error) {
 	ret := _m.Called(ctx, directive, input)
 
 	if len(ret) == 0 {
@@ -55,10 +55,10 @@ func (_m *GraphQLMiddleware) GraphQLPermissionACL(ctx context.Context, directive
 
 	var r0 context.Context
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *types.Directive, interface{}) (context.Context, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *types.Directive, any) (context.Context, error)); ok {
 		return rf(ctx, directive, input)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *types.Directive, interface{}) context.Context); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *types.Directive, any) context.Context); ok {
 		r0 = rf(ctx, directive, input)
 	} else {
 		if ret.Get(0) != nil {
@@ -66,7 +66,7 @@ func (_m *GraphQLMiddleware) GraphQLPermissionACL(ctx context.Context, directive
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *types.Directive, interface{}) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *types.Directive, any) error); ok {
 		r1 = rf(ctx, directive, input)
 	} else {
 		r1 = ret.Error(1)

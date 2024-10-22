@@ -32,7 +32,7 @@ func (_m *wsConnection) Close() error {
 }
 
 // ReadJSON provides a mock function with given fields: v
-func (_m *wsConnection) ReadJSON(v interface{}) error {
+func (_m *wsConnection) ReadJSON(v any) error {
 	ret := _m.Called(v)
 
 	if len(ret) == 0 {
@@ -40,7 +40,7 @@ func (_m *wsConnection) ReadJSON(v interface{}) error {
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(interface{}) error); ok {
+	if rf, ok := ret.Get(0).(func(any) error); ok {
 		r0 = rf(v)
 	} else {
 		r0 = ret.Error(0)
@@ -73,7 +73,7 @@ func (_m *wsConnection) SetWriteDeadline(t time.Time) error {
 }
 
 // WriteJSON provides a mock function with given fields: v
-func (_m *wsConnection) WriteJSON(v interface{}) error {
+func (_m *wsConnection) WriteJSON(v any) error {
 	ret := _m.Called(v)
 
 	if len(ret) == 0 {
@@ -81,7 +81,7 @@ func (_m *wsConnection) WriteJSON(v interface{}) error {
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(interface{}) error); ok {
+	if rf, ok := ret.Get(0).(func(any) error); ok {
 		r0 = rf(v)
 	} else {
 		r0 = ret.Error(0)

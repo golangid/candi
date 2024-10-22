@@ -17,9 +17,9 @@ type GRPCHandler interface {
 
 // GraphQLHandler delivery factory for GraphQL resolver handler
 type GraphQLHandler interface {
-	Query() interface{}
-	Mutation() interface{}
-	Subscription() interface{}
+	Query() any
+	Mutation() any
+	Subscription() any
 	Schema() string
 }
 
@@ -30,5 +30,5 @@ type WorkerHandler interface {
 
 // ServerHandler delivery factory for all additional server handler (rest framework, p2p, and many more)
 type ServerHandler interface {
-	MountHandlers(group interface{}) // why interface? cause every server is different type for grouping route handler
+	MountHandlers(group any) // why interface? cause every server is different type for grouping route handler
 }

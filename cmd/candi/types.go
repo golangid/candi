@@ -197,7 +197,7 @@ type FileStructure struct {
 	TargetDir    string
 	IsDir        bool
 	FromTemplate bool
-	DataSource   interface{}
+	DataSource   any
 	Source       string
 	FileName     string
 	Skip         bool

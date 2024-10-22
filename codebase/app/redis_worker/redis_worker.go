@@ -46,7 +46,7 @@ func NewWorker(service factory.ServiceFactory, bk interfaces.Broker, opts ...Opt
 		opt:       getDefaultOption(),
 		semaphore: make(map[string]chan struct{}),
 		messagePool: sync.Pool{
-			New: func() interface{} {
+			New: func() any {
 				return candishared.NewEventContext(bytes.NewBuffer(make([]byte, 0, 256)))
 			},
 		},

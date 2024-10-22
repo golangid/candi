@@ -164,7 +164,7 @@ func AddJobViaHTTPRequest(ctx context.Context, workerHost string, req *AddJobReq
 		candihelper.HeaderContentType: candihelper.HeaderMIMEApplicationJSON,
 	}
 
-	param := map[string]interface{}{
+	param := map[string]any{
 		"task_name": req.TaskName,
 		"max_retry": req.MaxRetry,
 		"args":      string(req.Args),
@@ -173,9 +173,9 @@ func AddJobViaHTTPRequest(ctx context.Context, workerHost string, req *AddJobReq
 		param["retry_interval"] = req.RetryInterval.String()
 	}
 
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"operationName": "addJob",
-		"variables": map[string]interface{}{
+		"variables": map[string]any{
 			"param": param,
 		},
 		"query": `mutation addJob($param: AddJobInputResolver!) { add_job(param: $param) }`,
@@ -243,7 +243,7 @@ func RetryJob(ctx context.Context, jobID string) error {
 	if (job.Status == string(StatusFailure)) || (job.Retries >= job.MaxRetry) {
 		job.Retries = 0
 	}
-	matched, affected, err := engine.opt.persistent.UpdateJob(ctx, &Filter{JobID: &job.ID}, map[string]interface{}{
+	matched, affected, err := engine.opt.persistent.UpdateJob(ctx, &Filter{JobID: &job.ID}, map[string]any{
 		"status": job.Status, "interval": job.Interval, "retries": job.Retries,
 	})
 	if err != nil {
@@ -287,7 +287,7 @@ func StopJob(ctx context.Context, jobID string) error {
 	job.Status = string(StatusStopped)
 	matchedCount, countAffected, err := engine.opt.persistent.UpdateJob(
 		ctx, &Filter{JobID: &job.ID, Status: &statusBefore},
-		map[string]interface{}{"status": job.Status},
+		map[string]any{"status": job.Status},
 	)
 	if err != nil {
 		logger.LogE(err.Error())
@@ -353,7 +353,7 @@ func RecalculateSummary(ctx context.Context) {
 		if !ok {
 			taskSummary.ID = task
 		}
-		engine.opt.persistent.Summary().UpdateSummary(ctx, taskSummary.ID, map[string]interface{}{
+		engine.opt.persistent.Summary().UpdateSummary(ctx, taskSummary.ID, map[string]any{
 			"success":  taskSummary.Success,
 			"queueing": taskSummary.Queueing,
 			"retrying": taskSummary.Retrying,
@@ -380,7 +380,7 @@ func UpdateProgressJob(ctx context.Context, jobID string, numProcessed, maxProce
 
 	_, _, err = engine.opt.persistent.UpdateJob(ctx, &Filter{
 		JobID: &job.ID,
-	}, map[string]interface{}{
+	}, map[string]any{
 		"current_progress": numProcessed, "max_progress": maxProcess,
 	})
 	if err != nil {

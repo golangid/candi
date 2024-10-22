@@ -10,14 +10,14 @@ type PublisherArgument struct {
 	// Topic or queue name
 	Topic           string
 	Key             string
-	Header          map[string]interface{}
+	Header          map[string]any
 	ContentType     string
 	Message         []byte
 	Delay           time.Duration
 	IsDeleteMessage bool
 
 	// Deprecated : use Message
-	Data interface{}
+	Data any
 }
 
 func (p *PublisherArgument) Validate() error {

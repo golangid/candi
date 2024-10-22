@@ -10,19 +10,19 @@ type GraphQLHandler struct {
 }
 
 // Mutation provides a mock function with given fields:
-func (_m *GraphQLHandler) Mutation() interface{} {
+func (_m *GraphQLHandler) Mutation() any {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Mutation")
 	}
 
-	var r0 interface{}
-	if rf, ok := ret.Get(0).(func() interface{}); ok {
+	var r0 any
+	if rf, ok := ret.Get(0).(func() any); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
+			r0 = ret.Get(0).(any)
 		}
 	}
 
@@ -30,19 +30,19 @@ func (_m *GraphQLHandler) Mutation() interface{} {
 }
 
 // Query provides a mock function with given fields:
-func (_m *GraphQLHandler) Query() interface{} {
+func (_m *GraphQLHandler) Query() any {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Query")
 	}
 
-	var r0 interface{}
-	if rf, ok := ret.Get(0).(func() interface{}); ok {
+	var r0 any
+	if rf, ok := ret.Get(0).(func() any); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
+			r0 = ret.Get(0).(any)
 		}
 	}
 
@@ -68,19 +68,19 @@ func (_m *GraphQLHandler) Schema() string {
 }
 
 // Subscription provides a mock function with given fields:
-func (_m *GraphQLHandler) Subscription() interface{} {
+func (_m *GraphQLHandler) Subscription() any {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Subscription")
 	}
 
-	var r0 interface{}
-	if rf, ok := ret.Get(0).(func() interface{}); ok {
+	var r0 any
+	if rf, ok := ret.Get(0).(func() any); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
+			r0 = ret.Get(0).(any)
 		}
 	}
 

@@ -150,7 +150,7 @@ func (_m *Cache) GetTTL(ctx context.Context, key string) (time.Duration, error) 
 }
 
 // Set provides a mock function with given fields: ctx, key, value, expire
-func (_m *Cache) Set(ctx context.Context, key string, value interface{}, expire time.Duration) error {
+func (_m *Cache) Set(ctx context.Context, key string, value any, expire time.Duration) error {
 	ret := _m.Called(ctx, key, value, expire)
 
 	if len(ret) == 0 {
@@ -158,7 +158,7 @@ func (_m *Cache) Set(ctx context.Context, key string, value interface{}, expire 
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, interface{}, time.Duration) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, any, time.Duration) error); ok {
 		r0 = rf(ctx, key, value, expire)
 	} else {
 		r0 = ret.Error(0)

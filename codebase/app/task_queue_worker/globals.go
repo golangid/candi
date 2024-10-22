@@ -74,7 +74,7 @@ func initEngine(service factory.ServiceFactory, opts ...OptionFunc) *taskQueueWo
 		runningWorkerIndexTask:    make(map[int]*Task),
 		globalSemaphore:           make(chan struct{}, env.BaseEnv().MaxGoroutines),
 		messagePool: sync.Pool{
-			New: func() interface{} {
+			New: func() any {
 				return candishared.NewEventContextWithResult(
 					bytes.NewBuffer(make([]byte, 0, 256)),
 					bytes.NewBuffer(make([]byte, 0, 256)),

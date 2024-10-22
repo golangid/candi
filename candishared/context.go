@@ -23,12 +23,12 @@ const (
 )
 
 // SetToContext will set context with specific key
-func SetToContext(ctx context.Context, key ContextKey, value interface{}) context.Context {
+func SetToContext(ctx context.Context, key ContextKey, value any) context.Context {
 	return context.WithValue(ctx, key, value)
 }
 
 // GetValueFromContext will get context with specific key
-func GetValueFromContext(ctx context.Context, key ContextKey) interface{} {
+func GetValueFromContext(ctx context.Context, key ContextKey) any {
 	return ctx.Value(key)
 }
 

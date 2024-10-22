@@ -74,14 +74,14 @@ func NewRedisBroker(pool *redis.Pool, opts ...RedisOptionFunc) *RedisBroker {
 func (r *RedisBroker) InitPubSubConn() *redis.PubSubConn {
 	conn := r.Pool.Get()
 
-	var commands []interface{}
+	var commands []any
 	for _, cmd := range r.configCommands {
 		commands = append(commands, cmd)
 	}
 	conn.Do("CONFIG", commands...)
 
 	psc := &redis.PubSubConn{Conn: conn}
-	commands = []interface{}{}
+	commands = []any{}
 	for _, cmd := range r.subscribeChannels {
 		commands = append(commands, cmd)
 	}
@@ -203,7 +203,7 @@ type RedisMessage struct {
 }
 
 // GenerateKeyDeleteRedisPubSubMessage delete redis key pubsub message pattern
-func GenerateKeyDeleteRedisPubSubMessage(topic string, message interface{}) string {
+func GenerateKeyDeleteRedisPubSubMessage(topic string, message any) string {
 	b, _ := json.Marshal(RedisMessage{
 		HandlerName: topic, Message: string(candihelper.ToBytes(message)),
 	})

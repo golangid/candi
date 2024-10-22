@@ -10,7 +10,7 @@ type ServerHandler struct {
 }
 
 // MountHandlers provides a mock function with given fields: group
-func (_m *ServerHandler) MountHandlers(group interface{}) {
+func (_m *ServerHandler) MountHandlers(group any) {
 	_m.Called(group)
 }
 

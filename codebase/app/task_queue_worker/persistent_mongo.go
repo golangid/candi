@@ -228,7 +228,7 @@ func (s *MongoPersistent) FindJobByID(ctx context.Context, id string, filterHist
 		})
 	} else {
 		opts = append(opts, &options.FindOneOptions{
-			Projection: bson.M{"retry_histories": bson.M{"$slice": []interface{}{filterHistory.CalculateOffset(), filterHistory.Limit}}},
+			Projection: bson.M{"retry_histories": bson.M{"$slice": []any{filterHistory.CalculateOffset(), filterHistory.Limit}}},
 		})
 		cur, err := s.db.Collection(jobModelName).Aggregate(ctx, []bson.M{
 			{"$match": filter},
@@ -269,12 +269,12 @@ func (s *MongoPersistent) AggregateAllTaskJob(ctx context.Context, filter *Filte
 		{
 			"$project": bson.M{
 				"task_name": "$task_name",
-				"success":   bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", StatusSuccess}}, "then": 1, "else": 0}},
-				"queueing":  bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", StatusQueueing}}, "then": 1, "else": 0}},
-				"retrying":  bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", StatusRetrying}}, "then": 1, "else": 0}},
-				"failure":   bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", StatusFailure}}, "then": 1, "else": 0}},
-				"stopped":   bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", StatusStopped}}, "then": 1, "else": 0}},
-				"hold":      bson.M{"$cond": bson.M{"if": bson.M{"$eq": []interface{}{"$status", StatusHold}}, "then": 1, "else": 0}},
+				"success":   bson.M{"$cond": bson.M{"if": bson.M{"$eq": []any{"$status", StatusSuccess}}, "then": 1, "else": 0}},
+				"queueing":  bson.M{"$cond": bson.M{"if": bson.M{"$eq": []any{"$status", StatusQueueing}}, "then": 1, "else": 0}},
+				"retrying":  bson.M{"$cond": bson.M{"if": bson.M{"$eq": []any{"$status", StatusRetrying}}, "then": 1, "else": 0}},
+				"failure":   bson.M{"$cond": bson.M{"if": bson.M{"$eq": []any{"$status", StatusFailure}}, "then": 1, "else": 0}},
+				"stopped":   bson.M{"$cond": bson.M{"if": bson.M{"$eq": []any{"$status", StatusStopped}}, "then": 1, "else": 0}},
+				"hold":      bson.M{"$cond": bson.M{"if": bson.M{"$eq": []any{"$status", StatusHold}}, "then": 1, "else": 0}},
 			},
 		},
 		{
@@ -358,7 +358,7 @@ func (s *MongoPersistent) SaveJob(ctx context.Context, job *Job, retryHistories 
 	return
 }
 
-func (s *MongoPersistent) UpdateJob(ctx context.Context, filter *Filter, updated map[string]interface{}, retryHistories ...RetryHistory) (matchedCount, affectedRow int64, err error) {
+func (s *MongoPersistent) UpdateJob(ctx context.Context, filter *Filter, updated map[string]any, retryHistories ...RetryHistory) (matchedCount, affectedRow int64, err error) {
 	updated["updated_at"] = time.Now()
 	updateQuery := bson.M{
 		"$set": bson.M(updated),
@@ -550,7 +550,7 @@ func (s *MongoPersistent) IncrementSummary(ctx context.Context, taskName string,
 	}
 }
 
-func (s *MongoPersistent) UpdateSummary(ctx context.Context, taskName string, updated map[string]interface{}) {
+func (s *MongoPersistent) UpdateSummary(ctx context.Context, taskName string, updated map[string]any) {
 
 	opt := options.UpdateOptions{
 		Upsert: candihelper.ToBoolPtr(true),

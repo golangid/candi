@@ -126,7 +126,7 @@ func TimeRemoveNanosecond(t time.Time) time.Time {
 }
 
 // ToBytes convert all types to json bytes
-func ToBytes(i interface{}) (b []byte) {
+func ToBytes(i any) (b []byte) {
 	switch t := i.(type) {
 	case []byte:
 		b = t
@@ -166,7 +166,7 @@ func MaskingPasswordURL(stringURL string) string {
 }
 
 // MustParseEnv must parse env to struct, panic if env from target struct tag is not found
-func MustParseEnv(target interface{}) {
+func MustParseEnv(target any) {
 	pValue := reflect.ValueOf(target)
 	pValue = pValue.Elem()
 	pType := reflect.TypeOf(target).Elem()
@@ -257,14 +257,14 @@ func MustParseEnv(target interface{}) {
 }
 
 // GetFuncName get function name in string
-func GetFuncName(fn interface{}) string {
+func GetFuncName(fn any) string {
 	defer func() { recover() }()
 	handlerName := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
 	return strings.TrimSuffix(strings.TrimPrefix(filepath.Ext(handlerName), "."), "-fm") // if `fn` is method, trim `-fm`
 }
 
 // PrintJSON for show data in pretty JSON with stack trace
-func PrintJSON(data interface{}) {
+func PrintJSON(data any) {
 	buff, _ := json.Marshal(data)
 	var prettyJSON bytes.Buffer
 	json.Indent(&prettyJSON, buff, "", "     ")
@@ -397,7 +397,7 @@ func GetRuntimeStackLine() string {
 }
 
 // ToString helper
-func ToString(val interface{}) (str string) {
+func ToString(val any) (str string) {
 	switch s := val.(type) {
 	case string:
 		return s
@@ -441,7 +441,7 @@ func ToString(val interface{}) (str string) {
 }
 
 // ToInt helper
-func ToInt(val interface{}) (i int) {
+func ToInt(val any) (i int) {
 	switch s := val.(type) {
 	case int:
 		return s

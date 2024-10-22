@@ -197,8 +197,8 @@ type RetryHistory struct {
 	EndAt      time.Time `bson:"end_at" json:"end_at"`
 }
 
-func (job *Job) toMap() map[string]interface{} {
-	return map[string]interface{}{
+func (job *Job) toMap() map[string]any {
+	return map[string]any{
 		"task_name":   job.TaskName,
 		"arguments":   job.Arguments,
 		"retries":     job.Retries,

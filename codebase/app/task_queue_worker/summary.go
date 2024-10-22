@@ -11,7 +11,7 @@ type (
 	Summary interface {
 		FindAllSummary(ctx context.Context, filter *Filter) (result []TaskSummary)
 		FindDetailSummary(ctx context.Context, taskName string) (result TaskSummary)
-		UpdateSummary(ctx context.Context, taskName string, updated map[string]interface{})
+		UpdateSummary(ctx context.Context, taskName string, updated map[string]any)
 		IncrementSummary(ctx context.Context, taskName string, incr map[string]int64)
 		DeleteAllSummary(ctx context.Context, filter *Filter)
 	}
@@ -68,7 +68,7 @@ func (i *inMemSummary) FindDetailSummary(ctx context.Context, taskName string) (
 	}
 	return *summary
 }
-func (i *inMemSummary) UpdateSummary(ctx context.Context, taskName string, updated map[string]interface{}) {
+func (i *inMemSummary) UpdateSummary(ctx context.Context, taskName string, updated map[string]any) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 

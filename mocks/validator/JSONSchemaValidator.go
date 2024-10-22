@@ -10,7 +10,7 @@ type JSONSchemaValidator struct {
 }
 
 // ValidateDocument provides a mock function with given fields: schemaID, documentSource
-func (_m *JSONSchemaValidator) ValidateDocument(schemaID string, documentSource interface{}) error {
+func (_m *JSONSchemaValidator) ValidateDocument(schemaID string, documentSource any) error {
 	ret := _m.Called(schemaID, documentSource)
 
 	if len(ret) == 0 {
@@ -18,7 +18,7 @@ func (_m *JSONSchemaValidator) ValidateDocument(schemaID string, documentSource 
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, interface{}) error); ok {
+	if rf, ok := ret.Get(0).(func(string, any) error); ok {
 		r0 = rf(schemaID, documentSource)
 	} else {
 		r0 = ret.Error(0)

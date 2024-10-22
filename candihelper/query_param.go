@@ -24,7 +24,7 @@ func extractTagName(structField reflect.StructField, tags []string) (key string)
 }
 
 // ParseFromQueryParam parse url query string to struct target (with multiple data type in struct field), target must in pointer
-func ParseFromQueryParam(query URLQueryGetter, target interface{}) (err error) {
+func ParseFromQueryParam(query URLQueryGetter, target any) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("%v", r)
@@ -115,7 +115,7 @@ func ParseFromQueryParam(query URLQueryGetter, target interface{}) (err error) {
 }
 
 // ParseToQueryParam parse struct data to query param
-func ParseToQueryParam(source interface{}) (s string) {
+func ParseToQueryParam(source any) (s string) {
 	defer func() { recover() }()
 
 	pValue := ReflectValueUnwrapPtr(reflect.ValueOf(source))

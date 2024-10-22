@@ -690,15 +690,15 @@ func (r *{{camel .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddom
 		err = {{ if .IsMonorepo }}global{{end}}shared.SetSpanToGorm(ctx, db).Model(data).Omit(clause.Associations).Updates(r.updateTools.ToMap(data, updateOptions...)).Error
 	}
 	{{else}}var query string
-	var args []interface{}
+	var args []any
 
 	data.UpdatedAt = time.Now()
 	if data.CreatedAt.IsZero() {
 		data.CreatedAt = time.Now()
 	}
 	if data.ID == 0 {
-		query = "INSERT INTO {{plural .ModuleName}} (field, created_at, updated_at) VALUES ({{if eq .SQLDriver "postgres"}}$1,$2,$3{{else}}?,?,?{{end}})"
-		args = []interface{}{data.Field, data.CreatedAt, data.UpdatedAt}
+		query = "INSERT INTO {{snake .ModuleName}}s (field, created_at, updated_at) VALUES ({{if eq .SQLDriver "postgres"}}$1,$2,$3{{else}}?,?,?{{end}})"
+		args = []any{data.Field, data.CreatedAt, data.UpdatedAt}
 	} else {
 		var updatedFields []string{{if eq .SQLDriver "postgres"}}
 		i := 1{{end}}
@@ -762,7 +762,7 @@ func (r *{{camel .ModuleName}}RepoSQL) Delete(ctx context.Context, filter *domai
 	{{end}}return
 }
 
-func (r *{{camel .ModuleName}}RepoSQL) setFilter{{upper (camel .ModuleName)}}({{if .SQLUseGORM}}db *gorm.DB, {{end}}filter *domain.Filter{{upper (camel .ModuleName)}}) {{if .SQLUseGORM}}*gorm.DB{{else}}(query string, args []interface{}){{end}} {
+func (r *{{camel .ModuleName}}RepoSQL) setFilter{{upper (camel .ModuleName)}}({{if .SQLUseGORM}}db *gorm.DB, {{end}}filter *domain.Filter{{upper (camel .ModuleName)}}) {{if .SQLUseGORM}}*gorm.DB{{else}}(query string, args []any){{end}} {
 	{{if not .SQLUseGORM}}
 	var wheres []string{{end}}
 	if filter.ID != nil {

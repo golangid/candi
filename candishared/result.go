@@ -4,13 +4,13 @@ import "math"
 
 // Result common output
 type Result struct {
-	Data  interface{}
+	Data  any
 	Error error
 }
 
 // SliceResult include meta
 type SliceResult struct {
-	Data  interface{}
+	Data  any
 	Meta  Meta
 	Error error
 }

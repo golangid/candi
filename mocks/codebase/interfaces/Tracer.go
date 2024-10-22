@@ -33,12 +33,12 @@ func (_m *Tracer) Context() context.Context {
 }
 
 // Finish provides a mock function with given fields: additionalTags
-func (_m *Tracer) Finish(additionalTags ...map[string]interface{}) {
-	_va := make([]interface{}, len(additionalTags))
+func (_m *Tracer) Finish(additionalTags ...map[string]any) {
+	_va := make([]any, len(additionalTags))
 	for _i := range additionalTags {
 		_va[_i] = additionalTags[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, _va...)
 	_m.Called(_ca...)
 }
@@ -59,7 +59,7 @@ func (_m *Tracer) InjectRequestHeader(header map[string]string) {
 }
 
 // Log provides a mock function with given fields: key, value
-func (_m *Tracer) Log(key string, value interface{}) {
+func (_m *Tracer) Log(key string, value any) {
 	_m.Called(key, value)
 }
 
@@ -69,20 +69,20 @@ func (_m *Tracer) SetError(err error) {
 }
 
 // SetTag provides a mock function with given fields: key, value
-func (_m *Tracer) SetTag(key string, value interface{}) {
+func (_m *Tracer) SetTag(key string, value any) {
 	_m.Called(key, value)
 }
 
 // Tags provides a mock function with given fields:
-func (_m *Tracer) Tags() map[string]interface{} {
+func (_m *Tracer) Tags() map[string]any {
 	ret := _m.Called()
 
-	var r0 map[string]interface{}
-	if rf, ok := ret.Get(0).(func() map[string]interface{}); ok {
+	var r0 map[string]any
+	if rf, ok := ret.Get(0).(func() map[string]any); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[string]interface{})
+			r0 = ret.Get(0).(map[string]any)
 		}
 	}
 

@@ -46,7 +46,7 @@ func HTTPHandlerMemstats(w http.ResponseWriter, r *http.Request) {
 	runtime.ReadMemStats(&m)
 	data := struct {
 		NumGoroutine int         `json:"num_goroutine"`
-		Memstats     interface{} `json:"memstats"`
+		Memstats     any `json:"memstats"`
 	}{
 		runtime.NumGoroutine(), m,
 	}

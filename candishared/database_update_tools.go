@@ -94,14 +94,14 @@ func (d *DBUpdateTools) parseOption(opts ...DBUpdateOptionFunc) (o partialUpdate
 }
 
 // ToMap method
-func (d DBUpdateTools) ToMap(data interface{}, opts ...DBUpdateOptionFunc) map[string]interface{} {
+func (d DBUpdateTools) ToMap(data any, opts ...DBUpdateOptionFunc) map[string]any {
 	opt := d.parseOption(opts...)
 
 	dataValue := candihelper.ReflectValueUnwrapPtr(reflect.ValueOf(data))
 	dataType := candihelper.ReflectTypeUnwrapPtr(reflect.TypeOf(data))
 	isPartial := len(opt.updateFields) > 0 || len(opt.ignoreFields) > 0
 
-	updateFields := make(map[string]interface{}, 0)
+	updateFields := make(map[string]any, 0)
 	for i := 0; i < dataValue.NumField(); i++ {
 		fieldValue := candihelper.ReflectValueUnwrapPtr(dataValue.Field(i))
 		fieldType := dataType.Field(i)

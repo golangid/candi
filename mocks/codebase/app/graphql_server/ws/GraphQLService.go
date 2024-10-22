@@ -14,27 +14,27 @@ type GraphQLService struct {
 }
 
 // Subscribe provides a mock function with given fields: ctx, document, operationName, variableValues
-func (_m *GraphQLService) Subscribe(ctx context.Context, document string, operationName string, variableValues map[string]interface{}) (<-chan interface{}, error) {
+func (_m *GraphQLService) Subscribe(ctx context.Context, document string, operationName string, variableValues map[string]any) (<-chan any, error) {
 	ret := _m.Called(ctx, document, operationName, variableValues)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Subscribe")
 	}
 
-	var r0 <-chan interface{}
+	var r0 <-chan any
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, map[string]interface{}) (<-chan interface{}, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, map[string]any) (<-chan any, error)); ok {
 		return rf(ctx, document, operationName, variableValues)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, map[string]interface{}) <-chan interface{}); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, map[string]any) <-chan any); ok {
 		r0 = rf(ctx, document, operationName, variableValues)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(<-chan interface{})
+			r0 = ret.Get(0).(<-chan any)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, map[string]interface{}) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, map[string]any) error); ok {
 		r1 = rf(ctx, document, operationName, variableValues)
 	} else {
 		r1 = ret.Error(1)

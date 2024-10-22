@@ -6,5 +6,5 @@ import "github.com/golang-jwt/jwt"
 type TokenClaim struct {
 	jwt.StandardClaims
 	Role       string      `json:"role"`
-	Additional interface{} `json:"additional"`
+	Additional any `json:"additional"`
 }
