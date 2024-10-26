@@ -697,7 +697,7 @@ func (r *{{camel .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddom
 		data.CreatedAt = time.Now()
 	}
 	if data.ID == 0 {
-		query = "INSERT INTO {{snake .ModuleName}}s (field, created_at, updated_at) VALUES ({{if eq .SQLDriver "postgres"}}$1,$2,$3{{else}}?,?,?{{end}})"
+		query = "INSERT INTO {{plural .ModuleName}} (field, created_at, updated_at) VALUES ({{if eq .SQLDriver "postgres"}}$1,$2,$3{{else}}?,?,?{{end}})"
 		args = []any{data.Field, data.CreatedAt, data.UpdatedAt}
 	} else {
 		var updatedFields []string{{if eq .SQLDriver "postgres"}}
