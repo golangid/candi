@@ -118,7 +118,7 @@ func TestLogWithField(t *testing.T) {
 	logOutput, _ := captureLogs()
 	logger.InitZap(logger.OptionAddWriter(io.MultiWriter(logOutput)))
 
-	fields := map[string]interface{}{
+	fields := map[string]any{
 		"message": "test log with fields",
 		"context": "test_context",
 		"scope":   "test_scope",
