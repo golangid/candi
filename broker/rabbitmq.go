@@ -198,6 +198,9 @@ func (r *RabbitMQPublisher) PublishMessage(ctx context.Context, args *candishare
 	if args.Delay > 0 {
 		msg.Headers[RabbitMQDelayHeader] = args.Delay.Milliseconds()
 	}
+	if !args.Timestamp.IsZero() {
+		msg.Timestamp = args.Timestamp
+	}
 
 	if len(args.Message) > 0 {
 		msg.Body = args.Message

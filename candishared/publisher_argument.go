@@ -15,6 +15,7 @@ type PublisherArgument struct {
 	Message         []byte
 	Delay           time.Duration
 	IsDeleteMessage bool
+	Timestamp       time.Time
 
 	// Deprecated : use Message
 	Data any
