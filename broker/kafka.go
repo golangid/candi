@@ -207,6 +207,9 @@ func (p *kafkaPublisher) PublishMessage(ctx context.Context, args *candishared.P
 		Value:     sarama.ByteEncoder(payload),
 		Timestamp: time.Now(),
 	}
+	if !args.Timestamp.IsZero() {
+		msg.Timestamp = args.Timestamp
+	}
 
 	traceHeader := map[string]string{}
 	trace.InjectRequestHeader(traceHeader)

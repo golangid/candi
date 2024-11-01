@@ -1,6 +1,5 @@
 # Candi, a library and utilities for `Membangun Candi` project in Golang
 
-<a href="https://codeclimate.com/github/golangid/candi/maintainability"><img src="https://api.codeclimate.com/v1/badges/38c8703e672eb53bea87/maintainability" /></a>
 [![Build Status](https://github.com/golangid/candi/workflows/build/badge.svg)](https://github.com/golangid/candi/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/golangid/candi)](https://goreportcard.com/report/github.com/golangid/candi)
 [![codecov](https://codecov.io/gh/golangid/candi/branch/master/graph/badge.svg)](https://codecov.io/gh/golangid/candi)
