@@ -145,7 +145,8 @@ type JobResolver {
 	status: String!
 	created_at: String!
 	finished_at: String!
-	next_retry_at: String!
+	next_running_at: String!
+	is_cron_mode: Boolean!
 	current_progress: Int!
 	max_progress: Int!
 	meta: JoDetailMetaResolver!

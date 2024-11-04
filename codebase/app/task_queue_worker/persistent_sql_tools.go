@@ -10,27 +10,31 @@ import (
 	"github.com/golangid/candi/logger"
 )
 
-func generateAddColumnQuery(driverName, tableName, newColumnName, columnType string) (q []string) {
+type sqlQueryMigration struct {
+	conditionQuery string
+	executionQuery string
+}
+
+func generateAdditionalColumnQuery(driverName, tableName, newColumnName, dataType string) (q sqlQueryMigration) {
 	switch driverName {
 	case "postgres":
-		q = []string{
-			`SELECT column_name FROM information_schema.columns ` +
-				`WHERE table_name='` + tableName + `' AND column_name='` + newColumnName + `' AND table_catalog=(SELECT current_database());`,
-			`ALTER TABLE ` + tableName + ` ADD COLUMN IF NOT EXISTS "` + newColumnName + `" ` + columnType,
-		}
+		q.conditionQuery = `SELECT column_name FROM information_schema.columns ` +
+			`WHERE table_name='` + tableName + `' AND column_name='` + newColumnName + `' AND table_catalog=(SELECT current_database());`
+		q.executionQuery = `ALTER TABLE ` + tableName + ` ADD COLUMN IF NOT EXISTS "` + newColumnName + `" ` + dataType
 
 	case "sqlite3":
-		q = []string{
-			`SELECT name FROM pragma_table_info('` + tableName + `') WHERE name='` + newColumnName + `'`,
-			`ALTER TABLE ` + tableName + ` ADD COLUMN "` + newColumnName + `" ` + columnType,
-		}
+		q.conditionQuery = `SELECT name FROM pragma_table_info('` + tableName + `') WHERE name='` + newColumnName + `'`
+		q.executionQuery = `ALTER TABLE ` + tableName + ` ADD COLUMN "` + newColumnName + `" ` + dataType
 
 	case "mysql":
-		q = []string{
-			"SELECT `COLUMN_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` " +
-				"WHERE `TABLE_NAME` = '" + tableName + "' AND `COLUMN_NAME` = '" + newColumnName + "' AND `TABLE_SCHEMA` = (SELECT DATABASE());",
-			`ALTER TABLE ` + tableName + " ADD COLUMN `" + newColumnName + "` " + columnType,
+		if d, ok := map[string]string{
+			"TIMESTAMPTZ": "DATETIME(3)",
+		}[dataType]; ok {
+			dataType = d
 		}
+		q.conditionQuery = "SELECT `COLUMN_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` " +
+			"WHERE `TABLE_NAME` = '" + tableName + "' AND `COLUMN_NAME` = '" + newColumnName + "' AND `TABLE_SCHEMA` = (SELECT DATABASE());"
+		q.executionQuery = `ALTER TABLE ` + tableName + " ADD COLUMN `" + newColumnName + "` " + dataType
 	}
 
 	return q
@@ -55,8 +59,8 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 				status VARCHAR(255) NOT NULL DEFAULT '',
 				error TEXT NOT NULL DEFAULT '',
 				trace_id VARCHAR(255) NOT NULL DEFAULT '',
-				current_progress INTEGER NOT NULL DEFAULT 0,
-				max_progress INTEGER NOT NULL DEFAULT 0
+				current_progress BIGINT NOT NULL DEFAULT 0,
+				max_progress BIGINT NOT NULL DEFAULT 0
 			);
 			CREATE INDEX IF NOT EXISTS idx_created_at ON ` + jobModelName + ` (created_at);
 			CREATE INDEX IF NOT EXISTS idx_args_err ON ` + jobModelName + ` (arguments, error);
@@ -83,8 +87,8 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 				status VARCHAR(255) NOT NULL DEFAULT '',
 				error TEXT NOT NULL DEFAULT '',
 				trace_id VARCHAR(255) NOT NULL DEFAULT '',
-				start_at TIMESTAMP,
-				end_at TIMESTAMP
+				start_at TIMESTAMPTZ,
+				end_at TIMESTAMPTZ
 			);
 			CREATE INDEX IF NOT EXISTS idx_job_id_history ON ` + jobHistoryModel + ` (job_id);
 			CREATE INDEX IF NOT EXISTS idx_start_at_history ON ` + jobHistoryModel + ` (start_at);`,
@@ -112,8 +116,8 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 				"`status` VARCHAR(255) NOT NULL," +
 				"`error` TEXT NOT NULL," +
 				"`trace_id` VARCHAR(255) NOT NULL," +
-				"`current_progress` INTEGER NOT NULL," +
-				"`max_progress` INTEGER NOT NULL," +
+				"`current_progress` BIGINT NOT NULL," +
+				"`max_progress` BIGINT NOT NULL," +
 				`INDEX (created_at),
 				INDEX (arguments(255), error(255)),
 				INDEX (task_name, status, created_at),
@@ -157,21 +161,21 @@ func (s *SQLPersistent) initTable(db *sql.DB) {
 		}
 	}
 
-	extraQueries := [][]string{
-		generateAddColumnQuery(s.driverName, jobModelName, "result", "TEXT"),
-		generateAddColumnQuery(s.driverName, jobHistoryModel, "result", "TEXT"),
-		generateAddColumnQuery(s.driverName, jobSummaryModelName, "is_hold", "BOOLEAN"),
-		generateAddColumnQuery(s.driverName, jobSummaryModelName, "hold", "INTEGER"),
+	extraQueries := []sqlQueryMigration{
+		generateAdditionalColumnQuery(s.driverName, jobModelName, "result", "TEXT"),
+		generateAdditionalColumnQuery(s.driverName, jobHistoryModel, "result", "TEXT"),
+		generateAdditionalColumnQuery(s.driverName, jobSummaryModelName, "is_hold", "BOOLEAN"),
+		generateAdditionalColumnQuery(s.driverName, jobSummaryModelName, "hold", "INTEGER"),
+		generateAdditionalColumnQuery(s.driverName, jobModelName, "next_running_at", "TIMESTAMPTZ"),
 	}
-	for _, queries := range extraQueries {
-		if queries[0] != "" {
+	for _, q := range extraQueries {
+		if q.conditionQuery != "" {
 			var columnName string
-			err := db.QueryRow(queries[0]).Scan(&columnName)
-			if err == nil {
+			if err := db.QueryRow(q.conditionQuery).Scan(&columnName); err == nil {
 				continue
 			}
 		}
-		if _, err := db.Exec(queries[1]); err != nil {
+		if _, err := db.Exec(q.executionQuery); err != nil {
 			logger.LogE(err.Error())
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,6 +27,7 @@ type (
 		MaxRetry       int           `json:"max_retry"`
 		Args           []byte        `json:"args"`
 		RetryInterval  time.Duration `json:"retry_interval"`
+		StartAt        time.Time     `json:"start_at"`
 		CronExpression string        `json:"cron_expression"`
 
 		direct   bool              `json:"-"`
@@ -95,6 +97,9 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 	if req.RetryInterval > 0 {
 		newJob.Interval = req.RetryInterval.String()
 	}
+	if !req.StartAt.IsZero() {
+		newJob.NextRunningAt = req.StartAt
+	}
 	if req.CronExpression != "" {
 		if totalJob := engine.opt.persistent.CountAllJob(ctx, &Filter{
 			TaskName: req.TaskName, MaxRetry: candihelper.WrapPtr(0),
@@ -103,7 +108,10 @@ func AddJob(ctx context.Context, req *AddJobRequest) (jobID string, err error) {
 			return jobID, fmt.Errorf("there is running cron job in task '%s'", req.TaskName)
 		}
 		newJob.Interval = req.CronExpression
-		newJob.NextRetryAt = req.schedule.Next(time.Now()).Format(time.RFC3339)
+		if req.StartAt.IsZero() {
+			req.StartAt = time.Now()
+		}
+		newJob.NextRunningAt = req.schedule.Next(req.StartAt)
 	}
 	newJob.Status = string(StatusQueueing)
 	newJob.CreatedAt = time.Now()
@@ -243,8 +251,9 @@ func RetryJob(ctx context.Context, jobID string) error {
 	if (job.Status == string(StatusFailure)) || (job.Retries >= job.MaxRetry) {
 		job.Retries = 0
 	}
+	job.ParseNextRunningInterval()
 	matched, affected, err := engine.opt.persistent.UpdateJob(ctx, &Filter{JobID: &job.ID}, map[string]any{
-		"status": job.Status, "interval": job.Interval, "retries": job.Retries,
+		"status": job.Status, "interval": job.Interval, "retries": job.Retries, "next_running_at": job.NextRunningAt,
 	})
 	if err != nil {
 		logger.LogE(err.Error())
@@ -364,7 +373,7 @@ func RecalculateSummary(ctx context.Context) {
 }
 
 // UpdateProgressJob api for update progress job
-func UpdateProgressJob(ctx context.Context, jobID string, numProcessed, maxProcess int) error {
+func UpdateProgressJob[T int | int64](ctx context.Context, jobID string, numProcessed, maxProcess T) error {
 	if engine == nil {
 		return errWorkerInactive
 	}
@@ -395,4 +404,15 @@ func UpdateProgressJob(ctx context.Context, jobID string, numProcessed, maxProce
 		}()
 	}
 	return nil
+}
+
+// GetContextHeader get all header value from context
+func GetContextHeader(ctx *candishared.EventContext) (header ContextHeader) {
+	ctxHeader := ctx.Header()
+	header.Retries, _ = strconv.Atoi(ctxHeader[HeaderRetries])
+	header.MaxRetries, _ = strconv.Atoi(ctxHeader[HeaderMaxRetries])
+	header.Interval = ctxHeader[HeaderInterval]
+	header.CurrentProgress, _ = strconv.ParseInt(ctxHeader[HeaderCurrentProgress], 10, 64)
+	header.MaxProgress, _ = strconv.ParseInt(ctxHeader[HeaderMaxProgress], 10, 64)
+	return
 }

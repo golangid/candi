@@ -172,18 +172,18 @@ type Job struct {
 	CreatedAt       time.Time      `bson:"created_at" json:"created_at"`
 	UpdatedAt       time.Time      `bson:"updated_at" json:"updated_at"`
 	FinishedAt      time.Time      `bson:"finished_at" json:"finished_at"`
+	NextRunningAt   time.Time      `bson:"next_running_at" json:"next_running_at"`
 	Status          string         `bson:"status" json:"status"`
 	Error           string         `bson:"error" json:"error"`
 	ErrorStack      string         `bson:"-" json:"error_stack"`
 	Result          string         `bson:"result" json:"result"`
 	TraceID         string         `bson:"trace_id" json:"trace_id"`
-	CurrentProgress int            `bson:"current_progress" json:"current_progress"`
-	MaxProgress     int            `bson:"max_progress" json:"max_progress"`
+	CurrentProgress int64          `bson:"current_progress" json:"current_progress"`
+	MaxProgress     int64          `bson:"max_progress" json:"max_progress"`
 	RetryHistories  []RetryHistory `bson:"retry_histories" json:"retry_histories"`
-	NextRetryAt     string         `bson:"-" json:"-"`
 
 	direct   bool              `bson:"-" json:"-"`
-	schedule cronexpr.Schedule `json:"-"`
+	schedule cronexpr.Schedule `bson:"-" json:"-"`
 }
 
 // RetryHistory model
@@ -210,6 +210,28 @@ func (job *Job) toMap() map[string]any {
 		"error":       job.Error,
 		"trace_id":    job.TraceID,
 	}
+}
+
+func (j *Job) IsCronMode() bool {
+	_, err := time.ParseDuration(j.Interval)
+	return err != nil
+}
+
+func (j *Job) ParseNextRunningInterval() (interval time.Duration, err error) {
+	if !j.NextRunningAt.IsZero() && j.NextRunningAt.After(time.Now()) {
+		interval = j.NextRunningAt.Sub(time.Now())
+		return
+	}
+	interval, err = time.ParseDuration(j.Interval)
+	if err != nil || interval <= 0 {
+		schedule, err := cronexpr.Parse(j.Interval)
+		if err != nil {
+			return interval, err
+		}
+		interval = schedule.NextInterval(time.Now())
+	}
+	j.NextRunningAt = time.Now().Add(interval)
+	return interval, nil
 }
 
 // Configuration model
