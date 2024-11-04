@@ -10,7 +10,6 @@ import (
 
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
-	cronexpr "github.com/golangid/candi/candiutils/cronparser"
 	"github.com/golangid/candi/codebase/factory"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
@@ -119,6 +118,7 @@ func (t *taskQueueWorker) prepare() {
 					if t.opt.locker.HasBeenLocked(t.getLockKey(job.ID)) {
 						return
 					}
+					job.ParseNextRunningInterval()
 					// update to queueing
 					if job.Status != string(StatusQueueing) {
 						statusBefore := job.Status
@@ -126,7 +126,7 @@ func (t *taskQueueWorker) prepare() {
 						matchedCount, affectedCount, err := t.opt.persistent.UpdateJob(t.ctx, &Filter{
 							JobID: &job.ID,
 						}, map[string]any{
-							"status": job.Status,
+							"status": job.Status, "next_running_at": job.NextRunningAt,
 						})
 						if err != nil {
 							logger.LogE(err.Error())
@@ -135,6 +135,10 @@ func (t *taskQueueWorker) prepare() {
 						t.opt.persistent.Summary().IncrementSummary(t.ctx, job.TaskName, map[string]int64{
 							string(job.Status): affectedCount,
 							statusBefore:       -matchedCount,
+						})
+					} else {
+						t.opt.persistent.UpdateJob(t.ctx, &Filter{JobID: &job.ID}, map[string]any{
+							"next_running_at": job.NextRunningAt,
 						})
 					}
 					t.opt.queue.PushJob(t.ctx, job)
@@ -237,14 +241,10 @@ func (t *taskQueueWorker) registerJobToWorker(job *Job) {
 		return
 	}
 
-	interval, err := time.ParseDuration(job.Interval)
+	interval, err := job.ParseNextRunningInterval()
 	if err != nil || interval <= 0 {
-		schedule, err := cronexpr.Parse(job.Interval)
-		if err != nil {
-			logger.LogRed("invalid interval " + job.Interval)
-			return
-		}
-		interval = schedule.NextInterval(time.Now())
+		logger.LogRed("register next job: invalid interval " + job.Interval)
+		return
 	}
 
 	t.mutex.Lock()

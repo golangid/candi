@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/golangid/candi/candihelper"
-	cronexpr "github.com/golangid/candi/candiutils/cronparser"
 )
 
 type (
@@ -109,9 +108,10 @@ type (
 		ErrorStack      string
 		TraceID         string
 		RetryHistories  []RetryHistory
-		NextRetryAt     string
-		CurrentProgress int
-		MaxProgress     int
+		NextRunningAt   string
+		IsCronMode      bool
+		CurrentProgress int64
+		MaxProgress     int64
 		Meta            struct {
 			IsCloseSession   bool
 			Page             int
@@ -280,20 +280,16 @@ func (j *JobResolver) ParseFromJob(job *Job, maxArgsLength int) {
 	j.ErrorStack = job.ErrorStack
 	j.TraceID = job.TraceID
 	j.RetryHistories = job.RetryHistories
-	j.NextRetryAt = job.NextRetryAt
 	j.CurrentProgress = job.CurrentProgress
 	j.MaxProgress = job.MaxProgress
 	j.RetryHistories = job.RetryHistories
 	if job.Status == string(StatusSuccess) {
 		j.Error = ""
 	}
+	j.IsCronMode = job.IsCronMode()
 
 	if job.Status == string(StatusQueueing) {
-		if delay, err := time.ParseDuration(job.Interval); err == nil {
-			j.NextRetryAt = time.Now().Add(delay).In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
-		} else if schedule, err := cronexpr.Parse(job.Interval); err == nil {
-			j.NextRetryAt = schedule.Next(time.Now()).Format(time.RFC3339)
-		}
+		j.NextRunningAt = job.NextRunningAt.Format(time.RFC3339)
 	}
 	j.CreatedAt = job.CreatedAt.In(candihelper.AsiaJakartaLocalTime).Format(time.RFC3339)
 	if !job.FinishedAt.IsZero() {

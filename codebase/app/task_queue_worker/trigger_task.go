@@ -78,7 +78,6 @@ func (t *taskQueueWorker) triggerTask(workerIndex int) {
 func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 	jobID := t.opt.queue.PopJob(t.ctx, runningTask.taskName)
 	if jobID == "" {
-		logger.LogI("task_queue_worker > empty queue")
 		return
 	}
 
@@ -157,8 +156,8 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			HeaderRetries:         strconv.Itoa(job.Retries),
 			HeaderMaxRetries:      strconv.Itoa(job.MaxRetry),
 			HeaderInterval:        job.Interval,
-			HeaderCurrentProgress: strconv.Itoa(job.CurrentProgress),
-			HeaderMaxProgress:     strconv.Itoa(job.MaxProgress),
+			HeaderCurrentProgress: strconv.FormatInt(job.CurrentProgress, 10),
+			HeaderMaxProgress:     strconv.FormatInt(job.MaxProgress, 10),
 		})
 		eventContext.SetKey(job.ID)
 		eventContext.WriteString(job.Arguments)
@@ -201,10 +200,12 @@ func (t *taskQueueWorker) execJob(ctx context.Context, runningTask *Task) {
 			jobHistoryStatus = job.Status
 		}
 
-		if job.MaxRetry == 0 { // cron mode
-			job.Status = string(StatusQueueing)
-			t.opt.queue.PushJob(ctx, &job)
-			goto FINISH
+		if job.IsCronMode() { // cron mode
+			if job.MaxRetry == 0 || job.Retries < job.MaxRetry {
+				job.Status = string(StatusQueueing)
+				t.opt.queue.PushJob(ctx, &job)
+				goto FINISH
+			}
 		}
 
 		switch e := eventResult.err.(type) {
@@ -241,9 +242,15 @@ FINISH:
 
 	} else {
 		updated := map[string]any{
-			"retries": job.Retries, "finished_at": job.FinishedAt, "status": job.Status,
+			"retries": job.Retries, "finished_at": job.FinishedAt, "status": job.Status, "next_running_at": nil,
 			"interval": job.Interval, "error": job.Error, "trace_id": job.TraceID,
 			"result": job.Result,
+		}
+
+		if job.Status == StatusQueueing.String() {
+			job.NextRunningAt = time.Time{}
+			job.ParseNextRunningInterval()
+			updated["next_running_at"] = job.NextRunningAt
 		}
 		if isUpdateArgs {
 			updated["arguments"] = job.Arguments

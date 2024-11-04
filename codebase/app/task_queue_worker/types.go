@@ -30,6 +30,15 @@ type (
 		err                         error
 		result, traceID, stackTrace string
 	}
+
+	// ContextHeader for job properties
+	ContextHeader struct {
+		Retries         int    `json:"retries"`
+		MaxRetries      int    `json:"max_retries"`
+		Interval        string `json:"interval"`
+		CurrentProgress int64  `json:"current_progress"`
+		MaxProgress     int64  `json:"max_progress"`
+	}
 )
 
 // String method
