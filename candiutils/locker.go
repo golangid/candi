@@ -25,9 +25,13 @@ func NewRedisLocker(pool *redis.Pool) *RedisLocker {
 	return &RedisLocker{pool: pool}
 }
 
-func (r *RedisLocker) IsLocked(key string) bool {
+func (r *RedisLocker) IsLocked(key string, expiration ...time.Duration) bool {
 	conn := r.pool.Get()
 	incr, _ := redis.Int64(conn.Do("INCR", key))
+
+	if len(expiration) > 0 {
+		conn.Do("EXPIRE", key, int(expiration[0].Seconds()))
+	}
 	conn.Close()
 
 	return incr > 1
@@ -121,6 +125,9 @@ func (r *RedisLocker) Lock(key string, timeout time.Duration) (unlockFunc func()
 
 // IsLocked method
 func (NoopLocker) IsLocked(string) bool { return false }
+
+// IsLocked method
+func (NoopLocker) IsLockedWithTTL(string, time.Duration) bool { return false }
 
 // HasBeenLocked method
 func (NoopLocker) HasBeenLocked(string) bool { return false }
