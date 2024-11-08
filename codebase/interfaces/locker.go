@@ -6,6 +6,7 @@ type (
 	// Locker abstraction, lock concurrent process
 	Locker interface {
 		IsLocked(key string) bool
+		IsLockedWithTTL(key string, timeout time.Duration) bool
 		HasBeenLocked(key string) bool
 		Unlock(key string)
 		Reset(key string)
