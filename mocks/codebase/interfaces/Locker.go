@@ -33,6 +33,42 @@ func (_m *Locker) Disconnect(ctx context.Context) error {
 	return r0
 }
 
+// GetPrefixLocker provides a mock function with given fields:
+func (_m *Locker) GetPrefixLocker() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPrefixLocker")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// GetTTLLocker provides a mock function with given fields:
+func (_m *Locker) GetTTLLocker() time.Duration {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTTLLocker")
+	}
+
+	var r0 time.Duration
+	if rf, ok := ret.Get(0).(func() time.Duration); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(time.Duration)
+	}
+
+	return r0
+}
+
 // HasBeenLocked provides a mock function with given fields: key
 func (_m *Locker) HasBeenLocked(key string) bool {
 	ret := _m.Called(key)
@@ -62,6 +98,24 @@ func (_m *Locker) IsLocked(key string) bool {
 	var r0 bool
 	if rf, ok := ret.Get(0).(func(string) bool); ok {
 		r0 = rf(key)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// IsLockedTTL provides a mock function with given fields: key, ttl
+func (_m *Locker) IsLockedTTL(key string, ttl time.Duration) bool {
+	ret := _m.Called(key, ttl)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsLockedTTL")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(string, time.Duration) bool); ok {
+		r0 = rf(key, ttl)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
