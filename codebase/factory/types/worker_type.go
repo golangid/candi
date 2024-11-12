@@ -26,6 +26,16 @@ type WorkerHandlerGroup struct {
 	Handlers []WorkerHandler
 }
 
+// AddMultiRoute method from WorkerHandlerGroup to handle multi topic in single method
+func (m *WorkerHandlerGroup) AddMultiRoute(patternRoutes []string, mainHandlerFunc WorkerHandlerFunc, opts ...WorkerHandlerOptionFunc) {
+	for _, route := range patternRoutes {
+		if len(route) == 0 {
+			continue
+		}
+		m.Add(route, mainHandlerFunc, opts...)
+	}
+}
+
 // Add method from WorkerHandlerGroup, patternRoute can contains unique topic name, key, or task name
 func (m *WorkerHandlerGroup) Add(patternRoute string, mainHandlerFunc WorkerHandlerFunc, opts ...WorkerHandlerOptionFunc) {
 	h := WorkerHandler{
