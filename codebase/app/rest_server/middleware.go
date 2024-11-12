@@ -216,6 +216,9 @@ func HTTPMiddlewareTracer() func(http.Handler) http.Handler {
 			logBuff.WriteString(`,"latency":"`)
 			logBuff.WriteString(stop.Sub(start).String())
 
+			logBuff.WriteString(`","trace_id":"`)
+			logBuff.WriteString(tracer.GetTraceID(ctx))
+
 			logBuff.WriteString(`","bytes_in":`)
 			cl := req.Header.Get("Content-Length")
 			if cl == "" {
