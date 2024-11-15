@@ -104,6 +104,33 @@ func (r *RedisLocker) IsLockedTTL(key string, TTL time.Duration) bool {
 	return incr > 1
 }
 
+// IsLockedTTLWithLimit checks if the key has been incremented more than the specified limit
+// within the given TTL. If the key is being created for the first time, it sets the TTL.
+// Example usage: check if a key has been incremented more than 10 times within 1 minute.
+func (r *RedisLocker) IsLockedTTLWithLimit(key string, limit int, TTL time.Duration) bool {
+	conn := r.pool.Get()
+	defer conn.Close()
+
+	lockKey := fmt.Sprintf("%s:%s", r.lockeroptions.Prefix, key)
+	incr, err := redis.Int64(conn.Do("INCR", lockKey))
+	if err != nil {
+		return false
+	}
+
+	var expireTime time.Duration
+	if TTL > 0 {
+		expireTime = TTL
+	} else {
+		expireTime = r.lockeroptions.TTL
+	}
+
+	if expireTime > 0 && incr == 1 {
+		conn.Do("EXPIRE", lockKey, int(expireTime.Seconds()))
+	}
+
+	return incr > int64(limit)
+}
+
 func (r *RedisLocker) HasBeenLocked(key string) bool {
 	conn := r.pool.Get()
 	defer conn.Close()
@@ -234,3 +261,6 @@ func (NoopLocker) GetPrefixLocker() string { return "" }
 
 // GetTTLLocker method
 func (NoopLocker) GetTTLLocker() time.Duration { return 0 }
+
+// IsLockedTTLWithLimit method
+func (NoopLocker) IsLockedTTLWithLimit(string, int, time.Duration) bool { return false }
