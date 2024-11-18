@@ -1,13 +1,13 @@
 module github.com/golangid/candi
 
-go 1.23
+go 1.23.3
 
 require (
 	github.com/IBM/sarama v1.43.3
 	github.com/gertd/go-pluralize v0.2.1
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/go-playground/validator/v10 v10.11.2
-	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/golangid/candi-plugin/task-queue-worker v0.0.0-20241022081437-59f56be28160
 	github.com/golangid/gojsonschema v0.0.1
 	github.com/golangid/graphql-go v0.0.9
