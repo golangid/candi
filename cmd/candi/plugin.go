@@ -11,6 +11,7 @@ type plugin struct {
 const (
 	pluginGCPPubSubWorker = "GCPPubSubWorker"
 	pluginSTOMPWorker     = "STOMPWorker"
+	pluginMQTTWorker      = "MQTTWorker"
 )
 
 var (
@@ -54,7 +55,7 @@ var (
 				`import (`: `import (
 	stompbroker "github.com/golangid/candi-plugin/stomp-broker"`,
 				"brokerDeps := broker.InitBrokers(": `brokerDeps := broker.InitBrokers(
-			stompbroker.NewSTOMPBroker(stompbroker.InitDefaultConnection("[broker host]", "[username]", "[password]")),`,
+			stompbroker.NewSTOMPBroker(stompbroker.InitDefaultConnection("127.0.0.1:61613", "[username]", "[password]")),`,
 			},
 			editAppFactory: map[string]string{
 				`import (`: `import (
@@ -73,6 +74,44 @@ var (
 `,
 				"mod.workerHandlers = map[types.Worker]interfaces.WorkerHandler{": `mod.workerHandlers = map[types.Worker]interfaces.WorkerHandler{
 		stompbroker.STOMPBroker: workerhandler.NewSTOMPWorkerHandler(usecase.GetSharedUsecase(), deps),`,
+			},
+		},
+
+		pluginMQTTWorker: {
+			name:        pluginMQTTWorker,
+			packageName: "github.com/golangid/candi-plugin/mqtt-broker",
+			editConfig: map[string]string{
+				`import (`: `import (
+	mqtt "github.com/eclipse/paho.mqtt.golang"
+	mqttbroker "github.com/golangid/candi-plugin/mqtt-broker"`,
+				"brokerDeps := broker.InitBrokers(": `brokerDeps := broker.InitBrokers(
+			mqttbroker.NewMQTTBroker(mqtt.NewClientOptions().
+				AddBroker("tcp://127.0.0.1:1883").
+				SetClientID("MQTTClientID").
+				SetUsername("MQTTUsername").
+				SetPassword("MQTTPassword").
+				SetCleanSession(false).
+				SetAutoReconnect(true).
+				SetConnectRetry(true),
+			),`,
+			},
+			editAppFactory: map[string]string{
+				`import (`: `import (
+	mqttbroker "github.com/golangid/candi-plugin/mqtt-broker"`,
+				`return
+}`: `apps = append(apps, mqttbroker.NewMQTTSubscriber(
+		service,
+		service.GetDependency().GetBroker(mqttbroker.MQTTBroker),
+	))
+	return
+}`,
+			},
+			editModule: map[string]string{
+				"import (": `import (
+	mqttbroker "github.com/golangid/candi-plugin/mqtt-broker"
+`,
+				"mod.workerHandlers = map[types.Worker]interfaces.WorkerHandler{": `mod.workerHandlers = map[types.Worker]interfaces.WorkerHandler{
+		mqttbroker.MQTTBroker: workerhandler.NewMQTTWorkerHandler(usecase.GetSharedUsecase(), deps),`,
 			},
 		},
 	}
