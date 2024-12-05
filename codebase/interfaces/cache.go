@@ -13,4 +13,5 @@ type Cache interface {
 	Set(ctx context.Context, key string, value any, expire time.Duration) error
 	Exists(ctx context.Context, key string) (bool, error)
 	Delete(ctx context.Context, key string) error
+	DoCommand(ctx context.Context, isWrite bool, command string, args ...any) (reply any, err error)
 }
