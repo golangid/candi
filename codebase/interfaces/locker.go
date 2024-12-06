@@ -13,6 +13,7 @@ type (
 		Lock(key string, timeout time.Duration) (unlockFunc func(), err error)
 		GetPrefixLocker() string
 		GetTTLLocker() time.Duration
+		IsLockedTTLWithLimit(key string, limit int, TTL time.Duration) bool
 		Closer
 	}
 )
