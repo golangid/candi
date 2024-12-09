@@ -34,8 +34,8 @@ func (_m *Cache) Delete(ctx context.Context, key string) error {
 }
 
 // DoCommand provides a mock function with given fields: ctx, isWrite, command, args
-func (_m *Cache) DoCommand(ctx context.Context, isWrite bool, command string, args ...interface{}) (interface{}, error) {
-	var _ca []interface{}
+func (_m *Cache) DoCommand(ctx context.Context, isWrite bool, command string, args ...any) (any, error) {
+	var _ca []any
 	_ca = append(_ca, ctx, isWrite, command)
 	_ca = append(_ca, args...)
 	ret := _m.Called(_ca...)
@@ -44,20 +44,20 @@ func (_m *Cache) DoCommand(ctx context.Context, isWrite bool, command string, ar
 		panic("no return value specified for DoCommand")
 	}
 
-	var r0 interface{}
+	var r0 any
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, bool, string, ...interface{}) (interface{}, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, bool, string, ...any) (any, error)); ok {
 		return rf(ctx, isWrite, command, args...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, bool, string, ...interface{}) interface{}); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, bool, string, ...any) any); ok {
 		r0 = rf(ctx, isWrite, command, args...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
+			r0 = ret.Get(0).(any)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, bool, string, ...interface{}) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, bool, string, ...any) error); ok {
 		r1 = rf(ctx, isWrite, command, args...)
 	} else {
 		r1 = ret.Error(1)
@@ -183,7 +183,7 @@ func (_m *Cache) GetTTL(ctx context.Context, key string) (time.Duration, error) 
 }
 
 // Set provides a mock function with given fields: ctx, key, value, expire
-func (_m *Cache) Set(ctx context.Context, key string, value interface{}, expire time.Duration) error {
+func (_m *Cache) Set(ctx context.Context, key string, value any, expire time.Duration) error {
 	ret := _m.Called(ctx, key, value, expire)
 
 	if len(ret) == 0 {
@@ -191,7 +191,7 @@ func (_m *Cache) Set(ctx context.Context, key string, value interface{}, expire 
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, interface{}, time.Duration) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, any, time.Duration) error); ok {
 		r0 = rf(ctx, key, value, expire)
 	} else {
 		r0 = ret.Error(0)
