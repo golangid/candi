@@ -5,9 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"io"
 	"log"
-	"math"
 	"net/url"
 	"runtime"
 	"strconv"
@@ -19,10 +17,17 @@ import (
 	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/logger"
 	"github.com/gomodule/redigo/redis"
-	opentracing "github.com/opentracing/opentracing-go"
-	ext "github.com/opentracing/opentracing-go/ext"
-	jaeger "github.com/uber/jaeger-client-go/config"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	tracesdk "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // InitJaeger init jaeger tracing
@@ -46,43 +51,48 @@ func InitJaeger(serviceName string, opts ...OptionFunc) PlatformType {
 	if option.level != "" {
 		serviceName = fmt.Sprintf("%s-%s", serviceName, strings.ToLower(option.level))
 	}
-	defaultTags := []opentracing.Tag{
-		{Key: "num_cpu", Value: runtime.NumCPU()},
-		{Key: "go_version", Value: runtime.Version()},
-		{Key: "candi_version", Value: candi.Version},
+
+	exporter, err := otlptrace.New(
+		context.Background(),
+		otlptracegrpc.NewClient(
+			otlptracegrpc.WithEndpoint(option.agentHost),
+			otlptracegrpc.WithInsecure(),
+		),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	attributes := []attribute.KeyValue{
+		semconv.ServiceNameKey.String(serviceName),
+		attribute.Int("num_cpu", runtime.NumCPU()),
+		attribute.String("go_version", runtime.Version()),
+		attribute.String("candi_version", candi.Version),
 	}
 	if option.maxGoroutineTag != 0 {
-		defaultTags = append(defaultTags, opentracing.Tag{
-			Key: "max_goroutines", Value: option.maxGoroutineTag,
-		})
+		attributes = append(attributes, attribute.Int("max_goroutines", option.maxGoroutineTag))
 	}
 	if option.buildNumberTag != "" {
-		defaultTags = append(defaultTags, opentracing.Tag{
-			Key: "build_number", Value: option.buildNumberTag,
-		})
+		attributes = append(attributes, attribute.String("build_number", option.buildNumberTag))
 	}
-	cfg := &jaeger.Configuration{
-		Sampler: &jaeger.SamplerConfig{
-			Type:  "const",
-			Param: 1,
-		},
-		Reporter: &jaeger.ReporterConfig{
-			LogSpans:            true,
-			BufferFlushInterval: 1 * time.Second,
-			LocalAgentHostPort:  option.agentHost,
-		},
-		ServiceName: serviceName,
-		Tags:        defaultTags,
-	}
-	tracer, closer, err := cfg.NewTracer(jaeger.MaxTagValueLength(math.MaxInt32))
-	if err != nil {
-		log.Panicf("ERROR: cannot init jaeger opentracing connection: %v\n", err)
-	}
-	opentracing.SetGlobalTracer(tracer)
 
+	tracerProvider := tracesdk.NewTracerProvider(
+		tracesdk.WithBatcher(
+			exporter,
+			tracesdk.WithMaxExportBatchSize(tracesdk.DefaultMaxExportBatchSize),
+			tracesdk.WithBatchTimeout(tracesdk.DefaultScheduleDelay*time.Millisecond),
+			tracesdk.WithMaxExportBatchSize(tracesdk.DefaultMaxExportBatchSize),
+		),
+		tracesdk.WithResource(
+			resource.NewWithAttributes(semconv.SchemaURL, attributes...),
+		),
+	)
+
+	otel.SetTracerProvider(tracerProvider)
 	pl := &jaegerPlatform{
-		opt:    &option,
-		closer: closer,
+		opt:      &option,
+		provider: tracerProvider,
+		tracer:   tracerProvider.Tracer(serviceName),
 	}
 	SetTracerPlatformType(pl)
 	return pl
@@ -96,21 +106,17 @@ func InitOpenTracing(serviceName string, opts ...OptionFunc) error {
 
 // jaeger platform
 type jaegerPlatform struct {
-	opt    *Option
-	closer io.Closer
+	opt      *Option
+	provider *tracesdk.TracerProvider
+	tracer   trace.Tracer
 }
 
 func (j *jaegerPlatform) StartSpan(ctx context.Context, operationName string) Tracer {
-	span := opentracing.SpanFromContext(ctx)
-	if span == nil {
-		// init new span
-		span, ctx = opentracing.StartSpanFromContext(ctx, operationName)
-	} else {
-		span = opentracing.GlobalTracer().StartSpan(operationName, opentracing.ChildOf(span.Context()))
-		ctx = opentracing.ContextWithSpan(ctx, span)
-	}
+	ctx, span := j.tracer.Start(ctx, operationName)
 	_, callerFile, callerLine, _ := runtime.Caller(4)
-	span.LogKV("caller", callerFile+":"+strconv.Itoa(callerLine))
+	span.AddEvent("", trace.WithAttributes(
+		attribute.String("caller", callerFile+":"+strconv.Itoa(callerLine)),
+	))
 	if j.opt.logAllSpan {
 		_, callerFile, callerLine, _ := runtime.Caller(3)
 		log.Printf("\x1b[32;5m%s => %s:%d\x1b[0m", operationName, callerFile, callerLine)
@@ -128,16 +134,14 @@ func (j *jaegerPlatform) StartRootSpan(ctx context.Context, operationName string
 		header = make(map[string]string)
 	}
 
-	var span opentracing.Span
-	globalTracer := opentracing.GlobalTracer()
-	if spanCtx, err := globalTracer.Extract(opentracing.TextMap, opentracing.TextMapCarrier(header)); err != nil {
-		span, ctx = opentracing.StartSpanFromContext(ctx, operationName)
-		ext.SpanKindRPCServer.Set(span)
-	} else {
-		span = globalTracer.StartSpan(operationName, opentracing.ChildOf(spanCtx), ext.SpanKindRPCClient)
-		ctx = opentracing.ContextWithSpan(ctx, span)
+	for k, v := range header {
+		header[strings.ToLower(k)] = v
 	}
-	span.SetTag("trace_id", j.GetTraceID(ctx))
+	ctx, span := j.tracer.Start(
+		propagation.TraceContext{}.Extract(ctx, propagation.MapCarrier(header)),
+		operationName,
+	)
+	span.SetAttributes(attribute.String("trace_id", span.SpanContext().TraceID().String()))
 	return &jaegerTraceImpl{
 		ctx:           ctx,
 		span:          span,
@@ -152,22 +156,11 @@ func (j *jaegerPlatform) GetTraceID(ctx context.Context) string {
 		return j.opt.traceIDExtractor(ctx)
 	}
 
-	span := opentracing.SpanFromContext(ctx)
+	span := trace.SpanFromContext(ctx)
 	if span == nil {
 		return ""
 	}
-
-	stringer, ok := span.(fmt.Stringer)
-	if !ok {
-		return ""
-	}
-	traceID := stringer.String()
-	splits := strings.Split(traceID, ":")
-	if len(splits) > 0 {
-		return splits[0]
-	}
-
-	return traceID
+	return span.SpanContext().TraceID().String()
 }
 
 func (j *jaegerPlatform) GetTraceURL(ctx context.Context) (u string) {
@@ -182,12 +175,12 @@ func (j *jaegerPlatform) GetTraceURL(ctx context.Context) (u string) {
 	return fmt.Sprintf("%s/%s", j.opt.traceDashboard, traceID)
 }
 
-func (j *jaegerPlatform) Disconnect(ctx context.Context) error { return j.closer.Close() }
+func (j *jaegerPlatform) Disconnect(ctx context.Context) error { return j.provider.Shutdown(ctx) }
 
 // jaeger span tracer implementation
 type jaegerTraceImpl struct {
 	ctx             context.Context
-	span            opentracing.Span
+	span            trace.Span
 	operationName   string
 	isRoot, isPanic bool
 	errWhitelist    []error
@@ -206,7 +199,9 @@ func (t *jaegerTraceImpl) SetTag(key string, value any) {
 
 	v, _ := value.(bool)
 	t.isPanic = key == "panic" && v
-	t.span.SetTag(key, toValue(value))
+	t.span.SetAttributes(attribute.KeyValue{
+		Key: attribute.Key(key), Value: toOtelValue(value),
+	})
 }
 
 // InjectRequestHeader to continue tracer with custom header carrier
@@ -215,17 +210,12 @@ func (t *jaegerTraceImpl) InjectRequestHeader(header map[string]string) {
 		return
 	}
 
-	ext.SpanKindRPCClient.Set(t.span)
-	t.span.Tracer().Inject(
-		t.span.Context(),
-		opentracing.HTTPHeaders,
-		opentracing.TextMapCarrier(header),
-	)
+	propagation.TraceContext{}.Inject(t.ctx, propagation.MapCarrier(header))
 }
 
 // NewContext to continue tracer with new context
 func (t *jaegerTraceImpl) NewContext() context.Context {
-	return opentracing.ContextWithSpan(context.Background(), t.span)
+	return trace.ContextWithSpan(context.Background(), t.span)
 }
 
 // SetError set error in span
@@ -240,8 +230,7 @@ func (t *jaegerTraceImpl) SetError(err error) {
 		}
 	}
 
-	ext.Error.Set(t.span, true)
-	t.span.LogKV("error.message", err.Error())
+	t.span.SetStatus(codes.Error, err.Error())
 
 	var stackTraces []string
 	for i := 1; i < 10 && len(stackTraces) <= 5 && (!t.isRoot || t.isPanic); i++ {
@@ -254,7 +243,11 @@ func (t *jaegerTraceImpl) SetError(err error) {
 
 // Log set log data
 func (t *jaegerTraceImpl) Log(key string, value any) {
-	t.span.LogKV(key, toValue(value))
+	t.span.AddEvent("", trace.WithAttributes(
+		attribute.KeyValue{
+			Key: attribute.Key(key), Value: toOtelValue(value),
+		},
+	))
 }
 
 // Finish trace must in deferred function
@@ -271,7 +264,9 @@ func (t *jaegerTraceImpl) Finish(opts ...FinishOptionFunc) {
 	}
 
 	for k, v := range finishOpt.Tags {
-		t.span.SetTag(k, toValue(v))
+		t.span.SetAttributes(attribute.KeyValue{
+			Key: attribute.Key(k), Value: toOtelValue(v),
+		})
 	}
 
 	showLogTraceURL := t.isRoot
@@ -280,7 +275,7 @@ func (t *jaegerTraceImpl) Finish(opts ...FinishOptionFunc) {
 			finishOpt.RecoverFunc(rec)
 			finishOpt.Err = fmt.Errorf("panic: %v", rec)
 			t.isRoot = false
-			t.span.SetTag("panic", true)
+			t.span.SetAttributes(attribute.Bool("panic", true))
 		}
 	}
 
@@ -299,7 +294,7 @@ func (t *jaegerTraceImpl) Finish(opts ...FinishOptionFunc) {
 	if finishOpt.OnFinish != nil {
 		finishOpt.OnFinish()
 	}
-	t.span.Finish()
+	t.span.End()
 	if showLogTraceURL {
 		logger.LogGreen(candihelper.ToDelimited(t.operationName, '_') + " > trace_url: " + GetTraceURL(t.ctx))
 	}
@@ -312,6 +307,6 @@ func (t *jaegerTraceImpl) logStackTrace(color int, header string, stackTraces []
 	}
 	log.Printf(format, strings.Join(append([]string{header}, stackTraces...), "\n"))
 	if len(stackTraces) > 0 {
-		t.span.LogKV("stacktrace", strings.Join(stackTraces, "\n"))
+		t.Log("stacktrace", strings.Join(stackTraces, "\n"))
 	}
 }
