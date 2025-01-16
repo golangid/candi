@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golangid/candi/options"
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -15,39 +16,37 @@ type (
 	// RedisLocker lock using redis
 	RedisLocker struct {
 		pool          *redis.Pool
-		lockeroptions LockerOptions
+		lockeroptions options.LockerOptions
 	}
 
 	// NoopLocker empty locker
 	NoopLocker struct{}
-
-	// Options for RedisLocker
-	LockerOptions struct {
-		Prefix string
-		TTL    time.Duration
-	}
-
-	// Option function type for setting options
-	LockerOption func(*LockerOptions)
 )
 
 // WithPrefix sets the prefix for keys
-func WithPrefixLocker(prefix string) LockerOption {
-	return func(o *LockerOptions) {
+func WithPrefixLocker(prefix string) options.LockerOption {
+	return func(o *options.LockerOptions) {
 		o.Prefix = prefix
 	}
 }
 
 // WithTTL sets the default TTL for keys
-func WithTTLLocker(ttl time.Duration) LockerOption {
-	return func(o *LockerOptions) {
+func WithTTLLocker(ttl time.Duration) options.LockerOption {
+	return func(o *options.LockerOptions) {
 		o.TTL = ttl
 	}
 }
 
+// WithLimit sets the limit for keys
+func WithLimitLocker(limit int) options.LockerOption {
+	return func(o *options.LockerOptions) {
+		o.Limit = limit
+	}
+}
+
 // NewRedisLocker constructor
-func NewRedisLocker(pool *redis.Pool, opts ...LockerOption) *RedisLocker {
-	lockeroptions := LockerOptions{
+func NewRedisLocker(pool *redis.Pool, opts ...options.LockerOption) *RedisLocker {
+	lockeroptions := options.LockerOptions{
 		Prefix: "LOCKFOR",
 		TTL:    0,
 	}
@@ -104,12 +103,14 @@ func (r *RedisLocker) IsLockedTTL(key string, TTL time.Duration) bool {
 	return incr > 1
 }
 
-// IsLockedTTLWithLimit checks if the key has been incremented more than the specified limit
-// within the given TTL. If the key is being created for the first time, it sets the TTL.
-// Example usage: check if a key has been incremented more than 10 times within 1 minute.
-func (r *RedisLocker) IsLockedTTLWithLimit(key string, limit int, TTL time.Duration) bool {
+func (r *RedisLocker) IsLockedWithOpts(key string, opts ...options.LockerOption) bool {
 	conn := r.pool.Get()
 	defer conn.Close()
+
+	lockOpt := r.lockeroptions
+	for _, opt := range opts {
+		opt(&lockOpt)
+	}
 
 	lockKey := fmt.Sprintf("%s:%s", r.lockeroptions.Prefix, key)
 	incr, err := redis.Int64(conn.Do("INCR", lockKey))
@@ -117,18 +118,11 @@ func (r *RedisLocker) IsLockedTTLWithLimit(key string, limit int, TTL time.Durat
 		return false
 	}
 
-	var expireTime time.Duration
-	if TTL > 0 {
-		expireTime = TTL
-	} else {
-		expireTime = r.lockeroptions.TTL
+	withLimit := lockOpt.Limit > 1
+	if lockOpt.TTL > 0 && !(withLimit && incr == 1) {
+		conn.Do("EXPIRE", lockKey, int(lockOpt.TTL.Seconds()))
 	}
-
-	if expireTime > 0 && incr == 1 {
-		conn.Do("EXPIRE", lockKey, int(expireTime.Seconds()))
-	}
-
-	return incr > int64(limit)
+	return incr > int64(lockOpt.Limit)
 }
 
 func (r *RedisLocker) HasBeenLocked(key string) bool {
@@ -242,6 +236,9 @@ func (NoopLocker) IsLocked(string) bool { return false }
 // IsLockedTTL method
 func (NoopLocker) IsLockedTTL(string, time.Duration) bool { return false }
 
+// IsLockedWithOpts method
+func (NoopLocker) IsLockedWithOpts(string, ...options.LockerOption) bool { return false }
+
 // HasBeenLocked method
 func (NoopLocker) HasBeenLocked(string) bool { return false }
 
@@ -254,13 +251,10 @@ func (NoopLocker) Reset(string) {}
 // Lock method
 func (NoopLocker) Lock(string, time.Duration) (func(), error) { return func() {}, nil }
 
-func (NoopLocker) Disconnect(context.Context) error { return nil }
-
 // GetPrefix method
 func (NoopLocker) GetPrefixLocker() string { return "" }
 
 // GetTTLLocker method
 func (NoopLocker) GetTTLLocker() time.Duration { return 0 }
 
-// IsLockedTTLWithLimit method
-func (NoopLocker) IsLockedTTLWithLimit(string, int, time.Duration) bool { return false }
+func (NoopLocker) Disconnect(context.Context) error { return nil }
