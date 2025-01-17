@@ -235,6 +235,11 @@ func filterWorkerHandler(cfg *serviceConfig, flagParam *flagParameter) (wording 
 		options = append(options, fmt.Sprintf("%d) AMQ (STOMP) Consumer (plugin)", len(options)+1))
 		handlers[strconv.Itoa(len(options))] = pluginSTOMPWorker
 	}
+	if flagParam.addModule || flagParam.initService || (flagParam.addHandler &&
+		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", strings.ToLower(pluginMQTTWorker)+"_handler.go")) != nil) {
+		options = append(options, fmt.Sprintf("%d) MQTT Subscriber (plugin)", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = pluginMQTTWorker
+	}
 
 	wording = strings.Join(options, "\n")
 	return
@@ -366,18 +371,16 @@ func getNeedFileUpdates(srvConfig *serviceConfig) (fileUpdates []fileUpdate) {
 			})
 		}
 		for _, module := range srvConfig.Modules {
-			if module.Skip {
+			if module.Skip && !srvConfig.flag.addHandler {
 				continue
 			}
 			moduleName := cleanSpecialChar.Replace(module.ModuleName)
 			deliveryPackageDir := fmt.Sprintf(`"%s/internal/modules/%s/delivery`, module.PackagePrefix, moduleName)
-			if !module.IsWorkerActive {
-				fileUpdates = append(fileUpdates, fileUpdate{
-					filepath:   rootDir + "internal/modules/" + moduleName + "/module.go",
-					oldContent: "// " + deliveryPackageDir + "/workerhandler",
-					newContent: deliveryPackageDir + "/workerhandler",
-				})
-			}
+			fileUpdates = append(fileUpdates, fileUpdate{
+				filepath:   rootDir + "internal/modules/" + moduleName + "/module.go",
+				oldContent: "// " + deliveryPackageDir + "/workerhandler",
+				newContent: deliveryPackageDir + "/workerhandler",
+			})
 			for before, after := range pl.editModule {
 				fileUpdates = append(fileUpdates, fileUpdate{
 					filepath:   rootDir + "internal/modules/" + moduleName + "/module.go",
@@ -505,11 +508,15 @@ func getAllModuleHandler(path string) (wording string, handlers map[string]strin
 	}
 	if validateDir(path+"/workerhandler/"+strings.ToLower(pluginGCPPubSubWorker)+"_handler.go") == nil {
 		options = append(options, fmt.Sprintf("%d) GCP PubSub Subscriber (plugin)", len(options)+1))
-		handlers[strconv.Itoa(len(options))] = RabbitmqHandler
+		handlers[strconv.Itoa(len(options))] = pluginGCPPubSubWorker
 	}
 	if validateDir(path+"/workerhandler/"+strings.ToLower(pluginSTOMPWorker)+"_handler.go") == nil {
 		options = append(options, fmt.Sprintf("%d) AMQ (STOMP) Consumer (plugin)", len(options)+1))
-		handlers[strconv.Itoa(len(options))] = RabbitmqHandler
+		handlers[strconv.Itoa(len(options))] = pluginSTOMPWorker
+	}
+	if validateDir(path+"/workerhandler/"+strings.ToLower(pluginMQTTWorker)+"_handler.go") == nil {
+		options = append(options, fmt.Sprintf("%d) MQTT Subscriber (plugin)", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = pluginMQTTWorker
 	}
 
 	wording = strings.Join(options, "\n")

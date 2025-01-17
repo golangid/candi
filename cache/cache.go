@@ -132,3 +132,22 @@ func (r *RedisCache) Delete(ctx context.Context, key string) (err error) {
 	}
 	return nil
 }
+
+// DoCommand method to execute any Redis command
+func (r *RedisCache) DoCommand(ctx context.Context, isWrite bool, command string, args ...any) (reply any, err error) {
+	trace, ctx := tracer.StartTraceWithContext(ctx, "redis:do_command")
+	defer func() { trace.Finish(tracer.FinishWithError(err)) }()
+
+	trace.SetTag("db.command", command)
+	trace.Log("args", args)
+
+	// Select the appropriate connection pool (read or write)
+	cl := r.read.Get()
+	if isWrite {
+		cl = r.write.Get()
+	}
+	defer cl.Close()
+
+	// Execute the Redis command
+	return cl.Do(command, args...)
+}

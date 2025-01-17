@@ -358,7 +358,7 @@ func (h *{{.WorkerPluginName}}Handler) handleTopic{{upper (camel .ModuleName)}}(
 	trace, ctx := tracer.StartTraceWithContext(eventContext.Context(), "{{upper (camel .ModuleName)}}Delivery{{.WorkerPluginName}}:HandleTopic{{upper (camel .ModuleName)}}")
 	defer trace.Finish()
 
-	fmt.Printf("message consumed by module {{.ModuleName}}. message: %s\n", eventContext.Context())
+	fmt.Printf("message consumed by module {{.ModuleName}}. message: %s\n", eventContext.Message())
 
 	// exec usecase
 	// h.uc.SomethingUsecase()
