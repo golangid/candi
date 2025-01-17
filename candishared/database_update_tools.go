@@ -84,6 +84,7 @@ type DBUpdateTools struct {
 	KeyExtractorFunc    func(structTag reflect.StructField) (res DBUpdateOptionKeyExtractorResult)
 	FieldValueExtractor func(reflect.Value) (val any, skip bool)
 	IgnoredFields       []string
+	UpdatedFields       []string
 }
 
 func (d *DBUpdateTools) parseOption(opts ...DBUpdateOptionFunc) (o partialUpdateOption) {
@@ -101,7 +102,7 @@ func (d DBUpdateTools) ToMap(data any, opts ...DBUpdateOptionFunc) map[string]an
 	dataType := candihelper.ReflectTypeUnwrapPtr(reflect.TypeOf(data))
 	isPartial := len(opt.updateFields) > 0 || len(opt.ignoreFields) > 0
 
-	updateFields := make(map[string]any, 0)
+	updateFields := make(map[string]any)
 	for i := 0; i < dataValue.NumField(); i++ {
 		fieldValue := candihelper.ReflectValueUnwrapPtr(dataValue.Field(i))
 		fieldType := dataType.Field(i)
@@ -166,6 +167,12 @@ func (d DBUpdateTools) ToMap(data any, opts ...DBUpdateOptionFunc) map[string]an
 		_, isFieldIgnored := opt.ignoreFields[fieldType.Name]
 		if (isFieldUpdated && len(opt.updateFields) > 0) || (!isFieldIgnored && len(opt.ignoreFields) > 0) {
 			updateFields[key] = val
+		}
+
+		for _, updatedKey := range d.UpdatedFields {
+			if updatedKey == key {
+				updateFields[updatedKey] = val
+			}
 		}
 	}
 

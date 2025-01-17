@@ -188,3 +188,37 @@ func TestDBUpdateSqlExtractorKey(t *testing.T) {
 	assert.Equal(t, "{\"1\",\"2\",\"3\"}", updated["str_arr"])
 	assert.Equal(t, []byte(`123`), updated["log"])
 }
+
+func TestDBUpdateToolsMongoUpdatedField(t *testing.T) {
+	type SubModel struct {
+		Title       string `bson:"title" json:"title"`
+		Profile     string `bson:"profile" json:"profile"`
+		CityAddress string `bson:"city_address"`
+	}
+	type Model struct {
+		ID      int      `bson:"db_id" json:"id"`
+		Name    *string  `bson:"db_name" json:"name"`
+		Address string   `bson:"db_address" json:"address"`
+		Rel     SubModel `bson:"rel" json:"rel"`
+		SubModel
+	}
+
+	updated := DBUpdateTools{
+		KeyExtractorFunc: DBUpdateMongoExtractorKey,
+		UpdatedFields:    []string{"db_address"},
+	}.ToMap(
+		&Model{
+			ID:       1,
+			Name:     candihelper.WrapPtr("01"),
+			Address:  "Indonesia",
+			SubModel: SubModel{Title: "test", CityAddress: "Jakarta"},
+			Rel:      SubModel{Title: "rel sub"}},
+		DBUpdateSetUpdatedFields("ID", "Name", "Title"),
+	)
+
+	assert.Equal(t, 4, len(updated))
+	assert.Equal(t, 1, updated["db_id"])
+	assert.Equal(t, "01", updated["db_name"])
+	assert.Equal(t, "test", updated["title"])
+	assert.Equal(t, "Indonesia", updated["db_address"])
+}
