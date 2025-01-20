@@ -102,6 +102,11 @@ func (d DBUpdateTools) ToMap(data any, opts ...DBUpdateOptionFunc) map[string]an
 	dataType := candihelper.ReflectTypeUnwrapPtr(reflect.TypeOf(data))
 	isPartial := len(opt.updateFields) > 0 || len(opt.ignoreFields) > 0
 
+	defaultUpdatedFields := make(map[string]bool)
+	for _, fieldName := range d.UpdatedFields {
+		defaultUpdatedFields[fieldName] = true
+	}
+
 	updateFields := make(map[string]any)
 	for i := 0; i < dataValue.NumField(); i++ {
 		fieldValue := candihelper.ReflectValueUnwrapPtr(dataValue.Field(i))
@@ -169,10 +174,8 @@ func (d DBUpdateTools) ToMap(data any, opts ...DBUpdateOptionFunc) map[string]an
 			updateFields[key] = val
 		}
 
-		for _, updatedKey := range d.UpdatedFields {
-			if updatedKey == key {
-				updateFields[updatedKey] = val
-			}
+		if ok := defaultUpdatedFields[key]; ok {
+			updateFields[key] = val
 		}
 	}
 
