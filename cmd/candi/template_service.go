@@ -6,7 +6,7 @@ package {{clean $.ServiceName}}
 
 import (
 {{- range $module := .Modules}}
-	"{{$.PackagePrefix}}/internal/modules/{{$module.ModuleName}}"
+	{{clean $module.ModuleName}} "{{$.PackagePrefix}}/internal/modules/{{cleanPathModule $module.ModuleName}}"
 {{- end }}
 
 	"{{$.PackagePrefix}}/configs"
