@@ -8,7 +8,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,7 +17,7 @@ func TestNewHTTPResponse(t *testing.T) {
 		ID string `json:"id"`
 	}
 
-	multiError := candihelper.NewMultiError()
+	multiError := candishared.NewMultiError()
 	multiError.Append("test", fmt.Errorf("error test"))
 
 	type args struct {

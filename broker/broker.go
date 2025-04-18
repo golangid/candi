@@ -3,7 +3,7 @@ package broker
 import (
 	"context"
 
-	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/codebase/interfaces"
 )
@@ -55,7 +55,7 @@ func (b *Broker) RegisterBroker(brokerName types.Worker, bk interfaces.Broker) {
 
 // Disconnect disconnect all registered broker
 func (b *Broker) Disconnect(ctx context.Context) error {
-	mErr := candihelper.NewMultiError()
+	mErr := candishared.NewMultiError()
 
 	for name, broker := range b.brokers {
 		mErr.Append(string(name), broker.Disconnect(ctx))
