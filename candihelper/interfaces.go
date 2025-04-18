@@ -6,6 +6,7 @@ type URLQueryGetter interface {
 }
 
 // MultiError abstract interface
+// DEPRECATED: move to candishared
 type MultiError interface {
 	Append(key string, err error) MultiError
 	HasError() bool

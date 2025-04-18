@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	validatorengine "github.com/go-playground/validator/v10"
-	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
 )
 
 // StructValidatorOptionFunc type
@@ -50,7 +50,7 @@ func (v *StructValidator) ValidateStruct(data any) error {
 	if err := v.Validator.Struct(data); err != nil {
 		switch errs := err.(type) {
 		case validatorengine.ValidationErrors:
-			multiError := candihelper.NewMultiError()
+			multiError := candishared.NewMultiError()
 			for _, e := range errs {
 				message := err.Error()
 				multiError.Append(strings.ToLower(e.Field()), errors.New(message))

@@ -11,12 +11,12 @@ import (
 
 // HTTPResponse default candi http response format
 type HTTPResponse struct {
-	Success bool        `json:"success"`
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Meta    any `json:"meta,omitempty"`
-	Data    any `json:"data,omitempty"`
-	Errors  any `json:"errors,omitempty"`
+	Success bool   `json:"success"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Meta    any    `json:"meta,omitempty"`
+	Data    any    `json:"data,omitempty"`
+	Errors  any    `json:"errors,omitempty"`
 }
 
 // NewHTTPResponse for create common response
@@ -27,10 +27,10 @@ func NewHTTPResponse(code int, message string, params ...any) *HTTPResponse {
 		switch val := param.(type) {
 		case *candishared.Meta, candishared.Meta:
 			commonResponse.Meta = val
-		case candihelper.MultiError:
+		case candishared.MultiError:
 			commonResponse.Errors = val.ToMap()
 		case error:
-			commonResponse.Errors = candihelper.NewMultiError().Append("detail", val).ToMap()
+			commonResponse.Errors = candishared.NewMultiError().Append("detail", val).ToMap()
 		default:
 			commonResponse.Data = param
 		}

@@ -7,6 +7,7 @@ import (
 	"sync"
 )
 
+// DEPRECATED: move to candishared
 type (
 	multiError struct {
 		lock sync.Mutex
