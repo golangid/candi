@@ -151,7 +151,9 @@ func loadSavedConfig(flagParam *flagParameter) serviceConfig {
 
 	b, err := os.ReadFile(baseDir + "candi.json")
 	if err != nil {
-		return serviceConfig{}
+		return serviceConfig{
+			flag: flagParam,
+		}
 	}
 	var savedConfig serviceConfig
 	json.Unmarshal(b, &savedConfig)
@@ -166,6 +168,7 @@ func loadSavedConfig(flagParam *flagParameter) serviceConfig {
 	savedConfig.Version = candi.Version
 	savedConfig.IsMonorepo = flagParam.isMonorepo
 	savedConfig.OutputDir = flagParam.outputFlag
+	savedConfig.flag = flagParam
 	return savedConfig
 }
 
