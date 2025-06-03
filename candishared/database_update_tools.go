@@ -26,6 +26,7 @@ type DBUpdateOptionKeyExtractorResult struct {
 	Key           string
 	IsDefaultNull bool
 	MustSet       bool
+	tagName       string
 }
 
 // DBUpdateSetUpdatedFields option func
@@ -48,20 +49,22 @@ func DBUpdateSetIgnoredFields(fields ...string) DBUpdateOptionFunc {
 	}
 }
 
-// DBUpdateGORMExtractorKey struct field key extractor for gorm model
+// DBUpdateGORMExtractorKey struct field key extractor for a gorm model
 func DBUpdateGORMExtractorKey(structField reflect.StructField) (res DBUpdateOptionKeyExtractorResult) {
 	gormTag := structField.Tag.Get("gorm")
 	res.IsDefaultNull = strings.Contains(strings.ToLower(gormTag), "default:null")
 	res.Key = candihelper.ToDelimited(structField.Name, '_')
+	res.tagName = "gorm"
 	if strings.HasPrefix(gormTag, "column:") {
 		res.Key = strings.Split(strings.TrimPrefix(gormTag, "column:"), ";")[0]
 	}
 	return res
 }
 
-// DBUpdateMongoExtractorKey struct field key extractor for mongo model
+// DBUpdateMongoExtractorKey struct field key extractor for a mongo model
 func DBUpdateMongoExtractorKey(structField reflect.StructField) (res DBUpdateOptionKeyExtractorResult) {
 	res.Key = candihelper.ToDelimited(structField.Name, '_')
+	res.tagName = "bson"
 	if bsonTag := strings.TrimSuffix(structField.Tag.Get("bson"), ",omitempty"); bsonTag != "" {
 		res.Key = bsonTag
 		res.MustSet = true
@@ -69,10 +72,11 @@ func DBUpdateMongoExtractorKey(structField reflect.StructField) (res DBUpdateOpt
 	return res
 }
 
-// DBUpdateSqlExtractorKey struct field key extractor for mongo model
+// DBUpdateSqlExtractorKey struct field key extractor for a mongo model
 func DBUpdateSqlExtractorKey(structField reflect.StructField) (res DBUpdateOptionKeyExtractorResult) {
 	sqlTag := structField.Tag.Get("sql")
 	res.Key = candihelper.ToDelimited(structField.Name, '_')
+	res.tagName = "sql"
 	if strings.HasPrefix(sqlTag, "column:") {
 		res.Key = strings.Split(strings.TrimPrefix(sqlTag, "column:"), ";")[0]
 	}
@@ -84,6 +88,7 @@ type DBUpdateTools struct {
 	KeyExtractorFunc    func(structTag reflect.StructField) (res DBUpdateOptionKeyExtractorResult)
 	FieldValueExtractor func(reflect.Value) (val any, skip bool)
 	IgnoredFields       []string
+	fieldType           string
 }
 
 func (d *DBUpdateTools) parseOption(opts ...DBUpdateOptionFunc) (o partialUpdateOption) {
@@ -101,7 +106,7 @@ func (d DBUpdateTools) ToMap(data any, opts ...DBUpdateOptionFunc) map[string]an
 	dataType := candihelper.ReflectTypeUnwrapPtr(reflect.TypeOf(data))
 	isPartial := len(opt.updateFields) > 0 || len(opt.ignoreFields) > 0
 
-	updateFields := make(map[string]any, 0)
+	updateFields := make(map[string]any)
 	for i := 0; i < dataValue.NumField(); i++ {
 		fieldValue := candihelper.ReflectValueUnwrapPtr(dataValue.Field(i))
 		fieldType := dataType.Field(i)
@@ -115,11 +120,16 @@ func (d DBUpdateTools) ToMap(data any, opts ...DBUpdateOptionFunc) map[string]an
 
 		var mustSet, isDefaultNull bool
 		key := strings.TrimSuffix(fieldType.Tag.Get("json"), ",omitempty")
+		isIgnore, _ := strconv.ParseBool(fieldType.Tag.Get("ignoreUpdate"))
+		isOmitempty := strings.HasSuffix(fieldType.Tag.Get("json"), ",omitempty")
 		if d.KeyExtractorFunc != nil {
 			keyExtractor := d.KeyExtractorFunc(fieldType)
 			key, isDefaultNull, mustSet = keyExtractor.Key, keyExtractor.IsDefaultNull, keyExtractor.MustSet
+			isOmitempty = strings.HasSuffix(fieldType.Tag.Get(keyExtractor.tagName), ",omitempty")
 		}
-		isIgnore, _ := strconv.ParseBool(fieldType.Tag.Get("ignoreUpdate"))
+		if isOmitempty && fieldValue.IsZero() {
+			isIgnore = true
+		}
 		if key == "" || key == "-" || isIgnore {
 			continue
 		}
@@ -175,7 +185,7 @@ func (d DBUpdateTools) ToMap(data any, opts ...DBUpdateOptionFunc) map[string]an
 	return updateFields
 }
 
-// GetUpdatedFields method
+// GetFields method
 func (d DBUpdateTools) GetFields(opts ...DBUpdateOptionFunc) (updates, ignores []string) {
 	opt := d.parseOption(opts...)
 	for k := range opt.updateFields {

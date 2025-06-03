@@ -188,3 +188,14 @@ func TestDBUpdateSqlExtractorKey(t *testing.T) {
 	assert.Equal(t, "{\"1\",\"2\",\"3\"}", updated["str_arr"])
 	assert.Equal(t, []byte(`123`), updated["log"])
 }
+
+func TestDBUpdateToolsMongo2(t *testing.T) {
+	type Model struct {
+		Title       string  `bson:"title" json:"title"`
+		Profile     *string `bson:"profile" json:"profile,omitempty"`
+		CityAddress *string `bson:"city_address,omitempty" json:"city_address"`
+	}
+
+	updated := DBUpdateTools{}.ToMap(&Model{})
+	candihelper.PrintJSON(updated)
+}
