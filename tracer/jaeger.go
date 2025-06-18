@@ -65,15 +65,28 @@ func InitJaeger(serviceName string, opts ...OptionFunc) PlatformType {
 
 	attributes := []attribute.KeyValue{
 		semconv.ServiceNameKey.String(serviceName),
+		semconv.DeploymentEnvironmentKey.String(option.level),
+		semconv.TelemetrySDKLanguageGo,
 		attribute.Int("num_cpu", runtime.NumCPU()),
 		attribute.String("go_version", runtime.Version()),
 		attribute.String("candi_version", candi.Version),
 	}
+
+	if option.environment != "" {
+		attributes = append(attributes, semconv.DeploymentEnvironmentKey.String(option.environment))
+	}
+
 	if option.maxGoroutineTag != 0 {
 		attributes = append(attributes, attribute.Int("max_goroutines", option.maxGoroutineTag))
 	}
 	if option.buildNumberTag != "" {
 		attributes = append(attributes, attribute.String("build_number", option.buildNumberTag))
+	}
+
+	for k, v := range option.attributes {
+		attributes = append(attributes, attribute.KeyValue{
+			Key: attribute.Key(k), Value: toOtelValue(v),
+		})
 	}
 
 	tracerProvider := tracesdk.NewTracerProvider(
