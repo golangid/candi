@@ -3,6 +3,8 @@ package middleware
 import (
 	"context"
 	"errors"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"net/http"
 
 	"github.com/golangid/candi/candishared"
@@ -10,8 +12,6 @@ import (
 	"github.com/golangid/candi/tracer"
 	"github.com/golangid/candi/wrapper"
 	gqltypes "github.com/golangid/graphql-go/types"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 )
 
 func (m *Middleware) checkACLPermissionFromContext(ctx context.Context, permissionCode string) (tokenClaim *candishared.TokenClaim, err error) {
@@ -106,7 +106,7 @@ func (m *Middleware) GRPCPermissionACL(permissionCode string) types.MiddlewareFu
 
 		tokenClaim, err := m.checkACLPermissionFromContext(trace.Context(), permissionCode)
 		if err != nil {
-			return ctx, grpc.Errorf(codes.PermissionDenied, err.Error())
+			return ctx, status.Errorf(codes.PermissionDenied, "Permission denied: %v", err.Error())
 		}
 		return candishared.SetToContext(ctx, candishared.ContextKeyTokenClaim, tokenClaim), nil
 	}
