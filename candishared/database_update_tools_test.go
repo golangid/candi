@@ -189,13 +189,19 @@ func TestDBUpdateSqlExtractorKey(t *testing.T) {
 	assert.Equal(t, []byte(`123`), updated["log"])
 }
 
-func TestDBUpdateToolsMongo2(t *testing.T) {
+func TestDBUpdateToolOmitempty(t *testing.T) {
 	type Model struct {
-		Title       string  `bson:"title" json:"title"`
+		Title       string  `bson:"title" json:"title" sql:"column:title,omitempty"`
 		Profile     *string `bson:"profile" json:"profile,omitempty"`
 		CityAddress *string `bson:"city_address,omitempty" json:"city_address"`
 	}
 
-	updated := DBUpdateTools{}.ToMap(&Model{})
-	candihelper.PrintJSON(updated)
+	updatedMongo := DBUpdateTools{KeyExtractorFunc: DBUpdateMongoExtractorKey}.ToMap(&Model{})
+	assert.Equal(t, candihelper.ToBytes(`{"profile":null,"title":""}`), candihelper.ToBytes(updatedMongo))
+
+	updatedSQL := DBUpdateTools{KeyExtractorFunc: DBUpdateSqlExtractorKey}.ToMap(&Model{})
+	assert.Equal(t, candihelper.ToBytes(`{"city_address":null,"profile":null}`), candihelper.ToBytes(updatedSQL))
+
+	updatedJson := DBUpdateTools{}.ToMap(&Model{})
+	assert.Equal(t, candihelper.ToBytes(`{"city_address":null,"title":""}`), candihelper.ToBytes(updatedJson))
 }

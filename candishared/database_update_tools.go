@@ -88,7 +88,6 @@ type DBUpdateTools struct {
 	KeyExtractorFunc    func(structTag reflect.StructField) (res DBUpdateOptionKeyExtractorResult)
 	FieldValueExtractor func(reflect.Value) (val any, skip bool)
 	IgnoredFields       []string
-	fieldType           string
 }
 
 func (d *DBUpdateTools) parseOption(opts ...DBUpdateOptionFunc) (o partialUpdateOption) {
