@@ -65,7 +65,7 @@ func (m *Middleware) GRPCMultipleAuth(ctx context.Context) (context.Context, err
 	}
 	claimData, err := m.checkMultipleAuth(trace.Context(), authType, authVal)
 	if err != nil {
-		return ctx, status.Errorf(codes.Unauthenticated, err.Error())
+		return ctx, status.Errorf(codes.Unauthenticated, "Invalid authorization %s", err.Error())
 	}
 
 	if claimData != nil {
