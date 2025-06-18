@@ -13,6 +13,8 @@ type (
 		logAllSpan       bool
 		errorWhitelist   []error
 		traceIDExtractor func(context.Context) string
+		environment      string
+		attributes       map[string]any
 	}
 
 	// OptionFunc func
@@ -70,6 +72,20 @@ func OptionSetTraceDashboardURL(dashboardURL string) OptionFunc {
 func OptionSetErrorWhitelist(errs []error) OptionFunc {
 	return func(o *Option) {
 		o.errorWhitelist = errs
+	}
+}
+
+// OptionSetEnvironment sets the environment field in the Option structure. It allows configuration of the environment for tracer initialization.
+func OptionSetEnvironment(environment string) OptionFunc {
+	return func(o *Option) {
+		o.environment = environment
+	}
+}
+
+// OptionSetAttributes sets the attributes field in the Option structure. It allows configuration of the attributes for tracer initialization.
+func OptionSetAttributes(attributes map[string]any) OptionFunc {
+	return func(o *Option) {
+		o.attributes = attributes
 	}
 }
 
