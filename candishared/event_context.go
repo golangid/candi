@@ -13,6 +13,7 @@ type EventContext struct {
 	header                   map[string]string
 	key                      string
 	err                      error
+	value                    any
 
 	messageBuff *bytes.Buffer
 	resultBuff  *bytes.Buffer
@@ -150,4 +151,14 @@ func (e *EventContext) WriteResult(p []byte) (n int, err error) {
 // GetResponse get response writer buffer
 func (e *EventContext) GetResponse() *bytes.Buffer {
 	return e.resultBuff
+}
+
+// SetValue set value to context
+func (e *EventContext) SetValue(val any) {
+	e.value = val
+}
+
+// GetValue get value from context
+func (e *EventContext) GetValue() any {
+	return e.value
 }
