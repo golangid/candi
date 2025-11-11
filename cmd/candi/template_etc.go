@@ -2,7 +2,7 @@ package main
 
 const (
 	dockerfileTemplate = `# Stage 1
-FROM golang:1.21.5-alpine3.19 AS dependency_builder
+FROM golang:1.25.3-alpine3.21 AS dependency_builder
 
 WORKDIR /go/src
 ENV GO111MODULE=on
@@ -24,7 +24,7 @@ COPY . .
 RUN go build -o bin
 
 # Stage 3
-FROM alpine:3.19  
+FROM alpine:3.21
 
 ARG BUILD_NUMBER
 RUN apk --no-cache add ca-certificates tzdata
@@ -361,7 +361,7 @@ $ make migration service={{service_name}} down
 		"```\n"
 
 	dockerfileMonorepoTemplate = `# Stage 1
-FROM golang:1.21.5-alpine3.19 AS dependency_builder
+FROM golang:1.25.0-alpine3.21 AS dependency_builder
 
 WORKDIR /go/src
 ENV GO111MODULE=on
@@ -387,7 +387,7 @@ COPY go.sum .
 RUN go build -o bin services/$SERVICE_NAME/*.go
 
 # Stage 3
-FROM alpine:3.19  
+FROM alpine:3.21
 
 ARG BUILD_NUMBER
 ARG SERVICE_NAME
