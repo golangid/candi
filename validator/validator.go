@@ -11,7 +11,7 @@ func SetJSONSchemaValidator(jsonSchema *JSONSchemaValidator) OptionFunc {
 }
 
 // SetStructValidator option func
-func SetStructValidator(structValidator *StructValidator) OptionFunc {
+func SetStructValidator(structValidator StructValidator) OptionFunc {
 	return func(v *Validator) {
 		v.StructValidator = structValidator
 	}
@@ -20,15 +20,14 @@ func SetStructValidator(structValidator *StructValidator) OptionFunc {
 // Validator instance
 type Validator struct {
 	JSONSchema      *JSONSchemaValidator
-	StructValidator *StructValidator
+	StructValidator StructValidator
 }
 
-// NewValidator constructor, using jsonschema & struct validator (github.com/go-playground/validator),
+// NewValidator constructor, using jsonschema
 // jsonschema source file load from "api/jsonschema" directory
 func NewValidator(opts ...OptionFunc) *Validator {
 	v := &Validator{
-		JSONSchema:      NewJSONSchemaValidator(),
-		StructValidator: NewStructValidator(),
+		JSONSchema: NewJSONSchemaValidator(),
 	}
 
 	for _, opt := range opts {
@@ -42,7 +41,7 @@ func (v *Validator) ValidateDocument(reference string, document any) error {
 	return v.JSONSchema.ValidateDocument(reference, document)
 }
 
-// ValidateStruct method, rules from struct tag using github.com/go-playground/validator
+// ValidateStruct method, rules from struct
 func (v *Validator) ValidateStruct(data any) error {
 	return v.StructValidator.ValidateStruct(data)
 }
