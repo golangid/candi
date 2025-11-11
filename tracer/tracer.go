@@ -11,7 +11,7 @@ import (
 
 var (
 	once         sync.Once
-	activeTracer PlatformType = &noopTracer{}
+	activeTracer PlatformType = &NoopTracer{}
 )
 
 // Tracer for trace
@@ -41,14 +41,14 @@ func SetTracerPlatformType(t PlatformType) {
 
 // IsTracerActive check tracer has been initialized with platform
 func IsTracerActive() bool {
-	_, ok := activeTracer.(*noopTracer)
+	_, ok := activeTracer.(*NoopTracer)
 	return !ok
 }
 
 // StartTrace starting trace child span from parent span
 func StartTrace(ctx context.Context, operationName string) Tracer {
 	if candishared.GetValueFromContext(ctx, skipTracer) != nil {
-		return &noopTracer{ctx}
+		return &NoopTracer{ctx}
 	}
 
 	return activeTracer.StartSpan(ctx, operationName)
@@ -63,7 +63,7 @@ func StartTraceWithContext(ctx context.Context, operationName string) (Tracer, c
 // StartTraceFromHeader starting trace from root app handler based on header
 func StartTraceFromHeader(ctx context.Context, operationName string, header map[string]string) (Tracer, context.Context) {
 	if candishared.GetValueFromContext(ctx, skipTracer) != nil {
-		return &noopTracer{ctx}, ctx
+		return &NoopTracer{ctx}, ctx
 	}
 
 	tc := activeTracer.StartRootSpan(ctx, operationName, header)
@@ -88,15 +88,15 @@ func LogStackTrace(trace Tracer) {
 	trace.Log("stacktrace_detail", buf)
 }
 
-type noopTracer struct{ ctx context.Context }
+type NoopTracer struct{ ctx context.Context }
 
-func (n noopTracer) Context() context.Context                   { return n.ctx }
-func (n noopTracer) NewContext() context.Context                { return n.ctx }
-func (noopTracer) SetTag(key string, value any)         { return }
-func (noopTracer) InjectRequestHeader(header map[string]string) { return }
-func (noopTracer) SetError(err error)                           { return }
-func (noopTracer) Log(key string, value any)            { return }
-func (noopTracer) Finish(opts ...FinishOptionFunc) {
+func (n NoopTracer) Context() context.Context                   { return n.ctx }
+func (n NoopTracer) NewContext() context.Context                { return n.ctx }
+func (NoopTracer) SetTag(key string, value any)                 {}
+func (NoopTracer) InjectRequestHeader(header map[string]string) {}
+func (NoopTracer) SetError(err error)                           {}
+func (NoopTracer) Log(key string, value any)                    {}
+func (NoopTracer) Finish(opts ...FinishOptionFunc) {
 	var finishOpt FinishOption
 	for _, opt := range opts {
 		opt(&finishOpt)
@@ -109,16 +109,15 @@ func (noopTracer) Finish(opts ...FinishOptionFunc) {
 	if finishOpt.OnFinish != nil {
 		finishOpt.OnFinish()
 	}
-	return
 }
-func (noopTracer) GetTraceID(ctx context.Context) (u string)  { return }
-func (noopTracer) GetTraceURL(ctx context.Context) (u string) { return }
-func (noopTracer) Disconnect(ctx context.Context) error       { return nil }
-func (n noopTracer) StartSpan(ctx context.Context, opName string) Tracer {
+func (NoopTracer) GetTraceID(ctx context.Context) (u string)  { return }
+func (NoopTracer) GetTraceURL(ctx context.Context) (u string) { return }
+func (NoopTracer) Disconnect(ctx context.Context) error       { return nil }
+func (n NoopTracer) StartSpan(ctx context.Context, opName string) Tracer {
 	n.ctx = ctx
 	return &n
 }
-func (n noopTracer) StartRootSpan(ctx context.Context, operationName string, header map[string]string) Tracer {
+func (n NoopTracer) StartRootSpan(ctx context.Context, operationName string, header map[string]string) Tracer {
 	n.ctx = ctx
 	return &n
 }

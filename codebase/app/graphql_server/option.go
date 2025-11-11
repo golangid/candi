@@ -1,6 +1,7 @@
 package graphqlserver
 
 import (
+	"context"
 	"crypto/tls"
 	"net/http"
 	"strings"
@@ -17,15 +18,16 @@ type (
 		DisableIntrospection bool
 		RootPath             string
 
-		httpPort            uint16
-		debugMode           bool
-		jaegerMaxPacketSize int
-		rootHandler         http.Handler
-		sharedListener      cmux.CMux
-		rootResolver        interfaces.GraphQLHandler
-		directiveFuncs      map[string]types.DirectiveFunc
-		tlsConfig           *tls.Config
-		schemaSource        []byte
+		httpPort       uint16
+		debugMode      bool
+		maxLogSize     int
+		rootHandler    http.Handler
+		sharedListener cmux.CMux
+		rootResolver   interfaces.GraphQLHandler
+		directiveFuncs map[string]types.DirectiveFunc
+		tlsConfig      *tls.Config
+		schemaSource   []byte
+		onErrorWrapper func(context.Context, error) error
 	}
 
 	// OptionFunc type
@@ -86,10 +88,10 @@ func SetDisableIntrospection(disableIntrospection bool) OptionFunc {
 	}
 }
 
-// SetJaegerMaxPacketSize option func
-func SetJaegerMaxPacketSize(max int) OptionFunc {
+// SetMaxLogSize option func
+func SetMaxLogSize(max int) OptionFunc {
 	return func(o *Option) {
-		o.jaegerMaxPacketSize = max
+		o.maxLogSize = max
 	}
 }
 
@@ -128,5 +130,12 @@ func SetSchemaSource(schema []byte) OptionFunc {
 func AddSchema(schema []byte) OptionFunc {
 	return func(o *Option) {
 		o.schemaSource = append(o.schemaSource, schema...)
+	}
+}
+
+// SetOnErrorWrapper option func
+func SetOnErrorWrapper(errFunc func(context.Context, error) error) OptionFunc {
+	return func(o *Option) {
+		o.onErrorWrapper = errFunc
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
 	"github.com/joho/godotenv"
 )
 
@@ -66,8 +67,6 @@ type Env struct {
 
 	// JaegerTracingHost env
 	JaegerTracingHost string
-	// JaegerMaxPacketSize env
-	JaegerMaxPacketSize int
 
 	// Broker environment
 	Kafka struct {
@@ -111,7 +110,6 @@ func SetEnv(newEnv Env) {
 
 // Load environment
 func Load(serviceName string) {
-	var ok bool
 	env.ServiceName = serviceName
 
 	// load main .env and additional .env in app
@@ -120,7 +118,7 @@ func Load(serviceName string) {
 		log.Printf("Warning: load env, %v", err)
 	}
 
-	mErrs := candihelper.NewMultiError()
+	mErrs := candishared.NewMultiError()
 
 	// ------------------------------------
 	parseAppConfig()
@@ -169,22 +167,10 @@ func Load(serviceName string) {
 
 	env.GraphQLDisableIntrospection = parseBool("GRAPHQL_DISABLE_INTROSPECTION")
 	env.HTTPRootPath = os.Getenv("HTTP_ROOT_PATH")
-
-	env.BasicAuthUsername, ok = os.LookupEnv("BASIC_AUTH_USERNAME")
-	if !ok {
-		mErrs.Append("BASIC_AUTH_USERNAME", errors.New("missing BASIC_AUTH_USERNAME environment"))
-	}
-	env.BasicAuthPassword, ok = os.LookupEnv("BASIC_AUTH_PASS")
-	if !ok {
-		mErrs.Append("BASIC_AUTH_PASS", errors.New("missing BASIC_AUTH_PASS environment"))
-	}
+	env.BasicAuthUsername = os.Getenv("BASIC_AUTH_USERNAME")
+	env.BasicAuthPassword = os.Getenv("BASIC_AUTH_PASS")
 
 	env.JaegerTracingHost = os.Getenv("JAEGER_TRACING_HOST")
-	jaegerMaxpacketSize, err := strconv.Atoi(os.Getenv("JAEGER_MAX_PACKET_SIZE"))
-	if err != nil || jaegerMaxpacketSize < 0 {
-		jaegerMaxpacketSize = 65000 // default max packet size of UDP
-	}
-	env.JaegerMaxPacketSize = int(jaegerMaxpacketSize) * int(candihelper.Byte)
 
 	// kafka environment
 	parseBrokerEnv(mErrs)
@@ -285,7 +271,7 @@ func parseAppConfig() {
 	flag.Parse()
 }
 
-func parseBrokerEnv(mErrs candihelper.MultiError) {
+func parseBrokerEnv(mErrs candishared.MultiError) {
 	kafkaBrokerEnv := os.Getenv("KAFKA_BROKERS")
 	env.Kafka.Brokers = strings.Split(kafkaBrokerEnv, ",") // optional
 	env.Kafka.ClientID = os.Getenv("KAFKA_CLIENT_ID")      // optional

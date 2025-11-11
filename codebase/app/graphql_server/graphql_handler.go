@@ -88,7 +88,7 @@ func ConstructHandlerFromService(service factory.ServiceFactory, opt Option) Han
 	schemaOpts := []graphql.SchemaOpt{
 		graphql.UseStringDescriptions(),
 		graphql.UseFieldResolvers(),
-		graphql.Tracer(&graphqlTracer{}),
+		graphql.Tracer(&graphqlTracer{opt: &opt}),
 		graphql.Logger(&panicLogger{}),
 		graphql.DirectiveFuncs(directiveFuncs),
 	}
@@ -99,7 +99,6 @@ func ConstructHandlerFromService(service factory.ServiceFactory, opt Option) Han
 
 	logger.LogYellow(fmt.Sprintf("[GraphQL] endpoint\t\t\t: http://127.0.0.1:%d%s", opt.httpPort, opt.RootPath))
 	logger.LogYellow(fmt.Sprintf("[GraphQL] playground\t\t\t: http://127.0.0.1:%d%s/playground", opt.httpPort, opt.RootPath))
-	logger.LogYellow(fmt.Sprintf("[GraphQL] playground (with explorer)\t: http://127.0.0.1:%d%s/playground?explorer=true", opt.httpPort, opt.RootPath))
 	logger.LogYellow(fmt.Sprintf("[GraphQL] voyager\t\t\t: http://127.0.0.1:%d%s/voyager", opt.httpPort, opt.RootPath))
 
 	return &handlerImpl{
@@ -124,8 +123,8 @@ func NewHandler(schema *graphql.Schema, opt Option) Handler {
 func (s *handlerImpl) ServeGraphQL() http.HandlerFunc {
 	return ws.NewHandlerFunc(s.schema, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		var params struct {
-			Query         string                 `json:"query"`
-			OperationName string                 `json:"operationName"`
+			Query         string         `json:"query"`
+			OperationName string         `json:"operationName"`
 			Variables     map[string]any `json:"variables"`
 		}
 		body, err := io.ReadAll(req.Body)
@@ -155,30 +154,6 @@ func (s *handlerImpl) ServeGraphQL() http.HandlerFunc {
 func (s *handlerImpl) ServePlayground(resp http.ResponseWriter, req *http.Request) {
 	if s.option.DisableIntrospection {
 		http.Error(resp, "Forbidden", http.StatusForbidden)
-		return
-	}
-
-	if ok, _ := strconv.ParseBool(req.URL.Query().Get("explorer")); ok {
-		resp.Write([]byte(`<!DOCTYPE html>
-<html lang=en>
-	<head>
-		<meta charset=utf-8>
-		<title>Candi GraphiQL</title>
-		<link rel=icon href=https://raw.githubusercontent.com/dotansimha/graphql-yoga/main/website/public/favicon.ico>
-		<link rel=stylesheet href=https://unpkg.com/@graphql-yoga/graphiql@3.0.10/dist/style.css>
-	</head>
-	<body id=body class=no-focus-outline>
-		<noscript>You need to enable JavaScript to run this app.</noscript>
-		<div id=root></div>
-		<script type=module>
-			import{renderYogaGraphiQL}from"https://storage.googleapis.com/agungdp/bin/candi/graphiql/yoga-graphiql.es.js";
-			renderYogaGraphiQL(root, {
-				endpoint: '` + s.option.RootPath + `',
-				title: 'GraphiQL'
-			});
-		</script>
-	</body>
-</html>`))
 		return
 	}
 

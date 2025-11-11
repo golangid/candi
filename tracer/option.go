@@ -11,6 +11,7 @@ type (
 		buildNumberTag   string
 		maxGoroutineTag  int
 		logAllSpan       bool
+		attributes       map[string]string
 		errorWhitelist   []error
 		traceIDExtractor func(context.Context) string
 		environment      string
