@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/golangid/candi/candihelper"
+	"github.com/golangid/candi/candishared"
 	"github.com/golangid/gojsonschema"
 )
 
@@ -71,7 +72,7 @@ func (v *JSONSchemaValidator) ValidateDocument(schemaSource string, documentSour
 	}
 
 	if !result.Valid() {
-		multiError := candihelper.NewMultiError()
+		multiError := candishared.NewMultiError()
 		for _, desc := range result.Errors() {
 			if _, ok := v.notShowErrorListType[desc.Type()]; ok {
 				continue
