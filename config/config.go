@@ -17,17 +17,42 @@ import (
 )
 
 // Config app
-type Config struct {
-	ServiceName    string
-	SharedListener cmux.CMux
-	closers        []interfaces.Closer
+type (
+	Config struct {
+		ServiceName    string
+		SharedListener cmux.CMux
+
+		opt     Option
+		closers []interfaces.Closer
+	}
+
+	Option struct {
+		MaxLogSize uint32
+	}
+
+	// OptionFunc type
+	OptionFunc func(*Option)
+)
+
+// WithLogSize option for set log size
+func WithLogSize(size uint32) OptionFunc {
+	return func(o *Option) {
+		o.MaxLogSize = size
+	}
 }
 
 // Init app config
-func Init(serviceName string) *Config {
+func Init(serviceName string, opts ...OptionFunc) *Config {
 	env.Load(serviceName)
 	cfg := &Config{
 		ServiceName: serviceName,
+		opt: Option{
+			MaxLogSize: 65000,
+		},
+	}
+
+	for _, opt := range opts {
+		opt(&cfg.opt)
 	}
 
 	// setup shared listener with cmux
@@ -40,6 +65,11 @@ func Init(serviceName string) *Config {
 		cfg.SharedListener.SetReadTimeout(30 * time.Second)
 	}
 	return cfg
+}
+
+// GetOption get config option
+func (c *Config) GetOption() *Option {
+	return &c.opt
 }
 
 // LoadFunc load selected dependency with context timeout

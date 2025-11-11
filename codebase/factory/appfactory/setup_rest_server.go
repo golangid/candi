@@ -15,12 +15,13 @@ func SetupRESTServer(service factory.ServiceFactory, opts ...restserver.OptionFu
 		restserver.SetIncludeGraphQL(env.BaseEnv().UseGraphQL),
 		restserver.SetSharedListener(service.GetConfig().SharedListener),
 		restserver.SetDebugMode(env.BaseEnv().DebugMode),
-		restserver.SetJaegerMaxPacketSize(env.BaseEnv().JaegerMaxPacketSize),
+		restserver.SetMaxLogSize(int(service.GetConfig().GetOption().MaxLogSize)),
 	}
 	if env.BaseEnv().UseGraphQL {
 		restOptions = append(restOptions, restserver.AddGraphQLOption(
 			graphqlserver.SetDisableIntrospection(env.BaseEnv().GraphQLDisableIntrospection),
 			graphqlserver.SetHTTPPort(env.BaseEnv().HTTPPort),
+			graphqlserver.SetMaxLogSize(int(service.GetConfig().GetOption().MaxLogSize)),
 		))
 	}
 	restOptions = append(restOptions, opts...)

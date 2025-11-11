@@ -13,12 +13,12 @@ import (
 
 type (
 	option struct {
-		tcpPort             string
-		debugMode           bool
-		jaegerMaxPacketSize int
-		sharedListener      cmux.CMux
-		serverOptions       []grpc.ServerOption
-		tlsConfig           *tls.Config
+		tcpPort        string
+		debugMode      bool
+		maxLogSize     int
+		sharedListener cmux.CMux
+		serverOptions  []grpc.ServerOption
+		tlsConfig      *tls.Config
 	}
 
 	// OptionFunc type
@@ -66,10 +66,10 @@ func SetDebugMode(debugMode bool) OptionFunc {
 	}
 }
 
-// SetJaegerMaxPacketSize option func
-func SetJaegerMaxPacketSize(max int) OptionFunc {
+// SetMaxLogSize option func
+func SetMaxLogSize(max int) OptionFunc {
 	return func(o *option) {
-		o.jaegerMaxPacketSize = max
+		o.maxLogSize = max
 	}
 }
 

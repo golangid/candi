@@ -100,7 +100,6 @@ func (i *inMemSummary) UpdateSummary(ctx context.Context, taskName string, updat
 		}
 	}
 	i.values[taskName] = summary
-	return
 }
 func (i *inMemSummary) IncrementSummary(ctx context.Context, taskName string, incr map[string]int64) {
 	i.mu.Lock()
@@ -125,6 +124,5 @@ func (i *inMemSummary) IncrementSummary(ctx context.Context, taskName string, in
 		}
 	}
 	i.values[taskName] = summary
-	return
 }
 func (i *inMemSummary) DeleteAllSummary(ctx context.Context, filter *Filter) {}

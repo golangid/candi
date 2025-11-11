@@ -2,7 +2,9 @@ package restserver
 
 import (
 	"crypto/tls"
+	"io"
 	"net/http"
+	"os"
 	"strings"
 
 	graphqlserver "github.com/golangid/candi/codebase/app/graphql_server"
@@ -14,19 +16,18 @@ import (
 
 type (
 	option struct {
-		traceMiddleware     func(http.Handler) http.Handler
-		rootMiddlewares     []func(http.Handler) http.Handler
-		rootHandler         http.HandlerFunc
-		routerFuncs         []func(interfaces.RESTRouter)
-		errorHandler        http.HandlerFunc
-		httpPort            uint16
-		rootPath            string
-		debugMode           bool
-		includeGraphQL      bool
-		jaegerMaxPacketSize int
-		sharedListener      cmux.CMux
-		graphqlOption       graphqlserver.Option
-		tlsConfig           *tls.Config
+		baseMiddleware  *restMiddleware
+		rootMiddlewares []func(http.Handler) http.Handler
+		rootHandler     http.HandlerFunc
+		routerFuncs     []func(interfaces.RESTRouter)
+		errorHandler    http.HandlerFunc
+		httpPort        uint16
+		rootPath        string
+		debugMode       bool
+		includeGraphQL  bool
+		sharedListener  cmux.CMux
+		graphqlOption   graphqlserver.Option
+		tlsConfig       *tls.Config
 	}
 
 	// OptionFunc type
@@ -38,19 +39,20 @@ var (
 )
 
 func getDefaultOption() option {
-	return option{
+	opt := option{
 		httpPort:  8000,
 		rootPath:  "/",
 		debugMode: true,
-		rootMiddlewares: []func(http.Handler) http.Handler{
-			HTTPMiddlewareCORS(
-				env.BaseEnv().CORSAllowMethods, env.BaseEnv().CORSAllowHeaders,
-				env.BaseEnv().CORSAllowOrigins, nil, env.BaseEnv().CORSAllowCredential,
-			),
+		baseMiddleware: &restMiddleware{
+			logResponseWriters:  []io.Writer{os.Stdout},
+			corsAllowMethods:    env.BaseEnv().CORSAllowMethods,
+			corsAllowHeaders:    env.BaseEnv().CORSAllowHeaders,
+			corsAllowOrigins:    env.BaseEnv().CORSAllowOrigins,
+			corsAllowCredential: env.BaseEnv().CORSAllowCredential,
 		},
-		traceMiddleware: HTTPMiddlewareTracer(),
-		rootHandler:     http.HandlerFunc(wrapper.HTTPHandlerDefaultRoot),
+		rootHandler: http.HandlerFunc(wrapper.HTTPHandlerDefaultRoot),
 	}
+	return opt
 }
 
 // SetHTTPPort option func
@@ -98,10 +100,10 @@ func SetIncludeGraphQL(includeGraphQL bool) OptionFunc {
 	}
 }
 
-// SetJaegerMaxPacketSize option func
-func SetJaegerMaxPacketSize(max int) OptionFunc {
+// SetMaxLogSize option func
+func SetMaxLogSize(max int) OptionFunc {
 	return func(o *option) {
-		o.jaegerMaxPacketSize = max
+		o.baseMiddleware.maxLogSize = max
 	}
 }
 
@@ -140,7 +142,7 @@ func SetTLSConfig(tlsConfig *tls.Config) OptionFunc {
 // SetDisableTrace option func
 func SetDisableTrace() OptionFunc {
 	return func(o *option) {
-		o.traceMiddleware = nil
+		o.baseMiddleware.disableTrace = true
 	}
 }
 
@@ -148,5 +150,12 @@ func SetDisableTrace() OptionFunc {
 func AddMountRouter(fn func(interfaces.RESTRouter)) OptionFunc {
 	return func(o *option) {
 		o.routerFuncs = append(o.routerFuncs, fn)
+	}
+}
+
+// SetLogResponseWriter option func
+func SetLogResponseWriter(writers ...io.Writer) OptionFunc {
+	return func(o *option) {
+		o.baseMiddleware.logResponseWriters = writers
 	}
 }

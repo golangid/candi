@@ -14,7 +14,7 @@ func SetupGraphQLServer(service factory.ServiceFactory, opts ...graphqlserver.Op
 		graphqlserver.SetDisableIntrospection(env.BaseEnv().GraphQLDisableIntrospection),
 		graphqlserver.SetSharedListener(service.GetConfig().SharedListener),
 		graphqlserver.SetDebugMode(env.BaseEnv().DebugMode),
-		graphqlserver.SetJaegerMaxPacketSize(env.BaseEnv().JaegerMaxPacketSize),
+		graphqlserver.SetMaxLogSize(int(service.GetConfig().GetOption().MaxLogSize)),
 	}
 	gqlOptions = append(gqlOptions, opts...)
 	return graphqlserver.NewServer(service, gqlOptions...)

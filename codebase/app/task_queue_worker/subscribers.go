@@ -155,7 +155,7 @@ func (s *subscriber) broadcastTaskList(ctx context.Context) {
 	}
 
 	sort.Slice(taskRes.Data, func(i, j int) bool {
-		return taskRes.Data[i].ModuleName < taskRes.Data[i].ModuleName
+		return taskRes.Data[i].ModuleName < taskRes.Data[j].ModuleName
 	})
 
 	taskRes.Meta.TotalRecords = len(taskRes.Data)
@@ -237,7 +237,7 @@ func (s *subscriber) broadcastWhenChangeAllJob(ctx context.Context, taskName str
 	}
 
 	sort.Slice(taskRes.Data, func(i, j int) bool {
-		return taskRes.Data[i].ModuleName < taskRes.Data[i].ModuleName
+		return taskRes.Data[i].ModuleName < taskRes.Data[j].ModuleName
 	})
 
 	taskRes.Meta.TotalClientSubscriber = s.getTotalSubscriber()

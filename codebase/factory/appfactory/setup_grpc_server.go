@@ -12,7 +12,7 @@ func SetupGRPCServer(service factory.ServiceFactory, opts ...grpcserver.OptionFu
 		grpcserver.SetTCPPort(env.BaseEnv().GRPCPort),
 		grpcserver.SetSharedListener(service.GetConfig().SharedListener),
 		grpcserver.SetDebugMode(env.BaseEnv().DebugMode),
-		grpcserver.SetJaegerMaxPacketSize(env.BaseEnv().JaegerMaxPacketSize),
+		grpcserver.SetMaxLogSize(int(service.GetConfig().GetOption().MaxLogSize)),
 	}
 	grpcOption = append(grpcOption, opts...)
 	return grpcserver.NewServer(service, grpcOption...)

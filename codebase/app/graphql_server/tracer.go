@@ -5,10 +5,12 @@ package graphqlserver
 */
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/golangid/candi/candishared"
@@ -27,6 +29,7 @@ var gqlTypeNotShowLog = map[string]bool{
 
 // graphqlTracer struct
 type graphqlTracer struct {
+	opt *Option
 }
 
 // TraceQuery method, intercept incoming query and add tracing
@@ -37,12 +40,14 @@ func (t *graphqlTracer) TraceQuery(ctx context.Context, queryString string, oper
 		header[key] = headers.Get(key)
 	}
 
-	trace, ctx := tracer.StartTraceFromHeader(ctx, "GraphQL-Root", header)
+	trace, ctx := tracer.StartTraceFromHeader(ctx, "GraphQL", header)
 	if operationName != "" {
 		trace.SetTag("graphql.operationName", operationName)
 	}
 	if len(headers) > 0 {
-		trace.Log("http.headers", headers)
+		hw := bytes.NewBuffer(make([]byte, 0, 64))
+		headers.Write(hw)
+		trace.Log("http.headers", hw.String())
 	}
 	trace.Log("graphql.query", queryString)
 	if len(variables) > 0 {
@@ -50,7 +55,7 @@ func (t *graphqlTracer) TraceQuery(ctx context.Context, queryString string, oper
 	}
 
 	return ctx, func(data []byte, errs []*gqlerrors.QueryError) {
-		if len(data) < env.BaseEnv().JaegerMaxPacketSize { // limit request body size to 65000 bytes (if higher tracer cannot show root span)
+		if len(data) < int(t.opt.maxLogSize) {
 			trace.Log("response.data", data)
 		} else {
 			trace.Log("response.data.size", len(data))
@@ -58,6 +63,13 @@ func (t *graphqlTracer) TraceQuery(ctx context.Context, queryString string, oper
 		if len(errs) > 0 {
 			trace.Log("response.errors", errs)
 			trace.SetError(errs[0])
+		}
+		if t.opt.onErrorWrapper != nil {
+			for i, err := range errs {
+				if errWrap := t.opt.onErrorWrapper(ctx, err); errWrap != nil && errs[i] != nil {
+					errs[i].Message = strings.TrimPrefix(errWrap.Error(), "graphql: ")
+				}
+			}
 		}
 		trace.Finish()
 	}
