@@ -30,6 +30,10 @@ func RedisPoolOptionSetMaxConnLifetime(dur time.Duration) RedisPoolOption {
 	return func(pool *redis.Pool) { pool.MaxConnLifetime = dur }
 }
 
+func RedisPoolOptionSetWaitingPool() RedisPoolOption {
+	return func(pool *redis.Pool) { pool.Wait = true }
+}
+
 type RedisInstance struct {
 	DBRead, DBWrite *redis.Pool
 	ICache          interfaces.Cache
