@@ -719,10 +719,12 @@ func (r *{{camel .ModuleName}}RepoSQL) Save(ctx context.Context, data *shareddom
 	} else {
 		stmt, err = r.writeDB.PrepareContext(ctx, query)
 	}
+	defer stmt.Close()
 
 	if err != nil {
 		return err
 	}
+
 	sqlRes, err := stmt.ExecContext(ctx, args...)
 	if err != nil {
 		return err
@@ -754,10 +756,12 @@ func (r *{{camel .ModuleName}}RepoSQL) Delete(ctx context.Context, filter *domai
 	} else {
 		stmt, err = r.writeDB.PrepareContext(ctx, query)
 	}
+	defer stmt.Close()
 
 	if err != nil {
 		return err
 	}
+
 	_, err = stmt.ExecContext(ctx, args...)
 	{{end}}return
 }
