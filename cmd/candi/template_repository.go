@@ -174,7 +174,7 @@ func (r *repoSQLImpl) WithTransaction(ctx context.Context, txFunc func(ctx conte
 package repository
 
 import (
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	// @candi:repositoryImport
 )
@@ -354,10 +354,9 @@ import (
 	"context"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson"{{if not .SQLDeps}}
-	"go.mongodb.org/mongo-driver/bson/primitive"{{end}}
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
@@ -394,14 +393,15 @@ func (r *{{camel .ModuleName}}RepoMongo) FetchAll(ctx context.Context, filter *d
 	trace.Log("query", query)
 
 	findOptions := options.Find()
-	sort := bson.M{}
+	sort := bson.D{}
 	if len(filter.OrderBy) == 0 {
 		filter.OrderBy = "updated_at"
 	}
-	sort[filter.OrderBy] = -1
+	s := -1
 	if filter.Sort == "ASC" {
-		sort[filter.OrderBy] = 1
+		s = 1
 	}
+	sort = append(sort, bson.E{Key: filter.OrderBy, Value: s})
 	findOptions.SetSort(sort)
 
 	if !filter.ShowAll {
@@ -447,24 +447,18 @@ func (r *{{camel .ModuleName}}RepoMongo) Save(ctx context.Context, data *sharedd
 
 	data.UpdatedAt = time.Now()
 	if data.ID{{if and .MongoDeps (not .SQLDeps)}}.IsZero(){{else}} == 0{{end}} {
-		data.ID = {{if and .MongoDeps (not .SQLDeps)}}primitive.NewObjectID(){{else}}r.Count(ctx, &domain.Filter{{upper (camel .ModuleName)}}{}) + 1{{end}}
+		data.ID = {{if and .MongoDeps (not .SQLDeps)}}bson.NewObjectID(){{else}}r.Count(ctx, &domain.Filter{{upper (camel .ModuleName)}}{}) + 1{{end}}
 		data.CreatedAt = time.Now()
 		_, err = r.writeDB.Collection(r.collection).InsertOne(ctx, data)
 		trace.Log("data", data)
 
 	} else {
-		updated := bson.M(r.updateTools.ToMap(data, updateOptions...))
+		updated := r.updateTools.ToMap(data, updateOptions...)
 		trace.Log("updated", updated)
-		opt := options.UpdateOptions{
-			Upsert: candihelper.ToBoolPtr(true),
-		}
+		opt := options.UpdateOne().SetUpsert(true)
 		_, err = r.writeDB.Collection(r.collection).UpdateOne(ctx,
-			bson.M{
-				"_id": data.ID,
-			},
-			bson.M{
-				"$set": updated,
-			}, &opt)
+			bson.D{{Key: "_id", Value: data.ID}},
+			bson.D{{Key: "$set", Value: updated}}, opt)
 	}
 
 	trace.SetTag("id", data.ID.Hex())
@@ -479,15 +473,16 @@ func (r *{{camel .ModuleName}}RepoMongo) Delete(ctx context.Context, filter *dom
 	return
 }
 
-func (r *{{camel .ModuleName}}RepoMongo) setFilter{{upper (camel .ModuleName)}}(filter *domain.Filter{{upper (camel .ModuleName)}}) bson.M {
+func (r *{{camel .ModuleName}}RepoMongo) setFilter{{upper (camel .ModuleName)}}(filter *domain.Filter{{upper (camel .ModuleName)}}) bson.D {
 
-	query := make(bson.M)
+	query := bson.D{}
 
 	if filter.ID != nil {
-		{{if not .SQLDeps}}query["_id"], _ = primitive.ObjectIDFromHex(*filter.ID){{else}}query["_id"] = *filter.ID{{end}}
+		{{if not .SQLDeps}}id, _ := bson.ObjectIDFromHex(*filter.ID)
+		query = append(query, bson.E{Key: "_id", Value: id}){{else}}query = append(query, bson.E{Key: "_id", Value: *filter.ID}){{end}}
 	}
 	if filter.Search != "" {
-		query["field"] = bson.M{"$regex": filter.Search}
+		query = append(query, bson.E{Key: "field", Value: bson.D{{Key: "$regex", Value: filter.Search}}})
 	}
 
 	return query

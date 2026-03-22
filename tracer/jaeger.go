@@ -2,7 +2,6 @@ package tracer
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -16,8 +15,6 @@ import (
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/logger"
-	"github.com/gomodule/redigo/redis"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -30,6 +27,12 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+var (
+	errMongoNoDocument = errors.New("mongo: no document found")
+	errSqlNoRows       = errors.New("sql: no rows in result set")
+	errRedigoNil       = errors.New("redigo: nil returned")
+)
+
 // InitJaeger init jaeger tracing
 func InitJaeger(serviceName string, opts ...OptionFunc) PlatformType {
 	option := Option{
@@ -37,7 +40,7 @@ func InitJaeger(serviceName string, opts ...OptionFunc) PlatformType {
 		level:           env.BaseEnv().Environment,
 		buildNumberTag:  env.BaseEnv().BuildNumber,
 		maxGoroutineTag: env.BaseEnv().MaxGoroutines,
-		errorWhitelist:  []error{redis.ErrNil, sql.ErrNoRows, mongo.ErrNoDocuments},
+		errorWhitelist:  []error{errRedigoNil, errSqlNoRows, errMongoNoDocument},
 	}
 	urlAgent, err := url.Parse("//" + env.BaseEnv().JaegerTracingHost)
 	if urlAgent != nil && err == nil {

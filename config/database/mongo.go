@@ -5,10 +5,10 @@ import (
 	"log"
 	"time"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
+	"go.mongodb.org/mongo-driver/v2/x/mongo/driver/connstring"
 
 	"github.com/golangid/candi/config/env"
 	"github.com/golangid/candi/logger"
@@ -88,7 +88,7 @@ func ConnectMongoDB(ctx context.Context, dsn string, opts ...*options.ClientOpti
 	}
 	clientOpts = append(clientOpts, opts...)
 
-	client, err := mongo.Connect(ctx, clientOpts...)
+	client, err := mongo.Connect(clientOpts...)
 	if err != nil {
 		log.Panicf("mongodb: %v, conn: %s", err, connDSN.String())
 	}
