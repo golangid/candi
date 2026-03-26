@@ -77,7 +77,7 @@ func (h *RestHandler) getAll{{upper (camel .ModuleName)}}(rw http.ResponseWriter
 	tokenClaim := candishared.ParseTokenClaimFromContext(ctx) // must using HTTPBearerAuth in middleware for this handler
 
 	var filter domain.Filter{{upper (camel .ModuleName)}}
-	if err := candihelper.ParseFromQueryParam(req.URL.Query(), &filter); err != nil {
+	if err := candishared.ParseFromQueryParam(req.URL.Query(), &filter); err != nil {
 		wrapper.NewHTTPResponse(http.StatusBadRequest, "Failed parse filter", err).JSON(rw)
 		return
 	}

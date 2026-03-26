@@ -1,6 +1,4 @@
-// DEPRECATED: move to candishared
-
-package candihelper
+package candishared
 
 import (
 	"fmt"
@@ -8,6 +6,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/golangid/candi/candihelper"
 )
 
 func extractTagName(structField reflect.StructField, tags []string) (key string) {
@@ -26,7 +26,7 @@ func extractTagName(structField reflect.StructField, tags []string) (key string)
 }
 
 // ParseFromQueryParam parse url query string to struct target (with multiple data type in struct field), target must in pointer
-func ParseFromQueryParam(query URLQueryGetter, target any) (err error) {
+func ParseFromQueryParam(query candihelper.URLQueryGetter, target any) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("%v", r)
@@ -70,19 +70,19 @@ func ParseFromQueryParam(query URLQueryGetter, target any) (err error) {
 			case reflect.Int32, reflect.Int, reflect.Int64:
 				vInt, err := strconv.Atoi(queryValue)
 				if queryValue != "" && err != nil {
-					errs.Append(key, fmt.Errorf("Cannot parse '%s' (%T) to type number", queryValue, queryValue))
+					errs.Append(key, fmt.Errorf("cannot parse '%s' (%T) to type number", queryValue, queryValue))
 				}
 				targetField.SetInt(int64(vInt))
 			case reflect.Bool:
 				vBool, err := strconv.ParseBool(queryValue)
 				if queryValue != "" && err != nil {
-					errs.Append(key, fmt.Errorf("Cannot parse '%s' (%T) to type boolean", queryValue, queryValue))
+					errs.Append(key, fmt.Errorf("cannot parse '%s' (%T) to type boolean", queryValue, queryValue))
 				}
 				targetField.SetBool(vBool)
 			case reflect.Float32, reflect.Float64:
 				vFloat, err := strconv.ParseFloat(queryValue, 64)
 				if queryValue != "" && err != nil {
-					errs.Append(key, fmt.Errorf("Cannot parse '%s' (%T) to type float", queryValue, queryValue))
+					errs.Append(key, fmt.Errorf("cannot parse '%s' (%T) to type float", queryValue, queryValue))
 				}
 				targetField.SetFloat(vFloat)
 			case reflect.Slice:
@@ -120,12 +120,12 @@ func ParseFromQueryParam(query URLQueryGetter, target any) (err error) {
 func ParseToQueryParam(source any) (s string) {
 	defer func() { recover() }()
 
-	pValue := ReflectValueUnwrapPtr(reflect.ValueOf(source))
-	pType := ReflectTypeUnwrapPtr(reflect.TypeOf(source))
+	pValue := candihelper.ReflectValueUnwrapPtr(reflect.ValueOf(source))
+	pType := candihelper.ReflectTypeUnwrapPtr(reflect.TypeOf(source))
 
 	var uri []string
 	for i := 0; i < pValue.NumField(); i++ {
-		field := ReflectValueUnwrapPtr(pValue.Field(i))
+		field := candihelper.ReflectValueUnwrapPtr(pValue.Field(i))
 		typ := pType.Field(i)
 
 		if typ.PkgPath != "" && !typ.Anonymous { // unexported
