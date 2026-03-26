@@ -6,14 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
 	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 )
 
 type MongoPersistent struct {
@@ -27,9 +26,7 @@ type MongoPersistent struct {
 func NewMongoPersistent(db *mongo.Database) *MongoPersistent {
 	ctx := context.Background()
 
-	uniqueOpts := &options.IndexOptions{
-		Unique: candihelper.ToBoolPtr(true),
-	}
+	uniqueOpts := options.Index().SetUnique(true)
 
 	// check and create index in collection task_queue_worker_job_summaries
 	indexViewJobSummaryColl := db.Collection(jobSummaryModelName).Indexes()
@@ -82,40 +79,40 @@ func NewMongoPersistent(db *mongo.Database) *MongoPersistent {
 			Keys: bson.M{
 				"task_name": 1,
 			},
-			Options: &options.IndexOptions{},
+			Options: options.Index(),
 		},
 		"status_1": {
 			Keys: bson.M{
 				"status": 1,
 			},
-			Options: &options.IndexOptions{},
+			Options: options.Index(),
 		},
 		"created_at_1": {
 			Keys: bson.M{
 				"created_at": 1,
 			},
-			Options: &options.IndexOptions{},
+			Options: options.Index(),
 		},
 		"arguments_text_error_text": {
 			Keys: bson.D{
 				{Key: "arguments", Value: "text"},
 				{Key: "error", Value: "text"},
 			},
-			Options: &options.IndexOptions{},
+			Options: options.Index(),
 		},
 		"task_name_1_status_1": {
 			Keys: bson.D{
 				{Key: "task_name", Value: 1},
 				{Key: "status", Value: 1},
 			},
-			Options: &options.IndexOptions{},
+			Options: options.Index(),
 		},
 		"task_name_1_created_at_1": {
 			Keys: bson.D{
 				{Key: "task_name", Value: 1},
 				{Key: "created_at", Value: 1},
 			},
-			Options: &options.IndexOptions{},
+			Options: options.Index(),
 		},
 		"task_name_1_status_1_created_at_1": {
 			Keys: bson.D{
@@ -123,7 +120,7 @@ func NewMongoPersistent(db *mongo.Database) *MongoPersistent {
 				{Key: "status", Value: 1},
 				{Key: "created_at", Value: 1},
 			},
-			Options: &options.IndexOptions{},
+			Options: options.Index(),
 		},
 	}
 
@@ -179,7 +176,7 @@ func (s *MongoPersistent) Summary() Summary {
 }
 
 func (s *MongoPersistent) FindAllJob(ctx context.Context, filter *Filter) (jobs []Job) {
-	findOptions := &options.FindOptions{}
+	findOptions := options.Find()
 
 	if !filter.ShowAll {
 		findOptions.SetLimit(int64(filter.Limit))
@@ -219,17 +216,13 @@ func (s *MongoPersistent) FindAllJob(ctx context.Context, filter *Filter) (jobs 
 }
 
 func (s *MongoPersistent) FindJobByID(ctx context.Context, id string, filterHistory *Filter) (job Job, err error) {
-	var opts []*options.FindOneOptions
+	opts := options.FindOne()
 	filter := bson.M{"_id": id}
 
 	if filterHistory == nil {
-		opts = append(opts, &options.FindOneOptions{
-			Projection: bson.M{"retry_histories": 0},
-		})
+		opts.SetProjection(bson.M{"retry_histories": 0})
 	} else {
-		opts = append(opts, &options.FindOneOptions{
-			Projection: bson.M{"retry_histories": bson.M{"$slice": []any{filterHistory.CalculateOffset(), filterHistory.Limit}}},
-		})
+		opts.SetProjection(bson.M{"retry_histories": bson.M{"$slice": []any{filterHistory.CalculateOffset(), filterHistory.Limit}}})
 		cur, err := s.db.Collection(jobModelName).Aggregate(ctx, []bson.M{
 			{"$match": filter},
 			{"$project": bson.M{"count": bson.M{"$size": "$retry_histories"}}},
@@ -247,7 +240,7 @@ func (s *MongoPersistent) FindJobByID(ctx context.Context, id string, filterHist
 		}
 	}
 
-	err = s.db.Collection(jobModelName).FindOne(ctx, filter, opts...).Decode(&job)
+	err = s.db.Collection(jobModelName).FindOne(ctx, filter, opts).Decode(&job)
 	if len(job.RetryHistories) == 0 {
 		job.RetryHistories = make([]RetryHistory, 0)
 	}
@@ -341,15 +334,12 @@ func (s *MongoPersistent) SaveJob(ctx context.Context, job *Job, retryHistories 
 			}
 		}
 
-		opt := options.UpdateOptions{
-			Upsert: candihelper.ToBoolPtr(true),
-		}
 		_, err = s.db.Collection(jobModelName).UpdateOne(ctx,
 			bson.M{
 				"_id": job.ID,
 			},
 			updateQuery,
-			&opt)
+			options.UpdateOne().SetUpsert(true))
 	}
 
 	if err != nil {
@@ -401,7 +391,7 @@ func (s *MongoPersistent) DeleteJob(ctx context.Context, id string) (job Job, er
 	if res.Err() != nil {
 		return job, res.Err()
 	}
-	res.Decode(&job)
+	err = res.Decode(&job)
 	return
 }
 
@@ -489,7 +479,7 @@ func (s *MongoPersistent) FindAllSummary(ctx context.Context, filter *Filter) (r
 		}
 	}
 
-	findOptions := &options.FindOptions{}
+	findOptions := options.Find()
 	findOptions.SetSort(bson.M{
 		"task_name": 1,
 	})
@@ -525,9 +515,6 @@ func (s *MongoPersistent) IncrementSummary(ctx context.Context, taskName string,
 		return
 	}
 
-	opt := options.UpdateOptions{
-		Upsert: candihelper.ToBoolPtr(true),
-	}
 	for k, v := range incr {
 		delete(incr, k)
 		if k == "" {
@@ -542,7 +529,7 @@ func (s *MongoPersistent) IncrementSummary(ctx context.Context, taskName string,
 		bson.M{
 			"$inc": incr,
 		},
-		&opt,
+		options.UpdateOne().SetUpsert(true),
 	)
 
 	if err != nil {
@@ -551,10 +538,6 @@ func (s *MongoPersistent) IncrementSummary(ctx context.Context, taskName string,
 }
 
 func (s *MongoPersistent) UpdateSummary(ctx context.Context, taskName string, updated map[string]any) {
-
-	opt := options.UpdateOptions{
-		Upsert: candihelper.ToBoolPtr(true),
-	}
 	for k, v := range updated {
 		delete(updated, k)
 		if k == "" {
@@ -569,7 +552,7 @@ func (s *MongoPersistent) UpdateSummary(ctx context.Context, taskName string, up
 		bson.M{
 			"$set": updated,
 		},
-		&opt,
+		options.UpdateOne().SetUpsert(true),
 	)
 
 	if err != nil {
@@ -624,9 +607,6 @@ func (s *MongoPersistent) GetConfiguration(key string) (cfg Configuration, err e
 }
 
 func (s *MongoPersistent) SetConfiguration(cfg *Configuration) (err error) {
-	opt := options.UpdateOptions{
-		Upsert: candihelper.ToBoolPtr(true),
-	}
 	_, err = s.db.Collection(configurationModelName).UpdateOne(s.ctx,
 		bson.M{
 			"key": cfg.Key,
@@ -634,7 +614,7 @@ func (s *MongoPersistent) SetConfiguration(cfg *Configuration) (err error) {
 		bson.M{
 			"$set": cfg,
 		},
-		&opt,
+		options.UpdateOne().SetUpsert(true),
 	)
 	return
 }

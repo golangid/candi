@@ -4,7 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/gomodule/redigo/redis"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 // SQLDatabase abstraction

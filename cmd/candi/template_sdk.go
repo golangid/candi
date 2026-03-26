@@ -66,6 +66,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type {{lower (clean $.ServiceName)}}GRPCImpl struct {
@@ -80,7 +81,7 @@ func New{{upper (clean $.ServiceName)}}ServiceGRPC(host string, authKey string) 
 	if u, _ := url.Parse(host); u.Host != "" {
 		host = u.Host
 	}
-	conn, err := grpc.Dial(host, grpc.WithInsecure(), grpc.WithConnectParams(grpc.ConnectParams{
+	conn, err := grpc.NewClient(host, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithConnectParams(grpc.ConnectParams{
 		Backoff: backoff.Config{
 			BaseDelay:  50 * time.Millisecond,
 			Multiplier: 5,
