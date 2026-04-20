@@ -38,7 +38,7 @@ func SetDebugMode(debugMode bool) OptionFunc {
 }
 
 // SetBroadcastMode option func
-func SetBroadcastMode(broadcast bool) OptionFunc {
+func SetBroadcastMode() OptionFunc {
 	return func(o *option) {
 		o.locker = &candiutils.NoopLocker{}
 	}
