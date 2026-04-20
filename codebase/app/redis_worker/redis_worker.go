@@ -168,12 +168,12 @@ func (r *redisWorker) processMessage(param broker.RedisMessage) {
 	message := []byte(param.Message)
 	if len(message) == 0 {
 		conn := r.bk.Pool.Get()
+		defer conn.Close()
 		message, err = redis.Bytes(conn.Do("HGET", broker.RedisBrokerKey, param.Key))
 		if err != nil {
 			return
 		}
 		conn.Do("HDEL", broker.RedisBrokerKey, param.Key)
-		conn.Close()
 	}
 
 	ctx := r.ctx

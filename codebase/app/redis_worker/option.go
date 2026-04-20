@@ -1,6 +1,9 @@
 package redisworker
 
-import "github.com/golangid/candi/codebase/interfaces"
+import (
+	"github.com/golangid/candi/candiutils"
+	"github.com/golangid/candi/codebase/interfaces"
+)
 
 type (
 	option struct {
@@ -31,5 +34,12 @@ func SetMaxGoroutines(maxGoroutines int) OptionFunc {
 func SetDebugMode(debugMode bool) OptionFunc {
 	return func(o *option) {
 		o.debugMode = debugMode
+	}
+}
+
+// SetBroadcastMode option func
+func SetBroadcastMode(broadcast bool) OptionFunc {
+	return func(o *option) {
+		o.locker = &candiutils.NoopLocker{}
 	}
 }
