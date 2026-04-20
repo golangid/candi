@@ -18,6 +18,7 @@ import (
 	"github.com/golangid/candi/codebase/factory/types"
 	"github.com/golangid/candi/logger"
 	"github.com/golangid/candi/tracer"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type (
@@ -354,15 +355,15 @@ func RecalculateSummary(ctx context.Context) {
 
 	mapper := make(map[string]TaskSummary, len(engine.tasks))
 	for _, taskSummary := range engine.opt.persistent.AggregateAllTaskJob(ctx, &Filter{}) {
-		mapper[taskSummary.ID] = taskSummary
+		mapper[taskSummary.ID.String()] = taskSummary
 	}
 
 	for _, task := range engine.tasks {
 		taskSummary, ok := mapper[task]
 		if !ok {
-			taskSummary.ID = task
+			taskSummary.ID, _ = bson.ObjectIDFromHex(task)
 		}
-		engine.opt.persistent.Summary().UpdateSummary(ctx, taskSummary.ID, map[string]any{
+		engine.opt.persistent.Summary().UpdateSummary(ctx, taskSummary.ID.String(), map[string]any{
 			"success":  taskSummary.Success,
 			"queueing": taskSummary.Queueing,
 			"retrying": taskSummary.Retrying,

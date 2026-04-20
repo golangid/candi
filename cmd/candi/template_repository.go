@@ -361,7 +361,6 @@ import (
 	"{{$.PackagePrefix}}/internal/modules/{{cleanPathModule .ModuleName}}/domain"
 	shareddomain "{{$.PackagePrefix}}/pkg/shared/domain"
 
-	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/candishared"
 	"github.com/golangid/candi/tracer"
 )
@@ -457,8 +456,8 @@ func (r *{{camel .ModuleName}}RepoMongo) Save(ctx context.Context, data *sharedd
 		trace.Log("updated", updated)
 		opt := options.UpdateOne().SetUpsert(true)
 		_, err = r.writeDB.Collection(r.collection).UpdateOne(ctx,
-			bson.D{{Key: "_id", Value: data.ID}},
-			bson.D{{Key: "$set", Value: updated}}, opt)
+			{{ printf "bson.D{{Key: \"_id\", Value: data.ID}}" }},
+			{{ printf "bson.D{{Key: \"$set\", Value: updated}}" }}, opt)
 	}
 
 	trace.SetTag("id", data.ID.Hex())
@@ -482,7 +481,7 @@ func (r *{{camel .ModuleName}}RepoMongo) setFilter{{upper (camel .ModuleName)}}(
 		query = append(query, bson.E{Key: "_id", Value: id}){{else}}query = append(query, bson.E{Key: "_id", Value: *filter.ID}){{end}}
 	}
 	if filter.Search != "" {
-		query = append(query, bson.E{Key: "field", Value: bson.D{{Key: "$regex", Value: filter.Search}}})
+		query = append(query, bson.E{Key: "field", Value: {{printf "bson.D{{Key: \"$regex\", Value: filter.Search}}" }}})
 	}
 
 	return query

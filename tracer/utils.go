@@ -126,7 +126,7 @@ func parseCaller(_ uintptr, file string, line int, ok bool) (caller string) {
 		return
 	}
 
-	if strings.HasSuffix(file, "candi/tracer/jaeger.go") {
+	if strings.HasSuffix(file, "candi/tracer/otel.go") {
 		return
 	}
 	return file + ":" + strconv.Itoa(line)

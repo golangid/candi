@@ -6,6 +6,7 @@ import (
 
 	"github.com/golangid/candi/candihelper"
 	cronexpr "github.com/golangid/candi/candiutils/cronparser"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const (
@@ -54,18 +55,18 @@ func (f *Filter) ParseStartEndDate() (startDate, endDate time.Time) {
 
 // TaskSummary model
 type TaskSummary struct {
-	ID             string     `bson:"_id"`
-	TaskName       string     `bson:"task_name"`
-	Success        int        `bson:"success"`
-	Queueing       int        `bson:"queueing"`
-	Retrying       int        `bson:"retrying"`
-	Failure        int        `bson:"failure"`
-	Stopped        int        `bson:"stopped"`
-	Hold           int        `bson:"hold"`
-	IsLoading      bool       `bson:"is_loading"`
-	IsHold         bool       `bson:"is_hold"`
-	LoadingMessage string     `bson:"loading_message"`
-	Config         TaskConfig `bson:"config"`
+	ID             bson.ObjectID `bson:"_id"`
+	TaskName       string        `bson:"task_name"`
+	Success        int           `bson:"success"`
+	Queueing       int           `bson:"queueing"`
+	Retrying       int           `bson:"retrying"`
+	Failure        int           `bson:"failure"`
+	Stopped        int           `bson:"stopped"`
+	Hold           int           `bson:"hold"`
+	IsLoading      bool          `bson:"is_loading"`
+	IsHold         bool          `bson:"is_hold"`
+	LoadingMessage string        `bson:"loading_message"`
+	Config         TaskConfig    `bson:"config"`
 }
 
 type TaskConfig struct {
@@ -219,7 +220,7 @@ func (j *Job) IsCronMode() bool {
 
 func (j *Job) ParseNextRunningInterval() (interval time.Duration, err error) {
 	if !j.NextRunningAt.IsZero() && j.NextRunningAt.After(time.Now()) {
-		interval = j.NextRunningAt.Sub(time.Now())
+		interval = time.Until(j.NextRunningAt)
 		return
 	}
 	interval, err = time.ParseDuration(j.Interval)

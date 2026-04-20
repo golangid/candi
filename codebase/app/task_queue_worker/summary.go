@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 	"sync"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type (
@@ -40,7 +42,7 @@ func (i *inMemSummary) FindAllSummary(ctx context.Context, filter *Filter) (resu
 		if filter.TaskName != "" && taskName != filter.TaskName {
 			continue
 		}
-		summary.ID = taskName
+		summary.ID, _ = bson.ObjectIDFromHex(taskName)
 		summary.TaskName = taskName
 		result = append(result, *summary)
 	}

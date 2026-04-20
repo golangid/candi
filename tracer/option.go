@@ -1,6 +1,16 @@
 package tracer
 
-import "context"
+import (
+	"context"
+	"fmt"
+	"runtime"
+	"strings"
+
+	"github.com/golangid/candi"
+	"go.opentelemetry.io/otel/attribute"
+	tracesdk "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+)
 
 type (
 	// Option for init tracer option
@@ -15,6 +25,9 @@ type (
 		traceIDExtractor func(context.Context) string
 		environment      string
 		attributes       map[string]any
+
+		otelExporter                 tracesdk.SpanExporter
+		otelBatchSpanProcessorOption []tracesdk.BatchSpanProcessorOption
 	}
 
 	// OptionFunc func
@@ -32,6 +45,39 @@ type (
 	// FinishOptionFunc func
 	FinishOptionFunc func(*FinishOption)
 )
+
+func (o *Option) ToOtelAttributes(serviceName string) []attribute.KeyValue {
+	if o.level != "" {
+		serviceName = fmt.Sprintf("%s-%s", serviceName, strings.ToLower(o.level))
+	}
+
+	attributes := []attribute.KeyValue{
+		semconv.ServiceNameKey.String(serviceName),
+		semconv.DeploymentEnvironmentKey.String(o.level),
+		semconv.TelemetrySDKLanguageGo,
+		attribute.Int("num_cpu", runtime.NumCPU()),
+		attribute.String("go_version", runtime.Version()),
+		attribute.String("candi_version", candi.Version),
+	}
+
+	if o.environment != "" {
+		attributes = append(attributes, semconv.DeploymentEnvironmentKey.String(o.environment))
+	}
+
+	if o.maxGoroutineTag != 0 {
+		attributes = append(attributes, attribute.Int("max_goroutines", o.maxGoroutineTag))
+	}
+	if o.buildNumberTag != "" {
+		attributes = append(attributes, attribute.String("build_number", o.buildNumberTag))
+	}
+
+	for k, v := range o.attributes {
+		attributes = append(attributes, attribute.KeyValue{
+			Key: attribute.Key(k), Value: toOtelValue(v),
+		})
+	}
+	return attributes
+}
 
 // OptionSetAgentHost option func
 func OptionSetAgentHost(agent string) OptionFunc {
@@ -107,6 +153,20 @@ func OptionSetTraceIDExtractor(extractor func(context.Context) string) OptionFun
 func OptionSetLogAllSpan() OptionFunc {
 	return func(o *Option) {
 		o.logAllSpan = true
+	}
+}
+
+// OptionSetOtelExporter option func
+func OptionSetOtelExporter(exporter tracesdk.SpanExporter) OptionFunc {
+	return func(o *Option) {
+		o.otelExporter = exporter
+	}
+}
+
+// OptionSetOtelBatchSpanProcessor option func
+func OptionSetOtelBatchSpanProcessor(opts ...tracesdk.BatchSpanProcessorOption) OptionFunc {
+	return func(o *Option) {
+		o.otelBatchSpanProcessorOption = opts
 	}
 }
 

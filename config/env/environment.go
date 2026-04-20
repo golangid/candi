@@ -65,8 +65,8 @@ type Env struct {
 	// BasicAuthPassword config
 	BasicAuthPassword string
 
-	// JaegerTracingHost env
-	JaegerTracingHost string
+	// OtelTracingHost env
+	OtelTracingHost string
 
 	// Broker environment
 	Kafka struct {
@@ -170,7 +170,11 @@ func Load(serviceName string) {
 	env.BasicAuthUsername = os.Getenv("BASIC_AUTH_USERNAME")
 	env.BasicAuthPassword = os.Getenv("BASIC_AUTH_PASS")
 
-	env.JaegerTracingHost = os.Getenv("JAEGER_TRACING_HOST")
+	if val, ok := os.LookupEnv("OTEL_TRACING_HOST"); ok {
+		env.OtelTracingHost = val
+	} else {
+		env.OtelTracingHost = os.Getenv("JAEGER_TRACING_HOST")
+	}
 
 	// kafka environment
 	parseBrokerEnv(mErrs)

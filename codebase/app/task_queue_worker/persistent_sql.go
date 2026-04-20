@@ -12,6 +12,7 @@ import (
 	"github.com/golangid/candi/candihelper"
 	"github.com/golangid/candi/logger"
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type (
@@ -184,7 +185,7 @@ func (s *SQLPersistent) AggregateAllTaskJob(ctx context.Context, filter *Filter)
 
 	for taskName, summary := range mapSummary {
 		summary.TaskName = taskName
-		summary.ID = taskName
+		summary.ID, _ = bson.ObjectIDFromHex(taskName)
 		result = append(result, summary)
 	}
 
@@ -337,7 +338,7 @@ func (s *SQLPersistent) FindAllSummary(ctx context.Context, filter *Filter) (res
 	for rows.Next() {
 		var detail TaskSummary
 		detail.Scan(rows)
-		detail.ID = detail.TaskName
+		detail.ID, _ = bson.ObjectIDFromHex(detail.TaskName)
 		result = append(result, detail)
 	}
 
@@ -360,7 +361,7 @@ func (s *SQLPersistent) FindDetailSummary(ctx context.Context, taskName string) 
 		s.formatColumnName(result.GetColumnName()...)+
 		` FROM `+jobSummaryModelName+` WHERE id=`+s.parameterize(1), taskName)
 	result.Scan(row)
-	result.ID = result.TaskName
+	result.ID, _ = bson.ObjectIDFromHex(result.TaskName)
 	return
 }
 func (s *SQLPersistent) UpdateSummary(ctx context.Context, taskName string, updated map[string]any) {
@@ -392,7 +393,6 @@ func (s *SQLPersistent) UpdateSummary(ctx context.Context, taskName string, upda
 			logger.LogE(err.Error())
 		}
 	}
-	return
 }
 func (s *SQLPersistent) IncrementSummary(ctx context.Context, taskName string, incr map[string]int64) {
 	if len(incr) == 0 {
@@ -432,7 +432,6 @@ func (s *SQLPersistent) IncrementSummary(ctx context.Context, taskName string, i
 			logger.LogE(err.Error())
 		}
 	}
-	return
 }
 func (s *SQLPersistent) DeleteAllSummary(ctx context.Context, filter *Filter) {
 	var where string

@@ -59,7 +59,7 @@ KAFKA_CONSUMER_GROUP={{.ServiceName}}
 {{if not .RabbitMQHandler}}# {{end}}RABBITMQ_CONSUMER_GROUP={{.ServiceName}}
 {{if not .RabbitMQHandler}}# {{end}}RABBITMQ_EXCHANGE_NAME=delayed
 
-JAEGER_TRACING_HOST=127.0.0.1:4317
+OTEL_TRACING_HOST=127.0.0.1:4317
 
 MAX_GOROUTINES=10
 
