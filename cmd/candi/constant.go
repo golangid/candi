@@ -51,4 +51,6 @@ var deliveryHandlerLocation = map[string]string{
 	RabbitmqHandler:         "workerhandler/rabbitmq_handler.go",
 	pluginGCPPubSubWorker:   "workerhandler/" + strings.ToLower(pluginGCPPubSubWorker) + "_handler.go",
 	pluginSTOMPWorker:       "workerhandler/" + strings.ToLower(pluginSTOMPWorker) + "_handler.go",
+	pluginMQTTWorker:        "workerhandler/" + strings.ToLower(pluginMQTTWorker) + "_handler.go",
+	pluginAmazonSQSWorker:   "workerhandler/" + strings.ToLower(pluginAmazonSQSWorker) + "_handler.go",
 }
