@@ -98,6 +98,8 @@ func getUpdateFileInExistingDelivery(flagParam *flagParameter, usecaseName strin
 		RabbitmqHandler:         "RabbitMQ",
 		pluginGCPPubSubWorker:   pluginGCPPubSubWorker,
 		pluginSTOMPWorker:       pluginSTOMPWorker,
+		pluginMQTTWorker:        pluginMQTTWorker,
+		pluginAmazonSQSWorker:   pluginAmazonSQSWorker,
 	}
 	for _, delivery := range deliveryHandlers {
 		fu := fileUpdate{
