@@ -243,6 +243,11 @@ func filterWorkerHandler(cfg *serviceConfig, flagParam *flagParameter) (wording 
 		options = append(options, fmt.Sprintf("%d) MQTT Subscriber (plugin)", len(options)+1))
 		handlers[strconv.Itoa(len(options))] = pluginMQTTWorker
 	}
+	if flagParam.addModule || flagParam.initService || (flagParam.addHandler &&
+		validateDir(flagParam.getFullModuleChildDir("delivery", "workerhandler", strings.ToLower(pluginAmazonSQSWorker)+"_handler.go")) != nil) {
+		options = append(options, fmt.Sprintf("%d) Amazon SQS Consumer (plugin)", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = pluginAmazonSQSWorker
+	}
 
 	wording = strings.Join(options, "\n")
 	return
@@ -520,6 +525,10 @@ func getAllModuleHandler(path string) (wording string, handlers map[string]strin
 	if validateDir(path+"/workerhandler/"+strings.ToLower(pluginMQTTWorker)+"_handler.go") == nil {
 		options = append(options, fmt.Sprintf("%d) MQTT Subscriber (plugin)", len(options)+1))
 		handlers[strconv.Itoa(len(options))] = pluginMQTTWorker
+	}
+	if validateDir(path+"/workerhandler/"+strings.ToLower(pluginAmazonSQSWorker)+"_handler.go") == nil {
+		options = append(options, fmt.Sprintf("%d) Amazon SQS Consumer (plugin)", len(options)+1))
+		handlers[strconv.Itoa(len(options))] = pluginAmazonSQSWorker
 	}
 
 	wording = strings.Join(options, "\n")
