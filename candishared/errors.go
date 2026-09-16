@@ -1,6 +1,7 @@
 package candishared
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -138,4 +139,8 @@ func (m *multiError) ToGraphQLExtension(mainErr string) GraphQLErrorResolver {
 		gqlErr.extensions[k] = v
 	}
 	return gqlErr
+}
+
+func (m *multiError) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.errs)
 }
