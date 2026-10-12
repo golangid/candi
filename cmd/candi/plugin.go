@@ -12,6 +12,7 @@ const (
 	pluginGCPPubSubWorker = "GCPPubSubWorker"
 	pluginSTOMPWorker     = "STOMPWorker"
 	pluginMQTTWorker      = "MQTTWorker"
+	pluginAmazonSQSWorker = "AmazonSQSWorker"
 )
 
 var (
@@ -112,6 +113,39 @@ var (
 `,
 				"mod.workerHandlers = map[types.Worker]interfaces.WorkerHandler{": `mod.workerHandlers = map[types.Worker]interfaces.WorkerHandler{
 		mqttbroker.MQTTBroker: workerhandler.NewMQTTWorkerHandler(usecase.GetSharedUsecase(), deps),`,
+			},
+		},
+
+		pluginAmazonSQSWorker: {
+			name:        pluginAmazonSQSWorker,
+			packageName: "github.com/golangid/candi-plugin/amazonsqs",
+			editConfig: map[string]string{
+				`import (`: `import (
+	"github.com/golangid/candi-plugin/amazonsqs"`,
+				"brokerDeps := broker.InitBrokers(": `brokerDeps := broker.InitBrokers(
+			amazonsqs.NewAmazonSQSBroker(
+				amazonsqs.InitDefaultConnection(),
+			),`,
+			},
+			editAppFactory: map[string]string{
+				`import (`: `import (
+	"github.com/golangid/candi-plugin/amazonsqs"`,
+				`return
+}`: `apps = append(apps, amazonsqs.NewAmazonSQSWorker(
+		service,
+		service.GetDependency().GetBroker(amazonsqs.AmazonSQSBroker),
+		10, // max number of messages received per poll
+		20, // long polling wait time (seconds)
+	))
+	return
+}`,
+			},
+			editModule: map[string]string{
+				"import (": `import (
+	"github.com/golangid/candi-plugin/amazonsqs"
+`,
+				"mod.workerHandlers = map[types.Worker]interfaces.WorkerHandler{": `mod.workerHandlers = map[types.Worker]interfaces.WorkerHandler{
+		amazonsqs.AmazonSQSBroker: workerhandler.NewAmazonSQSWorkerHandler(usecase.GetSharedUsecase(), deps),`,
 			},
 		},
 	}
