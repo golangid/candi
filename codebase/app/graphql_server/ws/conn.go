@@ -17,10 +17,14 @@ const (
 	typeConnectionError     operationMessageType = "connection_error"
 	typeConnectionInit      operationMessageType = "connection_init"
 	typeConnectionKeepAlive operationMessageType = "ka"
+	typePing                operationMessageType = "ping"
+	typePong                operationMessageType = "pong"
 	typeConnectionTerminate operationMessageType = "connection_terminate"
 	typeData                operationMessageType = "data"
+	typeNext                operationMessageType = "next"
 	typeError               operationMessageType = "error"
 	typeStart               operationMessageType = "start"
+	typeSubscribe           operationMessageType = "subscribe"
 	typeStop                operationMessageType = "stop"
 )
 
@@ -42,8 +46,8 @@ type operationMessage struct {
 }
 
 type startMessagePayload struct {
-	OperationName string                 `json:"operationName"`
-	Query         string                 `json:"query"`
+	OperationName string         `json:"operationName"`
+	Query         string         `json:"query"`
 	Variables     map[string]any `json:"variables"`
 }
 
@@ -61,35 +65,13 @@ type connection struct {
 	ws           wsConnection
 }
 
-// ReadLimit limits the maximum size of incoming messages
-func ReadLimit(limit int64) func(conn *connection) {
-	return func(conn *connection) {
-		conn.ws.SetReadLimit(limit)
-	}
-}
-
-// WriteTimeout sets a timeout for outgoing messages
-func WriteTimeout(d time.Duration) func(conn *connection) {
-	return func(conn *connection) {
-		conn.writeTimeout = d
-	}
-}
-
 // Connect implements the apollographql subscriptions-transport-ws protocol@v0.9.4
 // https://github.com/apollographql/subscriptions-transport-ws/blob/v0.9.4/PROTOCOL.md
-func Connect(ctx context.Context, ws wsConnection, service GraphQLService, options ...func(conn *connection)) func() {
+func Connect(ctx context.Context, ws wsConnection, service GraphQLService) func() {
 	conn := &connection{
-		service: service,
-		ws:      ws,
-	}
-
-	defaultOpts := []func(conn *connection){
-		ReadLimit(4096),
-		WriteTimeout(time.Second),
-	}
-
-	for _, opt := range append(defaultOpts, options...) {
-		opt(conn)
+		service:      service,
+		ws:           ws,
+		writeTimeout: 2 * time.Second,
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -167,7 +149,7 @@ func (conn *connection) readLoop(ctx context.Context, send sendFunc) {
 			}
 			send("", typeConnectionAck, nil)
 
-		case typeStart:
+		case typeStart, typeSubscribe:
 			// TODO: check an operation with the same ID hasn't been started already
 			if msg.ID == "" {
 				ep := errPayload(errors.New("missing ID for start operation"))
@@ -211,12 +193,16 @@ func (conn *connection) readLoop(ctx context.Context, send sendFunc) {
 							send(msg.ID, typeError, errPayload(err))
 							continue
 						}
-						send(msg.ID, typeData, jsonPayload)
+						omType := typeData
+						if msg.Type == typeSubscribe {
+							omType = typeNext
+						}
+						send(msg.ID, omType, jsonPayload)
 					}
 				}
 			}()
 
-		case typeStop:
+		case typeStop, typeComplete:
 			onDone, ok := opDone[msg.ID]
 			if ok {
 				delete(opDone, msg.ID)
@@ -229,6 +215,11 @@ func (conn *connection) readLoop(ctx context.Context, send sendFunc) {
 
 		case typeConnectionKeepAlive:
 			send("", typeConnectionKeepAlive, nil)
+
+		case typePing:
+			send("", typePong, nil)
+
+		case typePong:
 
 		default:
 			ep := errPayload(fmt.Errorf("unknown operation message of type: %s", msg.Type))

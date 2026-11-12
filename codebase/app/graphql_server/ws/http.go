@@ -3,24 +3,50 @@ package ws
 import (
 	"context"
 	"net/http"
+	"slices"
 
 	"github.com/golangid/candi/candishared"
 	"github.com/gorilla/websocket"
 )
 
-const protocolGraphQLWS = "graphql-ws"
+// ConnectOption gql ws server
+type ConnectOption struct {
+	bufferSize int
+	readLimit  int64
+}
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-	Subprotocols: []string{protocolGraphQLWS},
+// SetBufferSize func
+func SetBufferSize(size int) func(*ConnectOption) {
+	return func(conn *ConnectOption) {
+		conn.bufferSize = size
+	}
+}
+
+// SetReadLimit limits the maximum size of incoming messages
+func SetReadLimit(limit int64) func(*ConnectOption) {
+	return func(conn *ConnectOption) {
+		conn.readLimit = limit
+	}
 }
 
 // NewHandlerFunc returns an http.HandlerFunc that supports GraphQL over websockets
-func NewHandlerFunc(svc GraphQLService, httpHandler http.Handler) http.HandlerFunc {
+func NewHandlerFunc(svc GraphQLService, httpHandler http.Handler, connectOptions ...func(*ConnectOption)) http.HandlerFunc {
+	connectOption := ConnectOption{
+		bufferSize: 1024,
+		readLimit:  1<<16 - 1, // 65535
+	}
+	for _, opt := range connectOptions {
+		opt(&connectOption)
+	}
+	var upgrader = websocket.Upgrader{
+		ReadBufferSize:  connectOption.bufferSize,
+		WriteBufferSize: connectOption.bufferSize,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+		Subprotocols: []string{"graphql-ws", "graphql-transport-ws"},
+	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		// handle cors
@@ -33,13 +59,14 @@ func NewHandlerFunc(svc GraphQLService, httpHandler http.Handler) http.HandlerFu
 		}
 
 		for _, subprotocol := range websocket.Subprotocols(r) {
-			if subprotocol == protocolGraphQLWS {
+			if slices.Contains(upgrader.Subprotocols, subprotocol) {
 				ws, err := upgrader.Upgrade(w, r, nil)
 				if err != nil {
 					return
 				}
+				ws.SetReadLimit(connectOption.readLimit)
 
-				if ws.Subprotocol() != protocolGraphQLWS {
+				if !slices.Contains(upgrader.Subprotocols, ws.Subprotocol()) {
 					ws.Close()
 					return
 				}

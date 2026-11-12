@@ -148,7 +148,7 @@ func (s *handlerImpl) ServeGraphQL() http.HandlerFunc {
 
 		resp.Header().Set(candihelper.HeaderContentType, candihelper.HeaderMIMEApplicationJSON)
 		resp.Write(responseJSON)
-	}))
+	}), s.option.wsOptions...)
 }
 
 func (s *handlerImpl) ServePlayground(resp http.ResponseWriter, req *http.Request) {

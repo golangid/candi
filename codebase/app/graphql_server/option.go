@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/golangid/candi/codebase/app/graphql_server/ws"
 	"github.com/golangid/candi/codebase/interfaces"
 	"github.com/golangid/candi/wrapper"
 	"github.com/golangid/graphql-go/types"
@@ -28,6 +29,7 @@ type (
 		tlsConfig      *tls.Config
 		schemaSource   []byte
 		onErrorWrapper func(context.Context, error) error
+		wsOptions      []func(*ws.ConnectOption)
 	}
 
 	// OptionFunc type
@@ -137,5 +139,12 @@ func AddSchema(schema []byte) OptionFunc {
 func SetOnErrorWrapper(errFunc func(context.Context, error) error) OptionFunc {
 	return func(o *Option) {
 		o.onErrorWrapper = errFunc
+	}
+}
+
+// SetWSOptions option set websocket for subscription options
+func SetWSOptions(opts ...func(*ws.ConnectOption)) OptionFunc {
+	return func(o *Option) {
+		o.wsOptions = opts
 	}
 }
